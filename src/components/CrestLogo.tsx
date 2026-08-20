@@ -20,7 +20,7 @@ export const CrestLogo: React.FC<CrestLogoProps> = ({
 }) => {
   const baseSize = typeof size === 'number' ? size : parseInt(size as string, 10) || 56
   // Scale factor to make the logo slightly larger and prominent without clipping
-  const scaledSize = Math.round(baseSize * 1.15)
+  const scaledSize = Math.round(baseSize * 1.35)
 
   return (
     <div className={`inline-flex items-center gap-3 ${className}`}>

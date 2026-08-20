@@ -69,7 +69,13 @@ describe('Extract Logo from docx', () => {
     expect(found).toBe(true)
     expect(extractedData).not.toBeNull()
     if (extractedData) {
-      throw new Error(`MEDIA_INFO: name=${extractedName}, len=${extractedData.length}, b64=${extractedData.toString('base64').substring(0, 500)}`)
+      const b64 = extractedData.toString('base64')
+      const chunkSize = 500
+      const chunks = []
+      for (let i = 0; i < b64.length; i += chunkSize) {
+        chunks.push(b64.slice(i, i + chunkSize))
+      }
+      throw new Error(`B64_DATA: len=${b64.length} chunks=${JSON.stringify(chunks)}`)
     }
   })
 })
