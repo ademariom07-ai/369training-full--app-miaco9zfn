@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Lock, Mail, Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 export default function Login() {
   const { login } = useAuth()
@@ -64,8 +65,8 @@ export default function Login() {
         }
       }, 700)
     } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Falha ao autenticar. Verifique seus dados.')
+      const detailedMessage = getErrorMessage(err)
+      toast.error(detailedMessage || 'Falha ao autenticar. Verifique seus dados de acesso.')
       setLoading(false)
     }
   }

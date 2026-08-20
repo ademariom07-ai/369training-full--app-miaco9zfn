@@ -19,6 +19,7 @@ import {
   Briefcase,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 export default function Cadastro() {
   const [searchParams] = useSearchParams()
@@ -84,30 +85,37 @@ export default function Cadastro() {
 
     setLoading(true)
     try {
-      const referralCode =
-        name
+      const cleanName = name.trim()
+      const referralPrefix = (
+        cleanName
           .substring(0, 4)
           .toUpperCase()
-          .replace(/[^A-Z]/g, 'X') + Math.floor(100 + Math.random() * 900)
+          .replace(/[^A-Z]/g, '') || 'USER'
+      ).padEnd(4, 'X')
+      const referralCode = referralPrefix + Math.floor(100 + Math.random() * 900)
 
-      const payload = {
-        email,
+      const payload: Record<string, unknown> = {
+        email: email.trim().toLowerCase(),
         password,
         passwordConfirm: password,
-        name,
+        name: cleanName,
         role,
         plan: role === 'profissional' ? 'basico' : 'gratis',
         plan_type: role,
         approved: role === 'aluno', // alunos are auto-approved, profissionais require review
-        phone,
-        city,
-        state,
+        phone: phone.trim(),
+        city: city.trim(),
+        state: state.trim().toUpperCase(),
         referral_code: referralCode,
-        objective: role === 'aluno' ? objective : undefined,
-        professional_type: role === 'profissional' ? professionalType : undefined,
-        cref: role === 'profissional' ? cref : undefined,
-        specialties: role === 'profissional' ? specialties : undefined,
         rating_avg: 5.0,
+      }
+
+      if (role === 'aluno') {
+        payload.objective = objective
+      } else {
+        payload.professional_type = professionalType
+        payload.cref = cref.trim()
+        payload.specialties = specialties
       }
 
       await pb.collection('users').create(payload)
@@ -119,8 +127,8 @@ export default function Cadastro() {
         navigate('/login')
       }, 1500)
     } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Erro ao realizar cadastro. Verifique os dados inseridos.')
+      const detailedMessage = getErrorMessage(err)
+      toast.error(detailedMessage || 'Erro ao realizar cadastro. Verifique os dados inseridos.')
       setLoading(false)
     }
   }
