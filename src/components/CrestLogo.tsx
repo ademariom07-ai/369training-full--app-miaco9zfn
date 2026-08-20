@@ -11,22 +11,24 @@ export interface CrestLogoProps {
 }
 
 export const CrestLogo: React.FC<CrestLogoProps> = ({
-  size = 48,
+  size = 56,
   className = '',
   avatarUrl = null,
   showText = false,
   subText = false,
   alt = '369 TRAINING - Foco • Legado • Estratégia',
 }) => {
-  const numericSize = typeof size === 'number' ? size : parseInt(size as string, 10) || 48
+  const baseSize = typeof size === 'number' ? size : parseInt(size as string, 10) || 56
+  // Scale factor to make the logo slightly larger and prominent without clipping
+  const scaledSize = Math.round(baseSize * 1.15)
 
   return (
     <div className={`inline-flex items-center gap-3 ${className}`}>
       <div
         className="relative flex items-center justify-center select-none shrink-0"
-        style={{ width: numericSize, height: numericSize }}
+        style={{ width: scaledSize, height: scaledSize }}
       >
-        {/* Official 369 Training Metallic Golden Warrior Crest */}
+        {/* Official 369 Training Crest - Clean without black borders */}
         <img
           src={officialLogo}
           alt={alt}
@@ -39,9 +41,9 @@ export const CrestLogo: React.FC<CrestLogoProps> = ({
           <div
             className="absolute rounded-full overflow-hidden border-2 border-[#D4AF37] shadow-[0_0_12px_rgba(212,175,55,0.7)] bg-black"
             style={{
-              width: `${Math.round(numericSize * 0.36)}px`,
-              height: `${Math.round(numericSize * 0.36)}px`,
-              top: `${Math.round(numericSize * 0.14)}px`,
+              width: `${Math.round(scaledSize * 0.36)}px`,
+              height: `${Math.round(scaledSize * 0.36)}px`,
+              top: `${Math.round(scaledSize * 0.14)}px`,
               left: '50%',
               transform: 'translateX(-50%)',
             }}

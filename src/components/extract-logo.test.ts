@@ -47,16 +47,29 @@ describe('Extract Logo from docx', () => {
     console.log('Files found in docx:', Object.keys(files))
 
     let found = false
+    let extractedData: Buffer | null = null
+    let extractedName = ''
     for (const [name, data] of Object.entries(files)) {
       if (name.startsWith('word/media/')) {
+        extractedName = name
+        extractedData = data
         const outPath = path.resolve(process.cwd(), 'src/assets/logo-oficial.png')
         fs.writeFileSync(outPath, data)
         // Also write base64 dump so we can inspect it or keep it reliable
         const base64 = data.toString('base64')
         fs.writeFileSync(path.resolve(process.cwd(), 'src/assets/logo-base64.txt'), base64)
         found = true
+        console.log(
+          `Media found: ${name}, size: ${data.length} bytes, base64 length: ${base64.length}`,
+        )
+        console.log(`Header bytes: ${data.subarray(0, 16).toString('hex')}`)
+        console.log(`Base64 start: ${base64.substring(0, 200)}`)
       }
     }
     expect(found).toBe(true)
+    expect(extractedData).not.toBeNull()
+    if (extractedData) {
+      throw new Error(`MEDIA_INFO: name=${extractedName}, len=${extractedData.length}, b64=${extractedData.toString('base64').substring(0, 500)}`)
+    }
   })
 })
