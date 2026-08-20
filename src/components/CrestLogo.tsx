@@ -11,35 +11,35 @@ export interface CrestLogoProps {
 }
 
 export const CrestLogo: React.FC<CrestLogoProps> = ({
-  size = 56,
+  size = 70,
   className = '',
   avatarUrl = null,
   showText = false,
   subText = false,
   alt = '369 TRAINING - Foco • Legado • Estratégia',
 }) => {
-  const baseSize = typeof size === 'number' ? size : parseInt(size as string, 10) || 56
-  // Scale factor to make the logo slightly larger and prominent without clipping
-  const scaledSize = Math.round(baseSize * 1.35)
+  const baseSize = typeof size === 'number' ? size : parseInt(size as string, 10) || 70
+  // Scale factor to increase default size by ~25%
+  const scaledSize = Math.round(baseSize * 1.25)
 
   return (
     <div className={`inline-flex items-center gap-3 ${className}`}>
       <div
-        className="relative flex items-center justify-center select-none shrink-0"
+        className="relative flex items-center justify-center select-none shrink-0 bg-transparent border-0 outline-none p-0"
         style={{ width: scaledSize, height: scaledSize }}
       >
-        {/* Official 369 Training Crest - Clean without black borders */}
+        {/* Official 369 Training Crest - sem bordas pretas / outline / moldura */}
         <img
           src={officialLogo}
           alt={alt}
-          className="w-full h-full object-contain filter drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)] transition-transform duration-300 hover:scale-105"
+          className="w-full h-full object-contain bg-transparent border-0 outline-none ring-0 shadow-none filter drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)] transition-transform duration-300 hover:scale-105"
           loading="eager"
         />
 
         {/* When an avatar is provided (e.g., student/coach profile badge mode), overlay it in the shield center */}
         {avatarUrl && (
           <div
-            className="absolute rounded-full overflow-hidden border-2 border-[#D4AF37] shadow-[0_0_12px_rgba(212,175,55,0.7)] bg-black"
+            className="absolute rounded-full overflow-hidden border-2 border-[#D4AF37] shadow-[0_0_12px_rgba(212,175,55,0.7)] bg-transparent"
             style={{
               width: `${Math.round(scaledSize * 0.36)}px`,
               height: `${Math.round(scaledSize * 0.36)}px`,
