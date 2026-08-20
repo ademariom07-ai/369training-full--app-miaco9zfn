@@ -298,7 +298,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* FOOTER */}
       <footer className="border-t border-[#2A2A2A] bg-[#070707] py-6 px-6 text-center text-xs text-gray-500 font-inter">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} 369TRAINING — Força • Foco • Evolução</p>
+          <p>© {new Date().getFullYear()} 369 TRAINING — FOCO • LEGADO • ESTRATÉGIA</p>
           <p className="italic text-[11px] text-gray-400">
             &ldquo;Se você soubesse a magnificência dos números 3, 6 e 9...&rdquo; — Nikola Tesla
           </p>

@@ -61,11 +61,11 @@ export default function Index() {
         </div>
 
         <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight font-montserrat uppercase mb-4 gold-gradient-text">
-          369TRAINING
+          369 TRAINING
         </h1>
 
-        <p className="text-xl sm:text-2xl font-semibold text-gray-200 tracking-wider uppercase font-montserrat mb-6">
-          Força • Foco • Evolução
+        <p className="text-xl sm:text-2xl font-bold gold-gradient-text tracking-widest uppercase font-montserrat mb-6">
+          FOCO • LEGADO • ESTRATÉGIA
         </p>
 
         {/* Tesla Quote Banner */}
