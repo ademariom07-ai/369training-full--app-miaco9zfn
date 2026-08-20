@@ -128,7 +128,9 @@ export default function Cadastro() {
       }, 1500)
     } catch (err: unknown) {
       const detailedMessage = getErrorMessage(err)
-      toast.error(detailedMessage || 'Erro ao realizar cadastro. Verifique os dados inseridos.')
+      toast.error(detailedMessage || 'Erro ao realizar cadastro. Verifique os dados inseridos.', {
+        duration: 5000,
+      })
       setLoading(false)
     }
   }
