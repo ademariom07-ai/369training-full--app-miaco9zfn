@@ -1,0 +1,96 @@
+cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
+  try {
+    const currentCycle = new Date().toISOString().slice(0, 7)
+    const users = $app.findRecordsByFilter(
+      'users',
+      "role = 'profissional' && approved = true",
+      '',
+      500,
+      0,
+    )
+    if (!users || users.length === 0) return
+
+    const rankCol = $app.findCollectionByNameOrId('rank_entries')
+    const scoredList = []
+
+    for (const u of users) {
+      const profId = u.id
+      const plan = u.getString('plan') || 'basico'
+      const stars = u.getFloat('rating_avg') || 5.0
+
+      let referralsCount = 0
+      try {
+        const refs = $app.findRecordsByFilter(
+          'referrals',
+          "referrer = '" + profId + "'",
+          '',
+          1000,
+          0,
+        )
+        referralsCount = refs ? refs.length : 0
+      } catch (_) {}
+
+      let servicesCount = 0
+      try {
+        const svcs = $app.findRecordsByFilter(
+          'services',
+          "professional = '" + profId + "' && status = 'concluido'",
+          '',
+          1000,
+          0,
+        )
+        servicesCount = svcs ? svcs.length : 0
+      } catch (_) {}
+
+      const planMultiplier = plan === 'premium' ? 5 : plan === 'pro' ? 3 : plan === 'basico' ? 2 : 1
+      const variavel = referralsCount / 18 + 1
+      const points = Math.round(planMultiplier * Math.max(1, servicesCount) * variavel)
+
+      scoredList.push({
+        user_id: profId,
+        points: points,
+        stars: stars,
+        services_count: servicesCount,
+        referrals_count: referralsCount,
+        created: u.getString('created'),
+      })
+    }
+
+    // Sort by points desc -> stars desc -> seniority
+    scoredList.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points
+      if (b.stars !== a.stars) return b.stars - a.stars
+      return a.created.localeCompare(b.created)
+    })
+
+    for (let i = 0; i < scoredList.length; i++) {
+      const item = scoredList[i]
+      let rankRec
+      try {
+        rankRec = $app.findFirstRecordByData('rank_entries', 'user', item.user_id)
+      } catch (_) {
+        rankRec = new Record(rankCol)
+        rankRec.set('user', item.user_id)
+      }
+
+      rankRec.set('cycle', currentCycle)
+      rankRec.set('points', item.points)
+      rankRec.set('services_count', item.services_count)
+      rankRec.set('referrals_count', item.referrals_count)
+      rankRec.set('stars', item.stars)
+      rankRec.set('ranking_position', i + 1)
+      rankRec.set('tie_break_details', {
+        position: i + 1,
+        stars: item.stars,
+        cycle: currentCycle,
+        recomputed_at: new Date().toISOString(),
+      })
+      $app.save(rankRec)
+    }
+    console.log(
+      'Ranking cycle recomputed successfully for ' + scoredList.length + ' professionals.',
+    )
+  } catch (err) {
+    console.log('Error recomputing ranking cycle:', err.message)
+  }
+})
