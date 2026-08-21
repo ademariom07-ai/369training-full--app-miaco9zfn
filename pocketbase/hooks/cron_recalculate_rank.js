@@ -1,4 +1,4 @@
-cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
+cronAdd('recalculate_ranking_every_6h', '0 */6 * * *', () => {
   try {
     const currentCycle = new Date().toISOString().slice(0, 7)
     const users = $app.findRecordsByFilter(
@@ -17,7 +17,6 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
       if (val) tarifas = val
     } catch (_) {}
 
-    // Carregar parâmetros da árvore binária para posicionamento / cashback
     let paramsMap = {}
     try {
       const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 300, 0)
@@ -55,7 +54,6 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
         referralsCount = refs ? refs.length : 0
       } catch (_) {}
 
-      // Pontos são cumulativos mês a mês (total de serviços concluídos acumulados)
       let servicesCount = 0
       try {
         const svcs = $app.findRecordsByFilter(
@@ -68,7 +66,6 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
         servicesCount = svcs ? svcs.length : 0
       } catch (_) {}
 
-      // Fórmula confirmada pelo usuário: tarifa_R$ × serviços × (indicações/18 + 1)
       let tarifaRS = 1.0
       if (tarifas[plan] !== undefined) {
         tarifaRS = Number(tarifas[plan])
@@ -77,11 +74,11 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
       }
 
       const variavel = referralsCount / 18 + 1
-      const points = Math.round(tarifaRS * Math.max(1, servicesCount) * variavel)
+      const points = Math.round(tarifaRS * servicesCount * variavel)
 
       scoredList.push({
         user_id: profId,
-        points: points,
+        points: Number(points) || 0,
         stars: stars,
         tarifa_rs: tarifaRS,
         services_count: servicesCount,
@@ -90,7 +87,6 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
       })
     }
 
-    // Ranking exclusivamente por pontos (desempate por estrelas e antiguidade)
     scoredList.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points
       if (b.stars !== a.stars) return b.stars - a.stars
@@ -117,11 +113,11 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
       }
 
       rankRec.set('cycle', currentCycle)
-      rankRec.set('points', item.points)
-      rankRec.set('services_count', item.services_count)
-      rankRec.set('referrals_count', item.referrals_count)
-      rankRec.set('stars', item.stars)
-      rankRec.set('ranking_position', pos)
+      rankRec.set('points', Number(item.points) || 0)
+      rankRec.set('services_count', Number(item.services_count) || 0)
+      rankRec.set('referrals_count', Number(item.referrals_count) || 0)
+      rankRec.set('stars', Number(item.stars) || 5.0)
+      rankRec.set('ranking_position', Number(pos))
       rankRec.set('tie_break_details', {
         position: pos,
         level: param.level,
@@ -135,12 +131,11 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
       })
       $app.save(rankRec)
     }
+
     console.log(
-      'Ranking cycle recomputed successfully for ' +
-        scoredList.length +
-        ' professionals via binary_tree_params.',
+      'Ranking cycle recomputed successfully for ' + scoredList.length + ' professionals.',
     )
   } catch (err) {
-    console.log('Error recomputing ranking cycle:', err.message)
+    console.log('Error in cron_recalculate_rank:', err ? err.message : '')
   }
 })

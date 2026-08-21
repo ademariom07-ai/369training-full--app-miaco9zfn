@@ -319,10 +319,10 @@ onRecordAfterUpdateSuccess((e) => {
     }
 
     rankRec.set('cycle', currentCycle)
-    rankRec.set('points', pontos)
-    rankRec.set('services_count', servicesCount)
-    rankRec.set('referrals_count', referralsCount)
-    rankRec.set('stars', stars)
+    rankRec.set('points', Number(pontos) || 0)
+    rankRec.set('services_count', Number(servicesCount) || 0)
+    rankRec.set('referrals_count', Number(referralsCount) || 0)
+    rankRec.set('stars', Number(stars) || 5.0)
     rankRec.set('tie_break_details', {
       stars: stars,
       points_raw: pontos,

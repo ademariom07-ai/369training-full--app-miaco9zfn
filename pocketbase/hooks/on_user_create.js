@@ -1,4 +1,3 @@
-// Automatically mark newly created users as verified so they can log in immediately
 onRecordCreate((e) => {
   try {
     e.record.setVerified(true)

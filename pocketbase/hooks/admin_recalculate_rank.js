@@ -86,7 +86,8 @@ routerAdd(
         }
 
         const variavel = referralsCount / 18 + 1
-        const points = Math.round(tarifaRS * Math.max(1, servicesCount) * variavel)
+        const rawPoints = Math.round(tarifaRS * servicesCount * variavel)
+        const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
 
         scoredList.push({
           user_id: profId,
@@ -126,11 +127,11 @@ routerAdd(
         }
 
         rankRec.set('cycle', currentCycle)
-        rankRec.set('points', item.points)
-        rankRec.set('services_count', item.services_count)
-        rankRec.set('referrals_count', item.referrals_count)
-        rankRec.set('stars', item.stars)
-        rankRec.set('ranking_position', pos)
+        rankRec.set('points', Number(item.points))
+        rankRec.set('services_count', Number(item.services_count))
+        rankRec.set('referrals_count', Number(item.referrals_count))
+        rankRec.set('stars', Number(item.stars))
+        rankRec.set('ranking_position', Number(pos))
         rankRec.set('tie_break_details', {
           position: pos,
           level: param.level,
