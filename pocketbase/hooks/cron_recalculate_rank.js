@@ -10,6 +10,31 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
     )
     if (!users || users.length === 0) return
 
+    let tarifas = { gratis: 1.0, basico: 1.0, pro: 2.0, premium: 3.0 }
+    try {
+      const tarifaConfig = $app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
+      const val = tarifaConfig.get('value')
+      if (val) tarifas = val
+    } catch (_) {}
+
+    // Carregar parâmetros da árvore binária para posicionamento / cashback
+    let paramsMap = {}
+    try {
+      const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 300, 0)
+      if (allParams) {
+        for (let p of allParams) {
+          paramsMap[p.getInt('position')] = {
+            level: p.getInt('level'),
+            segment: p.getString('segment'),
+            coefficient: p.getFloat('coefficient'),
+            modifier: p.getFloat('modifier'),
+            divisor: p.getFloat('divisor'),
+            cashback_weight: p.getFloat('cashback_weight'),
+          }
+        }
+      }
+    } catch (_) {}
+
     const rankCol = $app.findCollectionByNameOrId('rank_entries')
     const scoredList = []
 
@@ -30,30 +55,24 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
         referralsCount = refs ? refs.length : 0
       } catch (_) {}
 
+      // Pontos são cumulativos mês a mês (total de serviços concluídos acumulados)
       let servicesCount = 0
       try {
         const svcs = $app.findRecordsByFilter(
           'services',
           "professional = '" + profId + "' && status = 'concluido'",
           '',
-          1000,
+          2000,
           0,
         )
         servicesCount = svcs ? svcs.length : 0
       } catch (_) {}
 
-      // Nova fórmula: pontos = tarifa_R$ × serviços × (indicações/18 + 1)
-      // Tarifas: Básico = R$1, Pro = R$2, Premium = R$3 (Grátis = R$1 padrão)
+      // Fórmula confirmada pelo usuário: tarifa_R$ × serviços × (indicações/18 + 1)
       let tarifaRS = 1.0
-      try {
-        const tarifaConfig = $app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
-        const tarifas = tarifaConfig.get('value') || {}
-        if (tarifas[plan] !== undefined) {
-          tarifaRS = Number(tarifas[plan])
-        } else {
-          tarifaRS = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
-        }
-      } catch (_) {
+      if (tarifas[plan] !== undefined) {
+        tarifaRS = Number(tarifas[plan])
+      } else {
         tarifaRS = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
       }
 
@@ -64,13 +83,14 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
         user_id: profId,
         points: points,
         stars: stars,
+        tarifa_rs: tarifaRS,
         services_count: servicesCount,
         referrals_count: referralsCount,
         created: u.getString('created'),
       })
     }
 
-    // Sort by points desc -> stars desc -> seniority
+    // Ranking exclusivamente por pontos (desempate por estrelas e antiguidade)
     scoredList.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points
       if (b.stars !== a.stars) return b.stars - a.stars
@@ -79,6 +99,15 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
 
     for (let i = 0; i < scoredList.length; i++) {
       const item = scoredList[i]
+      const pos = i + 1
+      const param = paramsMap[pos] || {
+        level: Math.min(36, Math.floor(Math.log2(pos || 1)) + 1),
+        segment: pos <= 3 ? 'Top Tier' : 'Rede',
+        modifier: 1.0,
+        divisor: 1.0,
+        cashback_weight: 1 / (pos + 1),
+      }
+
       let rankRec
       try {
         rankRec = $app.findFirstRecordByData('rank_entries', 'user', item.user_id)
@@ -92,17 +121,24 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
       rankRec.set('services_count', item.services_count)
       rankRec.set('referrals_count', item.referrals_count)
       rankRec.set('stars', item.stars)
-      rankRec.set('ranking_position', i + 1)
+      rankRec.set('ranking_position', pos)
       rankRec.set('tie_break_details', {
-        position: i + 1,
+        position: pos,
+        level: param.level,
+        segment: param.segment,
+        cashback_weight: param.cashback_weight,
         stars: item.stars,
+        tarifa_rs: item.tarifa_rs,
         cycle: currentCycle,
+        formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
         recomputed_at: new Date().toISOString(),
       })
       $app.save(rankRec)
     }
     console.log(
-      'Ranking cycle recomputed successfully for ' + scoredList.length + ' professionals.',
+      'Ranking cycle recomputed successfully for ' +
+        scoredList.length +
+        ' professionals via binary_tree_params.',
     )
   } catch (err) {
     console.log('Error recomputing ranking cycle:', err.message)

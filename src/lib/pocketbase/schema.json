@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T14:45:46.960Z",
+  "generatedAt": "2026-08-21T15:31:21.421Z",
   "collections": [
     {
       "name": "users",
@@ -1284,6 +1284,127 @@
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_config_key ON platform_config (key)"]
+    },
+    {
+      "name": "binary_tree_params",
+      "type": "base",
+      "apiRules": {
+        "list": "",
+        "view": "",
+        "create": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "update": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "position",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "level",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "segment",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "coefficient",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "people_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "level_percentage",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "level_share_pct",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "modifier",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "divisor",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cashback_weight",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "esg_bonus_pct",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "esg_economic_pct",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "esg_social_pct",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "esg_ecological_pct",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "trigger_rules",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_bt_params_pos ON binary_tree_params (position)",
+        "CREATE INDEX idx_bt_params_level ON binary_tree_params (level)"
+      ]
     }
   ]
 }

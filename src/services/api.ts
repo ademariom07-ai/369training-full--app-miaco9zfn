@@ -103,6 +103,24 @@ export interface WalletTransactionRecord extends RecordModel {
   description?: string
 }
 
+export interface BinaryTreeParamRecord extends RecordModel {
+  position: number
+  level: number
+  segment?: string
+  coefficient?: number
+  people_count?: number
+  level_percentage?: number
+  level_share_pct?: number
+  modifier?: number
+  divisor?: number
+  cashback_weight?: number
+  esg_bonus_pct?: number
+  esg_economic_pct?: number
+  esg_social_pct?: number
+  esg_ecological_pct?: number
+  trigger_rules?: Record<string, unknown>
+}
+
 export interface RankEntryRecord extends RecordModel {
   user: string
   cycle: string

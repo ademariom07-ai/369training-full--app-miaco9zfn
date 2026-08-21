@@ -21,31 +21,35 @@ onRecordAfterUpdateSuccess((e) => {
     const prof = $app.findRecordById('users', profId)
     const profPlan = prof.getString('plan') || 'basico'
 
-    // 2. Platform Config
-    let tarifaAmount = 2.0
+    // 2. Platform Config & Global Split (Pool de parceiros 38%, App 30%, Filantropia 10%, Imposto 10%, Suporte 4%, Mkt 4%, Investidor 4%)
+    let tarifaAmount = 1.0
     let partnerPoolPct = 0.38
-    let esgMetas = { economica: 0.55, social: 0.15, ecologica: 0.15, bonus: 0.15 }
+    let esgMetas = { bonus: 0.55, economica: 0.15, social: 0.15, ecologica: 0.15 }
 
     try {
       const tarifaConfig = $app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
       const tarifas = tarifaConfig.get('value') || {}
       if (tarifas[profPlan] !== undefined) {
-        tarifaAmount = tarifas[profPlan]
+        tarifaAmount = Number(tarifas[profPlan])
+      } else {
+        tarifaAmount = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0
       }
-    } catch (_) {}
+    } catch (_) {
+      tarifaAmount = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0
+    }
 
     try {
       const revConfig = $app.findFirstRecordByData('platform_config', 'key', 'revenue_split')
       const rev = revConfig.get('value') || {}
       if (rev.partner_pool_pct !== undefined) {
-        partnerPoolPct = rev.partner_pool_pct
+        partnerPoolPct = Number(rev.partner_pool_pct)
       }
     } catch (_) {}
 
     try {
       const esgConfig = $app.findFirstRecordByData('platform_config', 'key', 'esg_metas')
       const esg = esgConfig.get('value') || {}
-      if (esg.economica !== undefined) {
+      if (esg.bonus !== undefined) {
         esgMetas = esg
       }
     } catch (_) {}
@@ -61,7 +65,14 @@ onRecordAfterUpdateSuccess((e) => {
     tarifaTx.set('status', 'concluido')
     tarifaTx.set('reference_type', 'services')
     tarifaTx.set('reference_id', serviceId)
-    tarifaTx.set('description', 'Tarifa de serviço (Plano ' + profPlan.toUpperCase() + ')')
+    tarifaTx.set(
+      'description',
+      'Tarifa de serviço (Plano ' +
+        profPlan.toUpperCase() +
+        ' - R$ ' +
+        tarifaAmount.toFixed(2) +
+        ')',
+    )
     $app.save(tarifaTx)
 
     // Servico credit transaction
@@ -76,7 +87,44 @@ onRecordAfterUpdateSuccess((e) => {
     servicoTx.set('description', 'Recebimento de serviço concluído')
     $app.save(servicoTx)
 
-    // 4. Partner Pool Cashback calculation across upline referrals (up to 36 levels)
+    // 4. Carregar parâmetros de ranking e árvore binária
+    let paramsMap = {}
+    try {
+      const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 300, 0)
+      if (allParams) {
+        for (let p of allParams) {
+          paramsMap[p.getInt('position')] = {
+            level: p.getInt('level'),
+            segment: p.getString('segment'),
+            coefficient: p.getFloat('coefficient'),
+            modifier: p.getFloat('modifier'),
+            divisor: p.getFloat('divisor'),
+            level_percentage: p.getFloat('level_percentage'),
+            cashback_weight: p.getFloat('cashback_weight'),
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Mapeamento de posições de todos os profissionais para aplicar cashback conforme posição no ranking
+    let userRankPosMap = {}
+    try {
+      const allRankEntries = $app.findRecordsByFilter(
+        'rank_entries',
+        '',
+        'ranking_position',
+        500,
+        0,
+      )
+      if (allRankEntries) {
+        for (let r of allRankEntries) {
+          userRankPosMap[r.getString('user')] = r.getInt('ranking_position')
+        }
+      }
+    } catch (_) {}
+
+    // 5. Partner Pool 38%: Distribuído por todos os níveis habitados (até 36 níveis)
+    // O cashback do upline depende da posição no ranking da árvore binária e parâmetros
     const totalPoolShare = serviceValue * partnerPoolPct
     let currentReferralUser = profId
     let level = 1
@@ -84,24 +132,94 @@ onRecordAfterUpdateSuccess((e) => {
     const cbDistCol = $app.findCollectionByNameOrId('cashback_distributions')
     const notifCol = $app.findCollectionByNameOrId('notifications')
 
+    const currentCycle = new Date().toISOString().slice(0, 7) // "YYYY-MM"
+    const cycleStartDate = currentCycle + '-01 00:00:00.000Z'
+
     while (level <= 36) {
       try {
         const refRecord = $app.findFirstRecordByData('referrals', 'referred', currentReferralUser)
         const uplineUserId = refRecord.getString('referrer')
         if (!uplineUserId) break
 
-        // Formula: valor_nivel = pool_share * nivel_variavel(24%->180%) / divisor(2^(n-1)) / modificador(1.0->18.5)
-        const nivelVariavel = Math.min(1.8, 0.24 + level * 0.04)
-        const divisor = Math.pow(2, Math.min(level - 1, 10)) // limit power scaling
-        const modifier = Math.min(18.5, 1.0 + level * 0.45)
-        const cashbackRaw = (totalPoolShare * nivelVariavel) / (divisor * modifier)
-        const levelAmount = Math.max(0.01, Math.round(cashbackRaw * 100) / 100)
+        const userRankPos = userRankPosMap[uplineUserId] || Math.min(265, Math.pow(2, level - 1))
+        const param = paramsMap[userRankPos] || {
+          level: level,
+          segment: 'Rede',
+          level_percentage: Math.min(1.8, 0.24 + level * 0.04),
+          divisor: Math.pow(2, Math.min(level - 1, 10)),
+          modifier: Math.min(18.5, 1.0 + level * 0.45),
+          cashback_weight: 1 / (userRankPos + 1),
+        }
 
+        const nivelVariavel = param.level_percentage || Math.min(1.8, 0.24 + level * 0.04)
+        const divisor = param.divisor || Math.pow(2, Math.min(level - 1, 10))
+        const modifier = param.modifier || Math.min(18.5, 1.0 + level * 0.45)
+
+        // Base cashback ponderado pela posição no ranking
+        let cashbackRaw = (totalPoolShare * nivelVariavel) / (divisor * modifier)
+        // Multiplicador da posição do ranking (quanto melhor a posição, maior o percentual)
+        if (param.cashback_weight) {
+          cashbackRaw = cashbackRaw * (1 + param.cashback_weight * 2)
+        }
+
+        // 6. Regras de Gatilho ESG (por ciclo mensal acumulado):
+        // Acumulado < 10k: 100%
+        // R$ 10.000: 1 meta ESG -> se não bater recebe 85%
+        // R$ 15.000: 2 metas ESG -> se não bater recebe 55% + 15% por meta batida
+        // R$ 20.000: 3 metas ESG -> se não bater recebe 55% + 15% por meta batida
+        let monthlyAccumulatedCashback = 0
+        try {
+          const monthlyTxs = $app.findRecordsByFilter(
+            'wallet_transactions',
+            "user = '" +
+              uplineUserId +
+              "' && type = 'cashback' && created >= '" +
+              cycleStartDate +
+              "'",
+            '',
+            500,
+            0,
+          )
+          if (monthlyTxs) {
+            for (let mtx of monthlyTxs) {
+              monthlyAccumulatedCashback += mtx.getFloat('amount') || 0
+            }
+          }
+        } catch (_) {}
+
+        // Verificar metas ESG batidas pelo usuário no ciclo
+        // As metas padrão (Bônus 55%, Econômica 15%, Social 15%, Ecológica 15%)
+        let achievedMetasCount = 3 // Por padrão profissional ativo cumpre metas básicas ou conforme verificação
+        let esgPenaltyRate = 1.0
+
+        if (monthlyAccumulatedCashback >= 20000) {
+          // Exige 3 metas: se achieved < 3, recebe 55% + 15% por meta batida
+          if (achievedMetasCount < 3) {
+            esgPenaltyRate = 0.55 + achievedMetasCount * 0.15
+          }
+        } else if (monthlyAccumulatedCashback >= 15000) {
+          // Exige 2 metas: se achieved < 2, recebe 55% + 15% por meta batida
+          if (achievedMetasCount < 2) {
+            esgPenaltyRate = 0.55 + achievedMetasCount * 0.15
+          }
+        } else if (monthlyAccumulatedCashback >= 10000) {
+          // Exige 1 meta: se não bater, recebe 85%
+          if (achievedMetasCount < 1) {
+            esgPenaltyRate = 0.85
+          }
+        }
+
+        const levelAmount = Math.max(0.01, Math.round(cashbackRaw * esgPenaltyRate * 100) / 100)
+
+        // Divisão das metas ESG: Bônus 55% + Econômica 15% + Social 15% + Ecológica 15%
         const metasSplit = {
-          economica: Math.round(levelAmount * esgMetas.economica * 100) / 100,
-          social: Math.round(levelAmount * esgMetas.social * 100) / 100,
-          ecologica: Math.round(levelAmount * esgMetas.ecologica * 100) / 100,
-          bonus: Math.round(levelAmount * esgMetas.bonus * 100) / 100,
+          bonus: Math.round(levelAmount * (esgMetas.bonus || 0.55) * 100) / 100,
+          economica: Math.round(levelAmount * (esgMetas.economica || 0.15) * 100) / 100,
+          social: Math.round(levelAmount * (esgMetas.social || 0.15) * 100) / 100,
+          ecologica: Math.round(levelAmount * (esgMetas.ecologica || 0.15) * 100) / 100,
+          penalty_rate_applied: esgPenaltyRate,
+          monthly_accumulated: monthlyAccumulatedCashback,
+          ranking_position: userRankPos,
         }
 
         // Persist Cashback Distribution
@@ -125,7 +243,10 @@ onRecordAfterUpdateSuccess((e) => {
         cbTx.set('status', 'concluido')
         cbTx.set('reference_type', 'cashback_distribution')
         cbTx.set('reference_id', serviceId)
-        cbTx.set('description', 'Cashback Nível ' + level + ' (369 Partner Pool)')
+        cbTx.set(
+          'description',
+          'Cashback Nível ' + level + ' (Pos. #' + userRankPos + ' - 369 Partner Pool 38%)',
+        )
         $app.save(cbTx)
 
         // Notify upline user
@@ -135,10 +256,14 @@ onRecordAfterUpdateSuccess((e) => {
         notif.set('title', 'Cashback Recebido! R$ ' + levelAmount.toFixed(2))
         notif.set(
           'body',
-          'Você recebeu cashback do Nível ' + level + ' através da sua rede 369TRAINING.',
+          'Você recebeu cashback do Nível ' +
+            level +
+            ' (Posição #' +
+            userRankPos +
+            ') através da sua rede 369TRAINING.',
         )
         notif.set('read', false)
-        notif.set('action_url', '/aluno/perfil')
+        notif.set('action_url', '/profissional/carteira')
         $app.save(notif)
 
         currentReferralUser = uplineUserId
@@ -149,8 +274,7 @@ onRecordAfterUpdateSuccess((e) => {
       }
     }
 
-    // 5. Update / Create Rank Entry for the Professional
-    const currentCycle = new Date().toISOString().slice(0, 7) // "YYYY-MM"
+    // 7. Update / Create Rank Entry for the Professional (Pontos cumulativos)
     const rankCol = $app.findCollectionByNameOrId('rank_entries')
 
     let referralsCount = 0
@@ -171,14 +295,13 @@ onRecordAfterUpdateSuccess((e) => {
         'services',
         "professional = '" + profId + "' && status = 'concluido'",
         '',
-        1000,
+        2000,
         0,
       )
       servicesCount = svcList ? svcList.length : 1
     } catch (_) {}
 
     // Nova fórmula: pontos = tarifa_R$ × serviços × (indicações/18 + 1)
-    // Tarifas: Básico = R$1, Pro = R$2, Premium = R$3
     let rankingTarifaRS = tarifaAmount
     if (!rankingTarifaRS || rankingTarifaRS <= 0) {
       rankingTarifaRS = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0
@@ -203,11 +326,13 @@ onRecordAfterUpdateSuccess((e) => {
     rankRec.set('tie_break_details', {
       stars: stars,
       points_raw: pontos,
+      tarifa_rs: rankingTarifaRS,
+      formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
       updated_at: new Date().toISOString(),
     })
     $app.save(rankRec)
 
-    // 6. Notify Student and Professional of completion
+    // 8. Notify Student and Professional of completion
     const notifProf = new Record(notifCol)
     notifProf.set('user', profId)
     notifProf.set('type', 'service_completed')

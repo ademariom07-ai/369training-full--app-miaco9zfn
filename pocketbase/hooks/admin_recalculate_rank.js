@@ -26,6 +26,24 @@ routerAdd(
         if (val) tarifas = val
       } catch (_) {}
 
+      // Carregar parâmetros da árvore binária da coleção binary_tree_params
+      let paramsMap = {}
+      try {
+        const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 300, 0)
+        if (allParams) {
+          for (let p of allParams) {
+            paramsMap[p.getInt('position')] = {
+              level: p.getInt('level'),
+              segment: p.getString('segment'),
+              coefficient: p.getFloat('coefficient'),
+              modifier: p.getFloat('modifier'),
+              divisor: p.getFloat('divisor'),
+              cashback_weight: p.getFloat('cashback_weight'),
+            }
+          }
+        }
+      } catch (_) {}
+
       const rankCol = $app.findCollectionByNameOrId('rank_entries')
       const scoredList = []
 
@@ -46,19 +64,20 @@ routerAdd(
           referralsCount = refs ? refs.length : 0
         } catch (_) {}
 
+        // Pontos cumulativos mês a mês
         let servicesCount = 0
         try {
           const svcs = $app.findRecordsByFilter(
             'services',
             "professional = '" + profId + "' && status = 'concluido'",
             '',
-            1000,
+            2000,
             0,
           )
           servicesCount = svcs ? svcs.length : 0
         } catch (_) {}
 
-        // Nova fórmula solicitada: pontos = tarifa_R$ × serviços × (indicações/18 + 1)
+        // Fórmula de pontos: tarifa_R$ × serviços × (indicações/18 + 1)
         let tarifaRS = 1.0
         if (tarifas[plan] !== undefined) {
           tarifaRS = Number(tarifas[plan])
@@ -80,7 +99,7 @@ routerAdd(
         })
       }
 
-      // Sort by points desc -> stars desc -> seniority
+      // Ranking exclusivamente por pontos (desempate por estrelas e antiguidade)
       scoredList.sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points
         if (b.stars !== a.stars) return b.stars - a.stars
@@ -89,6 +108,15 @@ routerAdd(
 
       for (let i = 0; i < scoredList.length; i++) {
         const item = scoredList[i]
+        const pos = i + 1
+        const param = paramsMap[pos] || {
+          level: Math.min(36, Math.floor(Math.log2(pos || 1)) + 1),
+          segment: pos <= 3 ? 'Top Tier' : 'Rede',
+          modifier: 1.0,
+          divisor: 1.0,
+          cashback_weight: 1 / (pos + 1),
+        }
+
         let rankRec
         try {
           rankRec = $app.findFirstRecordByData('rank_entries', 'user', item.user_id)
@@ -102,12 +130,16 @@ routerAdd(
         rankRec.set('services_count', item.services_count)
         rankRec.set('referrals_count', item.referrals_count)
         rankRec.set('stars', item.stars)
-        rankRec.set('ranking_position', i + 1)
+        rankRec.set('ranking_position', pos)
         rankRec.set('tie_break_details', {
-          position: i + 1,
+          position: pos,
+          level: param.level,
+          segment: param.segment,
+          cashback_weight: param.cashback_weight,
           stars: item.stars,
           tarifa_rs: item.tarifa_rs,
           cycle: currentCycle,
+          formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
           recomputed_at: new Date().toISOString(),
         })
         $app.save(rankRec)
@@ -117,7 +149,8 @@ routerAdd(
         success: true,
         count: scoredList.length,
         items: scoredList,
-        message: 'Ranking recalculado com sucesso utilizando a nova fórmula de tarifa em R$!',
+        message:
+          'Ranking recalculado com sucesso utilizando a coleção binary_tree_params e pontuação em R$!',
       })
     } catch (err) {
       return e.json(500, { success: false, error: err.message })
