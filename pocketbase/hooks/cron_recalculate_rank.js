@@ -42,9 +42,23 @@ cronAdd('recalculate_rank_cycle', '0 */6 * * *', () => {
         servicesCount = svcs ? svcs.length : 0
       } catch (_) {}
 
-      const planMultiplier = plan === 'premium' ? 5 : plan === 'pro' ? 3 : plan === 'basico' ? 2 : 1
+      // Nova fórmula: pontos = tarifa_R$ × serviços × (indicações/18 + 1)
+      // Tarifas: Básico = R$1, Pro = R$2, Premium = R$3 (Grátis = R$1 padrão)
+      let tarifaRS = 1.0
+      try {
+        const tarifaConfig = $app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
+        const tarifas = tarifaConfig.get('value') || {}
+        if (tarifas[plan] !== undefined) {
+          tarifaRS = Number(tarifas[plan])
+        } else {
+          tarifaRS = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
+        }
+      } catch (_) {
+        tarifaRS = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
+      }
+
       const variavel = referralsCount / 18 + 1
-      const points = Math.round(planMultiplier * Math.max(1, servicesCount) * variavel)
+      const points = Math.round(tarifaRS * Math.max(1, servicesCount) * variavel)
 
       scoredList.push({
         user_id: profId,

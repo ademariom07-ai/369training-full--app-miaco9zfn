@@ -177,10 +177,14 @@ onRecordAfterUpdateSuccess((e) => {
       servicesCount = svcList ? svcList.length : 1
     } catch (_) {}
 
-    const planTierMultiplier =
-      profPlan === 'premium' ? 5 : profPlan === 'pro' ? 3 : profPlan === 'basico' ? 2 : 1
+    // Nova fórmula: pontos = tarifa_R$ × serviços × (indicações/18 + 1)
+    // Tarifas: Básico = R$1, Pro = R$2, Premium = R$3
+    let rankingTarifaRS = tarifaAmount
+    if (!rankingTarifaRS || rankingTarifaRS <= 0) {
+      rankingTarifaRS = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0
+    }
     const variavel = referralsCount / 18 + 1
-    const pontos = Math.round(planTierMultiplier * servicesCount * variavel)
+    const pontos = Math.round(rankingTarifaRS * servicesCount * variavel)
     const stars = prof.getFloat('rating_avg') || 5.0
 
     let rankRec
