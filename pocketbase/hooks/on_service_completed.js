@@ -87,10 +87,10 @@ onRecordAfterUpdateSuccess((e) => {
     servicoTx.set('description', 'Recebimento de serviço concluído')
     $app.save(servicoTx)
 
-    // 4. Carregar parâmetros de ranking e árvore binária
+    // 4. Carregar parâmetros individuais da coleção binary_tree_params (posições 1 a 511)
     let paramsMap = {}
     try {
-      const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 300, 0)
+      const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 600, 0)
       if (allParams) {
         for (let p of allParams) {
           paramsMap[p.getInt('position')] = {
@@ -123,8 +123,7 @@ onRecordAfterUpdateSuccess((e) => {
       }
     } catch (_) {}
 
-    // 5. Partner Pool 38%: Distribuído por todos os níveis habitados (até 36 níveis)
-    // O cashback do upline depende da posição no ranking da árvore binária e parâmetros
+    // 5. Partner Pool 38%: Distribuído por todos os níveis habitados (até 36 níveis / 68.719.476.735 posições)
     const totalPoolShare = serviceValue * partnerPoolPct
     let currentReferralUser = profId
     let level = 1
@@ -141,14 +140,37 @@ onRecordAfterUpdateSuccess((e) => {
         const uplineUserId = refRecord.getString('referrer')
         if (!uplineUserId) break
 
-        const userRankPos = userRankPosMap[uplineUserId] || Math.min(265, Math.pow(2, level - 1))
-        const param = paramsMap[userRankPos] || {
-          level: level,
-          segment: 'Rede',
-          level_percentage: Math.min(1.8, 0.24 + level * 0.04),
-          divisor: Math.pow(2, Math.min(level - 1, 10)),
-          modifier: Math.min(18.5, 1.0 + level * 0.45),
-          cashback_weight: 1 / (userRankPos + 1),
+        const userRankPos = userRankPosMap[uplineUserId] || Math.min(511, Math.pow(2, level - 1))
+
+        // MODELO HÍBRIDO:
+        // Se userRankPos <= 511: parâmetros individuais da tabela binary_tree_params
+        // Se userRankPos > 511: cálculo matemático por nível
+        let param
+        if (userRankPos <= 511 && paramsMap[userRankPos]) {
+          param = paramsMap[userRankPos]
+        } else {
+          let calcLvl = level
+          if (userRankPos > 511) {
+            calcLvl = 10
+            while (calcLvl < 36 && Math.pow(2, calcLvl) - 1 < userRankPos) {
+              calcLvl++
+            }
+          }
+          const levelPct = Math.min(1.8, +(0.24 + (calcLvl - 1) * 0.04).toFixed(3))
+          const modifier = +(1.0 + (calcLvl - 1) * 0.45).toFixed(2)
+          const divisor = Math.pow(2, Math.min(calcLvl - 1, 10))
+          const coefficient = Math.max(0.1, +(1000 / Math.pow(userRankPos, 0.75)).toFixed(3))
+          const cashbackWeight = Math.max(0.0001, +(1 / (userRankPos * 0.8 + 1)).toFixed(5))
+
+          param = {
+            level: calcLvl,
+            segment: 'Nível ' + calcLvl + ' Rede',
+            coefficient: coefficient,
+            modifier: modifier,
+            divisor: divisor,
+            level_percentage: levelPct,
+            cashback_weight: cashbackWeight,
+          }
         }
 
         const nivelVariavel = param.level_percentage || Math.min(1.8, 0.24 + level * 0.04)
@@ -157,7 +179,6 @@ onRecordAfterUpdateSuccess((e) => {
 
         // Base cashback ponderado pela posição no ranking
         let cashbackRaw = (totalPoolShare * nivelVariavel) / (divisor * modifier)
-        // Multiplicador da posição do ranking (quanto melhor a posição, maior o percentual)
         if (param.cashback_weight) {
           cashbackRaw = cashbackRaw * (1 + param.cashback_weight * 2)
         }
@@ -187,23 +208,18 @@ onRecordAfterUpdateSuccess((e) => {
           }
         } catch (_) {}
 
-        // Verificar metas ESG batidas pelo usuário no ciclo
-        // As metas padrão (Bônus 55%, Econômica 15%, Social 15%, Ecológica 15%)
-        let achievedMetasCount = 3 // Por padrão profissional ativo cumpre metas básicas ou conforme verificação
+        let achievedMetasCount = 3
         let esgPenaltyRate = 1.0
 
         if (monthlyAccumulatedCashback >= 20000) {
-          // Exige 3 metas: se achieved < 3, recebe 55% + 15% por meta batida
           if (achievedMetasCount < 3) {
             esgPenaltyRate = 0.55 + achievedMetasCount * 0.15
           }
         } else if (monthlyAccumulatedCashback >= 15000) {
-          // Exige 2 metas: se achieved < 2, recebe 55% + 15% por meta batida
           if (achievedMetasCount < 2) {
             esgPenaltyRate = 0.55 + achievedMetasCount * 0.15
           }
         } else if (monthlyAccumulatedCashback >= 10000) {
-          // Exige 1 meta: se não bater, recebe 85%
           if (achievedMetasCount < 1) {
             esgPenaltyRate = 0.85
           }
@@ -220,6 +236,7 @@ onRecordAfterUpdateSuccess((e) => {
           penalty_rate_applied: esgPenaltyRate,
           monthly_accumulated: monthlyAccumulatedCashback,
           ranking_position: userRankPos,
+          is_hybrid_calculated: userRankPos > 511,
         }
 
         // Persist Cashback Distribution
@@ -269,7 +286,6 @@ onRecordAfterUpdateSuccess((e) => {
         currentReferralUser = uplineUserId
         level++
       } catch (_) {
-        // No further upline referral
         break
       }
     }
@@ -301,7 +317,7 @@ onRecordAfterUpdateSuccess((e) => {
       servicesCount = svcList ? svcList.length : 1
     } catch (_) {}
 
-    // Nova fórmula: pontos = tarifa_R$ × serviços × (indicações/18 + 1)
+    // Fórmula oficial: pontos = tarifa_R$ × serviços × (indicações/18 + 1)
     let rankingTarifaRS = tarifaAmount
     if (!rankingTarifaRS || rankingTarifaRS <= 0) {
       rankingTarifaRS = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0

@@ -26,10 +26,10 @@ routerAdd(
         if (val) tarifas = val
       } catch (_) {}
 
-      // Carregar parâmetros da árvore binária da coleção binary_tree_params
+      // Carregar parâmetros individuais de binary_tree_params (posições 1 a 511)
       let paramsMap = {}
       try {
-        const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 300, 0)
+        const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 600, 0)
         if (allParams) {
           for (let p of allParams) {
             paramsMap[p.getInt('position')] = {
@@ -38,6 +38,7 @@ routerAdd(
               coefficient: p.getFloat('coefficient'),
               modifier: p.getFloat('modifier'),
               divisor: p.getFloat('divisor'),
+              level_percentage: p.getFloat('level_percentage'),
               cashback_weight: p.getFloat('cashback_weight'),
             }
           }
@@ -77,7 +78,7 @@ routerAdd(
           servicesCount = svcs ? svcs.length : 0
         } catch (_) {}
 
-        // Fórmula de pontos: tarifa_R$ × serviços × (indicações/18 + 1)
+        // Fórmula oficial de pontos: tarifa_R$ × serviços × (indicações/18 + 1)
         let tarifaRS = 1.0
         if (tarifas[plan] !== undefined) {
           tarifaRS = Number(tarifas[plan])
@@ -110,12 +111,34 @@ routerAdd(
       for (let i = 0; i < scoredList.length; i++) {
         const item = scoredList[i]
         const pos = i + 1
-        const param = paramsMap[pos] || {
-          level: Math.min(36, Math.floor(Math.log2(pos || 1)) + 1),
-          segment: pos <= 3 ? 'Top Tier' : 'Rede',
-          modifier: 1.0,
-          divisor: 1.0,
-          cashback_weight: 1 / (pos + 1),
+
+        // MODELO HÍBRIDO:
+        // Posição <= 511: parâmetros individuais da coleção binary_tree_params
+        // Posição > 511: parâmetros calculados matematicamente por nível (até nível 36 / 68.719.476.735)
+        let param
+        if (pos <= 511 && paramsMap[pos]) {
+          param = paramsMap[pos]
+        } else {
+          // Determinar nível matematicamente para pos > 511
+          let lvl = 10
+          while (lvl < 36 && Math.pow(2, lvl) - 1 < pos) {
+            lvl++
+          }
+          const levelPct = Math.min(1.8, +(0.24 + (lvl - 1) * 0.04).toFixed(3))
+          const modifier = +(1.0 + (lvl - 1) * 0.45).toFixed(2)
+          const divisor = Math.pow(2, Math.min(lvl - 1, 10))
+          const coefficient = Math.max(0.1, +(1000 / Math.pow(pos, 0.75)).toFixed(3))
+          const cashbackWeight = Math.max(0.0001, +(1 / (pos * 0.8 + 1)).toFixed(5))
+
+          param = {
+            level: lvl,
+            segment: 'Nível ' + lvl + ' Rede',
+            coefficient: coefficient,
+            modifier: modifier,
+            divisor: divisor,
+            level_percentage: levelPct,
+            cashback_weight: cashbackWeight,
+          }
         }
 
         let rankRec
@@ -141,6 +164,7 @@ routerAdd(
           tarifa_rs: item.tarifa_rs,
           cycle: currentCycle,
           formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
+          is_hybrid_calculated: pos > 511,
           recomputed_at: new Date().toISOString(),
         })
         $app.save(rankRec)
@@ -151,7 +175,7 @@ routerAdd(
         count: scoredList.length,
         items: scoredList,
         message:
-          'Ranking recalculado com sucesso utilizando a coleção binary_tree_params e pontuação em R$!',
+          'Ranking recalculado com sucesso no modelo híbrido (1-511 individual, 512+ por nível)!',
       })
     } catch (err) {
       return e.json(500, { success: false, error: err.message })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,9 +25,20 @@ import {
   Layers,
   HeartHandshake,
   PieChart,
+  Cpu,
+  Search,
+  CheckCircle2,
+  HelpCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { BinaryTreeParamRecord } from '@/services/api'
+import {
+  TOTAL_POSITIONS_STR,
+  TOTAL_LEVELS,
+  HYBRID_THRESHOLD,
+  getBinaryTreeLevelsOverview,
+  calculateHybridPositionParams,
+} from '@/lib/binaryTreeHybrid'
 
 interface RankItem {
   id: string
@@ -46,6 +57,7 @@ interface RankItem {
     tarifa_rs?: number
     cycle?: string
     formula?: string
+    is_hybrid_calculated?: boolean
   }
   expand?: {
     user?: {
@@ -84,10 +96,16 @@ export default function AdminRankingConfig() {
   const [treeParams, setTreeParams] = useState<BinaryTreeParamRecord[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [activeTab, setActiveTab] = useState<'ranking' | 'tree' | 'esg' | 'split'>('ranking')
+  const [totalIndividualCount, setTotalIndividualCount] = useState(511)
+  const [activeTab, setActiveTab] = useState<
+    'ranking' | 'tree' | 'levels' | 'esg' | 'split' | 'simulador'
+  >('ranking')
   const [searchPos, setSearchPos] = useState('')
 
-  const PAGE_SIZE = 20
+  // Simulador interativo de posições > 511
+  const [simulatorPosInput, setSimulatorPosInput] = useState('1000')
+
+  const PAGE_SIZE = 25
 
   useEffect(() => {
     loadData()
@@ -134,14 +152,15 @@ export default function AdminRankingConfig() {
       })
       setRankings(rankList.items)
 
-      // Carregar 265 parâmetros da Árvore Binária paginados
+      // Carregar 511 parâmetros individuais da Árvore Binária paginados
       const paramsList = await pb
         .collection('binary_tree_params')
         .getList<BinaryTreeParamRecord>(page, PAGE_SIZE, {
           sort: 'position',
         })
       setTreeParams(paramsList.items)
-      setTotalPages(paramsList.totalPages || Math.ceil(265 / PAGE_SIZE))
+      setTotalIndividualCount(paramsList.totalItems || 511)
+      setTotalPages(paramsList.totalPages || Math.ceil(511 / PAGE_SIZE))
     } catch {
       // Defaults mantidos
     } finally {
@@ -273,7 +292,7 @@ export default function AdminRankingConfig() {
 
       if (response.ok) {
         toast.success(
-          'Ranking recalculado com sucesso utilizando a coleção binary_tree_params e pontuação em R$!',
+          'Ranking recalculado com sucesso no Modelo Híbrido (1-511 individual, 512+ por nível)!',
         )
       } else {
         await clientSideRecalculate()
@@ -349,7 +368,8 @@ export default function AdminRankingConfig() {
         }
 
         const variavel = referralsCount / 18 + 1
-        const points = Math.round(tarifaRS * Math.max(1, servicesCount) * variavel)
+        const rawPoints = Math.round(tarifaRS * servicesCount * variavel)
+        const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
 
         scored.push({
           user_id: u.id,
@@ -366,7 +386,30 @@ export default function AdminRankingConfig() {
       for (let i = 0; i < scored.length; i++) {
         const item = scored[i]
         const pos = i + 1
-        const pRecord = paramMap[pos]
+
+        let pRecord: {
+          level: number
+          segment: string
+          cashback_weight?: number
+          is_hybrid_calculated?: boolean
+        }
+
+        if (pos <= 511 && paramMap[pos]) {
+          pRecord = {
+            level: paramMap[pos].level,
+            segment: paramMap[pos].segment || 'Rede',
+            cashback_weight: paramMap[pos].cashback_weight,
+            is_hybrid_calculated: false,
+          }
+        } else {
+          const calc = calculateHybridPositionParams(pos)
+          pRecord = {
+            level: calc.level,
+            segment: calc.segment,
+            cashback_weight: calc.cashbackWeight,
+            is_hybrid_calculated: true,
+          }
+        }
 
         try {
           const existing = await pb
@@ -381,13 +424,14 @@ export default function AdminRankingConfig() {
             ranking_position: pos,
             tie_break_details: {
               position: pos,
-              level: pRecord?.level || Math.floor(Math.log2(pos || 1)) + 1,
-              segment: pRecord?.segment || 'Rede',
-              cashback_weight: pRecord?.cashback_weight,
+              level: pRecord.level,
+              segment: pRecord.segment,
+              cashback_weight: pRecord.cashback_weight,
               stars: item.stars,
               tarifa_rs: item.tarifa_rs,
               cycle: currentCycle,
               formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
+              is_hybrid_calculated: pRecord.is_hybrid_calculated,
               recomputed_at: new Date().toISOString(),
             },
           })
@@ -402,19 +446,20 @@ export default function AdminRankingConfig() {
             ranking_position: pos,
             tie_break_details: {
               position: pos,
-              level: pRecord?.level || Math.floor(Math.log2(pos || 1)) + 1,
-              segment: pRecord?.segment || 'Rede',
-              cashback_weight: pRecord?.cashback_weight,
+              level: pRecord.level,
+              segment: pRecord.segment,
+              cashback_weight: pRecord.cashback_weight,
               stars: item.stars,
               tarifa_rs: item.tarifa_rs,
               cycle: currentCycle,
               formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
+              is_hybrid_calculated: pRecord.is_hybrid_calculated,
               recomputed_at: new Date().toISOString(),
             },
           })
         }
       }
-      toast.success('Ranking recalculado e sincronizado com os 265 parâmetros!')
+      toast.success('Ranking recalculado no modelo híbrido!')
     } catch {
       toast.error('Erro ao recalcular ranking localmente')
     }
@@ -440,21 +485,34 @@ export default function AdminRankingConfig() {
 
   const totalEsgSum = Number(esgBonus) + Number(esgEcon) + Number(esgSoc) + Number(esgEco)
 
+  const levelsOverview = useMemo(() => getBinaryTreeLevelsOverview(), [])
+
+  const simulatedParams = useMemo(() => {
+    try {
+      const clean = simulatorPosInput.replace(/\D/g, '')
+      const num = clean ? BigInt(clean) : 1n
+      return calculateHybridPositionParams(num)
+    } catch {
+      return calculateHybridPositionParams(1n)
+    }
+  }, [simulatorPosInput])
+
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat mb-2">
-            <Trophy className="w-3.5 h-3.5" />
-            Árvore Binária Completa & Motor ESG 369
+            <Cpu className="w-3.5 h-3.5 text-[#D4AF37]" />
+            Modelo Híbrido da Árvore Binária • 36 Níveis • {TOTAL_POSITIONS_STR} Posições
           </div>
           <h1 className="text-3xl font-extrabold font-montserrat text-white uppercase">
-            Configuração de Ranking & Cashback Binário
+            Configuração de Ranking & Árvore Binária Híbrida
           </h1>
           <p className="text-sm text-gray-400 font-inter mt-1">
-            265 posições sequenciais, 36 níveis, Pool de Parceiros 38%, Gatilhos ESG mensais e
-            ranking cumulativo por pontos.
+            <strong>1ª a 511ª posição:</strong> parâmetros individuais armazenados no banco (Níveis
+            1 ao 9). <strong>512ª em diante (até 68,7 bilhões):</strong> cálculo matemático
+            instantâneo por nível no motor.
           </p>
         </div>
 
@@ -473,56 +531,96 @@ export default function AdminRankingConfig() {
         </Button>
       </div>
 
+      {/* MODELO HÍBRIDO EXPLAINER BANNER */}
+      <Card className="bg-gradient-to-r from-[#141824] via-[#10141f] to-[#141824] border border-[#0057FF]/40 p-5 rounded-2xl shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-3 bg-[#0057FF]/20 rounded-xl border border-[#0057FF]/40 text-[#0057FF]">
+              <GitFork className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold font-montserrat uppercase text-[#0057FF]">
+                  Arquitetura do Modelo Híbrido
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] border-[#22C55E]/40 text-[#22C55E] bg-[#22C55E]/10"
+                >
+                  Alta Escalabilidade (2³⁶ − 1)
+                </Badge>
+              </div>
+              <h3 className="text-lg font-bold font-montserrat text-white mt-0.5">
+                511 Posições Individuais + 36 Níveis Calculados ({TOTAL_POSITIONS_STR} posições)
+              </h3>
+              <p className="text-xs text-gray-300 font-inter mt-1">
+                A <strong>511ª posição</strong> encerra com precisão a última pessoa do{' '}
+                <strong>Nível 9</strong> (256 pessoas). A partir da posição 512ª (Nível 10 até 36),
+                o motor aplica as equações geométricas e distribui os 38% do pool de parceiros com
+                zero sobrecarga de banco de dados.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end md:self-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab('simulador')}
+              className="border-[#0057FF]/50 text-[#0057FF] hover:bg-[#0057FF]/10 text-xs font-bold uppercase rounded-xl"
+            >
+              <Calculator className="w-3.5 h-3.5 mr-1.5" /> Testar Simulador 68B
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       {/* KPI METRIC CARDS ROW */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-[#181818] border border-[#2A2A2A] p-4 rounded-xl">
           <div className="flex items-center justify-between text-xs text-gray-400 font-montserrat uppercase">
-            <span>Pool Parceiros</span>
+            <span>Pool de Parceiros</span>
             <PieChart className="w-4 h-4 text-[#D4AF37]" />
           </div>
           <div className="text-2xl font-black font-montserrat text-[#D4AF37] mt-1">
             {partnerPoolPct}%
           </div>
           <span className="text-[10px] text-gray-500 font-inter">
-            Distribuído por níveis habitados
+            Distribuído em todos os níveis habitados
           </span>
         </Card>
 
         <Card className="bg-[#181818] border border-[#2A2A2A] p-4 rounded-xl">
           <div className="flex items-center justify-between text-xs text-gray-400 font-montserrat uppercase">
-            <span>Árvore Binária</span>
+            <span>Capacidade da Árvore</span>
             <GitFork className="w-4 h-4 text-[#0057FF]" />
           </div>
-          <div className="text-2xl font-black font-montserrat text-white mt-1">
-            265 <span className="text-sm text-gray-400 font-normal">posições / 36 níveis</span>
-          </div>
+          <div className="text-2xl font-black font-montserrat text-white mt-1">68,7 Bilhões</div>
           <span className="text-[10px] text-gray-500 font-inter">
-            Nível 1=1, N2=2, N3=4, N4=8...
+            2³⁶ − 1 posições em 36 níveis
           </span>
         </Card>
 
         <Card className="bg-[#181818] border border-[#2A2A2A] p-4 rounded-xl">
           <div className="flex items-center justify-between text-xs text-gray-400 font-montserrat uppercase">
-            <span>Metas ESG Base</span>
-            <Leaf className="w-4 h-4 text-[#22C55E]" />
+            <span>Faixa Individual (DB)</span>
+            <Layers className="w-4 h-4 text-[#22C55E]" />
           </div>
-          <div className="text-2xl font-black font-montserrat text-[#22C55E] mt-1">
-            55% <span className="text-sm text-gray-400 font-normal">+ 15% + 15% + 15%</span>
-          </div>
-          <span className="text-[10px] text-gray-500 font-inter">
-            Bônus + Econômica + Social + Ecológica
-          </span>
+          <div className="text-2xl font-black font-montserrat text-[#22C55E] mt-1">1ª a 511ª</div>
+          <span className="text-[10px] text-gray-500 font-inter">511 registros (Nível 1 ao 9)</span>
         </Card>
 
         <Card className="bg-[#181818] border border-[#2A2A2A] p-4 rounded-xl">
           <div className="flex items-center justify-between text-xs text-gray-400 font-montserrat uppercase">
-            <span>Gatilhos ESG</span>
+            <span>Gatilhos ESG Mensais</span>
             <Target className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-black font-montserrat text-amber-400 mt-1">
             10k / 15k / 20k
           </div>
-          <span className="text-[10px] text-gray-500 font-inter">Gatilhos mensais acumulados</span>
+          <span className="text-[10px] text-gray-500 font-inter">
+            Bônus 55% + 15% Econ + 15% Soc + 15% Eco
+          </span>
         </Card>
       </div>
 
@@ -531,7 +629,7 @@ export default function AdminRankingConfig() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 text-xs font-bold font-montserrat text-[#D4AF37] uppercase">
-              <Calculator className="w-4 h-4" /> Fórmula de Pontuação Oficial do Ranking
+              <Calculator className="w-4 h-4" /> Motor de Ranking Exclusivamente por Pontos
             </div>
             <div className="text-xl sm:text-2xl font-black font-mono text-white tracking-tight">
               pontos = <span className="text-[#D4AF37]">tarifa_R$</span> ×{' '}
@@ -539,9 +637,9 @@ export default function AdminRankingConfig() {
               <span className="text-[#22C55E]">indicações / 18</span> + 1)
             </div>
             <p className="text-xs text-gray-300 font-inter">
-              Ranking <strong>exclusivamente por pontos</strong> (cumulativos mês a mês). O cashback
-              do parceiro é definido pela sua <strong>posição no ranking</strong> (quanto melhor a
-              posição, maior o percentual).
+              Classificação <strong>exclusivamente por pontuação</strong>. Se posição ≤ 511: busca
+              parâmetros individuais na coleção. Se posição &gt; 511: o motor determina o nível e
+              aplica as fórmulas do modelo híbrido.
             </p>
           </div>
 
@@ -588,7 +686,29 @@ export default function AdminRankingConfig() {
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <GitFork className="w-4 h-4" /> Árvore Binária (265 Posições & 36 Níveis)
+          <GitFork className="w-4 h-4" /> Faixa Individual (1ª a 511ª)
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('levels')}
+          className={`px-4 py-2 text-xs font-bold font-montserrat uppercase rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'levels'
+              ? 'bg-[#181818] text-[#D4AF37] border-t-2 border-[#D4AF37]'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Layers className="w-4 h-4" /> Visão Geral dos 36 Níveis
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('simulador')}
+          className={`px-4 py-2 text-xs font-bold font-montserrat uppercase rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'simulador'
+              ? 'bg-[#181818] text-[#D4AF37] border-t-2 border-[#D4AF37]'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Calculator className="w-4 h-4" /> Simulador Híbrido (até 68B)
         </button>
         <button
           type="button"
@@ -599,7 +719,7 @@ export default function AdminRankingConfig() {
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <Leaf className="w-4 h-4" /> Regras ESG & Gatilhos (10k/15k/20k)
+          <Leaf className="w-4 h-4" /> Regras ESG & Gatilhos
         </button>
         <button
           type="button"
@@ -610,7 +730,7 @@ export default function AdminRankingConfig() {
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <DollarSign className="w-4 h-4" /> Distribuição Global (Split 38% Pool)
+          <DollarSign className="w-4 h-4" /> Distribuição Global (Split 38%)
         </button>
       </div>
 
@@ -623,13 +743,17 @@ export default function AdminRankingConfig() {
                 <Trophy className="w-5 h-5 text-[#D4AF37]" /> Classificação Geral por Pontos
               </h3>
               <p className="text-xs text-gray-400 font-inter">
-                Pontuação cumulativa mês a mês:{' '}
-                <code>tarifa_R$ × serviços × (indicações/18 + 1)</code>
+                Pontuação cumulativa: <code>tarifa_R$ × serviços × (indicações/18 + 1)</code>
               </p>
             </div>
-            <span className="text-[11px] font-mono text-[#D4AF37] bg-[#D4AF37]/10 px-3 py-1 rounded-full border border-[#D4AF37]/30 self-start sm:self-auto">
-              Ciclo {new Date().toISOString().slice(0, 7)}
-            </span>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="text-[11px] font-mono text-[#22C55E] bg-[#22C55E]/10 px-3 py-1 rounded-full border border-[#22C55E]/30">
+                Modelo Híbrido Ativo
+              </span>
+              <span className="text-[11px] font-mono text-[#D4AF37] bg-[#D4AF37]/10 px-3 py-1 rounded-full border border-[#D4AF37]/30">
+                Ciclo {new Date().toISOString().slice(0, 7)}
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -640,6 +764,7 @@ export default function AdminRankingConfig() {
                   <th className="pb-3">Profissional</th>
                   <th className="pb-3">Plano</th>
                   <th className="pb-3 text-center">Nível Binário</th>
+                  <th className="pb-3 text-center">Tipo de Parâmetro</th>
                   <th className="pb-3 text-center">Tarifa (R$)</th>
                   <th className="pb-3 text-center">Serviços</th>
                   <th className="pb-3 text-center">Indicações</th>
@@ -649,14 +774,14 @@ export default function AdminRankingConfig() {
               <tbody className="divide-y divide-[#2A2A2A]">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="py-6 text-center text-gray-400">
+                    <td colSpan={9} className="py-6 text-center text-gray-400">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#D4AF37]" />
                       Carregando dados do ranking...
                     </td>
                   </tr>
                 ) : rankings.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-6 text-center text-gray-400">
+                    <td colSpan={9} className="py-6 text-center text-gray-400">
                       Nenhum profissional pontuado ainda. Clique em &ldquo;Recalcular Ranking
                       Agora&rdquo;.
                     </td>
@@ -670,6 +795,8 @@ export default function AdminRankingConfig() {
                     const lvl =
                       r.tie_break_details?.level ||
                       Math.min(36, Math.floor(Math.log2(pos || 1)) + 1)
+                    const isHybridCalculated =
+                      pos > 511 || !!r.tie_break_details?.is_hybrid_calculated
                     return (
                       <tr key={r.id || index} className="hover:bg-[#141414] transition-colors">
                         <td className="py-3 font-bold font-mono text-[#D4AF37]">
@@ -718,6 +845,18 @@ export default function AdminRankingConfig() {
                             Nível {lvl}
                           </Badge>
                         </td>
+                        <td className="py-3 text-center">
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] ${
+                              isHybridCalculated
+                                ? 'border-purple-500/40 text-purple-400 bg-purple-500/10'
+                                : 'border-[#22C55E]/40 text-[#22C55E] bg-[#22C55E]/10'
+                            }`}
+                          >
+                            {isHybridCalculated ? 'Matemático (512+)' : 'Individual (1-511)'}
+                          </Badge>
+                        </td>
                         <td className="py-3 text-center font-mono font-bold text-gray-300">
                           {tarifaDisplay}
                         </td>
@@ -740,25 +879,25 @@ export default function AdminRankingConfig() {
         </Card>
       )}
 
-      {/* TAB 2: 265 PARÂMETROS DA ÁRVORE BINÁRIA */}
+      {/* TAB 2: 511 PARÂMETROS INDIVIDUAIS */}
       {activeTab === 'tree' && (
         <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
-                <GitFork className="w-5 h-5 text-[#D4AF37]" /> Parâmetros da Árvore Binária (265
-                Posições / 36 Níveis)
+                <GitFork className="w-5 h-5 text-[#D4AF37]" /> Faixa Individual: 511 Posições
+                (Coleção <code>binary_tree_params</code>)
               </h3>
               <p className="text-xs text-gray-400 font-inter">
-                Coleção <code>binary_tree_params</code> com progressão geométrica por nível (Nível
-                1=1 pessoa, Nível 2=2, Nível 3=4, Nível 4=8...)
+                Posições 1ª a 511ª (Níveis 1 ao 9). A 511ª posição é o último registro individual no
+                banco de dados.
               </p>
             </div>
             <div className="w-full sm:w-64">
               <Input
                 value={searchPos}
                 onChange={(e) => setSearchPos(e.target.value)}
-                placeholder="Filtrar por posição ou segmento..."
+                placeholder="Filtrar por posição, nível ou segmento..."
                 className="bg-[#141414] border-[#2A2A2A] text-xs text-white rounded-xl"
               />
             </div>
@@ -783,7 +922,7 @@ export default function AdminRankingConfig() {
                   <tr>
                     <td colSpan={8} className="py-6 text-center text-gray-400">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#D4AF37]" />
-                      Carregando 265 parâmetros da árvore...
+                      Carregando 511 parâmetros da árvore...
                     </td>
                   </tr>
                 ) : filteredTreeParams.length === 0 ? (
@@ -795,7 +934,17 @@ export default function AdminRankingConfig() {
                 ) : (
                   filteredTreeParams.map((p) => (
                     <tr key={p.id} className="hover:bg-[#141414] transition-colors">
-                      <td className="py-3 font-bold font-mono text-[#D4AF37]">#{p.position}ª</td>
+                      <td className="py-3 font-bold font-mono text-[#D4AF37]">
+                        #{p.position}ª
+                        {p.position === 511 && (
+                          <Badge
+                            variant="outline"
+                            className="ml-2 text-[9px] border-[#D4AF37]/40 text-[#D4AF37]"
+                          >
+                            Fim Faixa Individual
+                          </Badge>
+                        )}
+                      </td>
                       <td className="py-3 text-center font-mono">
                         <Badge
                           variant="outline"
@@ -813,7 +962,9 @@ export default function AdminRankingConfig() {
                                 ? 'bg-[#0057FF]/20 text-[#0057FF]'
                                 : p.position <= 15
                                   ? 'bg-amber-500/20 text-amber-400'
-                                  : 'bg-gray-800 text-gray-300'
+                                  : p.position <= 31
+                                    ? 'bg-blue-500/20 text-blue-300'
+                                    : 'bg-gray-800 text-gray-300'
                           }`}
                         >
                           {p.segment || `Posição ${p.position}`}
@@ -844,7 +995,8 @@ export default function AdminRankingConfig() {
           {/* Pagination */}
           <div className="flex items-center justify-between pt-4 border-t border-[#2A2A2A]">
             <span className="text-xs text-gray-400 font-inter">
-              Página {page} de {totalPages} (Mostrando {treeParams.length} de 265 posições)
+              Página {page} de {totalPages} (Mostrando {treeParams.length} de {totalIndividualCount}{' '}
+              posições individuais)
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -872,7 +1024,258 @@ export default function AdminRankingConfig() {
         </Card>
       )}
 
-      {/* TAB 3: REGRAS ESG E GATILHOS */}
+      {/* TAB 3: VISÃO GERAL DOS 36 NÍVEIS */}
+      {activeTab === 'levels' && (
+        <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-4">
+          <div>
+            <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
+              <Layers className="w-5 h-5 text-[#0057FF]" /> Progressão Geométrica da Árvore Binária
+              (36 Níveis)
+            </h3>
+            <p className="text-xs text-gray-400 font-inter">
+              Estrutura global completa com <strong>{TOTAL_POSITIONS_STR} posições</strong>. Níveis
+              1 a 9 possuem registros individuais dedicados; Níveis 10 a 36 são calculados
+              matematicamente.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-inter">
+              <thead>
+                <tr className="border-b border-[#2A2A2A] text-gray-400 font-montserrat uppercase text-[10px]">
+                  <th className="pb-3">Nível</th>
+                  <th className="pb-3">Segmento / Descrição</th>
+                  <th className="pb-3 text-center">Pessoas no Nível</th>
+                  <th className="pb-3 text-center">Faixa de Posições</th>
+                  <th className="pb-3 text-center">% Nível</th>
+                  <th className="pb-3 text-center">Divisor / Modificador</th>
+                  <th className="pb-3 text-right">Armazenamento</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#2A2A2A]">
+                {levelsOverview.map((lvl) => {
+                  const isDbStored = lvl.level <= 9
+                  return (
+                    <tr key={lvl.level} className="hover:bg-[#141414] transition-colors">
+                      <td className="py-3 font-bold font-mono text-[#D4AF37]">
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${
+                            isDbStored
+                              ? 'border-[#D4AF37]/40 text-[#D4AF37] bg-[#D4AF37]/10'
+                              : 'border-[#0057FF]/40 text-[#0057FF] bg-[#0057FF]/10'
+                          }`}
+                        >
+                          Nível {lvl.level}
+                        </Badge>
+                      </td>
+                      <td className="py-3 font-semibold text-white">{lvl.segment}</td>
+                      <td className="py-3 text-center font-mono font-bold text-gray-200">
+                        {lvl.peopleInLevel.toLocaleString('pt-BR')}
+                      </td>
+                      <td className="py-3 text-center font-mono text-gray-300">
+                        {lvl.startPos.toLocaleString('pt-BR')} ➔{' '}
+                        {lvl.endPos.toLocaleString('pt-BR')}
+                      </td>
+                      <td className="py-3 text-center font-mono text-gray-300">
+                        {(lvl.levelPercentage * 100).toFixed(1)}%
+                      </td>
+                      <td className="py-3 text-center font-mono text-gray-400">
+                        Div: {lvl.divisor} | Mod: {lvl.modifier.toFixed(2)}
+                      </td>
+                      <td className="py-3 text-right font-mono font-bold">
+                        {isDbStored ? (
+                          <span className="text-[#22C55E] bg-[#22C55E]/10 px-2 py-0.5 rounded text-[10px]">
+                            Individual (DB)
+                          </span>
+                        ) : (
+                          <span className="text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded text-[10px]">
+                            Cálculo Motor (68B)
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* TAB 4: SIMULADOR INTERATIVO */}
+      {activeTab === 'simulador' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-4">
+            <div>
+              <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
+                <Calculator className="w-5 h-5 text-[#0057FF]" /> Simulador Instantâneo do Motor
+                Híbrido
+              </h3>
+              <p className="text-xs text-gray-400 font-inter">
+                Digite qualquer posição de <strong>1 até 68.719.476.735</strong> para verificar o
+                nível binário, coeficiente, modificadores e divisão de cashback calculados pelo
+                motor em tempo real.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase text-gray-300 font-semibold mb-2">
+                Posição a Simular:
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={simulatorPosInput}
+                  onChange={(e) => setSimulatorPosInput(e.target.value)}
+                  placeholder="Ex: 512, 1000, 1000000..."
+                  className="bg-[#141414] border-[#2A2A2A] text-white font-mono text-sm rounded-xl font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSimulatorPosInput('1')}
+                className="px-2.5 py-1 bg-[#141414] hover:bg-[#202020] border border-[#2A2A2A] rounded-lg text-[10px] font-mono text-gray-300"
+              >
+                Pos #1 (Diamante)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimulatorPosInput('511')}
+                className="px-2.5 py-1 bg-[#141414] hover:bg-[#202020] border border-[#2A2A2A] rounded-lg text-[10px] font-mono text-[#D4AF37]"
+              >
+                Pos #511 (Último DB)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimulatorPosInput('512')}
+                className="px-2.5 py-1 bg-[#141414] hover:bg-[#202020] border border-[#2A2A2A] rounded-lg text-[10px] font-mono text-[#0057FF]"
+              >
+                Pos #512 (1º Nível 10)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimulatorPosInput('10000')}
+                className="px-2.5 py-1 bg-[#141414] hover:bg-[#202020] border border-[#2A2A2A] rounded-lg text-[10px] font-mono text-purple-400"
+              >
+                Pos #10.000
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimulatorPosInput('68719476735')}
+                className="px-2.5 py-1 bg-[#141414] hover:bg-[#202020] border border-[#2A2A2A] rounded-lg text-[10px] font-mono text-[#22C55E]"
+              >
+                Pos #68.719.476.735 (Max)
+              </button>
+            </div>
+
+            <div className="p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] text-xs text-gray-300 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-white">
+                <Info className="w-4 h-4 text-[#0057FF]" /> Como funciona a resolução?
+              </div>
+              <p>
+                Quando uma transação de serviço é concluída, o cashback de 38% é distribuído aos
+                uplines. Se o upline ocupar a posição ≤ 511, os parâmetros vêm da coleção{' '}
+                <code>binary_tree_params</code>. Caso esteja na posição 512 em diante, os valores
+                são calculados dinamicamente pelas fórmulas geométricas padrão do nível
+                correspondente.
+              </p>
+            </div>
+          </Card>
+
+          <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-bold font-montserrat text-white uppercase flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#D4AF37]" /> Resultado da Simulação
+                </h4>
+                <Badge
+                  variant="outline"
+                  className={`${
+                    simulatedParams.isIndividual
+                      ? 'border-[#22C55E]/40 text-[#22C55E] bg-[#22C55E]/10'
+                      : 'border-purple-500/40 text-purple-400 bg-purple-500/10'
+                  }`}
+                >
+                  {simulatedParams.isIndividual
+                    ? 'Regime Individual (DB)'
+                    : 'Regime Nível Matemático'}
+                </Badge>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A] flex justify-between items-center">
+                  <span className="text-xs text-gray-400">Posição Solicitada:</span>
+                  <span className="font-mono font-black text-white text-base">
+                    #{simulatedParams.position.toLocaleString('pt-BR')}ª
+                  </span>
+                </div>
+
+                <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A] flex justify-between items-center">
+                  <span className="text-xs text-gray-400">Nível na Árvore Binária:</span>
+                  <span className="font-mono font-bold text-[#0057FF] text-sm">
+                    Nível {simulatedParams.level} de 36
+                  </span>
+                </div>
+
+                <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A] flex justify-between items-center">
+                  <span className="text-xs text-gray-400">Segmento Atribuído:</span>
+                  <span className="font-mono font-bold text-[#D4AF37] text-sm">
+                    {simulatedParams.segment}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A] flex justify-between items-center">
+                  <span className="text-xs text-gray-400">Pessoas Habitantes no Nível:</span>
+                  <span className="font-mono font-bold text-gray-200 text-sm">
+                    {simulatedParams.peopleInLevel.toLocaleString('pt-BR')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                    <span className="text-[10px] uppercase text-gray-400 block">
+                      % Nível Variável:
+                    </span>
+                    <span className="font-mono font-bold text-white text-sm">
+                      {(simulatedParams.levelPercentage * 100).toFixed(1)}%
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                    <span className="text-[10px] uppercase text-gray-400 block">Modificador:</span>
+                    <span className="font-mono font-bold text-white text-sm">
+                      {simulatedParams.modifier.toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                    <span className="text-[10px] uppercase text-gray-400 block">
+                      Divisor do Nível:
+                    </span>
+                    <span className="font-mono font-bold text-white text-sm">
+                      {simulatedParams.divisor}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                    <span className="text-[10px] uppercase text-gray-400 block">
+                      Peso Cashback:
+                    </span>
+                    <span className="font-mono font-bold text-[#22C55E] text-sm">
+                      {(simulatedParams.cashbackWeight * 100).toFixed(3)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* TAB 5: REGRAS ESG E GATILHOS */}
       {activeTab === 'esg' && (
         <div className="space-y-6">
           {/* Metas ESG por Nível */}
@@ -935,7 +1338,8 @@ export default function AdminRankingConfig() {
               <Target className="w-5 h-5 text-amber-400" /> Gatilhos ESG (Ciclo Mensal Acumulado)
             </h3>
             <p className="text-xs text-gray-400 font-inter mb-4">
-              Penalidades e bonificações aplicadas automaticamente sobre o cashback mensal:
+              Penalidades e bonificações aplicadas automaticamente sobre o cashback mensal
+              acumulado:
             </p>
 
             <div className="overflow-x-auto">
@@ -953,7 +1357,7 @@ export default function AdminRankingConfig() {
                     <td className="py-3 font-mono font-bold text-white">R$ 10.000,00</td>
                     <td className="py-3 text-center">
                       <Badge variant="outline" className="border-amber-400/40 text-amber-400">
-                        1 Meta ESG
+                        1 Meta ESG Exigida
                       </Badge>
                     </td>
                     <td className="py-3 text-center font-bold text-[#22C55E]">100% do cashback</td>
@@ -963,7 +1367,7 @@ export default function AdminRankingConfig() {
                     <td className="py-3 font-mono font-bold text-white">R$ 15.000,00</td>
                     <td className="py-3 text-center">
                       <Badge variant="outline" className="border-amber-400/40 text-amber-400">
-                        2 Metas ESG
+                        2 Metas ESG Exigidas
                       </Badge>
                     </td>
                     <td className="py-3 text-center font-bold text-[#22C55E]">100% do cashback</td>
@@ -975,7 +1379,7 @@ export default function AdminRankingConfig() {
                     <td className="py-3 font-mono font-bold text-white">R$ 20.000,00</td>
                     <td className="py-3 text-center">
                       <Badge variant="outline" className="border-amber-400/40 text-amber-400">
-                        3 Metas ESG
+                        3 Metas ESG Exigidas
                       </Badge>
                     </td>
                     <td className="py-3 text-center font-bold text-[#22C55E]">100% do cashback</td>
@@ -990,7 +1394,7 @@ export default function AdminRankingConfig() {
         </div>
       )}
 
-      {/* TAB 4: CONFIGURAÇÃO DE SPLIT E TARIFAS */}
+      {/* TAB 6: CONFIGURAÇÃO DE SPLIT E TARIFAS */}
       {activeTab === 'split' && (
         <form onSubmit={handleSaveConfig} className="space-y-6">
           {/* REVENUE SPLIT GLOBAL */}
