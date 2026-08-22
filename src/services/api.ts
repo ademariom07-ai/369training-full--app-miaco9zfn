@@ -8,6 +8,7 @@ export interface WeeklyScheduleRecord extends RecordModel {
   hora_inicio: string
   hora_fim: string
   disponivel: boolean
+  dia_liberado?: boolean
   expand?: {
     profissional?: RecordModel
   }

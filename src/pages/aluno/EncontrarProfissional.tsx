@@ -152,15 +152,26 @@ export default function EncontrarProfissional() {
     setCheckingPartnerList(true)
 
     try {
-      // 1. Fetch available schedules for this professional
+      // 1. Fetch available schedules for this professional (only for released days: dia_liberado = true, disponivel = true, data >= today)
       const todayStr = new Date().toISOString().slice(0, 10)
-      const schedRes = await pb
-        .collection('weekly_schedules')
-        .getList<WeeklyScheduleRecord>(1, 50, {
-          filter: `profissional = "${prof.id}" && disponivel = true && data >= "${todayStr}"`,
+      const [schedRes, appRes] = await Promise.all([
+        pb.collection('weekly_schedules').getList<WeeklyScheduleRecord>(1, 200, {
+          filter: `profissional = "${prof.id}" && disponivel = true && dia_liberado = true && data >= "${todayStr}"`,
           sort: 'data,hora_inicio',
-        })
-      setProfSchedules(schedRes.items)
+        }),
+        pb.collection('appointments').getList<AppointmentRecord>(1, 200, {
+          filter: `profissional = "${prof.id}" && (status = "confirmado" || status = "pendente")`,
+        }),
+      ])
+
+      // Filter out schedules that already have an active appointment (confirmado/pendente)
+      const bookedScheduleIds = new Set(
+        appRes.items.map((a) => a.schedule).filter((id): id is string => Boolean(id)),
+      )
+
+      const availableSchedules = schedRes.items.filter((s) => !bookedScheduleIds.has(s.id))
+
+      setProfSchedules(availableSchedules)
     } catch (err) {
       console.error('Error loading professional schedule:', err)
       setProfSchedules([])

@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth, type UserProfile } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -17,26 +16,47 @@ import {
   Calendar as CalendarIcon,
   Clock,
   CheckCircle2,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Ban,
+  Lock,
   Unlock,
   ChevronLeft,
   ChevronRight,
   Zap,
-  DollarSign,
   User,
   Activity,
-  Layers,
-  Sparkles,
   Loader2,
   Filter,
+  Plus,
+  Eye,
+  EyeOff,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { WeeklyScheduleRecord, AppointmentRecord } from '@/services/api'
 
-// Days of week helper
+// Grade fixa de 19 faixas horárias de 1 em 1 hora (05:00 às 00:00)
+export const FIXED_TIME_SLOTS = [
+  { id: '05-06', hora_inicio: '05:00', hora_fim: '06:00', label: '05h - 06h' },
+  { id: '06-07', hora_inicio: '06:00', hora_fim: '07:00', label: '06h - 07h' },
+  { id: '07-08', hora_inicio: '07:00', hora_fim: '08:00', label: '07h - 08h' },
+  { id: '08-09', hora_inicio: '08:00', hora_fim: '09:00', label: '08h - 09h' },
+  { id: '09-10', hora_inicio: '09:00', hora_fim: '10:00', label: '09h - 10h' },
+  { id: '10-11', hora_inicio: '10:00', hora_fim: '11:00', label: '10h - 11h' },
+  { id: '11-12', hora_inicio: '11:00', hora_fim: '12:00', label: '11h - 12h' },
+  { id: '12-13', hora_inicio: '12:00', hora_fim: '13:00', label: '12h - 13h' },
+  { id: '13-14', hora_inicio: '13:00', hora_fim: '14:00', label: '13h - 14h' },
+  { id: '14-15', hora_inicio: '14:00', hora_fim: '15:00', label: '14h - 15h' },
+  { id: '15-16', hora_inicio: '15:00', hora_fim: '16:00', label: '15h - 16h' },
+  { id: '16-17', hora_inicio: '16:00', hora_fim: '17:00', label: '16h - 17h' },
+  { id: '17-18', hora_inicio: '17:00', hora_fim: '18:00', label: '17h - 18h' },
+  { id: '18-19', hora_inicio: '18:00', hora_fim: '19:00', label: '18h - 19h' },
+  { id: '19-20', hora_inicio: '19:00', hora_fim: '20:00', label: '19h - 20h' },
+  { id: '20-21', hora_inicio: '20:00', hora_fim: '21:00', label: '20h - 21h' },
+  { id: '21-22', hora_inicio: '21:00', hora_fim: '22:00', label: '21h - 22h' },
+  { id: '22-23', hora_inicio: '22:00', hora_fim: '23:00', label: '22h - 23h' },
+  { id: '23-00', hora_inicio: '23:00', hora_fim: '00:00', label: '23h - 00h' },
+]
+
+// Dias da semana helper
 const DAYS_OF_WEEK = [
   { id: 1, name: 'Segunda-feira', short: 'Seg' },
   { id: 2, name: 'Terça-feira', short: 'Ter' },
@@ -47,7 +67,7 @@ const DAYS_OF_WEEK = [
   { id: 0, name: 'Domingo', short: 'Dom' },
 ]
 
-function getWeekDays(offsetWeeks = 1) {
+function getWeekDays(offsetWeeks = 0) {
   const now = new Date()
   const dayOfWeek = now.getDay() // 0 is Sunday, 1 is Monday
   // Days to target week's Monday
@@ -72,7 +92,7 @@ export default function AgendaServicos() {
   const { user } = useAuth()
 
   // Week offset: 0 = Esta Semana, 1 = Próxima Semana, 2 = Em 2 Semanas
-  const [weekOffset, setWeekOffset] = useState<number>(1)
+  const [weekOffset, setWeekOffset] = useState<number>(0)
   const currentWeekDays = getWeekDays(weekOffset)
 
   // Data states
@@ -82,21 +102,15 @@ export default function AgendaServicos() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  // Slot Modal state (Adicionar faixa de horário)
-  const [slotModalOpen, setSlotModalOpen] = useState(false)
-  const [selectedDayForSlot, setSelectedDayForSlot] = useState<{
-    date: string
-    name: string
-  } | null>(null)
-  const [startTime, setStartTime] = useState('08:00')
-  const [endTime, setEndTime] = useState('12:00')
-  const [savingSlot, setSavingSlot] = useState(false)
-
   // Quick Appointment Modal state (Agendar direto pelo profissional)
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
-  const [selectedScheduleForApp, setSelectedScheduleForApp] = useState<WeeklyScheduleRecord | null>(
-    null,
-  )
+  const [selectedSlotForApp, setSelectedSlotForApp] = useState<{
+    date: string
+    dayName: string
+    hora_inicio: string
+    hora_fim: string
+    scheduleId?: string
+  } | null>(null)
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [appServiceType, setAppServiceType] = useState<
     'treino' | 'nutrição' | 'fisioterapia' | 'artes_marciais'
@@ -105,11 +119,11 @@ export default function AgendaServicos() {
   const [savingApp, setSavingApp] = useState(false)
 
   // Active view tab
-  const [activeTab, setActiveTab] = useState<'grid' | 'appointments' | 'settings'>('grid')
+  const [activeTab, setActiveTab] = useState<'grid' | 'appointments'>('grid')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
 
   // Load Data
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return
     try {
       setLoading(true)
@@ -120,14 +134,14 @@ export default function AgendaServicos() {
       // 1. Load schedules for current selected week
       const schedRes = await pb
         .collection('weekly_schedules')
-        .getList<WeeklyScheduleRecord>(1, 100, {
+        .getList<WeeklyScheduleRecord>(1, 300, {
           filter: `profissional = "${user.id}" && data >= "${minDate}" && data <= "${maxDate}"`,
           sort: 'data,hora_inicio',
         })
       setSchedules(schedRes.items)
 
       // 2. Load appointments for current professional
-      const appRes = await pb.collection('appointments').getList<AppointmentRecord>(1, 100, {
+      const appRes = await pb.collection('appointments').getList<AppointmentRecord>(1, 150, {
         filter: `profissional = "${user.id}"`,
         sort: '-created',
         expand: 'aluno,schedule',
@@ -138,7 +152,7 @@ export default function AgendaServicos() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, currentWeekDays])
 
   // Initial load & students load
   useEffect(() => {
@@ -153,110 +167,107 @@ export default function AgendaServicos() {
 
   useEffect(() => {
     loadData()
-  }, [user, weekOffset])
+  }, [loadData])
 
-  // Toggle Day Available (Bloquear / Desbloquear Dia Inteiro)
-  const handleToggleDayBlock = async (
-    dateStr: string,
-    dayName: string,
-    isCurrentlyBlocked: boolean,
-  ) => {
-    if (!user) return
+  // Helper: check if a day is released (liberado)
+  const isDayLiberado = (dateStr: string) => {
     const daySchedules = schedules.filter((s) => s.data === dateStr)
-    const newAvailableStatus = isCurrentlyBlocked // if currently blocked, we make it available (true)
+    if (daySchedules.length === 0) return false
+    return daySchedules.some((s) => s.dia_liberado === true)
+  }
+
+  // 1-Clique: Liberar / Pausar Liberação do Dia Inteiro
+  const handleToggleLiberarDia = async (dateStr: string, dayName: string) => {
+    if (!user) return
+    const currentlyLiberado = isDayLiberado(dateStr)
+    const nextLiberadoState = !currentlyLiberado
 
     setActionLoading(`day-${dateStr}`)
     try {
+      const daySchedules = schedules.filter((s) => s.data === dateStr)
+
       if (daySchedules.length === 0) {
-        // Create default slots as available or blocked
-        await pb.collection('weekly_schedules').create({
-          profissional: user.id,
-          dia_da_semana: dayName,
-          data: dateStr,
-          hora_inicio: '08:00',
-          hora_fim: '18:00',
-          disponivel: newAvailableStatus,
-        })
+        // Criar todos os 19 horários como disponíveis e definir dia_liberado
+        await Promise.all(
+          FIXED_TIME_SLOTS.map((slot) =>
+            pb.collection('weekly_schedules').create({
+              profissional: user.id,
+              dia_da_semana: dayName,
+              data: dateStr,
+              hora_inicio: slot.hora_inicio,
+              hora_fim: slot.hora_fim,
+              disponivel: true,
+              dia_liberado: nextLiberadoState,
+            }),
+          ),
+        )
       } else {
-        // Update all slots of this day
+        // Atualizar todos os registros existentes deste dia
         await Promise.all(
           daySchedules.map((s) =>
             pb.collection('weekly_schedules').update(s.id, {
-              disponivel: newAvailableStatus,
+              dia_liberado: nextLiberadoState,
             }),
           ),
         )
       }
 
       toast.success(
-        newAvailableStatus
-          ? `Dia ${dayName} desbloqueado para agendamentos!`
-          : `Dia ${dayName} bloqueado completamente!`,
+        nextLiberadoState
+          ? `Dia ${dayName} (${dateStr}) liberado com sucesso para visão dos alunos!`
+          : `Dia ${dayName} (${dateStr}) ocultado da visão dos alunos.`,
       )
-      loadData()
+      await loadData()
     } catch (err: unknown) {
       const error = err as Error
-      toast.error(error.message || 'Erro ao alterar disponibilidade do dia.')
+      toast.error(error.message || 'Erro ao alterar liberação do dia.')
     } finally {
       setActionLoading(null)
     }
   }
 
-  // Add new time range slot
-  const handleCreateSlot = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !selectedDayForSlot) return
+  // 1-Clique: Alternar Bloqueio / Liberação de um Horário Específico (05h-06h, 06h-07h, etc.)
+  const handleToggleSlot = async (
+    dateStr: string,
+    dayName: string,
+    slotDef: (typeof FIXED_TIME_SLOTS)[0],
+  ) => {
+    if (!user) return
+    const slotKey = `${dateStr}_${slotDef.hora_inicio}`
+    setActionLoading(slotKey)
 
-    setSavingSlot(true)
     try {
-      await pb.collection('weekly_schedules').create({
-        profissional: user.id,
-        dia_da_semana: selectedDayForSlot.name,
-        data: selectedDayForSlot.date,
-        hora_inicio: startTime,
-        hora_fim: endTime,
-        disponivel: true,
-      })
-
-      toast.success(`Faixa ${startTime}–${endTime} adicionada com sucesso!`)
-      setSlotModalOpen(false)
-      loadData()
-    } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Erro ao adicionar faixa de horário.')
-    } finally {
-      setSavingSlot(false)
-    }
-  }
-
-  // Delete a specific time range slot
-  const handleDeleteSlot = async (slotId: string) => {
-    setActionLoading(`del-${slotId}`)
-    try {
-      await pb.collection('weekly_schedules').delete(slotId)
-      toast.success('Faixa de horário removida.')
-      loadData()
-    } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Erro ao remover faixa de horário.')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  // Toggle specific slot availability
-  const handleToggleSlotAvailability = async (slot: WeeklyScheduleRecord) => {
-    setActionLoading(`slot-${slot.id}`)
-    try {
-      await pb.collection('weekly_schedules').update(slot.id, {
-        disponivel: !slot.disponivel,
-      })
-      toast.success(
-        !slot.disponivel
-          ? `Horário ${slot.hora_inicio}–${slot.hora_fim} ativado!`
-          : `Horário ${slot.hora_inicio}–${slot.hora_fim} pausado.`,
+      const existingRecord = schedules.find(
+        (s) => s.data === dateStr && s.hora_inicio === slotDef.hora_inicio,
       )
-      loadData()
+
+      if (existingRecord) {
+        const newDisponivel = !existingRecord.disponivel
+        await pb.collection('weekly_schedules').update(existingRecord.id, {
+          disponivel: newDisponivel,
+        })
+        toast.success(
+          newDisponivel
+            ? `Horário ${slotDef.label} liberado!`
+            : `Horário ${slotDef.label} bloqueado.`,
+        )
+      } else {
+        // Se ainda não existia o registro específico no banco, cria como bloqueado (pois o default virtual é liberado)
+        // ou cria com o status atual do dia
+        const dayLiberadoState = isDayLiberado(dateStr)
+        await pb.collection('weekly_schedules').create({
+          profissional: user.id,
+          dia_da_semana: dayName,
+          data: dateStr,
+          hora_inicio: slotDef.hora_inicio,
+          hora_fim: slotDef.hora_fim,
+          disponivel: false, // O primeiro clique bloqueia o slot padrão livre
+          dia_liberado: dayLiberadoState,
+        })
+        toast.success(`Horário ${slotDef.label} bloqueado.`)
+      }
+
+      await loadData()
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao alternar horário.')
@@ -317,10 +328,10 @@ export default function AgendaServicos() {
     }
   }
 
-  // Create manual appointment
+  // Create manual appointment directly from slot
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !selectedStudentId) return
+    if (!user || !selectedStudentId || !selectedSlotForApp) return
 
     setSavingApp(true)
     try {
@@ -338,10 +349,33 @@ export default function AgendaServicos() {
       const baseVal = parseFloat(appValue) || 150
       const extraFee = isPartnerList ? 0 : baseVal * 0.5
 
+      // Garantir que existe o registro de schedule para vincular
+      let targetScheduleId = selectedSlotForApp.scheduleId
+      if (!targetScheduleId) {
+        const existingSched = schedules.find(
+          (s) =>
+            s.data === selectedSlotForApp.date && s.hora_inicio === selectedSlotForApp.hora_inicio,
+        )
+        if (existingSched) {
+          targetScheduleId = existingSched.id
+        } else {
+          const newSched = await pb.collection('weekly_schedules').create({
+            profissional: user.id,
+            dia_da_semana: selectedSlotForApp.dayName,
+            data: selectedSlotForApp.date,
+            hora_inicio: selectedSlotForApp.hora_inicio,
+            hora_fim: selectedSlotForApp.hora_fim,
+            disponivel: true,
+            dia_liberado: isDayLiberado(selectedSlotForApp.date),
+          })
+          targetScheduleId = newSched.id
+        }
+      }
+
       await pb.collection('appointments').create({
         profissional: user.id,
         aluno: selectedStudentId,
-        schedule: selectedScheduleForApp?.id || null,
+        schedule: targetScheduleId || null,
         servico_tipo: appServiceType,
         status: 'confirmado',
         valor: baseVal,
@@ -383,16 +417,16 @@ export default function AgendaServicos() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat mb-2">
             <CalendarIcon className="w-3.5 h-3.5" />
-            Agenda Semanal & Atendimentos
+            Grade Fixa 05h–00h (19 Horários)
           </div>
           <h1 className="text-3xl font-black font-montserrat text-white tracking-tight uppercase">
             Agenda do Profissional
           </h1>
           <p className="text-sm text-gray-400 font-inter mt-1 max-w-2xl">
-            Configure sua disponibilidade semanal, bloqueie dias inteiros ou faixas de horário (ex:{' '}
-            <span className="text-[#D4AF37] font-semibold">08:00–12:00</span>,{' '}
-            <span className="text-[#D4AF37] font-semibold">14:00–18:00</span>) e gerencie os
-            agendamentos de seus alunos com disparo instantâneo de Ranking e Cashback.
+            Controle de 1 clique: bloqueie/libere horários individuais das{' '}
+            <strong className="text-white">05:00 às 00:00</strong> e use o botão{' '}
+            <span className="text-[#D4AF37] font-semibold">"Liberar Dia"</span> para disponibilizar
+            o dia na busca dos alunos.
           </p>
         </div>
 
@@ -400,7 +434,13 @@ export default function AgendaServicos() {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             onClick={() => {
-              setSelectedScheduleForApp(null)
+              const defaultDay = currentWeekDays[0]
+              setSelectedSlotForApp({
+                date: defaultDay.date,
+                dayName: defaultDay.name,
+                hora_inicio: '08:00',
+                hora_fim: '09:00',
+              })
               setAppointmentModalOpen(true)
             }}
             className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-xs uppercase px-5 py-2.5 rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.25)] flex items-center gap-2"
@@ -516,7 +556,7 @@ export default function AgendaServicos() {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            Grade Semanal
+            Grade 19 Horários
           </button>
           <button
             onClick={() => setActiveTab('appointments')}
@@ -536,229 +576,247 @@ export default function AgendaServicos() {
         </div>
       </div>
 
-      {/* TAB 1: WEEKLY GRID */}
+      {/* TAB 1: WEEKLY 19-SLOT GRID */}
       {activeTab === 'grid' && (
         <div className="space-y-6">
+          {/* Quick instructions banner */}
+          <div className="bg-[#141414] border border-[#2A2A2A] p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-gray-300">
+              <Sparkles className="w-4 h-4 text-[#D4AF37] shrink-0" />
+              <span>
+                <strong className="text-white">Regra de Visibilidade para Alunos:</strong> O aluno
+                só enxerga os horários livres se você clicar em{' '}
+                <strong className="text-[#22C55E]">"Liberar Dia"</strong>. Clique em cada horário
+                para bloquear ou liberar instantaneamente com 1 toque.
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] shrink-0 font-montserrat uppercase font-bold">
+              <span className="flex items-center gap-1 text-[#22C55E]">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E]" /> Liberado
+              </span>
+              <span className="flex items-center gap-1 text-red-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Bloqueado
+              </span>
+              <span className="flex items-center gap-1 text-[#0057FF]">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#0057FF]" /> Agendado
+              </span>
+            </div>
+          </div>
+
           {loading ? (
             <div className="p-12 flex flex-col items-center justify-center gap-3 bg-[#181818] rounded-2xl border border-[#2A2A2A]">
               <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
               <p className="text-xs text-gray-400 font-inter">
-                Carregando disponibilidade da semana...
+                Carregando grade horária da semana...
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
               {currentWeekDays.map((day) => {
+                const dayLiberado = isDayLiberado(day.date)
                 const daySchedules = schedules.filter((s) => s.data === day.date)
-                // Day is blocked if explicitly all slots are disponivel=false or if marked
-                const isEntirelyBlocked =
-                  daySchedules.length > 0 && daySchedules.every((s) => !s.disponivel)
 
-                const dayAppointments = appointments.filter((a) => {
-                  if (a.expand?.schedule?.data === day.date) return true
-                  // Check if schedule id is in day's schedules
-                  return daySchedules.some((s) => s.id === a.schedule)
-                })
+                // Count active slots
+                const activeSlotsCount = FIXED_TIME_SLOTS.filter((slotDef) => {
+                  const rec = daySchedules.find((s) => s.hora_inicio === slotDef.hora_inicio)
+                  return rec ? rec.disponivel : true
+                }).length
 
                 return (
                   <Card
                     key={day.date}
-                    className={`bg-[#181818] border transition-all rounded-2xl p-4 flex flex-col justify-between min-h-[380px] ${
-                      isEntirelyBlocked
-                        ? 'border-red-900/40 bg-[#161313]'
-                        : 'border-[#2A2A2A] hover:border-[#D4AF37]/50'
+                    className={`bg-[#181818] border transition-all rounded-2xl p-3 sm:p-4 flex flex-col justify-between ${
+                      dayLiberado
+                        ? 'border-[#D4AF37]/40 shadow-[0_0_15px_rgba(212,175,55,0.08)]'
+                        : 'border-[#2A2A2A]'
                     }`}
                   >
-                    {/* Day Card Header */}
+                    {/* Day Header */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div>
                           <p className="text-[11px] font-bold uppercase text-gray-400 font-montserrat">
-                            {day.name}
+                            {day.name.split('-')[0]}
                           </p>
-                          <h3 className="text-lg font-black font-montserrat text-white">
+                          <h3 className="text-base font-black font-montserrat text-white">
                             {day.displayDate}
                           </h3>
                         </div>
 
-                        {/* Block/Unblock Day Toggle */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            handleToggleDayBlock(day.date, day.name, isEntirelyBlocked)
-                          }
-                          disabled={actionLoading === `day-${day.date}`}
-                          title={isEntirelyBlocked ? 'Desbloquear Dia' : 'Bloquear Dia Inteiro'}
-                          className={`h-8 w-8 p-0 rounded-lg ${
-                            isEntirelyBlocked
-                              ? 'text-red-400 bg-red-950/30 hover:bg-red-900/50'
-                              : 'text-gray-400 hover:text-[#D4AF37] hover:bg-[#2A2A2A]'
+                        <Badge
+                          className={`text-[9px] uppercase font-bold px-2 py-0.5 ${
+                            dayLiberado
+                              ? 'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/40'
+                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                           }`}
                         >
-                          {isEntirelyBlocked ? (
-                            <Ban className="w-4 h-4" />
-                          ) : (
-                            <Unlock className="w-4 h-4" />
-                          )}
-                        </Button>
+                          {dayLiberado ? 'Visível' : 'Oculto'}
+                        </Badge>
                       </div>
 
-                      {/* Status indicator */}
-                      {isEntirelyBlocked ? (
-                        <div className="mb-3 p-2 rounded-xl bg-red-950/30 border border-red-900/40 text-center">
-                          <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider block">
-                            Dia Bloqueado
-                          </span>
-                          <span className="text-[9px] text-gray-400 block mt-0.5">
-                            Sem horários disponíveis
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-[#22C55E] uppercase flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
-                            {daySchedules.filter((s) => s.disponivel).length} Faixas Livres
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Time Slots List */}
-                      <div className="space-y-2 mb-4">
-                        {daySchedules.length === 0 && !isEntirelyBlocked ? (
-                          <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-center">
-                            <p className="text-[11px] text-gray-400 font-inter">
-                              Nenhuma faixa cadastrada.
-                            </p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDayForSlot({ date: day.date, name: day.name })
-                                setSlotModalOpen(true)
-                              }}
-                              className="mt-2 text-[10px] font-bold text-[#D4AF37] hover:underline p-0 h-auto"
-                            >
-                              + Adicionar Faixa
-                            </Button>
-                          </div>
+                      {/* Botão de 1 Clique: Liberar Dia / Ocultar Dia */}
+                      <Button
+                        size="sm"
+                        onClick={() => handleToggleLiberarDia(day.date, day.name)}
+                        disabled={actionLoading === `day-${day.date}`}
+                        className={`w-full mb-3 text-xs font-bold font-montserrat uppercase rounded-xl h-9 flex items-center justify-center gap-1.5 transition-all ${
+                          dayLiberado
+                            ? 'bg-[#22C55E] text-black hover:bg-[#1eb354] shadow-[0_0_12px_rgba(34,197,94,0.3)]'
+                            : 'bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:border-[#D4AF37] hover:text-white'
+                        }`}
+                      >
+                        {actionLoading === `day-${day.date}` ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : dayLiberado ? (
+                          <>
+                            <Eye className="w-3.5 h-3.5" /> Dia Liberado
+                          </>
                         ) : (
-                          daySchedules.map((slot) => {
-                            // Find if any appointment is booked in this slot
-                            const slotApp = appointments.find((a) => a.schedule === slot.id)
+                          <>
+                            <EyeOff className="w-3.5 h-3.5 text-gray-400" /> Liberar Dia
+                          </>
+                        )}
+                      </Button>
 
-                            return (
-                              <div
-                                key={slot.id}
-                                className={`p-2.5 rounded-xl border text-xs transition-all ${
-                                  !slot.disponivel
-                                    ? 'bg-[#141414] border-[#2A2A2A] opacity-60'
-                                    : slotApp
-                                      ? slotApp.status === 'concluído'
-                                        ? 'bg-[#22C55E]/10 border-[#22C55E]/40'
-                                        : 'bg-[#0057FF]/10 border-[#0057FF]/40'
-                                      : 'bg-[#141414] border-[#2A2A2A] hover:border-[#D4AF37]/50'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1 font-mono font-bold text-white">
-                                    <Clock className="w-3 h-3 text-[#D4AF37]" />
-                                    <span>
-                                      {slot.hora_inicio}–{slot.hora_fim}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      onClick={() => handleToggleSlotAvailability(slot)}
-                                      disabled={actionLoading === `slot-${slot.id}`}
-                                      className="text-gray-400 hover:text-white text-[10px] px-1"
-                                      title={slot.disponivel ? 'Pausar horário' : 'Ativar horário'}
-                                    >
-                                      {slot.disponivel ? 'Ativo' : 'Pausado'}
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteSlot(slot.id)}
-                                      disabled={actionLoading === `del-${slot.id}`}
-                                      className="text-gray-500 hover:text-red-400 p-0.5"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Slot details / appointment */}
-                                {slotApp ? (
-                                  <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <span className="font-bold text-white text-[11px] truncate">
-                                        {slotApp.expand?.aluno?.name || 'Aluno'}
-                                      </span>
-                                      <Badge
-                                        className={`text-[9px] px-1.5 py-0 uppercase ${
-                                          slotApp.status === 'concluído'
-                                            ? 'bg-[#22C55E] text-black font-bold'
-                                            : slotApp.status === 'confirmado'
-                                              ? 'bg-[#0057FF] text-white'
-                                              : 'bg-amber-500 text-black'
-                                        }`}
-                                      >
-                                        {slotApp.status}
-                                      </Badge>
-                                    </div>
-                                    <p className="text-[10px] text-gray-300 capitalize">
-                                      {slotApp.servico_tipo} • R${' '}
-                                      {(slotApp.valor + (slotApp.taxa_extra || 0)).toFixed(2)}
-                                    </p>
-
-                                    {slotApp.status !== 'concluído' && (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleCompleteAppointment(slotApp.id)}
-                                        disabled={actionLoading === `comp-${slotApp.id}`}
-                                        className="w-full mt-1.5 h-6 bg-[#22C55E] text-black hover:bg-[#1eb354] font-black text-[9px] uppercase rounded-lg flex items-center justify-center gap-1"
-                                      >
-                                        <Zap className="w-3 h-3 fill-black" /> Concluir
-                                      </Button>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
-                                    <span className="text-[#22C55E] font-semibold">
-                                      Livre para agendar
-                                    </span>
-                                    <button
-                                      onClick={() => {
-                                        setSelectedScheduleForApp(slot)
-                                        setAppointmentModalOpen(true)
-                                      }}
-                                      className="text-[#D4AF37] hover:underline font-bold"
-                                    >
-                                      + Aluno
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 mb-2 px-1 font-mono">
+                        <span>{activeSlotsCount}/19 Horários Livres</span>
+                        {!dayLiberado && (
+                          <span className="text-amber-400 text-[9px] font-semibold">
+                            (Aluno não vê)
+                          </span>
                         )}
                       </div>
-                    </div>
 
-                    {/* Day Bottom Actions */}
-                    <div className="pt-2 border-t border-[#2A2A2A]">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={isEntirelyBlocked}
-                        onClick={() => {
-                          setSelectedDayForSlot({ date: day.date, name: day.name })
-                          setSlotModalOpen(true)
-                        }}
-                        className="w-full border-[#2A2A2A] text-white hover:border-[#D4AF37] text-xs font-bold font-montserrat uppercase h-8 rounded-xl flex items-center justify-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-[#D4AF37]" /> Adicionar Faixa
-                      </Button>
+                      {/* Fixed 19 Slots List */}
+                      <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
+                        {FIXED_TIME_SLOTS.map((slotDef) => {
+                          const existingRecord = daySchedules.find(
+                            (s) => s.hora_inicio === slotDef.hora_inicio,
+                          )
+                          // Se existe registro no banco, pega o disponivel. Se não existe registro ainda, por padrão está livre (true)
+                          const isAvailable = existingRecord ? existingRecord.disponivel : true
+
+                          // Verifica se há agendamento para este slot
+                          const slotApp = appointments.find((a) => {
+                            if (existingRecord && a.schedule === existingRecord.id) return true
+                            // Match por data e horário
+                            if (
+                              a.expand?.schedule?.data === day.date &&
+                              a.expand?.schedule?.hora_inicio === slotDef.hora_inicio
+                            ) {
+                              return true
+                            }
+                            return false
+                          })
+
+                          const slotKey = `${day.date}_${slotDef.hora_inicio}`
+                          const isSlotLoading = actionLoading === slotKey
+
+                          return (
+                            <div
+                              key={slotDef.id}
+                              className={`p-2 rounded-xl border text-xs transition-all ${
+                                !isAvailable
+                                  ? 'bg-red-950/20 border-red-900/40 text-gray-400'
+                                  : slotApp
+                                    ? slotApp.status === 'concluído'
+                                      ? 'bg-[#22C55E]/10 border-[#22C55E]/40 text-white'
+                                      : 'bg-[#0057FF]/15 border-[#0057FF]/40 text-white'
+                                    : 'bg-[#141414] border-[#2A2A2A] hover:border-[#D4AF37]/60 text-white'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-mono font-bold text-[11px] flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-[#D4AF37]" />
+                                  {slotDef.label}
+                                </span>
+
+                                {/* Toggle 1-Clique para Bloquear / Liberar */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSlot(day.date, day.name, slotDef)}
+                                  disabled={isSlotLoading}
+                                  title={
+                                    isAvailable ? 'Clique para Bloquear' : 'Clique para Liberar'
+                                  }
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 uppercase transition-all ${
+                                    isAvailable
+                                      ? 'bg-[#22C55E]/20 text-[#22C55E] hover:bg-[#22C55E] hover:text-black border border-[#22C55E]/30'
+                                      : 'bg-red-950/40 text-red-400 hover:bg-red-900/60 border border-red-900/50'
+                                  }`}
+                                >
+                                  {isSlotLoading ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : isAvailable ? (
+                                    <>
+                                      <Unlock className="w-2.5 h-2.5" /> Livre
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lock className="w-2.5 h-2.5" /> Bloq
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+
+                              {/* Se tiver agendamento */}
+                              {slotApp ? (
+                                <div className="mt-1.5 pt-1.5 border-t border-white/10 text-[10px] space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-white truncate max-w-[90px]">
+                                      {slotApp.expand?.aluno?.name || 'Aluno'}
+                                    </span>
+                                    <span
+                                      className={`text-[8px] font-extrabold uppercase px-1 rounded ${
+                                        slotApp.status === 'concluído'
+                                          ? 'bg-[#22C55E] text-black'
+                                          : slotApp.status === 'confirmado'
+                                            ? 'bg-[#0057FF] text-white'
+                                            : 'bg-amber-500 text-black'
+                                      }`}
+                                    >
+                                      {slotApp.status}
+                                    </span>
+                                  </div>
+                                  <p className="text-gray-400 capitalize text-[9px]">
+                                    {slotApp.servico_tipo} • R${' '}
+                                    {(slotApp.valor + (slotApp.taxa_extra || 0)).toFixed(2)}
+                                  </p>
+
+                                  {slotApp.status !== 'concluído' && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleCompleteAppointment(slotApp.id)}
+                                      disabled={actionLoading === `comp-${slotApp.id}`}
+                                      className="w-full mt-1 h-5 bg-[#22C55E] text-black hover:bg-[#1eb354] font-black text-[8px] uppercase rounded-md flex items-center justify-center gap-1"
+                                    >
+                                      <Zap className="w-2.5 h-2.5 fill-black" /> Concluir
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : isAvailable ? (
+                                <div className="mt-1 flex items-center justify-end text-[9px]">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedSlotForApp({
+                                        date: day.date,
+                                        dayName: day.name,
+                                        hora_inicio: slotDef.hora_inicio,
+                                        hora_fim: slotDef.hora_fim,
+                                        scheduleId: existingRecord?.id,
+                                      })
+                                      setAppointmentModalOpen(true)
+                                    }}
+                                    className="text-[#D4AF37] hover:underline font-bold"
+                                  >
+                                    + Agendar Aluno
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
                   </Card>
                 )
@@ -956,104 +1014,6 @@ export default function AgendaServicos() {
         </div>
       )}
 
-      {/* MODAL: ADICIONAR FAIXA DE HORÁRIO */}
-      <Dialog open={slotModalOpen} onOpenChange={setSlotModalOpen}>
-        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-md rounded-2xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold font-montserrat text-white uppercase flex items-center gap-2">
-              <Clock className="w-5 h-5 text-[#D4AF37]" />
-              Nova Faixa de Horário
-            </DialogTitle>
-            <DialogDescription className="text-xs text-gray-400 font-inter">
-              Defina os limites de atendimento para{' '}
-              <strong className="text-white">{selectedDayForSlot?.name}</strong> (
-              {selectedDayForSlot?.date}).
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleCreateSlot} className="space-y-4 pt-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat">
-                  Hora Início
-                </label>
-                <Input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-white font-mono text-xs h-10"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat">
-                  Hora Fim
-                </label>
-                <Input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-white font-mono text-xs h-10"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Quick preset chips */}
-            <div>
-              <p className="text-[11px] font-semibold text-gray-400 uppercase font-montserrat mb-2">
-                Atalhos Rápidos:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStartTime('08:00')
-                    setEndTime('12:00')
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-[#181818] border border-[#2A2A2A] text-xs text-gray-300 hover:text-white hover:border-[#D4AF37]"
-                >
-                  Manhã (08:00–12:00)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStartTime('14:00')
-                    setEndTime('18:00')
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-[#181818] border border-[#2A2A2A] text-xs text-gray-300 hover:text-white hover:border-[#D4AF37]"
-                >
-                  Tarde (14:00–18:00)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStartTime('18:00')
-                    setEndTime('22:00')
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-[#181818] border border-[#2A2A2A] text-xs text-gray-300 hover:text-white hover:border-[#D4AF37]"
-                >
-                  Noite (18:00–22:00)
-                </button>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={savingSlot}
-              className="w-full bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-xs uppercase h-11 rounded-xl mt-4"
-            >
-              {savingSlot ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                'Salvar Faixa de Horário'
-              )}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* MODAL: NOVO AGENDAMENTO PELO PROFISSIONAL */}
       <Dialog open={appointmentModalOpen} onOpenChange={setAppointmentModalOpen}>
         <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-lg rounded-2xl p-6">
@@ -1063,7 +1023,7 @@ export default function AgendaServicos() {
               Agendar Atendimento para Aluno
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-400 font-inter">
-              Selecione o aluno e o serviço para inclusão na sua grade semanal.
+              Selecione o aluno e o serviço para inclusão na sua grade.
             </DialogDescription>
           </DialogHeader>
 
@@ -1122,14 +1082,14 @@ export default function AgendaServicos() {
               </div>
             </div>
 
-            {selectedScheduleForApp && (
+            {selectedSlotForApp && (
               <div className="p-3 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/30 text-xs">
                 <span className="font-bold text-[#0057FF] block font-montserrat uppercase">
-                  Faixa Vinculada:
+                  Horário Vinculado:
                 </span>
-                <span className="text-gray-200">
-                  {selectedScheduleForApp.dia_da_semana} ({selectedScheduleForApp.data}) •{' '}
-                  {selectedScheduleForApp.hora_inicio}–{selectedScheduleForApp.hora_fim}
+                <span className="text-gray-200 font-mono">
+                  {selectedSlotForApp.dayName} ({selectedSlotForApp.date}) •{' '}
+                  {selectedSlotForApp.hora_inicio} às {selectedSlotForApp.hora_fim}
                 </span>
               </div>
             )}
