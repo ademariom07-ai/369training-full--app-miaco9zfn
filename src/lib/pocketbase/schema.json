@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T16:58:23.468Z",
+  "generatedAt": "2026-08-22T20:39:54.648Z",
   "collections": [
     {
       "name": "users",
@@ -1404,6 +1404,154 @@
       "indexes": [
         "CREATE UNIQUE INDEX idx_bt_params_pos ON binary_tree_params (position)",
         "CREATE INDEX idx_bt_params_level ON binary_tree_params (level)"
+      ]
+    },
+    {
+      "name": "weekly_schedules",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "profissional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "dia_da_semana",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "hora_inicio",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "hora_fim",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "disponivel",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_weekly_sched_prof ON weekly_schedules (profissional)",
+        "CREATE INDEX idx_weekly_sched_data ON weekly_schedules (data)"
+      ]
+    },
+    {
+      "name": "appointments",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "profissional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "aluno",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "schedule",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "weekly_schedules"
+        },
+        {
+          "name": "servico_tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["treino", "nutrição", "fisioterapia", "artes_marciais"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["pendente", "confirmado", "concluído", "cancelado"]
+        },
+        {
+          "name": "valor",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "taxa_extra",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_appointments_prof ON appointments (profissional)",
+        "CREATE INDEX idx_appointments_aluno ON appointments (aluno)",
+        "CREATE INDEX idx_appointments_sched ON appointments (schedule)",
+        "CREATE INDEX idx_appointments_status ON appointments (status)"
       ]
     }
   ]

@@ -1,6 +1,33 @@
 import pb from '@/lib/pocketbase/client'
 import type { RecordModel } from 'pocketbase'
 
+export interface WeeklyScheduleRecord extends RecordModel {
+  profissional: string
+  dia_da_semana: string
+  data: string
+  hora_inicio: string
+  hora_fim: string
+  disponivel: boolean
+  expand?: {
+    profissional?: RecordModel
+  }
+}
+
+export interface AppointmentRecord extends RecordModel {
+  profissional: string
+  aluno: string
+  schedule?: string
+  servico_tipo: 'treino' | 'nutrição' | 'fisioterapia' | 'artes_marciais'
+  status: 'pendente' | 'confirmado' | 'concluído' | 'cancelado'
+  valor: number
+  taxa_extra?: number
+  expand?: {
+    profissional?: RecordModel
+    aluno?: RecordModel
+    schedule?: WeeklyScheduleRecord
+  }
+}
+
 export interface ServiceRecord extends RecordModel {
   professional: string
   student: string

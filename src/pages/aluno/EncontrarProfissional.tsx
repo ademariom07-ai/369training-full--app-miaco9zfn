@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
 import {
   Search,
   MapPin,
@@ -18,7 +19,15 @@ import {
   Briefcase,
   CheckCircle2,
   SlidersHorizontal,
+  Calendar as CalendarIcon,
+  Clock,
+  Zap,
+  DollarSign,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react'
+import type { WeeklyScheduleRecord, AppointmentRecord } from '@/services/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 
@@ -39,6 +48,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 export default function EncontrarProfissional() {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   // User coords (default to São Paulo)
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number }>({
@@ -59,6 +69,18 @@ export default function EncontrarProfissional() {
 
   // Profile Drawer/Dialog
   const [selectedProf, setSelectedProf] = useState<UserProfile | null>(null)
+
+  // Agenda / Agendamento Modal State
+  const [agendaModalOpen, setAgendaModalOpen] = useState(false)
+  const [profSchedules, setProfSchedules] = useState<WeeklyScheduleRecord[]>([])
+  const [selectedSchedule, setSelectedSchedule] = useState<WeeklyScheduleRecord | null>(null)
+  const [selectedServiceType, setSelectedServiceType] = useState<
+    'treino' | 'nutrição' | 'fisioterapia' | 'artes_marciais'
+  >('treino')
+  const [isPartnerListStudent, setIsPartnerListStudent] = useState<boolean>(false)
+  const [checkingPartnerList, setCheckingPartnerList] = useState<boolean>(false)
+  const [loadingAgenda, setLoadingAgenda] = useState<boolean>(false)
+  const [confirmingBooking, setConfirmingBooking] = useState<boolean>(false)
 
   // Request browser geolocation on mount
   useEffect(() => {
@@ -120,6 +142,111 @@ export default function EncontrarProfissional() {
       }
       return true
     })
+
+  // Open Agenda & Check Partner Referral List
+  const handleOpenAgenda = async (prof: UserProfile) => {
+    setSelectedProf(prof)
+    setAgendaModalOpen(true)
+    setSelectedSchedule(null)
+    setLoadingAgenda(true)
+    setCheckingPartnerList(true)
+
+    try {
+      // 1. Fetch available schedules for this professional
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const schedRes = await pb
+        .collection('weekly_schedules')
+        .getList<WeeklyScheduleRecord>(1, 50, {
+          filter: `profissional = "${prof.id}" && disponivel = true && data >= "${todayStr}"`,
+          sort: 'data,hora_inicio',
+        })
+      setProfSchedules(schedRes.items)
+    } catch (err) {
+      console.error('Error loading professional schedule:', err)
+      setProfSchedules([])
+    } finally {
+      setLoadingAgenda(false)
+    }
+
+    // 2. Check if student is in professional's referral network
+    if (user) {
+      try {
+        const ref = await pb
+          .collection('referrals')
+          .getFirstListItem(`referrer = "${prof.id}" && referred = "${user.id}"`)
+        setIsPartnerListStudent(!!ref)
+      } catch (_) {
+        setIsPartnerListStudent(false)
+      } finally {
+        setCheckingPartnerList(false)
+      }
+    } else {
+      setIsPartnerListStudent(false)
+      setCheckingPartnerList(false)
+    }
+  }
+
+  // Base price for service type
+  const getBaseServicePrice = (type: string, plan?: string) => {
+    switch (type) {
+      case 'nutrição':
+        return 180.0
+      case 'fisioterapia':
+        return 200.0
+      case 'artes_marciais':
+        return 160.0
+      case 'treino':
+      default:
+        return 150.0
+    }
+  }
+
+  // Professional tariff by plan
+  const getPlanTarifa = (plan?: string) => {
+    if (plan === 'premium') return 3.0
+    if (plan === 'pro') return 2.0
+    return 1.0 // basico
+  }
+
+  // Confirm booking
+  const handleConfirmBooking = async () => {
+    if (!user) {
+      toast.error('Você precisa estar autenticado como aluno para agendar.')
+      return
+    }
+    if (!selectedProf || !selectedSchedule) {
+      toast.error('Selecione um horário disponível.')
+      return
+    }
+
+    setConfirmingBooking(true)
+    try {
+      const basePrice = getBaseServicePrice(selectedServiceType, selectedProf.plan)
+      // Se NÃO está na lista do parceiro -> paga 50% do valor da consulta como taxa extra
+      const extraFee = isPartnerListStudent ? 0 : basePrice * 0.5
+      const totalAmount = basePrice + extraFee
+
+      await pb.collection('appointments').create({
+        profissional: selectedProf.id,
+        aluno: user.id,
+        schedule: selectedSchedule.id,
+        servico_tipo: selectedServiceType,
+        status: 'confirmado',
+        valor: basePrice,
+        taxa_extra: extraFee,
+      })
+
+      toast.success(
+        `Agendamento confirmado com sucesso para ${selectedSchedule.dia_da_semana} (${selectedSchedule.data}) das ${selectedSchedule.hora_inicio} às ${selectedSchedule.hora_fim}!`,
+      )
+      setAgendaModalOpen(false)
+    } catch (err: unknown) {
+      const error = err as Error
+      toast.error(error.message || 'Erro ao realizar agendamento.')
+    } finally {
+      setConfirmingBooking(false)
+    }
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -304,18 +431,18 @@ export default function EncontrarProfissional() {
 
                 <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                   <Button
+                    onClick={() => handleOpenAgenda(prof)}
+                    className="flex-1 sm:flex-initial bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-xs uppercase flex items-center gap-1.5 shadow-[0_0_15px_rgba(212,175,55,0.2)]"
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    Ver Agenda & Agendar
+                  </Button>
+                  <Button
                     onClick={() => setSelectedProf(prof)}
                     variant="outline"
                     className="flex-1 sm:flex-initial text-xs border-[#2A2A2A] text-white hover:border-[#D4AF37]"
                   >
-                    Ver Perfil Completo
-                  </Button>
-                  <Button
-                    onClick={() => navigate('/aluno/chat')}
-                    className="flex-1 sm:flex-initial bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs flex items-center gap-1.5"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    Falar Comigo
+                    Perfil
                   </Button>
                 </div>
               </Card>
@@ -400,23 +527,253 @@ export default function EncontrarProfissional() {
               <div className="flex gap-3 pt-2">
                 <Button
                   onClick={() => {
+                    const p = selectedProf
                     setSelectedProf(null)
-                    navigate('/aluno/chat')
+                    if (p) handleOpenAgenda(p)
                   }}
-                  className="flex-1 bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold"
+                  className="flex-1 bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase"
                 >
-                  Falar Comigo no Chat
+                  <CalendarIcon className="w-4 h-4 mr-1.5" />
+                  Ver Agenda do Profissional
                 </Button>
                 <Button
                   onClick={() => {
-                    toast.success('Solicitação de plano enviada ao profissional!')
                     setSelectedProf(null)
+                    navigate('/aluno/chat')
                   }}
                   variant="outline"
-                  className="border-[#0057FF] text-white hover:bg-[#0057FF]/10"
+                  className="border-[#0057FF] text-white hover:bg-[#0057FF]/10 text-xs font-bold"
                 >
-                  Contratar Plano
+                  <MessageSquare className="w-4 h-4 mr-1.5" />
+                  Falar no Chat
                 </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AGENDA SEMANAL DO PROFISSIONAL & CONFIRMAÇÃO DE AGENDAMENTO COM TAXA EXTRA */}
+      <Dialog open={agendaModalOpen} onOpenChange={setAgendaModalOpen}>
+        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-2xl rounded-2xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto">
+          {selectedProf && (
+            <div className="space-y-6">
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={
+                      selectedProf.avatar
+                        ? pb.files.getURL(selectedProf, selectedProf.avatar)
+                        : 'https://img.usecurling.com/ppl/medium?gender=male&seed=2'
+                    }
+                    alt={selectedProf.name}
+                    className="w-14 h-14 rounded-xl object-cover border-2 border-[#D4AF37]"
+                  />
+                  <div>
+                    <DialogTitle className="text-xl font-bold font-montserrat text-white uppercase">
+                      Agenda de {selectedProf.name}
+                    </DialogTitle>
+                    <p className="text-xs text-gray-400 font-inter mt-0.5">
+                      Plano {selectedProf.plan?.toUpperCase() || 'PRO'} • Tarifa do Profissional: R${' '}
+                      {getPlanTarifa(selectedProf.plan).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              {/* Service Type Selection */}
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-2">
+                  1. Escolha a Modalidade de Atendimento:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(
+                    [
+                      { id: 'treino', label: 'Treino / Personal', price: 150 },
+                      { id: 'nutrição', label: 'Nutrição', price: 180 },
+                      { id: 'fisioterapia', label: 'Fisioterapia', price: 200 },
+                      { id: 'artes_marciais', label: 'Artes Marciais', price: 160 },
+                    ] as const
+                  ).map((serv) => (
+                    <button
+                      key={serv.id}
+                      type="button"
+                      onClick={() => setSelectedServiceType(serv.id)}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        selectedServiceType === serv.id
+                          ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-white shadow-lg'
+                          : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-xs font-bold block font-montserrat uppercase">
+                        {serv.label}
+                      </span>
+                      <span className="text-[11px] font-mono text-[#D4AF37] font-semibold mt-1 block">
+                        R$ {serv.price.toFixed(2)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Available Schedules Grid */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-bold uppercase text-gray-300 font-montserrat">
+                    2. Selecione o Horário Disponível:
+                  </label>
+                  <span className="text-[11px] text-[#22C55E] font-semibold">
+                    {profSchedules.length} horários livres encontrados
+                  </span>
+                </div>
+
+                {loadingAgenda ? (
+                  <div className="p-8 flex flex-col items-center justify-center gap-2 bg-[#181818] rounded-xl border border-[#2A2A2A]">
+                    <Loader2 className="w-6 h-6 text-[#D4AF37] animate-spin" />
+                    <span className="text-xs text-gray-400">Consultando horários livres...</span>
+                  </div>
+                ) : profSchedules.length === 0 ? (
+                  <div className="p-6 bg-[#181818] rounded-xl border border-[#2A2A2A] text-center">
+                    <Clock className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                    <p className="text-xs text-gray-300 font-montserrat font-bold">
+                      Nenhum horário livre cadastrado para os próximos dias.
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Envie uma mensagem pelo chat para solicitar um horário especial com o
+                      profissional.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-1">
+                    {profSchedules.map((sched) => {
+                      const isSelected = selectedSchedule?.id === sched.id
+                      return (
+                        <button
+                          key={sched.id}
+                          type="button"
+                          onClick={() => setSelectedSchedule(sched)}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? 'bg-[#0057FF] border-[#0057FF] text-white shadow-[0_0_15px_rgba(0,87,255,0.4)]'
+                              : 'bg-[#181818] border-[#2A2A2A] text-gray-300 hover:border-[#D4AF37]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-xs font-bold font-montserrat mb-1">
+                            <span>{sched.dia_da_semana || 'Data'}</span>
+                            <span className="text-[10px] opacity-80">{sched.data}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 font-mono text-xs font-bold">
+                            <Clock className="w-3.5 h-3.5 text-[#D4AF37]" />
+                            <span>
+                              {sched.hora_inicio}–{sched.hora_fim}
+                            </span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* REGRAS DE TAXA EXTRA & CONFIRMAÇÃO VISUAL */}
+              <div className="space-y-3 pt-2 border-t border-[#2A2A2A]">
+                {checkingPartnerList ? (
+                  <div className="p-4 rounded-xl bg-[#181818] border border-[#2A2A2A] flex items-center gap-3">
+                    <Loader2 className="w-4 h-4 text-[#D4AF37] animate-spin" />
+                    <span className="text-xs text-gray-400">
+                      Verificando vínculo com a rede do profissional...
+                    </span>
+                  </div>
+                ) : isPartnerListStudent ? (
+                  /* ALUNO ESTÁ NA LISTA DO PARCEIRO */
+                  <div className="p-4 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/30 text-xs space-y-2">
+                    <div className="flex items-center gap-2 text-[#22C55E] font-bold font-montserrat uppercase">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Aluno Vinculado à Rede 369 deste Profissional
+                    </div>
+                    <p className="text-gray-300 font-inter">
+                      Você está cadastrado como indicado/aluno direto deste parceiro. Você paga o{' '}
+                      <strong className="text-white">valor normal da consulta</strong> (tarifa do
+                      plano do profissional: R$ {getPlanTarifa(selectedProf.plan).toFixed(2)}{' '}
+                      inclusa).
+                    </p>
+                    <div className="pt-2 flex justify-between items-center text-sm font-montserrat border-t border-[#22C55E]/20">
+                      <span className="text-gray-300">Total a Pagar:</span>
+                      <span className="text-lg font-black text-[#22C55E]">
+                        R$ {getBaseServicePrice(selectedServiceType, selectedProf.plan).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  /* ALUNO NÃO ESTÁ NA LISTA DO PARCEIRO -> TAXA EXTRA 50% */
+                  <div className="p-4 rounded-xl bg-amber-950/25 border border-amber-500/40 text-xs space-y-3">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold font-montserrat uppercase">
+                      <AlertTriangle className="w-4 h-4 text-amber-400" />
+                      Aluno Fora da Rede do Parceiro (Taxa Extra de 50%)
+                    </div>
+                    <p className="text-gray-300 font-inter">
+                      Como você ainda não está na lista de parceiro deste profissional, a política
+                      da plataforma 369TRAINING aplica uma{' '}
+                      <strong className="text-amber-300">taxa extra de 50%</strong> sobre o valor da
+                      consulta para realização do agendamento.
+                    </p>
+
+                    {/* Breakdown visual */}
+                    <div className="p-3 rounded-lg bg-[#141414] border border-[#2A2A2A] space-y-1.5 font-mono">
+                      <div className="flex justify-between items-center text-gray-300">
+                        <span>Valor Base da Consulta:</span>
+                        <span>
+                          R${' '}
+                          {getBaseServicePrice(selectedServiceType, selectedProf.plan).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-amber-400 font-semibold">
+                        <span>Taxa Extra (50% fora da lista):</span>
+                        <span>
+                          + R${' '}
+                          {(
+                            getBaseServicePrice(selectedServiceType, selectedProf.plan) * 0.5
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t border-[#2A2A2A] flex justify-between items-center text-base font-bold text-white font-montserrat">
+                        <span>Valor Final do Agendamento:</span>
+                        <span className="text-[#D4AF37]">
+                          R${' '}
+                          {(
+                            getBaseServicePrice(selectedServiceType, selectedProf.plan) * 1.5
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Final Confirm Button */}
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={handleConfirmBooking}
+                    disabled={!selectedSchedule || confirmingBooking}
+                    className="flex-1 bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-xs uppercase h-11 rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.25)] flex items-center justify-center gap-2"
+                  >
+                    {confirmingBooking ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 fill-black" />
+                        Confirmar Agendamento{' '}
+                        {selectedSchedule ? `(${selectedSchedule.hora_inicio})` : ''}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setAgendaModalOpen(false)}
+                    className="border-[#2A2A2A] text-gray-400 hover:text-white text-xs rounded-xl"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
               </div>
             </div>
           )}

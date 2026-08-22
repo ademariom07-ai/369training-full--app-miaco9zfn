@@ -1,0 +1,398 @@
+onRecordAfterUpdateSuccess((e) => {
+  const status = e.record.getString('status')
+  const oldStatus = e.record.original().getString('status')
+
+  // Only execute when status moves to "concluído"
+  if (status !== 'concluído' || oldStatus === 'concluído') {
+    return e.next()
+  }
+
+  const profId = e.record.getString('profissional')
+  const studentId = e.record.getString('aluno')
+  const appointmentValue = e.record.getFloat('valor') || 0
+  const taxaExtra = e.record.getFloat('taxa_extra') || 0
+  const totalValue = appointmentValue + taxaExtra
+  const appointmentId = e.record.id
+  const servicoTipo = e.record.getString('servico_tipo') || 'treino'
+
+  if (!profId || totalValue <= 0) {
+    return e.next()
+  }
+
+  try {
+    // 1. Also sync/create a service record in services table for compatibility
+    let svcId = ''
+    try {
+      const servicesCol = $app.findCollectionByNameOrId('services')
+      const svcRecord = new Record(servicesCol)
+      svcRecord.set('professional', profId)
+      svcRecord.set('student', studentId)
+      svcRecord.set('type', 'Agendamento - ' + servicoTipo.toUpperCase())
+      svcRecord.set('title', 'Atendimento de ' + servicoTipo)
+      svcRecord.set('value', totalValue)
+      svcRecord.set('status', 'concluido')
+      svcRecord.set('completed_at', new Date().toISOString().slice(0, 10))
+      svcRecord.set(
+        'notes',
+        'Agendamento ID: ' +
+          appointmentId +
+          (taxaExtra > 0 ? ' (Taxa extra: R$ ' + taxaExtra.toFixed(2) + ')' : ''),
+      )
+      $app.save(svcRecord)
+      svcId = svcRecord.id
+    } catch (_) {}
+
+    // 2. Get Professional
+    const prof = $app.findRecordById('users', profId)
+    const profPlan = prof.getString('plan') || 'basico'
+
+    // 3. Platform Config & Global Split
+    let tarifaAmount = 1.0
+    let partnerPoolPct = 0.38
+    let esgMetas = { bonus: 0.55, economica: 0.15, social: 0.15, ecologica: 0.15 }
+
+    try {
+      const tarifaConfig = $app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
+      const tarifas = tarifaConfig.get('value') || {}
+      if (tarifas[profPlan] !== undefined) {
+        tarifaAmount = Number(tarifas[profPlan])
+      } else {
+        tarifaAmount = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0
+      }
+    } catch (_) {
+      tarifaAmount = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0
+    }
+
+    try {
+      const revConfig = $app.findFirstRecordByData('platform_config', 'key', 'revenue_split')
+      const rev = revConfig.get('value') || {}
+      if (rev.partner_pool_pct !== undefined) {
+        partnerPoolPct = Number(rev.partner_pool_pct)
+      }
+    } catch (_) {}
+
+    try {
+      const esgConfig = $app.findFirstRecordByData('platform_config', 'key', 'esg_metas')
+      const esg = esgConfig.get('value') || {}
+      if (esg.bonus !== undefined) {
+        esgMetas = esg
+      }
+    } catch (_) {}
+
+    // 4. Wallet Transactions (tarifa & net earnings)
+    const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
+
+    const tarifaTx = new Record(walletCol)
+    tarifaTx.set('user', profId)
+    tarifaTx.set('type', 'tarifa')
+    tarifaTx.set('amount', -Math.abs(tarifaAmount))
+    tarifaTx.set('status', 'concluido')
+    tarifaTx.set('reference_type', 'appointments')
+    tarifaTx.set('reference_id', appointmentId)
+    tarifaTx.set(
+      'description',
+      'Tarifa de atendimento (Plano ' +
+        profPlan.toUpperCase() +
+        ' - R$ ' +
+        tarifaAmount.toFixed(2) +
+        ')',
+    )
+    $app.save(tarifaTx)
+
+    const netEarned = totalValue - tarifaAmount
+    const servicoTx = new Record(walletCol)
+    servicoTx.set('user', profId)
+    servicoTx.set('type', 'servico')
+    servicoTx.set('amount', Math.max(0, netEarned))
+    servicoTx.set('status', 'concluido')
+    servicoTx.set('reference_type', 'appointments')
+    servicoTx.set('reference_id', appointmentId)
+    servicoTx.set(
+      'description',
+      'Recebimento de atendimento concluído (' +
+        servicoTipo +
+        (taxaExtra > 0 ? ' + taxa extra 50%' : '') +
+        ')',
+    )
+    $app.save(servicoTx)
+
+    // 5. Carregar parâmetros individuais de binary_tree_params (posições 1 a 511)
+    let paramsMap = {}
+    try {
+      const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 600, 0)
+      if (allParams) {
+        for (let p of allParams) {
+          paramsMap[p.getInt('position')] = {
+            level: p.getInt('level'),
+            segment: p.getString('segment'),
+            coefficient: p.getFloat('coefficient'),
+            modifier: p.getFloat('modifier'),
+            divisor: p.getFloat('divisor'),
+            level_percentage: p.getFloat('level_percentage'),
+            cashback_weight: p.getFloat('cashback_weight'),
+          }
+        }
+      }
+    } catch (_) {}
+
+    let userRankPosMap = {}
+    try {
+      const allRankEntries = $app.findRecordsByFilter(
+        'rank_entries',
+        '',
+        'ranking_position',
+        500,
+        0,
+      )
+      if (allRankEntries) {
+        for (let r of allRankEntries) {
+          userRankPosMap[r.getString('user')] = r.getInt('ranking_position')
+        }
+      }
+    } catch (_) {}
+
+    // 6. Partner Pool 38% Hierárquico
+    const totalPoolShare = totalValue * partnerPoolPct
+    let currentReferralUser = profId
+    let level = 1
+
+    const cbDistCol = $app.findCollectionByNameOrId('cashback_distributions')
+    const notifCol = $app.findCollectionByNameOrId('notifications')
+    const currentCycle = new Date().toISOString().slice(0, 7)
+    const cycleStartDate = currentCycle + '-01 00:00:00.000Z'
+
+    while (level <= 36) {
+      try {
+        const refRecord = $app.findFirstRecordByData('referrals', 'referred', currentReferralUser)
+        const uplineUserId = refRecord.getString('referrer')
+        if (!uplineUserId) break
+
+        const userRankPos = userRankPosMap[uplineUserId] || Math.min(511, Math.pow(2, level - 1))
+
+        let param
+        if (userRankPos <= 511 && paramsMap[userRankPos]) {
+          param = paramsMap[userRankPos]
+        } else {
+          let calcLvl = level
+          if (userRankPos > 511) {
+            calcLvl = 10
+            while (calcLvl < 36 && Math.pow(2, calcLvl) - 1 < userRankPos) {
+              calcLvl++
+            }
+          }
+          const levelPct = Math.min(1.8, +(0.24 + (calcLvl - 1) * 0.04).toFixed(3))
+          const modifier = +(1.0 + (calcLvl - 1) * 0.45).toFixed(2)
+          const divisor = Math.pow(2, Math.min(calcLvl - 1, 10))
+          const coefficient = Math.max(0.1, +(1000 / Math.pow(userRankPos, 0.75)).toFixed(3))
+          const cashbackWeight = Math.max(0.0001, +(1 / (userRankPos * 0.8 + 1)).toFixed(5))
+
+          param = {
+            level: calcLvl,
+            segment: 'Nível ' + calcLvl + ' Rede',
+            coefficient: coefficient,
+            modifier: modifier,
+            divisor: divisor,
+            level_percentage: levelPct,
+            cashback_weight: cashbackWeight,
+          }
+        }
+
+        const nivelVariavel = param.level_percentage || Math.min(1.8, 0.24 + level * 0.04)
+        const divisor = param.divisor || Math.pow(2, Math.min(level - 1, 10))
+        const modifier = param.modifier || Math.min(18.5, 1.0 + level * 0.45)
+
+        let cashbackRaw = (totalPoolShare * nivelVariavel) / (divisor * modifier)
+        if (param.cashback_weight) {
+          cashbackRaw = cashbackRaw * (1 + param.cashback_weight * 2)
+        }
+
+        let monthlyAccumulatedCashback = 0
+        try {
+          const monthlyTxs = $app.findRecordsByFilter(
+            'wallet_transactions',
+            "user = '" +
+              uplineUserId +
+              "' && type = 'cashback' && created >= '" +
+              cycleStartDate +
+              "'",
+            '',
+            500,
+            0,
+          )
+          if (monthlyTxs) {
+            for (let mtx of monthlyTxs) {
+              monthlyAccumulatedCashback += mtx.getFloat('amount') || 0
+            }
+          }
+        } catch (_) {}
+
+        let achievedMetasCount = 3
+        let esgPenaltyRate = 1.0
+
+        if (monthlyAccumulatedCashback >= 20000) {
+          if (achievedMetasCount < 3) {
+            esgPenaltyRate = 0.55 + achievedMetasCount * 0.15
+          }
+        } else if (monthlyAccumulatedCashback >= 15000) {
+          if (achievedMetasCount < 2) {
+            esgPenaltyRate = 0.55 + achievedMetasCount * 0.15
+          }
+        } else if (monthlyAccumulatedCashback >= 10000) {
+          if (achievedMetasCount < 1) {
+            esgPenaltyRate = 0.85
+          }
+        }
+
+        const levelAmount = Math.max(0.01, Math.round(cashbackRaw * esgPenaltyRate * 100) / 100)
+
+        const metasSplit = {
+          bonus: Math.round(levelAmount * (esgMetas.bonus || 0.55) * 100) / 100,
+          economica: Math.round(levelAmount * (esgMetas.economica || 0.15) * 100) / 100,
+          social: Math.round(levelAmount * (esgMetas.social || 0.15) * 100) / 100,
+          ecologica: Math.round(levelAmount * (esgMetas.ecologica || 0.15) * 100) / 100,
+          penalty_rate_applied: esgPenaltyRate,
+          monthly_accumulated: monthlyAccumulatedCashback,
+          ranking_position: userRankPos,
+          is_hybrid_calculated: userRankPos > 511,
+        }
+
+        // Persist cashback if services collection id is available
+        if (svcId) {
+          try {
+            const cbRecord = new Record(cbDistCol)
+            cbRecord.set('user', uplineUserId)
+            cbRecord.set('service_id', svcId)
+            cbRecord.set('level', level)
+            cbRecord.set('pool_share', totalPoolShare)
+            cbRecord.set('variable_pct', nivelVariavel)
+            cbRecord.set('divisor', divisor)
+            cbRecord.set('modifier', modifier)
+            cbRecord.set('amount', levelAmount)
+            cbRecord.set('metas', metasSplit)
+            $app.save(cbRecord)
+          } catch (_) {}
+        }
+
+        const cbTx = new Record(walletCol)
+        cbTx.set('user', uplineUserId)
+        cbTx.set('type', 'cashback')
+        cbTx.set('amount', levelAmount)
+        cbTx.set('status', 'concluido')
+        cbTx.set('reference_type', 'appointments')
+        cbTx.set('reference_id', appointmentId)
+        cbTx.set(
+          'description',
+          'Cashback Nível ' + level + ' (Pos. #' + userRankPos + ' - 369 Partner Pool 38%)',
+        )
+        $app.save(cbTx)
+
+        const notif = new Record(notifCol)
+        notif.set('user', uplineUserId)
+        notif.set('type', 'cashback')
+        notif.set('title', 'Cashback Recebido! R$ ' + levelAmount.toFixed(2))
+        notif.set(
+          'body',
+          'Você recebeu cashback do Nível ' +
+            level +
+            ' (Posição #' +
+            userRankPos +
+            ') através da sua rede 369TRAINING.',
+        )
+        notif.set('read', false)
+        notif.set('action_url', '/profissional/carteira')
+        $app.save(notif)
+
+        currentReferralUser = uplineUserId
+        level++
+      } catch (_) {
+        break
+      }
+    }
+
+    // 7. Update / Create Rank Entry for the Professional
+    const rankCol = $app.findCollectionByNameOrId('rank_entries')
+
+    let referralsCount = 0
+    try {
+      const refList = $app.findRecordsByFilter(
+        'referrals',
+        "referrer = '" + profId + "'",
+        '',
+        1000,
+        0,
+      )
+      referralsCount = refList ? refList.length : 0
+    } catch (_) {}
+
+    let servicesCount = 1
+    try {
+      const svcList = $app.findRecordsByFilter(
+        'services',
+        "professional = '" + profId + "' && status = 'concluido'",
+        '',
+        2000,
+        0,
+      )
+      servicesCount = svcList ? svcList.length : 1
+    } catch (_) {}
+
+    let rankingTarifaRS = tarifaAmount
+    if (!rankingTarifaRS || rankingTarifaRS <= 0) {
+      rankingTarifaRS = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0
+    }
+    const variavel = referralsCount / 18 + 1
+    const pontos = Math.round(rankingTarifaRS * servicesCount * variavel)
+    const stars = prof.getFloat('rating_avg') || 5.0
+
+    let rankRec
+    try {
+      rankRec = $app.findFirstRecordByData('rank_entries', 'user', profId)
+    } catch (_) {
+      rankRec = new Record(rankCol)
+      rankRec.set('user', profId)
+    }
+
+    rankRec.set('cycle', currentCycle)
+    rankRec.set('points', Number(pontos) || 0)
+    rankRec.set('services_count', Number(servicesCount) || 0)
+    rankRec.set('referrals_count', Number(referralsCount) || 0)
+    rankRec.set('stars', Number(stars) || 5.0)
+    rankRec.set('tie_break_details', {
+      stars: stars,
+      points_raw: pontos,
+      tarifa_rs: rankingTarifaRS,
+      formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
+      updated_at: new Date().toISOString(),
+    })
+    $app.save(rankRec)
+
+    // 8. Notifications
+    const notifProf = new Record(notifCol)
+    notifProf.set('user', profId)
+    notifProf.set('type', 'appointment_completed')
+    notifProf.set('title', 'Atendimento Concluído com Sucesso')
+    notifProf.set(
+      'body',
+      'Atendimento de ' + servicoTipo + ' finalizado. Ranking e saldo atualizados.',
+    )
+    notifProf.set('read', false)
+    notifProf.set('action_url', '/profissional/agenda')
+    $app.save(notifProf)
+
+    const notifStudent = new Record(notifCol)
+    notifStudent.set('user', studentId)
+    notifStudent.set('type', 'appointment_completed')
+    notifStudent.set('title', 'Atendimento Concluído')
+    notifStudent.set(
+      'body',
+      'Seu atendimento de ' + servicoTipo + ' foi concluído pelo profissional.',
+    )
+    notifStudent.set('read', false)
+    notifStudent.set('action_url', '/aluno')
+    $app.save(notifStudent)
+  } catch (err) {
+    console.log('Error in on_appointment_completed hook:', err.message)
+  }
+
+  return e.next()
+}, 'appointments')
