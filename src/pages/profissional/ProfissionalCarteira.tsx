@@ -84,9 +84,9 @@ export default function ProfissionalCarteira() {
   }
 
   const getTarifaBadge = (plan: string) => {
-    if (plan === 'premium') return 'R$ 1,00 / serviço'
+    if (plan === 'premium') return 'R$ 3,00 / serviço'
     if (plan === 'pro') return 'R$ 2,00 / serviço'
-    return 'R$ 3,00 / serviço'
+    return 'R$ 1,00 / serviço'
   }
 
   return (

@@ -5,6 +5,7 @@ import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AIExpertsRail } from '@/components/AIExpertsRail'
+import { PlanChangeSection } from '@/components/PlanChangeSection'
 import {
   Users,
   Dumbbell,
@@ -79,10 +80,12 @@ export default function ProfissionalDashboard() {
                   className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border font-montserrat ${
                     user?.plan === 'premium'
                       ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
-                      : 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
+                      : user?.plan === 'pro'
+                        ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
+                        : 'bg-gray-800 border-gray-700 text-gray-300'
                   }`}
                 >
-                  Plano {user?.plan?.toUpperCase() || 'PREMIUM'}
+                  Plano {user?.plan?.toUpperCase() || 'BASICO'}
                 </span>
                 <span className="text-xs text-[#22C55E] font-bold">✓ Verificado</span>
               </div>
@@ -237,9 +240,11 @@ export default function ProfissionalDashboard() {
             ))}
           </div>
         </div>
-      </div>
 
-      {/* AI EXPERTS SIDE RAIL */}
+        {/* TROCA DE PLANO SECTION */}
+        <PlanChangeSection />
+      </div>
+      {/* AI EXPERTS SIDE RAIL */}{' '}
       <AIExpertsRail
         planTier={user?.plan || 'premium'}
         isOpen={railOpen}

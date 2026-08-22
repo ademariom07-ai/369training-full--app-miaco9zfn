@@ -142,8 +142,16 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex items-center gap-3">
           {/* Plan Tier Badge for Professionals */}
           {user?.role === 'profissional' && (
-            <span className="hidden sm:inline-flex items-center text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30 font-montserrat">
-              Plano {user?.plan?.toUpperCase() || 'PREMIUM'}
+            <span
+              className={`hidden sm:inline-flex items-center text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full font-montserrat border ${
+                user?.plan === 'premium'
+                  ? 'bg-[#D4AF37]/15 text-[#D4AF37] border-[#D4AF37]/40 shadow-[0_0_10px_rgba(212,175,55,0.2)]'
+                  : user?.plan === 'pro'
+                    ? 'bg-[#0057FF]/15 text-[#0057FF] border-[#0057FF]/40'
+                    : 'bg-gray-800 text-gray-300 border-gray-700'
+              }`}
+            >
+              Plano {user?.plan?.toUpperCase() || 'BASICO'}
             </span>
           )}
 

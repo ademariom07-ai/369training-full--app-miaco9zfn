@@ -17,6 +17,7 @@ import {
   DollarSign,
   MessageSquare,
 } from 'lucide-react'
+import { PlanChangeSection } from '@/components/PlanChangeSection'
 import { toast } from 'sonner'
 
 export default function ProfissionalPerfil() {
@@ -67,8 +68,16 @@ export default function ProfissionalPerfil() {
             />
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#D4AF37] uppercase tracking-widest font-montserrat">
-                  Plano {user?.plan?.toUpperCase() || 'PREMIUM'}
+                <span
+                  className={`text-xs font-bold uppercase tracking-widest font-montserrat px-2.5 py-0.5 rounded-full border ${
+                    user?.plan === 'premium'
+                      ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
+                      : user?.plan === 'pro'
+                        ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
+                        : 'bg-gray-800 border-gray-700 text-gray-300'
+                  }`}
+                >
+                  Plano {user?.plan?.toUpperCase() || 'BASICO'}
                 </span>
                 <ShieldCheck className="w-4 h-4 text-[#22C55E]" />
               </div>
@@ -102,6 +111,9 @@ export default function ProfissionalPerfil() {
           </div>
         </div>
       </div>
+
+      {/* SEÇÃO DE TROCA DE PLANO PROFISSIONAL (Dias 1 a 3) */}
+      <PlanChangeSection />
 
       {/* EDIT PROFILE FORM & BRANDING */}
       <Card className="bg-[#181818] border border-[#2A2A2A] p-6 sm:p-8 rounded-2xl">
