@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth, type UserProfile } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
@@ -93,7 +93,7 @@ export default function AgendaServicos() {
 
   // Week offset: 0 = Esta Semana, 1 = Próxima Semana, 2 = Em 2 Semanas
   const [weekOffset, setWeekOffset] = useState<number>(0)
-  const currentWeekDays = getWeekDays(weekOffset)
+  const currentWeekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset])
 
   // Data states
   const [schedules, setSchedules] = useState<WeeklyScheduleRecord[]>([])
