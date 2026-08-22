@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import pb from '@/lib/pocketbase/client'
 import type { UserProfile } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/card'
@@ -25,6 +25,11 @@ import {
   DollarSign,
   AlertTriangle,
   Loader2,
+  Video,
+  ExternalLink,
+  ChevronRight,
+  Sparkles,
+  Phone,
 } from 'lucide-react'
 import type { WeeklyScheduleRecord, AppointmentRecord } from '@/services/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -46,6 +51,149 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c
 }
 
+// Helper to parse video URLs (YouTube, Vimeo, or Direct MP4)
+type VideoType = 'youtube' | 'vimeo' | 'mp4' | 'unknown'
+
+function getVideoInfo(url?: string): { type: VideoType; embedUrl?: string; directUrl?: string } {
+  if (!url || !url.trim()) return { type: 'unknown' }
+  const trimmed = url.trim()
+
+  // YouTube
+  // matches youtube.com/watch?v=ID, youtu.be/ID, youtube.com/embed/ID, youtube.com/shorts/ID
+  const ytMatch = trimmed.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|watch\?.+&v=))([\w-]{11})/,
+  )
+  if (ytMatch && ytMatch[1]) {
+    // start=0&end=30 to enforce up to 30 seconds limit if desired
+    return {
+      type: 'youtube',
+      embedUrl: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&rel=0&modestbranding=1&end=30`,
+    }
+  }
+
+  // Vimeo
+  // matches vimeo.com/ID
+  const vimeoMatch = trimmed.match(
+    /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^/]*)\/videos\/|album\/(?:\d+)\/video\/|)(\d+)/,
+  )
+  if (vimeoMatch && vimeoMatch[1]) {
+    return {
+      type: 'vimeo',
+      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&title=0&byline=0&portrait=0`,
+    }
+  }
+
+  // Direct video file (.mp4, .webm, .ogg) or generic video link
+  if (trimmed.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || trimmed.startsWith('http')) {
+    return {
+      type: 'mp4',
+      directUrl: trimmed,
+    }
+  }
+
+  return { type: 'unknown' }
+}
+
+// Video Player Component with 30-second cap enforcement
+function PresentationVideoPlayer({ url, profName }: { url: string; profName: string }) {
+  const videoInfo = getVideoInfo(url)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [playbackTime, setPlaybackTime] = useState<number>(0)
+  const [reachedLimit, setReachedLimit] = useState<boolean>(false)
+
+  // Direct MP4 time update listener to stop at 30 seconds
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const current = videoRef.current.currentTime
+      setPlaybackTime(current)
+      if (current >= 30) {
+        videoRef.current.pause()
+        setReachedLimit(true)
+      }
+    }
+  }
+
+  const handleRestart = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0
+      videoRef.current.play()
+      setReachedLimit(false)
+    }
+  }
+
+  if (videoInfo.type === 'youtube' || videoInfo.type === 'vimeo') {
+    return (
+      <div className="space-y-2">
+        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-[#2A2A2A] shadow-lg">
+          <iframe
+            src={videoInfo.embedUrl}
+            title={`Apresentação de ${profName}`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full border-0"
+          />
+        </div>
+        <div className="flex items-center justify-between text-[11px] text-gray-400 px-1 font-inter">
+          <span className="flex items-center gap-1 text-[#D4AF37]">
+            <Clock className="w-3.5 h-3.5" />
+            Pitch de apresentação (máx. 30s)
+          </span>
+          <span className="capitalize">{videoInfo.type}</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (videoInfo.type === 'mp4' && videoInfo.directUrl) {
+    return (
+      <div className="space-y-2">
+        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-[#2A2A2A] shadow-lg flex items-center justify-center">
+          <video
+            ref={videoRef}
+            src={videoInfo.directUrl}
+            controls
+            autoPlay
+            onTimeUpdate={handleTimeUpdate}
+            className="w-full h-full object-contain"
+          />
+          {reachedLimit && (
+            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-4 text-center z-10 backdrop-blur-xs">
+              <Clock className="w-8 h-8 text-[#D4AF37] mb-2" />
+              <p className="text-xs font-bold text-white font-montserrat uppercase">
+                Apresentação concluída (Limite de 30s)
+              </p>
+              <p className="text-[11px] text-gray-400 mt-1 mb-3">
+                Agende uma consulta para conhecer o profissional em detalhes.
+              </p>
+              <Button
+                size="sm"
+                onClick={handleRestart}
+                variant="outline"
+                className="text-xs border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+              >
+                Assistir Novamente
+              </Button>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between text-[11px] text-gray-400 px-1 font-inter">
+          <span className="flex items-center gap-1 text-[#D4AF37]">
+            <Clock className="w-3.5 h-3.5" />
+            Vídeo direto (limitado em até 30 segundos: {Math.min(30, Math.floor(playbackTime))}s /
+            30s)
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-4 rounded-xl bg-[#181818] border border-[#2A2A2A] text-center text-xs text-gray-400">
+      Não foi possível carregar o vídeo com a URL fornecida.
+    </div>
+  )
+}
+
 export default function EncontrarProfissional() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -56,9 +204,10 @@ export default function EncontrarProfissional() {
     lon: -46.633308,
   })
   const [geoEnabled, setGeoEnabled] = useState(false)
+  const [geoLoading, setGeoLoading] = useState(true)
 
   // Filters
-  const [radiusKm, setRadiusKm] = useState<number>(30)
+  const [radiusKm, setRadiusKm] = useState<number>(50)
   const [searchCity, setSearchCity] = useState('')
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('Todas')
   const [selectedPlanBadge, setSelectedPlanBadge] = useState<string>('Todos')
@@ -84,7 +233,7 @@ export default function EncontrarProfissional() {
 
   // Request browser geolocation on mount
   useEffect(() => {
-    if (navigator.geolocation) {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setUserCoords({
@@ -92,12 +241,21 @@ export default function EncontrarProfissional() {
             lon: pos.coords.longitude,
           })
           setGeoEnabled(true)
+          setGeoLoading(false)
         },
-        () => {
-          // Fallback to default coords
+        (err) => {
+          console.warn(
+            'Geolocation unavailable or denied, falling back to rating sort:',
+            err.message,
+          )
           setGeoEnabled(false)
+          setGeoLoading(false)
         },
+        { timeout: 8000, enableHighAccuracy: true },
       )
+    } else {
+      setGeoEnabled(false)
+      setGeoLoading(false)
     }
   }, [])
 
@@ -105,7 +263,7 @@ export default function EncontrarProfissional() {
   useEffect(() => {
     setLoading(true)
     pb.collection('users')
-      .getList<UserProfile>(1, 50, {
+      .getList<UserProfile>(1, 100, {
         filter: 'role = "profissional" && approved = true',
       })
       .then((res) => {
@@ -119,11 +277,14 @@ export default function EncontrarProfissional() {
       })
   }, [])
 
-  // Filter professionals with distance calculation
-  const filteredProfessionals = professionals
+  // Process and sort professionals
+  // 1. If geolocation enabled: calculate distance and sort by proximity (ascending distance)
+  // 2. If geolocation unavailable/denied: sort by rating (descending rating_avg)
+  const processedProfessionals = professionals
     .map((p) => {
-      const pLat = p.latitude || -23.561684
-      const pLon = p.longitude || -46.655981
+      // Coords default fallback if professional has no exact coords
+      const pLat = typeof p.latitude === 'number' && p.latitude !== 0 ? p.latitude : -23.561684
+      const pLon = typeof p.longitude === 'number' && p.longitude !== 0 ? p.longitude : -46.655981
       const dist = calculateDistance(userCoords.lat, userCoords.lon, pLat, pLon)
       return { ...p, calculatedDistance: dist }
     })
@@ -137,10 +298,23 @@ export default function EncontrarProfissional() {
       if (selectedPlanBadge !== 'Todos' && p.plan !== selectedPlanBadge.toLowerCase()) {
         return false
       }
-      if (geoEnabled && p.calculatedDistance > radiusKm) {
+      // If user enabled geolocation and set a radius limit, filter accordingly
+      if (geoEnabled && radiusKm < 100 && p.calculatedDistance > radiusKm) {
         return false
       }
       return true
+    })
+    .sort((a, b) => {
+      if (geoEnabled) {
+        // Ordenar por proximidade (menor distância primeiro)
+        if (a.calculatedDistance !== b.calculatedDistance) {
+          return a.calculatedDistance - b.calculatedDistance
+        }
+        return (b.rating_avg || 0) - (a.rating_avg || 0)
+      } else {
+        // Se a geolocalização estiver indisponível, listar todos os profissionais ordenados por avaliação
+        return (b.rating_avg || 0) - (a.rating_avg || 0)
+      }
     })
 
   // Open Agenda & Check Partner Referral List
@@ -152,7 +326,6 @@ export default function EncontrarProfissional() {
     setCheckingPartnerList(true)
 
     try {
-      // 1. Fetch available schedules for this professional (only for released days: dia_liberado = true, disponivel = true, data >= today)
       const todayStr = new Date().toISOString().slice(0, 10)
       const [schedRes, appRes] = await Promise.all([
         pb.collection('weekly_schedules').getList<WeeklyScheduleRecord>(1, 200, {
@@ -164,13 +337,11 @@ export default function EncontrarProfissional() {
         }),
       ])
 
-      // Filter out schedules that already have an active appointment (confirmado/pendente)
       const bookedScheduleIds = new Set(
         appRes.items.map((a) => a.schedule).filter((id): id is string => Boolean(id)),
       )
 
       const availableSchedules = schedRes.items.filter((s) => !bookedScheduleIds.has(s.id))
-
       setProfSchedules(availableSchedules)
     } catch (err) {
       console.error('Error loading professional schedule:', err)
@@ -179,7 +350,6 @@ export default function EncontrarProfissional() {
       setLoadingAgenda(false)
     }
 
-    // 2. Check if student is in professional's referral network
     if (user) {
       try {
         const ref = await pb
@@ -198,7 +368,7 @@ export default function EncontrarProfissional() {
   }
 
   // Base price for service type
-  const getBaseServicePrice = (type: string, plan?: string) => {
+  const getBaseServicePrice = (type: string, _plan?: string) => {
     switch (type) {
       case 'nutrição':
         return 180.0
@@ -233,9 +403,7 @@ export default function EncontrarProfissional() {
     setConfirmingBooking(true)
     try {
       const basePrice = getBaseServicePrice(selectedServiceType, selectedProf.plan)
-      // Se NÃO está na lista do parceiro -> paga 50% do valor da consulta como taxa extra
       const extraFee = isPartnerListStudent ? 0 : basePrice * 0.5
-      const totalAmount = basePrice + extraFee
 
       await pb.collection('appointments').create({
         profissional: selectedProf.id,
@@ -260,26 +428,48 @@ export default function EncontrarProfissional() {
   }
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header */}
-      <div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0057FF]/10 border border-[#0057FF]/30 text-xs font-bold text-[#0057FF] uppercase font-montserrat mb-2">
-          <Navigation className="w-3.5 h-3.5" />
-          Geolocalização & Especialistas
+    <div className="space-y-6 sm:space-y-8 pb-16 max-w-6xl mx-auto">
+      {/* Header & Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0057FF]/10 border border-[#0057FF]/30 text-xs font-bold text-[#0057FF] uppercase font-montserrat mb-2">
+            <Navigation className="w-3.5 h-3.5" />
+            {geoEnabled ? 'Geolocalização Ativa' : 'Timeline de Profissionais'}
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-white uppercase tracking-tight">
+            Encontrar Profissional 369
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-400 font-inter mt-1">
+            Feed vertical contínuo de especialistas. Toque em qualquer card para ver a apresentação
+            e o vídeo de 30s.
+          </p>
         </div>
-        <h1 className="text-3xl font-extrabold font-montserrat text-white uppercase">
-          Encontrar Profissional 369
-        </h1>
-        <p className="text-sm text-gray-400 font-inter mt-1">
-          Busque personais, nutricionistas, fisioterapeutas e mestres certificados mais próximos de
-          você.
-        </p>
+
+        {/* Location badge indicator */}
+        <div className="flex items-center gap-2">
+          <div
+            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+              geoEnabled
+                ? 'bg-[#22C55E]/10 border-[#22C55E]/30 text-[#22C55E]'
+                : 'bg-[#181818] border-[#2A2A2A] text-gray-400'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            <span>
+              {geoLoading
+                ? 'Obtendo GPS...'
+                : geoEnabled
+                  ? 'GPS ativo • Ordenado por Proximidade'
+                  : 'GPS desligado • Ordenado por Avaliação'}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* FILTER BAR & RADIUS SLIDER */}
-      <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl shadow-xl space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Cidade/CEP Search */}
+      {/* FILTER BAR & SEARCH CONTROLS */}
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-6 rounded-2xl shadow-xl space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Cidade Search */}
           <div className="relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <Input
@@ -322,8 +512,10 @@ export default function EncontrarProfissional() {
           {/* Radius Slider */}
           <div className="flex flex-col justify-center">
             <div className="flex justify-between text-xs font-semibold text-gray-300 mb-1.5 font-montserrat">
-              <span>Raio de Busca</span>
-              <span className="text-[#D4AF37]">{radiusKm} km</span>
+              <span>Raio Máximo</span>
+              <span className="text-[#D4AF37]">
+                {radiusKm >= 100 ? 'Sem limite' : `${radiusKm} km`}
+              </span>
             </div>
             <Slider
               value={[radiusKm]}
@@ -337,134 +529,186 @@ export default function EncontrarProfissional() {
         </div>
       </Card>
 
-      {/* MAP & LIST SPLIT */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* MAP CONTAINER (OpenStreetMap Embed with Custom Pins) */}
-        <div className="lg:col-span-1 rounded-2xl overflow-hidden border border-[#2A2A2A] h-[380px] lg:h-auto min-h-[350px] relative bg-[#141414] shadow-xl flex flex-col">
-          <div className="p-3 bg-[#181818] border-b border-[#2A2A2A] flex items-center justify-between text-xs font-montserrat">
-            <span className="flex items-center gap-1.5 text-white font-bold">
-              <MapPin className="w-4 h-4 text-[#0057FF]" />
-              Mapa OpenStreetMap
-            </span>
-            <span className="text-gray-400">
-              {geoEnabled ? 'Localização GPS Ativa' : 'São Paulo (Centro)'}
-            </span>
-          </div>
-
-          <iframe
-            title="OpenStreetMap Search"
-            width="100%"
-            height="100%"
-            frameBorder="0"
-            scrolling="no"
-            marginHeight={0}
-            marginWidth={0}
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${
-              userCoords.lon - 0.08
-            }%2C${userCoords.lat - 0.08}%2C${userCoords.lon + 0.08}%2C${
-              userCoords.lat + 0.08
-            }&layer=mapnik&marker=${userCoords.lat}%2C${userCoords.lon}`}
-            className="flex-1 filter grayscale invert contrast-125 opacity-85"
-          />
+      {/* TIMELINE FEED (Mobile-first vertical stream) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-xs font-bold text-gray-400 font-montserrat uppercase px-1">
+          <span className="flex items-center gap-1.5 text-white">
+            <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+            Timeline de Especialistas ({processedProfessionals.length})
+          </span>
+          <span className="text-[#D4AF37]">
+            {geoEnabled ? 'Mais próximos primeiro (km)' : 'Mais bem avaliados (★)'}
+          </span>
         </div>
 
-        {/* PROFESSIONALS LIST (2 Cols on lg) */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center text-xs font-bold text-gray-400 font-montserrat uppercase">
-            <span>{filteredProfessionals.length} Especialistas Encontrados</span>
-            <span className="text-[#D4AF37]">Ordenados por Proximidade</span>
+        {loading ? (
+          <div className="p-12 bg-[#181818] border border-[#2A2A2A] rounded-2xl flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+            <span className="text-xs text-gray-400 font-montserrat uppercase font-semibold">
+              Carregando feed de profissionais...
+            </span>
           </div>
+        ) : processedProfessionals.length === 0 ? (
+          <Card className="bg-[#181818] border border-[#2A2A2A] p-10 text-center rounded-2xl space-y-3">
+            <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+            <p className="text-white font-bold font-montserrat text-sm">
+              Nenhum profissional encontrado com os filtros atuais
+            </p>
+            <p className="text-gray-400 text-xs font-inter max-w-md mx-auto">
+              Tente aumentar o raio de busca, mudar a especialidade ou limpar o campo de busca por
+              cidade.
+            </p>
+          </Card>
+        ) : (
+          /* Vertical Timeline List with continuous scroll */
+          <div className="relative border-l-2 border-[#2A2A2A] ml-4 sm:ml-6 pl-4 sm:pl-8 space-y-6">
+            {processedProfessionals.map((prof, index) => {
+              const hasVideo = Boolean(
+                prof.video_enabled && prof.video_url && prof.video_url.trim(),
+              )
 
-          {filteredProfessionals.length === 0 ? (
-            <Card className="bg-[#181818] border border-[#2A2A2A] p-8 text-center rounded-2xl">
-              <p className="text-gray-400 text-sm font-inter">
-                Nenhum profissional encontrado com os filtros atuais. Aumente o raio de busca ou
-                limpe a cidade.
-              </p>
-            </Card>
-          ) : (
-            filteredProfessionals.map((prof) => (
-              <Card
-                key={prof.id}
-                className="bg-[#181818] border border-[#2A2A2A] hover:border-[#D4AF37]/70 p-5 rounded-2xl transition-all hover:shadow-[0_8px_25px_rgba(212,175,55,0.15)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
-              >
-                <div className="flex items-center gap-4">
-                  {/* Photo */}
-                  <img
-                    src={
-                      prof.avatar
-                        ? pb.files.getURL(prof, prof.avatar)
-                        : 'https://img.usecurling.com/ppl/medium?gender=male&seed=2'
-                    }
-                    alt={prof.name}
-                    className="w-16 h-16 rounded-xl object-cover border-2 border-[#D4AF37] group-hover:scale-105 transition-transform"
-                  />
+              return (
+                <div key={prof.id} className="relative group">
+                  {/* Timeline Dot Marker */}
+                  <div className="absolute -left-[23px] sm:-left-[39px] top-6 w-4 h-4 rounded-full bg-[#141414] border-2 border-[#D4AF37] group-hover:bg-[#D4AF37] transition-colors flex items-center justify-center shadow-[0_0_10px_rgba(212,175,55,0.4)]">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
 
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold font-montserrat text-white text-base group-hover:text-[#D4AF37] transition-colors">
-                        {prof.name}
-                      </h3>
-                      <span
-                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                          prof.plan === 'premium'
-                            ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
-                            : prof.plan === 'pro'
-                              ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
-                              : 'bg-gray-800 border-gray-600 text-gray-300'
-                        }`}
-                      >
-                        {prof.plan || 'PRO'}
-                      </span>
+                  {/* Card item (Clickable to open profile/video) */}
+                  <Card
+                    onClick={() => setSelectedProf(prof)}
+                    className="bg-[#181818] border border-[#2A2A2A] hover:border-[#D4AF37]/80 p-4 sm:p-6 rounded-2xl transition-all hover:shadow-[0_8px_30px_rgba(212,175,55,0.12)] cursor-pointer flex flex-col gap-4 group/card"
+                  >
+                    {/* Top row: Avatar, Name, Plan, Distance badge, Rating */}
+                    <div className="flex items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className="relative shrink-0">
+                          <img
+                            src={
+                              prof.avatar
+                                ? pb.files.getURL(prof, prof.avatar)
+                                : `https://img.usecurling.com/ppl/medium?gender=${index % 2 === 0 ? 'male' : 'female'}&seed=${index + 1}`
+                            }
+                            alt={prof.name}
+                            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-[#D4AF37] group-hover/card:scale-105 transition-transform shadow-md"
+                          />
+                          {hasVideo && (
+                            <span
+                              title="Vídeo de Apresentação Disponível"
+                              className="absolute -bottom-1 -right-1 p-1 bg-[#D4AF37] text-black rounded-full shadow-md animate-pulse"
+                            >
+                              <PlayCircle className="w-3.5 h-3.5 fill-black text-[#D4AF37]" />
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold font-montserrat text-white text-base sm:text-lg group-hover/card:text-[#D4AF37] transition-colors">
+                              {prof.name}
+                            </h3>
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                                prof.plan === 'premium'
+                                  ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
+                                  : prof.plan === 'pro'
+                                    ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
+                                    : 'bg-gray-800 border-gray-600 text-gray-300'
+                              }`}
+                            >
+                              {prof.plan || 'PRO'}
+                            </span>
+                            <ShieldCheck className="w-4 h-4 text-[#22C55E]" />
+                          </div>
+
+                          <p className="text-xs text-[#0057FF] font-semibold mt-0.5">
+                            {prof.specialties?.length
+                              ? prof.specialties.join(' • ')
+                              : 'Educação Física'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Distance pill (Highlighted) */}
+                      <div className="text-right shrink-0">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0057FF]/15 border border-[#0057FF]/40 text-[#0057FF] text-xs font-bold font-montserrat">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>{prof.calculatedDistance.toFixed(1)} km</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1 font-mono">
+                          {prof.city || 'São Paulo, SP'}
+                        </p>
+                      </div>
                     </div>
 
-                    <p className="text-xs text-[#0057FF] font-semibold mt-0.5">
-                      {prof.specialties?.join(' • ') || 'Educação Física'}
+                    {/* Short Bio Description */}
+                    <p className="text-xs text-gray-300 font-inter leading-relaxed line-clamp-2">
+                      {prof.bio ||
+                        'Especialista em biomecânica e desenvolvimento atlético 369. Periodização científica e acompanhamento de alta performance.'}
                     </p>
 
-                    <div className="flex items-center gap-3 text-xs text-gray-400 mt-2 font-inter">
-                      <span className="flex items-center gap-1 text-[#D4AF37] font-bold">
-                        <Star className="w-3.5 h-3.5 fill-[#D4AF37]" />
-                        {prof.rating_avg || 5.0}
-                      </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-[#0057FF]" />
-                        {prof.calculatedDistance.toFixed(1)} km ({prof.city || 'São Paulo'})
-                      </span>
-                      <span>•</span>
-                      <span className="text-xs text-gray-400 font-mono">
-                        {prof.cref || 'Registro Ativo'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                    {/* Bottom row: Rating stars, CREF, Video Indicator, Actions */}
+                    <div className="pt-3 border-t border-[#2A2A2A] flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-3 text-gray-300">
+                        {/* Rating */}
+                        <div className="flex items-center gap-1 text-[#D4AF37] font-bold font-montserrat">
+                          <Star className="w-4 h-4 fill-[#D4AF37]" />
+                          <span>{(prof.rating_avg || 5.0).toFixed(1)}</span>
+                          <span className="text-gray-500 font-normal text-[11px]">(Avaliação)</span>
+                        </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                  <Button
-                    onClick={() => handleOpenAgenda(prof)}
-                    className="flex-1 sm:flex-initial bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-xs uppercase flex items-center gap-1.5 shadow-[0_0_15px_rgba(212,175,55,0.2)]"
-                  >
-                    <CalendarIcon className="w-3.5 h-3.5" />
-                    Ver Agenda & Agendar
-                  </Button>
-                  <Button
-                    onClick={() => setSelectedProf(prof)}
-                    variant="outline"
-                    className="flex-1 sm:flex-initial text-xs border-[#2A2A2A] text-white hover:border-[#D4AF37]"
-                  >
-                    Perfil
-                  </Button>
+                        <span className="text-gray-600">•</span>
+
+                        <span className="text-gray-400 font-mono text-[11px]">
+                          {prof.cref || 'Registro 369 Ativo'}
+                        </span>
+
+                        {hasVideo && (
+                          <>
+                            <span className="text-gray-600">•</span>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-md border border-[#D4AF37]/30">
+                              <Video className="w-3 h-3" />
+                              Vídeo 30s
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Interactive Buttons */}
+                      <div
+                        className="flex items-center gap-2 w-full sm:w-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenAgenda(prof)}
+                          className="flex-1 sm:flex-initial bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-xs uppercase flex items-center gap-1.5 shadow-[0_0_12px_rgba(212,175,55,0.2)]"
+                        >
+                          <CalendarIcon className="w-3.5 h-3.5" />
+                          Agendar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedProf(prof)}
+                          className="flex-1 sm:flex-initial text-xs border-[#2A2A2A] text-white hover:border-[#D4AF37] flex items-center gap-1"
+                        >
+                          <span>Ver Perfil</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
                 </div>
-              </Card>
-            ))
-          )}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {/* PROFESSIONAL PROFILE DRAWER / MODAL */}
+      {/* PROFESSIONAL PROFILE MODAL / DETALHE COM VÍDEO DE APRESENTAÇÃO */}
       <Dialog open={!!selectedProf} onOpenChange={() => setSelectedProf(null)}>
-        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-2xl rounded-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-2xl rounded-2xl p-5 sm:p-8 max-h-[90vh] overflow-y-auto">
           {selectedProf && (
             <div className="space-y-6">
               <DialogHeader>
@@ -476,48 +720,96 @@ export default function EncontrarProfissional() {
                         : 'https://img.usecurling.com/ppl/large?gender=male&seed=2'
                     }
                     alt={selectedProf.name}
-                    className="w-20 h-20 rounded-2xl object-cover border-2 border-[#D4AF37]"
+                    className="w-20 h-20 rounded-2xl object-cover border-2 border-[#D4AF37] shrink-0"
                   />
-                  <div>
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <DialogTitle className="text-xl font-bold font-montserrat text-white">
                         {selectedProf.name}
                       </DialogTitle>
                       <ShieldCheck className="w-5 h-5 text-[#22C55E]" />
                     </div>
-                    <p className="text-xs font-semibold text-[#0057FF] mt-1">
-                      {selectedProf.specialties?.join(' • ')}
+                    <p className="text-xs font-semibold text-[#0057FF]">
+                      {selectedProf.specialties?.length
+                        ? selectedProf.specialties.join(' • ')
+                        : 'Educação Física & Alta Performance'}
                     </p>
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">{selectedProf.cref}</p>
+                    <div className="flex items-center gap-3 text-xs text-gray-400 font-inter">
+                      <span className="flex items-center gap-1 text-[#D4AF37] font-bold">
+                        <Star className="w-3.5 h-3.5 fill-[#D4AF37]" />
+                        {(selectedProf.rating_avg || 5.0).toFixed(1)}
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-[#0057FF]" />
+                        {selectedProf.calculatedDistance?.toFixed(1)} km (
+                        {selectedProf.city || 'São Paulo'})
+                      </span>
+                      <span>•</span>
+                      <span className="font-mono text-gray-400">
+                        {selectedProf.cref || 'Registro Ativo'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </DialogHeader>
 
-              {/* Bio & Formação */}
+              {/* VÍDEO DE APRESENTAÇÃO (Exibido apenas se video_enabled = true e houver video_url) */}
+              {selectedProf.video_enabled &&
+              selectedProf.video_url &&
+              selectedProf.video_url.trim() ? (
+                <div className="p-4 rounded-2xl bg-[#181818] border border-[#D4AF37]/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37] font-montserrat flex items-center gap-2">
+                      <Video className="w-4 h-4 text-[#D4AF37]" />
+                      Vídeo de Apresentação (Até 30 segundos)
+                    </h4>
+                    <span className="text-[10px] font-mono bg-[#D4AF37]/15 text-[#D4AF37] px-2 py-0.5 rounded-full font-bold">
+                      30s Pitch
+                    </span>
+                  </div>
+
+                  <PresentationVideoPlayer
+                    url={selectedProf.video_url}
+                    profName={selectedProf.name}
+                  />
+                </div>
+              ) : null}
+
+              {/* Biografia & Metodologia Completa */}
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37] font-montserrat mb-1.5">
                   Biografia & Metodologia
                 </h4>
-                <p className="text-xs text-gray-300 leading-relaxed font-inter">
+                <p className="text-xs text-gray-300 leading-relaxed font-inter whitespace-pre-line">
                   {selectedProf.bio ||
                     'Profissional de alta performance dedicado ao desenvolvimento físico e mental sustentável, utilizando a metodologia científica e os princípios 369 de evolução.'}
                 </p>
               </div>
 
-              {/* Presentation Video Placeholder */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37] font-montserrat mb-2">
-                  Vídeo de Apresentação
-                </h4>
-                <div className="w-full h-44 rounded-xl bg-[#0B0B0C] border border-[#2A2A2A] flex flex-col items-center justify-center text-gray-400 hover:border-[#D4AF37] transition-all cursor-pointer group">
-                  <PlayCircle className="w-12 h-12 text-[#D4AF37] group-hover:scale-110 transition-transform mb-2" />
-                  <span className="text-xs font-semibold font-montserrat text-white">
-                    Assistir Apresentação (1:45)
+              {/* Informações de Contato / Localização */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#181818] border border-[#2A2A2A] text-xs">
+                <div>
+                  <span className="text-gray-400 block mb-0.5">Localização:</span>
+                  <span className="text-white font-semibold flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#0057FF]" />
+                    {selectedProf.address
+                      ? `${selectedProf.address}, ${selectedProf.city || ''} - ${selectedProf.state || ''}`
+                      : `${selectedProf.city || 'São Paulo'} - ${selectedProf.state || 'SP'}`}
                   </span>
                 </div>
+                {selectedProf.phone && (
+                  <div>
+                    <span className="text-gray-400 block mb-0.5">Contato Profissional:</span>
+                    <span className="text-white font-semibold flex items-center gap-1.5 font-mono">
+                      <Phone className="w-3.5 h-3.5 text-[#22C55E]" />
+                      {selectedProf.phone}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Planos & Estratégias */}
+              {/* Planos & Consultorias */}
               <div className="p-4 rounded-xl bg-[#181818] border border-[#2A2A2A]">
                 <h4 className="text-xs font-bold uppercase text-white font-montserrat mb-2">
                   Planos Disponíveis & Consultoria
@@ -534,18 +826,18 @@ export default function EncontrarProfissional() {
                 </div>
               </div>
 
-              {/* CTA Buttons */}
-              <div className="flex gap-3 pt-2">
+              {/* CTA Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button
                   onClick={() => {
                     const p = selectedProf
                     setSelectedProf(null)
                     if (p) handleOpenAgenda(p)
                   }}
-                  className="flex-1 bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase"
+                  className="flex-1 bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase h-11 shadow-[0_0_15px_rgba(212,175,55,0.25)]"
                 >
                   <CalendarIcon className="w-4 h-4 mr-1.5" />
-                  Ver Agenda do Profissional
+                  Ver Agenda & Agendar Consulta
                 </Button>
                 <Button
                   onClick={() => {
@@ -553,9 +845,9 @@ export default function EncontrarProfissional() {
                     navigate('/aluno/chat')
                   }}
                   variant="outline"
-                  className="border-[#0057FF] text-white hover:bg-[#0057FF]/10 text-xs font-bold"
+                  className="border-[#0057FF] text-white hover:bg-[#0057FF]/10 text-xs font-bold h-11"
                 >
-                  <MessageSquare className="w-4 h-4 mr-1.5" />
+                  <MessageSquare className="w-4 h-4 mr-1.5 text-[#0057FF]" />
                   Falar no Chat
                 </Button>
               </div>
@@ -566,7 +858,7 @@ export default function EncontrarProfissional() {
 
       {/* AGENDA SEMANAL DO PROFISSIONAL & CONFIRMAÇÃO DE AGENDAMENTO COM TAXA EXTRA */}
       <Dialog open={agendaModalOpen} onOpenChange={setAgendaModalOpen}>
-        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-2xl rounded-2xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto">
+        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-2xl rounded-2xl p-5 sm:p-8 max-h-[92vh] overflow-y-auto">
           {selectedProf && (
             <div className="space-y-6">
               <DialogHeader>
@@ -696,7 +988,6 @@ export default function EncontrarProfissional() {
                     </span>
                   </div>
                 ) : isPartnerListStudent ? (
-                  /* ALUNO ESTÁ NA LISTA DO PARCEIRO */
                   <div className="p-4 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/30 text-xs space-y-2">
                     <div className="flex items-center gap-2 text-[#22C55E] font-bold font-montserrat uppercase">
                       <CheckCircle2 className="w-4 h-4" />
@@ -716,20 +1007,18 @@ export default function EncontrarProfissional() {
                     </div>
                   </div>
                 ) : (
-                  /* ALUNO NÃO ESTÁ NA LISTA DO PARCEIRO -> TAXA EXTRA 50% */
                   <div className="p-4 rounded-xl bg-amber-950/25 border border-amber-500/40 text-xs space-y-3">
                     <div className="flex items-center gap-2 text-amber-400 font-bold font-montserrat uppercase">
                       <AlertTriangle className="w-4 h-4 text-amber-400" />
                       Aluno Fora da Rede do Parceiro (Taxa Extra de 50%)
                     </div>
                     <p className="text-gray-300 font-inter">
-                      Como você ainda não está na lista de parceiro deste profissional, a política
-                      da plataforma 369TRAINING aplica uma{' '}
+                      Como você ainda não está na lista de parceiro deste profissional, a plataforma
+                      369TRAINING aplica uma{' '}
                       <strong className="text-amber-300">taxa extra de 50%</strong> sobre o valor da
                       consulta para realização do agendamento.
                     </p>
 
-                    {/* Breakdown visual */}
                     <div className="p-3 rounded-lg bg-[#141414] border border-[#2A2A2A] space-y-1.5 font-mono">
                       <div className="flex justify-between items-center text-gray-300">
                         <span>Valor Base da Consulta:</span>

@@ -25,6 +25,8 @@ export interface UserProfile extends RecordModel {
   referral_code?: string
   objective?: string
   avatar?: string
+  video_url?: string
+  video_enabled?: boolean
 }
 
 interface AuthContextType {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-22T21:23:01.183Z",
+  "generatedAt": "2026-08-22T21:45:13.197Z",
   "collections": [
     {
       "name": "users",
@@ -141,6 +141,18 @@
         {
           "name": "professional_type",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "video_url",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "video_enabled",
+          "type": "bool",
           "required": false,
           "system": false
         }

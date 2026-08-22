@@ -31,7 +31,22 @@ export default function ProfissionalPerfil() {
   const [city, setCity] = useState(user?.city || 'São Paulo')
   const [state, setState] = useState(user?.state || 'SP')
   const [cref, setCref] = useState(user?.cref || 'CREF 098765-G/SP')
+  const [videoUrl, setVideoUrl] = useState(user?.video_url || '')
+  const [videoEnabled, setVideoEnabled] = useState(user?.video_enabled ?? false)
   const [saving, setSaving] = useState(false)
+
+  // Sync state if user loads later
+  React.useEffect(() => {
+    if (user) {
+      if (user.bio !== undefined) setBio(user.bio)
+      if (user.phone !== undefined) setPhone(user.phone)
+      if (user.city !== undefined) setCity(user.city)
+      if (user.state !== undefined) setState(user.state)
+      if (user.cref !== undefined) setCref(user.cref)
+      if (user.video_url !== undefined) setVideoUrl(user.video_url)
+      if (user.video_enabled !== undefined) setVideoEnabled(user.video_enabled)
+    }
+  }, [user])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,6 +59,8 @@ export default function ProfissionalPerfil() {
         city,
         state,
         cref,
+        video_url: videoUrl,
+        video_enabled: videoEnabled,
       })
       await refreshUser()
       toast.success('Perfil público atualizado com sucesso!')
@@ -167,6 +184,41 @@ export default function ProfissionalPerfil() {
                   if (parts[1]) setState(parts[1]?.trim().toUpperCase())
                 }}
                 className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white"
+              />
+            </div>
+          </div>
+
+          {/* Seção de Configuração do Vídeo de Apresentação */}
+          <div className="pt-4 border-t border-[#2A2A2A] space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-white uppercase font-montserrat flex items-center gap-2">
+                  <Video className="w-4 h-4 text-[#D4AF37]" />
+                  Vídeo de Apresentação (Pitch de 30s)
+                </label>
+                <p className="text-[11px] text-gray-400 font-inter mt-0.5">
+                  Insira o link do seu vídeo de apresentação (YouTube, Vimeo ou link direto MP4).
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={videoEnabled}
+                  onChange={(e) => setVideoEnabled(e.target.checked)}
+                  className="w-4 h-4 rounded bg-[#141414] border-[#2A2A2A] text-[#D4AF37] focus:ring-[#D4AF37]"
+                />
+                <span className="text-xs font-semibold text-gray-300">
+                  {videoEnabled ? 'Exibição Ativa' : 'Desativado'}
+                </span>
+              </label>
+            </div>
+
+            <div>
+              <Input
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/... ou https://.../video.mp4"
+                className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white placeholder:text-gray-600"
               />
             </div>
           </div>
