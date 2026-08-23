@@ -18,34 +18,15 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [quickLoadingRole, setQuickLoadingRole] = useState<
+    'admin' | 'profissional' | 'aluno' | null
+  >(null)
   const [success, setSuccess] = useState(false)
 
-  // Quick fill helper for testing/demo
-  const handleQuickFill = (targetRole: 'admin' | 'profissional' | 'aluno') => {
-    if (targetRole === 'admin') {
-      setEmail('ademariom07@gmail.com')
-      setPassword('Skip@Pass')
-    } else if (targetRole === 'profissional') {
-      setEmail('carlos.coach@369training.com')
-      setPassword('Skip@Pass')
-      setRoleSelection('profissional')
-    } else {
-      setEmail('aluno.lucas@369training.com')
-      setPassword('Skip@Pass')
-      setRoleSelection('aluno')
-    }
-  }
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email || !password) {
-      toast.error('Preencha o e-mail e a senha.')
-      return
-    }
-
+  const executeLogin = async (loginEmail: string, loginPass: string) => {
     setLoading(true)
     try {
-      const user = await login(email, password)
+      const user = await login(loginEmail, loginPass)
       setSuccess(true)
       toast.success('Login efetuado com sucesso!')
 
@@ -68,7 +49,43 @@ export default function Login() {
       const detailedMessage = getErrorMessage(err)
       toast.error(detailedMessage || 'Falha ao autenticar. Verifique seus dados de acesso.')
       setLoading(false)
+      setQuickLoadingRole(null)
     }
+  }
+
+  // Quick fill & auto-login helper for testing/demo
+  const handleQuickLogin = async (targetRole: 'admin' | 'profissional' | 'aluno') => {
+    if (loading) return
+
+    setQuickLoadingRole(targetRole)
+
+    let targetEmail = ''
+    const targetPass = 'Skip@Pass'
+
+    if (targetRole === 'admin') {
+      targetEmail = 'ademariom07@gmail.com'
+    } else if (targetRole === 'profissional') {
+      targetEmail = 'carlos.coach@369training.com'
+      setRoleSelection('profissional')
+    } else {
+      targetEmail = 'aluno.lucas@369training.com'
+      setRoleSelection('aluno')
+    }
+
+    setEmail(targetEmail)
+    setPassword(targetPass)
+
+    await executeLogin(targetEmail, targetPass)
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email || !password) {
+      toast.error('Preencha o e-mail e a senha.')
+      return
+    }
+
+    await executeLogin(email, password)
   }
 
   return (
@@ -129,7 +146,6 @@ export default function Login() {
                   Sou Profissional
                 </button>
               </div>
-
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5 font-montserrat">
@@ -185,7 +201,6 @@ export default function Login() {
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Entrar na Plataforma'}
                 </Button>
               </form>
-
               {/* Demo Quick Logins */}
               <div className="mt-6 pt-4 border-t border-[#2A2A2A]">
                 <p className="text-[11px] text-gray-500 uppercase font-semibold text-center mb-2 font-montserrat">
@@ -194,27 +209,39 @@ export default function Login() {
                 <div className="flex justify-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleQuickFill('admin')}
-                    className="text-[11px] px-2.5 py-1 rounded bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all"
+                    disabled={loading}
+                    onClick={() => handleQuickLogin('admin')}
+                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:border-[#D4AF37] hover:text-[#D4AF37] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
+                    {quickLoadingRole === 'admin' ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-[#D4AF37]" />
+                    ) : null}
                     Admin
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleQuickFill('profissional')}
-                    className="text-[11px] px-2.5 py-1 rounded bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all"
+                    disabled={loading}
+                    onClick={() => handleQuickLogin('profissional')}
+                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:border-[#D4AF37] hover:text-[#D4AF37] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
+                    {quickLoadingRole === 'profissional' ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-[#D4AF37]" />
+                    ) : null}
                     Profissional
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleQuickFill('aluno')}
-                    className="text-[11px] px-2.5 py-1 rounded bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:border-[#0057FF] hover:text-[#0057FF] transition-all"
+                    disabled={loading}
+                    onClick={() => handleQuickLogin('aluno')}
+                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:border-[#0057FF] hover:text-[#0057FF] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
+                    {quickLoadingRole === 'aluno' ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-[#0057FF]" />
+                    ) : null}
                     Aluno
                   </button>
                 </div>
-              </div>
+              </div>{' '}
             </>
           )}
         </Card>
