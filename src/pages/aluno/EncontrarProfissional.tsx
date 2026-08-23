@@ -59,9 +59,9 @@ function getVideoInfo(url?: string): { type: VideoType; embedUrl?: string; direc
   const trimmed = url.trim()
 
   // YouTube
-  // matches youtube.com/watch?v=ID, youtu.be/ID, youtube.com/embed/ID, youtube.com/shorts/ID
+  // matches youtube.com/watch?v=ID, youtu.be/ID, www.youtu.be/ID, youtube.com/embed/ID, youtube.com/shorts/ID, youtube.com/live/ID
   const ytMatch = trimmed.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|watch\?.+&v=))([\w-]{11})/,
+    /(?:(?:www\.)?youtu\.be\/|(?:www\.)?youtube(?:-nocookie)?\.com\/(?:embed\/|v\/|watch\?(?:.*&)?v=|shorts\/|live\/))([\w-]{11})/,
   )
   if (ytMatch && ytMatch[1]) {
     // start=0&end=30 to enforce up to 30 seconds limit if desired
