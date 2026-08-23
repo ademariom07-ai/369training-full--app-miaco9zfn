@@ -11,9 +11,11 @@ import {
   Award,
   ExternalLink,
   Loader2,
+  Video,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { UserProfile } from '@/contexts/AuthContext'
+import { PresentationVideoPlayer } from '@/components/PresentationVideoPlayer'
 
 export default function AprovacoesProfissionais() {
   const [pendingList, setPendingList] = useState<UserProfile[]>([])
@@ -152,6 +154,35 @@ export default function AprovacoesProfissionais() {
                     <p className="text-xs text-gray-300 font-inter mt-2 max-w-xl italic">
                       &ldquo;{prof.bio}&rdquo;
                     </p>
+                  )}
+
+                  {/* Vídeo de Apresentação Auditável */}
+                  {prof.video_url && prof.video_url.trim() ? (
+                    <div className="mt-3 p-3 bg-[#141414] border border-[#2A2A2A] rounded-xl max-w-lg space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-[#D4AF37] flex items-center gap-1.5 uppercase font-montserrat text-[11px]">
+                          <Video className="w-3.5 h-3.5" />
+                          Vídeo de Apresentação (30s Pitch)
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                            prof.video_enabled
+                              ? 'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30'
+                              : 'bg-amber-950/40 text-amber-300 border border-amber-500/30'
+                          }`}
+                        >
+                          {prof.video_enabled ? 'Vídeo Ativo' : 'Vídeo Não Liberado'}
+                        </span>
+                      </div>
+                      <PresentationVideoPlayer url={prof.video_url} profName={prof.name} />
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-[11px] text-gray-500 flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded bg-gray-800 text-gray-400 text-[10px] uppercase font-bold">
+                        Sem Vídeo
+                      </span>
+                      <span>Profissional não cadastrou link de apresentação.</span>
+                    </div>
                   )}
                 </div>
               </div>

@@ -50,7 +50,7 @@ export default function Index() {
       {/* HERO SECTION */}
       <section className="relative z-10 pt-16 pb-24 px-6 max-w-5xl mx-auto text-center flex flex-col items-center">
         {/* Crest Medallion with Pulse Glow */}
-        <div className="mb-8 relative animate-crest-pulse">
+        <div className="mb-8 relative drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]">
           <CrestLogo size={140} />
         </div>
 
