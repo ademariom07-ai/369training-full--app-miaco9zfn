@@ -126,5 +126,5 @@
 }
 
 .animate-crest-pulse {
-  animation: crest-pulse 4s ease-in-out infinite;
+  animation: crest-pulse 4s ease-in-out 1 forwards;
 }
