@@ -111,6 +111,27 @@ export default function AdminRankingConfig() {
     loadData()
   }, [page])
 
+  // Polling automático de 15 segundos para manter o ranking atualizado em tempo real
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadRankingsOnly()
+    }, 15000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const loadRankingsOnly = async () => {
+    try {
+      const rankList = await pb.collection('rank_entries').getList<RankItem>(1, 50, {
+        sort: 'ranking_position',
+        expand: 'user',
+      })
+      setRankings(rankList.items)
+    } catch {
+      // Falha silenciosa no polling periódico
+    }
+  }
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -367,7 +388,7 @@ export default function AdminRankingConfig() {
           servicesCount = 0
         }
 
-        const variavel = referralsCount / 18 + 1
+        const variavel = Math.max(referralsCount, 1)
         const rawPoints = Math.round(tarifaRS * servicesCount * variavel)
         const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
 
@@ -430,7 +451,7 @@ export default function AdminRankingConfig() {
               stars: item.stars,
               tarifa_rs: item.tarifa_rs,
               cycle: currentCycle,
-              formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
+              formula: 'tarifa_R$ * servicos * max(indicacoes, 1)',
               is_hybrid_calculated: pRecord.is_hybrid_calculated,
               recomputed_at: new Date().toISOString(),
             },
@@ -452,7 +473,7 @@ export default function AdminRankingConfig() {
               stars: item.stars,
               tarifa_rs: item.tarifa_rs,
               cycle: currentCycle,
-              formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
+              formula: 'tarifa_R$ * servicos * max(indicacoes, 1)',
               is_hybrid_calculated: pRecord.is_hybrid_calculated,
               recomputed_at: new Date().toISOString(),
             },
@@ -633,8 +654,8 @@ export default function AdminRankingConfig() {
             </div>
             <div className="text-xl sm:text-2xl font-black font-mono text-white tracking-tight">
               pontos = <span className="text-[#D4AF37]">tarifa_R$</span> ×{' '}
-              <span className="text-[#0057FF]">serviços</span> × (
-              <span className="text-[#22C55E]">indicações / 18</span> + 1)
+              <span className="text-[#0057FF]">serviços</span> ×{' '}
+              <span className="text-[#22C55E]">max(indicações, 1)</span>
             </div>
             <p className="text-xs text-gray-300 font-inter">
               Classificação <strong>exclusivamente por pontuação</strong>. Se posição ≤ 511: busca
@@ -743,7 +764,7 @@ export default function AdminRankingConfig() {
                 <Trophy className="w-5 h-5 text-[#D4AF37]" /> Classificação Geral por Pontos
               </h3>
               <p className="text-xs text-gray-400 font-inter">
-                Pontuação cumulativa: <code>tarifa_R$ × serviços × (indicações/18 + 1)</code>
+                Pontuação cumulativa: <code>tarifa_R$ × serviços × max(indicações, 1)</code>
               </p>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto">

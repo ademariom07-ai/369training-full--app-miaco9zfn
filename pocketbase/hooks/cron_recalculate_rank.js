@@ -75,7 +75,7 @@ cronAdd('recalculate_ranking_every_6h', '0 */6 * * *', () => {
         tarifaRS = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
       }
 
-      const variavel = referralsCount / 18 + 1
+      const variavel = Math.max(referralsCount, 1)
       const rawPoints = Math.round(tarifaRS * servicesCount * variavel)
       const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
 
@@ -150,7 +150,7 @@ cronAdd('recalculate_ranking_every_6h', '0 */6 * * *', () => {
         stars: item.stars,
         tarifa_rs: item.tarifa_rs,
         cycle: currentCycle,
-        formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
+        formula: 'tarifa_R$ * servicos * max(indicacoes, 1)',
         is_hybrid_calculated: pos > 511,
         recomputed_at: new Date().toISOString(),
       })

@@ -309,62 +309,149 @@ onRecordAfterUpdateSuccess((e) => {
       }
     }
 
-    // 7. Update / Create Rank Entry for the Professional
-    const rankCol = $app.findCollectionByNameOrId('rank_entries')
-
-    let referralsCount = 0
+    // 7. Recalcular ranking completo de todos os profissionais (pontos DESC, estrelas DESC)
     try {
-      const refList = $app.findRecordsByFilter(
-        'referrals',
-        "referrer = '" + profId + "'",
+      const allUsers = $app.findRecordsByFilter(
+        'users',
+        "role = 'profissional' && approved = true",
         '',
-        1000,
+        500,
         0,
       )
-      referralsCount = refList ? refList.length : 0
-    } catch (_) {}
+      if (allUsers && allUsers.length > 0) {
+        let allTarifas = { gratis: 1.0, basico: 1.0, pro: 2.0, premium: 3.0 }
+        try {
+          const tConfig = $app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
+          const tVal = tConfig.get('value')
+          if (tVal) allTarifas = tVal
+        } catch (_) {}
 
-    let servicesCount = 1
-    try {
-      const svcList = $app.findRecordsByFilter(
-        'services',
-        "professional = '" + profId + "' && status = 'concluido'",
-        '',
-        2000,
-        0,
+        const rankCol = $app.findCollectionByNameOrId('rank_entries')
+        const scoredList = []
+
+        for (const u of allUsers) {
+          const uId = u.id
+          const uPlan = u.getString('plan') || 'basico'
+          const uStars = u.getFloat('rating_avg') || 5.0
+
+          let uRefsCount = 0
+          try {
+            const refs = $app.findRecordsByFilter(
+              'referrals',
+              "referrer = '" + uId + "'",
+              '',
+              1000,
+              0,
+            )
+            uRefsCount = refs ? refs.length : 0
+          } catch (_) {}
+
+          let uSvcsCount = 0
+          try {
+            const svcs = $app.findRecordsByFilter(
+              'services',
+              "professional = '" + uId + "' && status = 'concluido'",
+              '',
+              2000,
+              0,
+            )
+            uSvcsCount = svcs ? svcs.length : 0
+          } catch (_) {}
+
+          let uTarifaRS = 1.0
+          if (allTarifas[uPlan] !== undefined) {
+            uTarifaRS = Number(allTarifas[uPlan])
+          } else {
+            uTarifaRS = uPlan === 'premium' ? 3.0 : uPlan === 'pro' ? 2.0 : 1.0
+          }
+
+          // Nova fórmula: pontos = tarifa_R$ × serviços × max(indicações, 1)
+          const uVariavel = Math.max(uRefsCount, 1)
+          const rawPoints = Math.round(uTarifaRS * uSvcsCount * uVariavel)
+          const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
+
+          scoredList.push({
+            user_id: uId,
+            points: points,
+            stars: uStars,
+            tarifa_rs: uTarifaRS,
+            services_count: uSvcsCount,
+            referrals_count: uRefsCount,
+            created: u.getString('created'),
+          })
+        }
+
+        // Ordenação: pontos DESC, estrelas DESC, antiguidade ASC
+        scoredList.sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points
+          if (b.stars !== a.stars) return b.stars - a.stars
+          return a.created.localeCompare(b.created)
+        })
+
+        for (let i = 0; i < scoredList.length; i++) {
+          const item = scoredList[i]
+          const pos = i + 1
+
+          let param
+          if (pos <= 511 && paramsMap[pos]) {
+            param = paramsMap[pos]
+          } else {
+            let lvl = 10
+            while (lvl < 36 && Math.pow(2, lvl) - 1 < pos) {
+              lvl++
+            }
+            const levelPct = Math.min(1.8, +(0.24 + (lvl - 1) * 0.04).toFixed(3))
+            const modifier = +(1.0 + (lvl - 1) * 0.45).toFixed(2)
+            const divisor = Math.pow(2, Math.min(lvl - 1, 10))
+            const coefficient = Math.max(0.1, +(1000 / Math.pow(pos, 0.75)).toFixed(3))
+            const cashbackWeight = Math.max(0.0001, +(1 / (pos * 0.8 + 1)).toFixed(5))
+
+            param = {
+              level: lvl,
+              segment: 'Nível ' + lvl + ' Rede',
+              coefficient: coefficient,
+              modifier: modifier,
+              divisor: divisor,
+              level_percentage: levelPct,
+              cashback_weight: cashbackWeight,
+            }
+          }
+
+          let rankRec
+          try {
+            rankRec = $app.findFirstRecordByData('rank_entries', 'user', item.user_id)
+          } catch (_) {
+            rankRec = new Record(rankCol)
+            rankRec.set('user', item.user_id)
+          }
+
+          rankRec.set('cycle', currentCycle)
+          rankRec.set('points', Number(item.points) || 0)
+          rankRec.set('services_count', Number(item.services_count) || 0)
+          rankRec.set('referrals_count', Number(item.referrals_count) || 0)
+          rankRec.set('stars', Number(item.stars) || 5.0)
+          rankRec.set('ranking_position', Number(pos))
+          rankRec.set('tie_break_details', {
+            position: pos,
+            level: param.level,
+            segment: param.segment,
+            cashback_weight: param.cashback_weight,
+            stars: item.stars,
+            tarifa_rs: item.tarifa_rs,
+            cycle: currentCycle,
+            formula: 'tarifa_R$ * servicos * max(indicacoes, 1)',
+            is_hybrid_calculated: pos > 511,
+            recomputed_at: new Date().toISOString(),
+          })
+          $app.save(rankRec)
+        }
+      }
+    } catch (rankErr) {
+      console.log(
+        'Error recalculating ranking in on_appointment_completed:',
+        rankErr ? rankErr.message : '',
       )
-      servicesCount = svcList ? svcList.length : 1
-    } catch (_) {}
-
-    let rankingTarifaRS = tarifaAmount
-    if (!rankingTarifaRS || rankingTarifaRS <= 0) {
-      rankingTarifaRS = profPlan === 'premium' ? 3.0 : profPlan === 'pro' ? 2.0 : 1.0
     }
-    const variavel = referralsCount / 18 + 1
-    const pontos = Math.round(rankingTarifaRS * servicesCount * variavel)
-    const stars = prof.getFloat('rating_avg') || 5.0
-
-    let rankRec
-    try {
-      rankRec = $app.findFirstRecordByData('rank_entries', 'user', profId)
-    } catch (_) {
-      rankRec = new Record(rankCol)
-      rankRec.set('user', profId)
-    }
-
-    rankRec.set('cycle', currentCycle)
-    rankRec.set('points', Number(pontos) || 0)
-    rankRec.set('services_count', Number(servicesCount) || 0)
-    rankRec.set('referrals_count', Number(referralsCount) || 0)
-    rankRec.set('stars', Number(stars) || 5.0)
-    rankRec.set('tie_break_details', {
-      stars: stars,
-      points_raw: pontos,
-      tarifa_rs: rankingTarifaRS,
-      formula: 'tarifa_R$ * servicos * (indicacoes/18 + 1)',
-      updated_at: new Date().toISOString(),
-    })
-    $app.save(rankRec)
 
     // 8. Notifications
     const notifProf = new Record(notifCol)

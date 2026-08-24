@@ -1,35 +1,53 @@
-routerAdd(
-  'POST',
-  '/api/custom/admin/recalculate-ranking',
-  (e) => {
+migrate(
+  (app) => {
     try {
+      // 1. Atualizar platform_config para refletir a nova fórmula
+      try {
+        const rankingWeightsRec = app.findFirstRecordByData(
+          'platform_config',
+          'key',
+          'ranking_weights',
+        )
+        rankingWeightsRec.set('value', {
+          formula: 'pontos = tarifa_R$ * servicos * max(indicacoes, 1)',
+        })
+        rankingWeightsRec.set(
+          'description',
+          'Fórmula de pontuação do ranking com max(indicações, 1)',
+        )
+        app.save(rankingWeightsRec)
+      } catch (_) {
+        const platformConfigCol = app.findCollectionByNameOrId('platform_config')
+        const r = new Record(platformConfigCol)
+        r.set('key', 'ranking_weights')
+        r.set('value', {
+          formula: 'pontos = tarifa_R$ * servicos * max(indicacoes, 1)',
+        })
+        r.set('description', 'Fórmula de pontuação do ranking com max(indicações, 1)')
+        app.save(r)
+      }
+
+      // 2. Recalcular e atualizar todos os registros de rank_entries com a nova fórmula
       const currentCycle = new Date().toISOString().slice(0, 7)
-      const users = $app.findRecordsByFilter(
+      const users = app.findRecordsByFilter(
         'users',
         "role = 'profissional' && approved = true",
         '',
         500,
         0,
       )
-      if (!users || users.length === 0) {
-        return e.json(200, {
-          success: true,
-          count: 0,
-          message: 'Nenhum profissional aprovado encontrado',
-        })
-      }
+      if (!users || users.length === 0) return
 
       let tarifas = { gratis: 1.0, basico: 1.0, pro: 2.0, premium: 3.0 }
       try {
-        const tarifaConfig = $app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
+        const tarifaConfig = app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
         const val = tarifaConfig.get('value')
         if (val) tarifas = val
       } catch (_) {}
 
-      // Carregar parâmetros individuais de binary_tree_params (posições 1 a 511)
       let paramsMap = {}
       try {
-        const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 600, 0)
+        const allParams = app.findRecordsByFilter('binary_tree_params', '', 'position', 600, 0)
         if (allParams) {
           for (let p of allParams) {
             paramsMap[p.getInt('position')] = {
@@ -45,7 +63,7 @@ routerAdd(
         }
       } catch (_) {}
 
-      const rankCol = $app.findCollectionByNameOrId('rank_entries')
+      const rankCol = app.findCollectionByNameOrId('rank_entries')
       const scoredList = []
 
       for (const u of users) {
@@ -55,7 +73,7 @@ routerAdd(
 
         let referralsCount = 0
         try {
-          const refs = $app.findRecordsByFilter(
+          const refs = app.findRecordsByFilter(
             'referrals',
             "referrer = '" + profId + "'",
             '',
@@ -65,10 +83,9 @@ routerAdd(
           referralsCount = refs ? refs.length : 0
         } catch (_) {}
 
-        // Pontos cumulativos mês a mês
         let servicesCount = 0
         try {
-          const svcs = $app.findRecordsByFilter(
+          const svcs = app.findRecordsByFilter(
             'services',
             "professional = '" + profId + "' && status = 'concluido'",
             '',
@@ -78,7 +95,6 @@ routerAdd(
           servicesCount = svcs ? svcs.length : 0
         } catch (_) {}
 
-        // Fórmula oficial de pontos: tarifa_R$ × serviços × max(indicações, 1)
         let tarifaRS = 1.0
         if (tarifas[plan] !== undefined) {
           tarifaRS = Number(tarifas[plan])
@@ -86,6 +102,7 @@ routerAdd(
           tarifaRS = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
         }
 
+        // Nova fórmula: pontos = tarifa_R$ × serviços × max(indicações, 1)
         const variavel = Math.max(referralsCount, 1)
         const rawPoints = Math.round(tarifaRS * servicesCount * variavel)
         const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
@@ -101,7 +118,6 @@ routerAdd(
         })
       }
 
-      // Ranking exclusivamente por pontos (desempate por estrelas e antiguidade)
       scoredList.sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points
         if (b.stars !== a.stars) return b.stars - a.stars
@@ -112,14 +128,10 @@ routerAdd(
         const item = scoredList[i]
         const pos = i + 1
 
-        // MODELO HÍBRIDO:
-        // Posição <= 511: parâmetros individuais da coleção binary_tree_params
-        // Posição > 511: parâmetros calculados matematicamente por nível (até nível 36 / 68.719.476.735)
         let param
         if (pos <= 511 && paramsMap[pos]) {
           param = paramsMap[pos]
         } else {
-          // Determinar nível matematicamente para pos > 511
           let lvl = 10
           while (lvl < 36 && Math.pow(2, lvl) - 1 < pos) {
             lvl++
@@ -143,17 +155,17 @@ routerAdd(
 
         let rankRec
         try {
-          rankRec = $app.findFirstRecordByData('rank_entries', 'user', item.user_id)
+          rankRec = app.findFirstRecordByData('rank_entries', 'user', item.user_id)
         } catch (_) {
           rankRec = new Record(rankCol)
           rankRec.set('user', item.user_id)
         }
 
         rankRec.set('cycle', currentCycle)
-        rankRec.set('points', Number(item.points))
-        rankRec.set('services_count', Number(item.services_count))
-        rankRec.set('referrals_count', Number(item.referrals_count))
-        rankRec.set('stars', Number(item.stars))
+        rankRec.set('points', Number(item.points) || 0)
+        rankRec.set('services_count', Number(item.services_count) || 0)
+        rankRec.set('referrals_count', Number(item.referrals_count) || 0)
+        rankRec.set('stars', Number(item.stars) || 5.0)
         rankRec.set('ranking_position', Number(pos))
         rankRec.set('tie_break_details', {
           position: pos,
@@ -167,19 +179,16 @@ routerAdd(
           is_hybrid_calculated: pos > 511,
           recomputed_at: new Date().toISOString(),
         })
-        $app.save(rankRec)
+        app.save(rankRec)
       }
-
-      return e.json(200, {
-        success: true,
-        count: scoredList.length,
-        items: scoredList,
-        message:
-          'Ranking recalculado com sucesso no modelo híbrido (1-511 individual, 512+ por nível)!',
-      })
     } catch (err) {
-      return e.json(500, { success: false, error: err.message })
+      console.log(
+        'Error in migration 0023_update_ranking_formula_max_indicacoes:',
+        err ? err.message : '',
+      )
     }
   },
-  $apis.requireAuth(),
+  () => {
+    // Revert not required
+  },
 )
