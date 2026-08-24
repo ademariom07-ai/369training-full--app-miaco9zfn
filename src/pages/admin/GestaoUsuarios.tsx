@@ -152,7 +152,7 @@ export default function GestaoUsuarios() {
           </select>
 
           <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
