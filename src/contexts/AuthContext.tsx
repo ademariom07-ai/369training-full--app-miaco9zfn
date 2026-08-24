@@ -98,6 +98,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (getRes.ok) {
         const data = await getRes.json().catch(() => ({}))
+        if (!data || !data.token || !data.record) {
+          throw new Error('Resposta de autenticação inválida')
+        }
         pb.authStore.save(data.token, data.record)
         return data.record as UserProfile
       }
@@ -112,7 +115,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const err = await postRes.json().catch(() => ({}))
           throw new Error(err.message || err.error || 'Falha na autenticação')
         }
-        const data = await postRes.json()
+        const data = await postRes.json().catch(() => ({}))
+        if (!data || !data.token || !data.record) {
+          throw new Error('Resposta de autenticação inválida')
+        }
         pb.authStore.save(data.token, data.record)
         return data.record as UserProfile
       }
@@ -120,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const err = await getRes.json().catch(() => ({}))
       throw new Error(err.error || err.message || 'Credenciais inválidas')
     } catch (err: any) {
-      // If network fetch failed or thrown error
+      // If error already thrown or not a network/fetch issue, rethrow
       if (err?.message && err.message !== 'Failed to fetch') {
         throw err
       }
@@ -134,7 +140,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const postErr = await postRes.json().catch(() => ({}))
         throw new Error(postErr.message || postErr.error || 'Falha na autenticação')
       }
-      const data = await postRes.json()
+      const data = await postRes.json().catch(() => ({}))
+      if (!data || !data.token || !data.record) {
+        throw new Error('Resposta de autenticação inválida')
+      }
       pb.authStore.save(data.token, data.record)
       return data.record as UserProfile
     }

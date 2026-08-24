@@ -37,9 +37,10 @@ export default function Login() {
           return
         }
 
-        if (user.role === 'admin') {
+        const userRole = user?.role || 'aluno'
+        if (userRole === 'admin') {
           navigate('/admin', { replace: true })
-        } else if (user.role === 'profissional') {
+        } else if (userRole === 'profissional') {
           navigate('/profissional', { replace: true })
         } else {
           navigate('/aluno', { replace: true })

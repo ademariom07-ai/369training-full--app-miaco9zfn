@@ -32,7 +32,11 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   }
 
   // Role verification
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+  if (
+    allowedRoles &&
+    allowedRoles.length > 0 &&
+    (!user.role || !allowedRoles.includes(user.role))
+  ) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center text-white p-6 text-center">
         <div className="p-4 rounded-full bg-red-950/40 border border-red-500/30 mb-4">
@@ -40,14 +44,14 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
         </div>
         <h2 className="text-2xl font-bold font-montserrat text-white mb-2">Acesso Restrito</h2>
         <p className="text-gray-400 max-w-md mb-6 font-inter text-sm">
-          Seu perfil ({user.role}) não tem permissão para acessar este módulo do sistema
-          369TRAINING.
+          Seu perfil ({user.role || 'não definido'}) não tem permissão para acessar este módulo do
+          sistema 369TRAINING.
         </p>
         <div className="flex gap-4">
           <Button
             onClick={() => {
-              if (user.role === 'admin') window.location.href = '/admin'
-              else if (user.role === 'profissional') window.location.href = '/profissional'
+              if (user?.role === 'admin') window.location.href = '/admin'
+              else if (user?.role === 'profissional') window.location.href = '/profissional'
               else window.location.href = '/aluno'
             }}
             className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-semibold"
