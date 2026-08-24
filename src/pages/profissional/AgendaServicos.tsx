@@ -102,6 +102,12 @@ export default function AgendaServicos() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
+  // Percentual de cobrança para alunos/clientes sem plano (default 10%, editável pelo profissional)
+  const [noPlanFeePercentage, setNoPlanFeePercentage] = useState<number>(() => {
+    const saved = localStorage.getItem('professional_no_plan_fee_pct')
+    return saved ? parseFloat(saved) || 10 : 10
+  })
+
   // Quick Appointment Modal state (Agendar direto pelo profissional)
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
   const [selectedSlotForApp, setSelectedSlotForApp] = useState<{
@@ -117,7 +123,6 @@ export default function AgendaServicos() {
   >('treino')
   const [appValue, setAppValue] = useState('150.00')
   const [savingApp, setSavingApp] = useState(false)
-
   // Active view tab
   const [activeTab, setActiveTab] = useState<'grid' | 'appointments'>('grid')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
@@ -335,19 +340,17 @@ export default function AgendaServicos() {
 
     setSavingApp(true)
     try {
-      // Check if student is in referral list of partner
-      let isPartnerList = false
-      try {
-        const ref = await pb
-          .collection('referrals')
-          .getFirstListItem(`referrer = "${user.id}" && referred = "${selectedStudentId}"`)
-        if (ref) isPartnerList = true
-      } catch {
-        /* intentionally ignored */
-      }
+      // Verificar se o aluno tem plano ativo ou se está sem plano
+      const selectedStudent = students.find((s) => s.id === selectedStudentId)
+      const studentPlan = selectedStudent?.plan
+      const isStudentWithoutPlan = !studentPlan || studentPlan === 'gratis'
 
       const baseVal = parseFloat(appValue) || 150
-      const extraFee = isPartnerList ? 0 : baseVal * 0.5
+      // Nova regra: Alunos e clientes sem planos: cobramos X% (default 10%, editável) do valor da consulta no agendamento
+      const appliedPercent = isStudentWithoutPlan
+        ? Math.max(0, Number(noPlanFeePercentage) || 0)
+        : 0
+      const extraFee = isStudentWithoutPlan ? (baseVal * appliedPercent) / 100 : 0
 
       // Garantir que existe o registro de schedule para vincular
       let targetScheduleId = selectedSlotForApp.scheduleId
@@ -382,11 +385,12 @@ export default function AgendaServicos() {
         taxa_extra: extraFee,
       })
 
+      const totalFinal = baseVal + extraFee
       toast.success(
         `Agendamento criado! ${
           extraFee > 0
-            ? `(Taxa extra de R$ ${extraFee.toFixed(2)} aplicada - aluno fora da lista)`
-            : '(Aluno vinculado à rede)'
+            ? `(Incluso ${appliedPercent}% de R$ ${extraFee.toFixed(2)} por aluno sem plano • Total: R$ ${totalFinal.toFixed(2)})`
+            : `(Total: R$ ${totalFinal.toFixed(2)} • Aluno com plano ${studentPlan?.toUpperCase() || ''})`
         }`,
       )
       setAppointmentModalOpen(false)
@@ -430,8 +434,30 @@ export default function AgendaServicos() {
           </p>
         </div>
 
-        {/* Action Button */}
+        {/* Action Button & Configuration */}
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#181818] border border-[#2A2A2A] rounded-xl">
+            <span className="text-[11px] font-bold text-gray-300 font-montserrat uppercase">
+              Cobrança Sem Plano:
+            </span>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={noPlanFeePercentage}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 0
+                  setNoPlanFeePercentage(val)
+                  localStorage.setItem('professional_no_plan_fee_pct', String(val))
+                }}
+                className="w-16 h-7 text-xs bg-[#141414] border-[#2A2A2A] rounded-lg text-center font-mono font-bold text-[#D4AF37] p-1"
+              />
+              <span className="text-xs font-bold text-[#D4AF37]">%</span>
+            </div>
+          </div>
+
           <Button
             onClick={() => {
               const defaultDay = currentWeekDays[0]
@@ -926,7 +952,8 @@ export default function AgendaServicos() {
                           </span>
                           {isExtraFee && (
                             <span className="text-[10px] font-bold text-amber-400 font-mono block">
-                              +50% fora da lista (+R$ {app.taxa_extra?.toFixed(2)})
+                              +{((app.taxa_extra! / (app.valor || 1)) * 100).toFixed(0)}% sem plano
+                              (incluso +R$ {app.taxa_extra?.toFixed(2)})
                             </span>
                           )}
                         </div>
@@ -1094,12 +1121,83 @@ export default function AgendaServicos() {
               </div>
             )}
 
-            <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-xs text-gray-400 space-y-1 font-inter">
-              <p className="font-semibold text-gray-200">Regra 369 de Tarifação & Taxa Extra:</p>
-              <p>
-                • Aluno na sua lista de parceiro: tarifa normal (Básico R$1, Pro R$2, Premium R$3).
+            {/* Campo editável de percentual para alunos/clientes sem plano */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-gray-300 uppercase font-montserrat">
+                  Percentual para Alunos Sem Plano (%)
+                </label>
+                <span className="text-[11px] text-[#D4AF37] font-mono font-bold">
+                  {noPlanFeePercentage}% sobre a consulta
+                </span>
+              </div>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={noPlanFeePercentage}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 0
+                  setNoPlanFeePercentage(val)
+                  localStorage.setItem('professional_no_plan_fee_pct', String(val))
+                }}
+                placeholder="10"
+                className="bg-[#181818] border-[#2A2A2A] rounded-xl text-white font-mono text-xs h-10"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Defina a porcentagem aplicada no agendamento de alunos e clientes sem planos.
               </p>
-              <p>• Aluno fora da lista: acréscimo automático de +50% do valor da consulta.</p>
+            </div>
+
+            {/* Simulação do Valor Final no Fechamento */}
+            {(() => {
+              const selectedStudent = students.find((s) => s.id === selectedStudentId)
+              const isWithoutPlan = !selectedStudent?.plan || selectedStudent?.plan === 'gratis'
+              const base = parseFloat(appValue) || 0
+              const pct = isWithoutPlan ? Number(noPlanFeePercentage) || 0 : 0
+              const extra = isWithoutPlan ? (base * pct) / 100 : 0
+              const finalTotal = base + extra
+
+              return (
+                <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-xs space-y-1 font-inter">
+                  <div className="flex justify-between items-center text-gray-300">
+                    <span>Status do Aluno:</span>
+                    <span className="font-bold text-white">
+                      {isWithoutPlan ? (
+                        <span className="text-amber-400">Sem Plano Cadastrado</span>
+                      ) : (
+                        <span className="text-[#22C55E]">
+                          Plano {selectedStudent?.plan?.toUpperCase()}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {isWithoutPlan && (
+                    <div className="flex justify-between items-center text-gray-400">
+                      <span>Acréscimo no Fechamento ({pct}%):</span>
+                      <span className="font-mono text-amber-400">+ R$ {extra.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1 border-t border-white/10 font-bold">
+                    <span className="text-white">Valor Final Incluso no Fechamento:</span>
+                    <span className="font-mono text-base text-[#D4AF37]">
+                      R$ {finalTotal.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
+
+            <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-xs text-gray-400 space-y-1 font-inter">
+              <p className="font-semibold text-gray-200">Regra de Cobrança:</p>
+              <p>
+                • Alunos e clientes sem planos: cobramos {noPlanFeePercentage}% do valor da consulta
+                no agendamento.
+              </p>
+              <p>
+                • No fechamento, o valor dos {noPlanFeePercentage}% será incluso no valor final.
+              </p>
             </div>
 
             <Button
