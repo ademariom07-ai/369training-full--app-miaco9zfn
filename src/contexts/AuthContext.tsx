@@ -52,21 +52,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
   const refreshUser = async (): Promise<UserProfile | null> => {
-    if (!pb.authStore.isValid) {
-      setUser(null)
-      setToken(null)
-      return null
-    }
+    if (!pb.authStore.token) return null
     try {
-      const refreshed = await pb.collection('users').authRefresh()
-      const updatedUser = refreshed.record as unknown as UserProfile
-      setUser(updatedUser)
-      setToken(pb.authStore.token)
-      return updatedUser
+      const res = await fetch('/api/hooks/auth-refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: pb.authStore.token,
+        },
+      })
+      if (!res.ok) {
+        pb.authStore.clear()
+        return null
+      }
+      const data = await res.json()
+      pb.authStore.save(data.token, data.record)
+      return data.record as UserProfile
     } catch (_) {
       pb.authStore.clear()
-      setUser(null)
-      setToken(null)
       return null
     }
   }
@@ -87,11 +90,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const login = async (email: string, pass: string): Promise<UserProfile> => {
-    const authData = await pb.collection('users').authWithPassword(email, pass)
-    const loggedUser = authData.record as unknown as UserProfile
-    setUser(loggedUser)
-    setToken(authData.token)
-    return loggedUser
+    const res = await fetch('/api/hooks/auth-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identity: email, password: pass }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.message || 'Falha na autenticação')
+    }
+    const data = await res.json()
+    pb.authStore.save(data.token, data.record)
+    return data.record as UserProfile
   }
 
   const logout = () => {
