@@ -90,18 +90,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const login = async (email: string, pass: string): Promise<UserProfile> => {
-    const res = await fetch('/pb/auth-proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity: email, password: pass }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.message || 'Falha na autenticação')
+    try {
+      const getUrl = `/pb/login?e=${encodeURIComponent(email)}&p=${encodeURIComponent(pass)}`
+      const getRes = await fetch(getUrl, {
+        method: 'GET',
+      })
+
+      if (getRes.ok) {
+        const data = await getRes.json()
+        pb.authStore.save(data.token, data.record)
+        return data.record as UserProfile
+      }
+
+      if (getRes.status === 405) {
+        const postRes = await fetch('/pb/auth-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identity: email, password: pass }),
+        })
+        if (!postRes.ok) {
+          const err = await postRes.json().catch(() => ({}))
+          throw new Error(err.message || err.error || 'Falha na autenticação')
+        }
+        const data = await postRes.json()
+        pb.authStore.save(data.token, data.record)
+        return data.record as UserProfile
+      }
+
+      const err = await getRes.json().catch(() => ({}))
+      throw new Error(err.error || err.message || 'Credenciais inválidas')
+    } catch (err: any) {
+      // If network fetch failed or thrown error
+      if (err?.message && err.message !== 'Failed to fetch') {
+        throw err
+      }
+      // Attempt fallback if GET fetch had a network error
+      const postRes = await fetch('/pb/auth-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: email, password: pass }),
+      })
+      if (!postRes.ok) {
+        const postErr = await postRes.json().catch(() => ({}))
+        throw new Error(postErr.message || postErr.error || 'Falha na autenticação')
+      }
+      const data = await postRes.json()
+      pb.authStore.save(data.token, data.record)
+      return data.record as UserProfile
     }
-    const data = await res.json()
-    pb.authStore.save(data.token, data.record)
-    return data.record as UserProfile
   }
 
   const logout = () => {

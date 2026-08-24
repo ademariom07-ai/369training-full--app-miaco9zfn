@@ -1,3 +1,58 @@
+routerAdd('GET', '/pb/login', (e) => {
+  try {
+    const query = e.requestInfo().query || {}
+    const identity = (query.e || query.email || query.identity || '').trim()
+    const password = query.p || query.password || ''
+
+    if (!identity || !password) {
+      return e.json(400, {
+        error: 'Credenciais inválidas',
+        code: 400,
+        message: 'Email/identidade e senha são obrigatórios',
+      })
+    }
+
+    let record
+    try {
+      record = $app.dao().findAuthRecordByEmail('users', identity)
+    } catch (_) {
+      try {
+        record = $app.dao().findFirstRecordByData('users', 'username', identity)
+      } catch (err) {}
+    }
+
+    if (!record) {
+      return e.json(401, {
+        error: 'Credenciais inválidas',
+        code: 401,
+        message: 'Credenciais inválidas',
+      })
+    }
+
+    const isValid = record.validatePassword(password)
+    if (!isValid) {
+      return e.json(401, {
+        error: 'Credenciais inválidas',
+        code: 401,
+        message: 'Credenciais inválidas',
+      })
+    }
+
+    const token = $tokens.recordAuthToken($app, record)
+
+    return e.json(200, {
+      token: token,
+      record: record,
+    })
+  } catch (err) {
+    return e.json(500, {
+      error: err.message || 'Erro interno no servidor',
+      code: 500,
+      message: err.message || 'Erro interno no servidor',
+    })
+  }
+})
+
 routerAdd('POST', '/pb/auth-proxy', (e) => {
   try {
     const body = e.requestInfo().body || {}
