@@ -91,13 +91,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, pass: string): Promise<UserProfile> => {
     try {
-      const getUrl = `/pb/login?e=${encodeURIComponent(email)}&p=${encodeURIComponent(pass)}`
+      const getUrl = `/api/hooks/login?e=${encodeURIComponent(email)}&p=${encodeURIComponent(pass)}`
       const getRes = await fetch(getUrl, {
         method: 'GET',
       })
 
       if (getRes.ok) {
-        const data = await getRes.json()
+        const data = await getRes.json().catch(() => ({}))
         pb.authStore.save(data.token, data.record)
         return data.record as UserProfile
       }
