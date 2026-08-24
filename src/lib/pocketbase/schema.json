@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-24T15:46:13.598Z",
+  "generatedAt": "2026-08-24T16:02:01.241Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id || @request.auth.role = 'admin'",
+        "list": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && role = 'profissional')",
         "view": "id = @request.auth.id",
         "create": "@request.body.role != 'admin'",
         "update": "id = @request.auth.id",
