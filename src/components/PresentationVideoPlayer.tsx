@@ -4,40 +4,103 @@ import { Button } from '@/components/ui/button'
 
 export type VideoType = 'youtube' | 'vimeo' | 'mp4' | 'unknown'
 
+/**
+ * Extrai o ID do vídeo do YouTube e sanitiza parâmetros de rastreamento (ex: ?si=, ?is=, &feature=, etc.)
+ */
+export function extractYouTubeId(url: string): string | null {
+  if (!url) return null
+  const cleanUrl = url.trim()
+
+  // Se for apenas o ID de 11 caracteres
+  if (/^[a-zA-Z0-9_-]{11}$/.test(cleanUrl)) {
+    return cleanUrl
+  }
+
+  try {
+    // Normalizar caso a URL não contenha protocolo
+    const normalizedUrl = cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`
+    const parsed = new URL(normalizedUrl)
+    const hostname = parsed.hostname.toLowerCase()
+
+    // youtu.be/ID
+    if (hostname === 'youtu.be' || hostname.endsWith('.youtu.be')) {
+      const pathname = parsed.pathname.slice(1).split('/')[0]
+      if (pathname && /^[a-zA-Z0-9_-]{11}$/.test(pathname)) {
+        return pathname
+      }
+    }
+
+    // youtube.com, m.youtube.com, youtube-nocookie.com, studio.youtube.com
+    if (hostname.includes('youtube.com') || hostname.includes('youtube-nocookie.com')) {
+      // /watch?v=ID ou /watch?other=1&v=ID
+      const vParam = parsed.searchParams.get('v')
+      if (vParam && /^[a-zA-Z0-9_-]{11}$/.test(vParam)) {
+        return vParam
+      }
+
+      // /embed/ID, /v/ID, /shorts/ID, /live/ID, /video/ID
+      const match = parsed.pathname.match(/\/(?:embed|v|shorts|live|video)\/([a-zA-Z0-9_-]{11})/)
+      if (match && match[1]) {
+        return match[1]
+      }
+    }
+  } catch {
+    // Fallback com regex robusto para URLs malformadas
+  }
+
+  // Regex fallback abrangente cobrindo studio.youtube.com, youtu.be, youtube.com, shorts, etc.
+  const ytRegex =
+    /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|v\/|watch\?(?:.*&)?v=|shorts\/|live\/|video\/))([a-zA-Z0-9_-]{11})/i
+  const match = cleanUrl.match(ytRegex)
+  if (match && match[1]) {
+    return match[1]
+  }
+
+  return null
+}
+
 export function getVideoInfo(url?: string): {
   type: VideoType
   embedUrl?: string
   directUrl?: string
+  videoId?: string
 } {
   if (!url || !url.trim()) return { type: 'unknown' }
   const trimmed = url.trim()
 
-  // YouTube
-  // matches youtube.com/watch?v=ID, youtu.be/ID, www.youtu.be/ID, youtube.com/embed/ID, youtube.com/shorts/ID, youtube.com/live/ID
-  const ytMatch = trimmed.match(
-    /(?:(?:www\.)?youtu\.be\/|(?:www\.)?youtube(?:-nocookie)?\.com\/(?:embed\/|v\/|watch\?(?:.*&)?v=|shorts\/|live\/))([\w-]{11})/,
-  )
-  if (ytMatch && ytMatch[1]) {
+  // 1. Verificar YouTube
+  const ytId = extractYouTubeId(trimmed)
+  if (ytId) {
     return {
       type: 'youtube',
-      embedUrl: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&rel=0&modestbranding=1&end=30`,
+      videoId: ytId,
+      // Usamos youtube.com/embed padrão com parâmetros seguros para reprodução
+      embedUrl: `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`,
     }
   }
 
-  // Vimeo
-  // matches vimeo.com/ID
+  // 2. Verificar Vimeo
   const vimeoMatch = trimmed.match(
-    /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^/]*)\/videos\/|album\/(?:\d+)\/video\/|)(\d+)/,
+    /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/i,
   )
   if (vimeoMatch && vimeoMatch[1]) {
     return {
       type: 'vimeo',
-      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&title=0&byline=0&portrait=0`,
+      videoId: vimeoMatch[1],
+      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}?title=0&byline=0&portrait=0`,
     }
   }
 
-  // Direct video file (.mp4, .webm, .ogg) or generic video link
-  if (trimmed.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || trimmed.startsWith('http')) {
+  // 3. Arquivo direto de vídeo (.mp4, .webm, .ogg, .mov) ou links diretos
+  if (trimmed.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
+    return {
+      type: 'mp4',
+      directUrl: trimmed,
+    }
+  }
+
+  // Se começar com http(s) e não foi reconhecido como YouTube/Vimeo, pode ser mp4 / stream
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return {
       type: 'mp4',
       directUrl: trimmed,
@@ -79,7 +142,7 @@ export function PresentationVideoPlayer({ url, profName }: { url: string; profNa
           <iframe
             src={videoInfo.embedUrl}
             title={`Apresentação de ${profName}`}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             className="w-full h-full border-0"
           />

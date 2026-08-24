@@ -219,6 +219,7 @@ export default function GestaoUsuarios() {
                           <button
                             type="button"
                             onClick={() => setSelectedUser(u)}
+                            title="Clique para ver o perfil e gerenciar o vídeo"
                             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] hover:bg-[#22C55E]/25 transition-colors cursor-pointer"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
@@ -229,10 +230,11 @@ export default function GestaoUsuarios() {
                           <button
                             type="button"
                             onClick={() => setSelectedUser(u)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-950/40 border border-amber-500/40 text-amber-300 hover:bg-amber-900/50 transition-colors cursor-pointer"
+                            title="Clique para assistir e aprovar o vídeo"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-950/40 border border-amber-500/40 text-amber-300 hover:bg-amber-900/50 transition-colors cursor-pointer animate-pulse"
                           >
                             <Video className="w-3 h-3" />
-                            Vídeo Pendente / Pausado
+                            Vídeo Pendente
                           </button>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-800/60 border border-gray-700 text-gray-400">
@@ -372,11 +374,11 @@ export default function GestaoUsuarios() {
                         selectedUser.video_enabled ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E]">
                             <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-                            Vídeo Ativo
+                            Vídeo Ativo (Liberado)
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-950/40 border border-amber-500/40 text-amber-300">
-                            Vídeo Pausado / Não Liberado
+                            Vídeo Pendente / Suspenso
                           </span>
                         )
                       ) : (
@@ -389,36 +391,57 @@ export default function GestaoUsuarios() {
 
                   {/* Player ou Aviso */}
                   {selectedUser.video_url && selectedUser.video_url.trim() ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
+                      {/* Player de Vídeo */}
                       <PresentationVideoPlayer
                         url={selectedUser.video_url}
                         profName={selectedUser.name}
                       />
-                      <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div className="text-xs">
+
+                      {/* Card de Controle de Aprovação do Vídeo */}
+                      <div className="p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="text-xs space-y-1">
                           <span className="text-gray-400 block text-[10px] uppercase font-montserrat font-bold">
-                            URL do Vídeo:
+                            URL do Vídeo Cadastrado:
                           </span>
-                          <span className="text-[#D4AF37] font-mono text-[11px] break-all">
+                          <span className="text-[#D4AF37] font-mono text-[11px] break-all block">
                             {selectedUser.video_url}
+                          </span>
+                          <span className="text-[11px] text-gray-400 block">
+                            Status no Feed do Aluno:{' '}
+                            <strong
+                              className={
+                                selectedUser.video_enabled ? 'text-[#22C55E]' : 'text-amber-400'
+                              }
+                            >
+                              {selectedUser.video_enabled
+                                ? 'Visível para os alunos'
+                                : 'Oculto (aguardando liberação do admin)'}
+                            </strong>
                           </span>
                         </div>
                         <Button
                           size="sm"
                           disabled={updatingVideo}
                           onClick={() => handleToggleVideoApproval(selectedUser)}
-                          className={`text-xs font-bold uppercase shrink-0 ${
+                          className={`text-xs font-bold uppercase shrink-0 px-4 py-2 flex items-center gap-1.5 transition-all shadow-md ${
                             selectedUser.video_enabled
-                              ? 'border border-amber-500/40 text-amber-300 bg-amber-950/30 hover:bg-amber-950/60'
+                              ? 'border border-amber-500/50 text-amber-300 bg-amber-950/40 hover:bg-amber-900/60'
                               : 'bg-[#22C55E] text-black hover:bg-[#1eb354]'
                           }`}
                         >
                           {updatingVideo ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <Loader2 className="w-4 h-4 animate-spin" />
                           ) : selectedUser.video_enabled ? (
-                            'Suspender Vídeo'
+                            <>
+                              <Ban className="w-4 h-4" />
+                              Suspender Vídeo
+                            </>
                           ) : (
-                            'Liberar Vídeo para Alunos'
+                            <>
+                              <CheckCircle2 className="w-4 h-4" />
+                              Aprovar & Liberar Vídeo
+                            </>
                           )}
                         </Button>
                       </div>

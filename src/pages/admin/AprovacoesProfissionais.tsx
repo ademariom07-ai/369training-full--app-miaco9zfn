@@ -39,7 +39,11 @@ export default function AprovacoesProfissionais() {
 
   const handleApprove = async (prof: UserProfile) => {
     try {
-      await pb.collection('users').update(prof.id, { approved: true })
+      // Ao aprovar o profissional, se ele já tiver vídeo cadastrado, liberamos o vídeo também por conveniência ou mantemos ativo
+      await pb.collection('users').update(prof.id, {
+        approved: true,
+        video_enabled: prof.video_url ? true : prof.video_enabled,
+      })
 
       // Append audit
       await pb.collection('audits').create({
