@@ -52,15 +52,27 @@ export default function ChatScreen() {
       .catch(() => {})
 
     // Subscribe to realtime messages SSE
-    const unsubscribe = pb.collection('messages').subscribe('*', (e) => {
-      if (e.action === 'create') {
-        const newMsg = e.record as unknown as MessageRecord
-        setMessages((prev) => [...prev, newMsg])
-      }
-    })
+    try {
+      pb.collection('messages')
+        .subscribe('*', (e) => {
+          if (e.action === 'create') {
+            const newMsg = e.record as unknown as MessageRecord
+            setMessages((prev) => [...prev, newMsg])
+          }
+        })
+        .catch(() => {})
+    } catch {
+      // Ignora erro silenciosamente se o realtime client não estiver disponível
+    }
 
     return () => {
-      pb.collection('messages').unsubscribe('*')
+      try {
+        pb.collection('messages')
+          .unsubscribe('*')
+          .catch(() => {})
+      } catch {
+        // Ignora erro silenciosamente
+      }
     }
   }, [user])
 
