@@ -54,10 +54,23 @@ onRecordAfterUpdateSuccess((e) => {
       }
     } catch (_) {}
 
-    // 3. Deduct service tariff & credit professional net earnings in wallet
+    // 3. Deduct full service value from Student wallet & credit net earnings to Professional
     const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
 
-    // Tarifa transaction
+    // 3.1 Débito na carteira do aluno se studentId existir
+    if (studentId) {
+      const studentTx = new Record(walletCol)
+      studentTx.set('user', studentId)
+      studentTx.set('type', 'saque')
+      studentTx.set('amount', -Math.abs(serviceValue))
+      studentTx.set('status', 'concluido')
+      studentTx.set('reference_type', 'services')
+      studentTx.set('reference_id', serviceId)
+      studentTx.set('description', 'Pagamento de serviço concluído - R$ ' + serviceValue.toFixed(2))
+      $app.save(studentTx)
+    }
+
+    // 3.2 Tarifa do profissional baseada no plano (básico: R$1, pro: R$2, premium: R$3)
     const tarifaTx = new Record(walletCol)
     tarifaTx.set('user', profId)
     tarifaTx.set('type', 'tarifa')
@@ -67,7 +80,7 @@ onRecordAfterUpdateSuccess((e) => {
     tarifaTx.set('reference_id', serviceId)
     tarifaTx.set(
       'description',
-      'Tarifa de serviço (Plano ' +
+      'Tarifa operacional de serviço (Plano ' +
         profPlan.toUpperCase() +
         ' - R$ ' +
         tarifaAmount.toFixed(2) +
@@ -75,7 +88,7 @@ onRecordAfterUpdateSuccess((e) => {
     )
     $app.save(tarifaTx)
 
-    // Servico credit transaction
+    // 3.3 Crédito líquido do serviço para o profissional
     const netServiceEarned = serviceValue - tarifaAmount
     const servicoTx = new Record(walletCol)
     servicoTx.set('user', profId)
@@ -84,7 +97,7 @@ onRecordAfterUpdateSuccess((e) => {
     servicoTx.set('status', 'concluido')
     servicoTx.set('reference_type', 'services')
     servicoTx.set('reference_id', serviceId)
-    servicoTx.set('description', 'Recebimento de serviço concluído')
+    servicoTx.set('description', 'Recebimento líquido de serviço concluído')
     $app.save(servicoTx)
 
     // 4. Carregar parâmetros individuais da coleção binary_tree_params (posições 1 a 511)

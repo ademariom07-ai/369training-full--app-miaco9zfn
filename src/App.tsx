@@ -9,10 +9,15 @@ import { Toaster } from '@/components/ui/sonner'
 import Index from '@/pages/Index'
 import Login from '@/pages/Login'
 import Cadastro from '@/pages/Cadastro'
+import TermosDeUso from '@/pages/TermosDeUso'
+import PoliticaDePrivacidade from '@/pages/PoliticaDePrivacidade'
+import LgpdConsentimentos from '@/pages/LgpdConsentimentos'
+import CookieConsentBanner from '@/components/CookieConsentBanner'
 import NotFound from '@/pages/NotFound'
 
 // Aluno Pages
 import AlunoHome from '@/pages/aluno/AlunoHome'
+import AlunoCarteira from '@/pages/aluno/AlunoCarteira'
 import MonteSeuTreino from '@/pages/aluno/MonteSeuTreino'
 import EncontrarProfissional from '@/pages/aluno/EncontrarProfissional'
 import Nutricao from '@/pages/aluno/Nutricao'
@@ -48,6 +53,9 @@ export default function App() {
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/termos-de-uso" element={<TermosDeUso />} />
+          <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
+          <Route path="/lgpd-consentimentos" element={<LgpdConsentimentos />} />
 
           {/* Aluno Routes */}
           <Route
@@ -56,6 +64,16 @@ export default function App() {
               <RoleGuard allowedRoles={['aluno']}>
                 <Layout>
                   <AlunoHome />
+                </Layout>
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/aluno/carteira"
+            element={
+              <RoleGuard allowedRoles={['aluno']}>
+                <Layout>
+                  <AlunoCarteira />
                 </Layout>
               </RoleGuard>
             }
@@ -288,6 +306,7 @@ export default function App() {
           {/* 404 & Fallbacks */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <CookieConsentBanner />
         <Toaster richColors position="top-right" />
       </Router>
     </AuthProvider>

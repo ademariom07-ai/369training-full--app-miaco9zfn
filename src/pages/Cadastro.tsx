@@ -409,9 +409,13 @@ export default function Cadastro() {
                           className="text-xs text-gray-400 cursor-pointer font-inter"
                         >
                           Li e concordo com os{' '}
-                          <a href="#termos" className="text-[#D4AF37] underline">
+                          <Link
+                            to="/termos-de-uso"
+                            target="_blank"
+                            className="text-[#D4AF37] underline"
+                          >
                             Termos de Uso v2.4
-                          </a>{' '}
+                          </Link>{' '}
                           e as Diretrizes Profissionais 369.
                         </label>
                       </div>
@@ -428,9 +432,13 @@ export default function Cadastro() {
                           className="text-xs text-gray-400 cursor-pointer font-inter"
                         >
                           Concordo com o tratamento de dados pessoais conforme a{' '}
-                          <a href="#privacidade" className="text-[#D4AF37] underline">
+                          <Link
+                            to="/politica-de-privacidade"
+                            target="_blank"
+                            className="text-[#D4AF37] underline"
+                          >
                             Política de Privacidade & LGPD
-                          </a>
+                          </Link>
                           .
                         </label>
                       </div>

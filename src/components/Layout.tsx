@@ -67,6 +67,7 @@ export default function Layout({ children }: LayoutProps) {
     { label: 'Início', path: '/aluno', icon: Home },
     { label: 'Monte Seu Treino', path: '/aluno/treino', icon: Dumbbell },
     { label: 'Encontrar Profissional', path: '/aluno/profissionais', icon: Users },
+    { label: 'Minha Carteira', path: '/aluno/carteira', icon: Wallet },
     { label: 'Comunidade', path: '/aluno/comunidade', icon: Trophy },
     { label: 'Chat', path: '/aluno/chat', icon: MessageSquare },
     { label: 'Perfil', path: '/aluno/perfil', icon: User },
@@ -197,7 +198,7 @@ export default function Layout({ children }: LayoutProps) {
                   <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
                 </div>
                 <Link
-                  to={user?.role === 'profissional' ? '/profissional/carteira' : '/aluno/perfil'}
+                  to={user?.role === 'profissional' ? '/profissional/carteira' : '/aluno/carteira'}
                   onClick={() => setUserMenuOpen(false)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5"
                 >
@@ -307,6 +308,19 @@ export default function Layout({ children }: LayoutProps) {
       <footer className="border-t border-[#2A2A2A] bg-[#070707] py-6 px-6 text-center text-xs text-gray-500 font-inter">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© {new Date().getFullYear()} 369 TRAINING — FOCO • LEGADO • ESTRATÉGIA</p>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-400">
+            <Link to="/termos-de-uso" className="hover:text-[#D4AF37] transition-colors">
+              Termos de Uso
+            </Link>
+            <span>•</span>
+            <Link to="/politica-de-privacidade" className="hover:text-[#D4AF37] transition-colors">
+              Política de Privacidade
+            </Link>
+            <span>•</span>
+            <Link to="/lgpd-consentimentos" className="hover:text-[#D4AF37] transition-colors">
+              LGPD & Consentimentos
+            </Link>
+          </div>
           <p className="italic text-[11px] text-gray-400">
             &ldquo;Se você soubesse a magnificência dos números 3, 6 e 9...&rdquo; — Nikola Tesla
           </p>

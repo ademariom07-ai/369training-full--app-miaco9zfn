@@ -334,16 +334,19 @@ export default function Index() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-400 font-inter">
-            <a href="#termos" className="hover:text-[#D4AF37] transition-colors">
+            <Link to="/termos-de-uso" className="hover:text-[#D4AF37] transition-colors">
               Termos de Uso
-            </a>
-            <a href="#privacidade" className="hover:text-[#D4AF37] transition-colors">
+            </Link>
+            <Link to="/politica-de-privacidade" className="hover:text-[#D4AF37] transition-colors">
               Política de Privacidade
-            </a>
-            <a href="#lgpd" className="hover:text-[#D4AF37] transition-colors">
+            </Link>
+            <Link to="/lgpd-consentimentos" className="hover:text-[#D4AF37] transition-colors">
               LGPD & Consentimentos
-            </a>
-            <a href="#contato" className="hover:text-[#D4AF37] transition-colors">
+            </Link>
+            <a
+              href="mailto:suporte@369training.com"
+              className="hover:text-[#D4AF37] transition-colors"
+            >
               Suporte 369
             </a>
           </div>
