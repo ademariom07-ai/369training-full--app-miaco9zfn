@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = async (): Promise<UserProfile | null> => {
     if (!pb.authStore.token) return null
     try {
-      const res = await fetch('/api/hooks/auth-refresh', {
+      const res = await fetch('/pb/auth-refresh', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const login = async (email: string, pass: string): Promise<UserProfile> => {
-    const res = await fetch('/api/hooks/auth-proxy', {
+    const res = await fetch('/pb/auth-proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ identity: email, password: pass }),

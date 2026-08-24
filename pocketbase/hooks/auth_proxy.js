@@ -1,4 +1,4 @@
-routerAdd('POST', '/api/hooks/auth-proxy', (e) => {
+routerAdd('POST', '/pb/auth-proxy', (e) => {
   try {
     const body = e.requestInfo().body || {}
     const identity = (body.identity || body.email || '').trim()
@@ -51,7 +51,7 @@ routerAdd('POST', '/api/hooks/auth-proxy', (e) => {
 
 routerAdd(
   'POST',
-  '/api/hooks/auth-refresh',
+  '/pb/auth-refresh',
   (e) => {
     try {
       const userId = e.auth?.id
