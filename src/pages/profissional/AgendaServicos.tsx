@@ -385,11 +385,11 @@ export default function AgendaServicos() {
         taxa_extra: extraFee,
       })
 
-      const totalFinal = baseVal + extraFee
+      const totalFinal = baseVal - extraFee
       toast.success(
         `Agendamento criado! ${
           extraFee > 0
-            ? `(Incluso ${appliedPercent}% de R$ ${extraFee.toFixed(2)} por aluno sem plano • Total: R$ ${totalFinal.toFixed(2)})`
+            ? `(Descontado ${appliedPercent}% de R$ ${extraFee.toFixed(2)} por aluno sem plano • Total: R$ ${totalFinal.toFixed(2)})`
             : `(Total: R$ ${totalFinal.toFixed(2)} • Aluno com plano ${studentPlan?.toUpperCase() || ''})`
         }`,
       )
@@ -1157,7 +1157,7 @@ export default function AgendaServicos() {
               const base = parseFloat(appValue) || 0
               const pct = isWithoutPlan ? Number(noPlanFeePercentage) || 0 : 0
               const extra = isWithoutPlan ? (base * pct) / 100 : 0
-              const finalTotal = base + extra
+              const finalTotal = base - extra
 
               return (
                 <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-xs space-y-1 font-inter">
@@ -1175,12 +1175,12 @@ export default function AgendaServicos() {
                   </div>
                   {isWithoutPlan && (
                     <div className="flex justify-between items-center text-gray-400">
-                      <span>Acréscimo no Fechamento ({pct}%):</span>
-                      <span className="font-mono text-amber-400">+ R$ {extra.toFixed(2)}</span>
+                      <span>Desconto no Fechamento ({pct}%):</span>
+                      <span className="font-mono text-amber-400">- R$ {extra.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center pt-1 border-t border-white/10 font-bold">
-                    <span className="text-white">Valor Final Incluso no Fechamento:</span>
+                    <span className="text-white">Valor Final no Fechamento:</span>
                     <span className="font-mono text-base text-[#D4AF37]">
                       R$ {finalTotal.toFixed(2)}
                     </span>
@@ -1196,7 +1196,7 @@ export default function AgendaServicos() {
                 no agendamento.
               </p>
               <p>
-                • No fechamento, o valor dos {noPlanFeePercentage}% será incluso no valor final.
+                • No fechamento, o valor dos {noPlanFeePercentage}% será descontado do valor final.
               </p>
             </div>
 
