@@ -1,185 +1,130 @@
-routerAdd(
-  'POST',
-  '/api/custom/admin/recalculate-ranking',
-  (e) => {
-    try {
-      const currentCycle = new Date().toISOString().slice(0, 7)
-      const users = $app.findRecordsByFilter(
-        'users',
-        "role = 'profissional' && approved = true",
-        '',
-        500,
-        0,
-      )
-      if (!users || users.length === 0) {
-        return e.json(200, {
-          success: true,
-          count: 0,
-          message: 'Nenhum profissional aprovado encontrado',
-        })
-      }
+// Recalculate partner ranking on demand (for admin preview and testing)
+// Formula: pontos = tarifa × servicos × max(indicacoes_ciclo, 1)
+// Recurso 1: As indicações (referrals_this_cycle) são contabilizadas APENAS do ciclo atual (últimos 30 dias).
+// referrals_count mantém o total histórico.
+routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
+  const users = $app.findRecordsByFilter(
+    'users',
+    "role = 'profissional' && approved = true",
+    '-created',
+    500,
+    0,
+  )
 
-      let tarifas = { gratis: 1.0, basico: 1.0, pro: 2.0, premium: 3.0 }
-      try {
-        const tarifaConfig = $app.findFirstRecordByData('platform_config', 'key', 'plan_tarifas')
-        const val = tarifaConfig.get('value')
-        if (val) tarifas = val
-      } catch (_) {}
+  const cycle = new Date().toISOString().slice(0, 7)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .replace('T', ' ')
 
-      // Carregar parâmetros individuais de binary_tree_params (posições 1 a 511)
-      let paramsMap = {}
-      try {
-        const allParams = $app.findRecordsByFilter('binary_tree_params', '', 'position', 600, 0)
-        if (allParams) {
-          for (let p of allParams) {
-            paramsMap[p.getInt('position')] = {
-              level: p.getInt('level'),
-              segment: p.getString('segment'),
-              coefficient: p.getFloat('coefficient'),
-              modifier: p.getFloat('modifier'),
-              divisor: p.getFloat('divisor'),
-              level_percentage: p.getFloat('level_percentage'),
-              cashback_weight: p.getFloat('cashback_weight'),
-            }
-          }
-        }
-      } catch (_) {}
+  // Tarifas fixas por plano em R$
+  const tarifaPorPlano = {
+    gratis: 4.0,
+    basico: 1.0,
+    pro: 2.0,
+    premium: 3.0,
+  }
 
-      const rankCol = $app.findCollectionByNameOrId('rank_entries')
-      const scoredList = []
+  const scores = []
 
-      for (const u of users) {
-        const profId = u.id
-        const plan = u.getString('plan') || 'basico'
-        const stars = u.getFloat('rating_avg') || 5.0
+  for (const u of users) {
+    const services = $app.findRecordsByFilter(
+      'services',
+      `professional = '${u.id}' && status = 'concluido'`,
+      '-created',
+      500,
+      0,
+    )
 
-        let referralsCount = 0
-        try {
-          const refs = $app.findRecordsByFilter(
-            'referrals',
-            "referrer = '" + profId + "'",
-            '',
-            1000,
-            0,
-          )
-          referralsCount = refs ? refs.length : 0
-        } catch (_) {}
+    // Contar indicações totais (histórico)
+    const allReferrals = $app.findRecordsByFilter(
+      'referrals',
+      `referrer = '${u.id}'`,
+      '-created',
+      500,
+      0,
+    )
 
-        // Pontos cumulativos mês a mês
-        let servicesCount = 0
-        try {
-          const svcs = $app.findRecordsByFilter(
-            'services',
-            "professional = '" + profId + "' && status = 'concluido'",
-            '',
-            2000,
-            0,
-          )
-          servicesCount = svcs ? svcs.length : 0
-        } catch (_) {}
+    // Contar indicações apenas do ciclo atual (últimos 30 dias)
+    const referralsThisCycle = $app.findRecordsByFilter(
+      'referrals',
+      `referrer = '${u.id}' && created >= '${thirtyDaysAgo}'`,
+      '-created',
+      500,
+      0,
+    )
 
-        // Fórmula oficial de pontos: tarifa_R$ × serviços × max(indicações, 1)
-        let tarifaRS = 1.0
-        if (tarifas[plan] !== undefined) {
-          tarifaRS = Number(tarifas[plan])
-        } else {
-          tarifaRS = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
-        }
+    const userPlan = (u.get('plan') || 'gratis').toLowerCase()
+    const tarifa = tarifaPorPlano[userPlan] ?? 4.0
+    const servicosCount = services.length
+    const totalIndicacoes = allReferrals.length
+    const indicacoesCiclo = referralsThisCycle.length
 
-        const variavel = Math.max(referralsCount, 1)
-        const rawPoints = Math.round(tarifaRS * servicesCount * variavel)
-        const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
+    // Fórmula 369: pontos = tarifa * servicos * max(indicacoes_ciclo, 1)
+    const multiplier = Math.max(indicacoesCiclo, 1)
+    const points = Math.round(tarifa * servicosCount * multiplier)
 
-        scoredList.push({
-          user_id: profId,
-          points: points,
-          stars: stars,
-          tarifa_rs: tarifaRS,
-          services_count: servicesCount,
-          referrals_count: referralsCount,
-          created: u.getString('created'),
-        })
-      }
+    scores.push({
+      user: u,
+      points,
+      services_count: servicosCount,
+      referrals_count: totalIndicacoes,
+      referrals_this_cycle: indicacoesCiclo,
+      stars: u.get('rating_avg') || 5.0,
+      created: u.get('created'),
+    })
+  }
 
-      // Ranking exclusivamente por pontos (desempate por estrelas e antiguidade)
-      scoredList.sort((a, b) => {
-        if (b.points !== a.points) return b.points - a.points
-        if (b.stars !== a.stars) return b.stars - a.stars
-        return a.created.localeCompare(b.created)
-      })
-
-      for (let i = 0; i < scoredList.length; i++) {
-        const item = scoredList[i]
-        const pos = i + 1
-
-        // MODELO HÍBRIDO:
-        // Posição <= 511: parâmetros individuais da coleção binary_tree_params
-        // Posição > 511: parâmetros calculados matematicamente por nível (até nível 36 / 68.719.476.735)
-        let param
-        if (pos <= 511 && paramsMap[pos]) {
-          param = paramsMap[pos]
-        } else {
-          // Determinar nível matematicamente para pos > 511
-          let lvl = 10
-          while (lvl < 36 && Math.pow(2, lvl) - 1 < pos) {
-            lvl++
-          }
-          const levelPct = Math.min(1.8, +(0.24 + (lvl - 1) * 0.04).toFixed(3))
-          const modifier = +(1.0 + (lvl - 1) * 0.45).toFixed(2)
-          const divisor = Math.pow(2, Math.min(lvl - 1, 10))
-          const coefficient = Math.max(0.1, +(1000 / Math.pow(pos, 0.75)).toFixed(3))
-          const cashbackWeight = Math.max(0.0001, +(1 / (pos * 0.8 + 1)).toFixed(5))
-
-          param = {
-            level: lvl,
-            segment: 'Nível ' + lvl + ' Rede',
-            coefficient: coefficient,
-            modifier: modifier,
-            divisor: divisor,
-            level_percentage: levelPct,
-            cashback_weight: cashbackWeight,
-          }
-        }
-
-        let rankRec
-        try {
-          rankRec = $app.findFirstRecordByData('rank_entries', 'user', item.user_id)
-        } catch (_) {
-          rankRec = new Record(rankCol)
-          rankRec.set('user', item.user_id)
-        }
-
-        rankRec.set('cycle', currentCycle)
-        rankRec.set('points', Number(item.points))
-        rankRec.set('services_count', Number(item.services_count))
-        rankRec.set('referrals_count', Number(item.referrals_count))
-        rankRec.set('stars', Number(item.stars))
-        rankRec.set('ranking_position', Number(pos))
-        rankRec.set('tie_break_details', {
-          position: pos,
-          level: param.level,
-          segment: param.segment,
-          cashback_weight: param.cashback_weight,
-          stars: item.stars,
-          tarifa_rs: item.tarifa_rs,
-          cycle: currentCycle,
-          formula: 'tarifa_R$ * servicos * max(indicacoes, 1)',
-          is_hybrid_calculated: pos > 511,
-          recomputed_at: new Date().toISOString(),
-        })
-        $app.save(rankRec)
-      }
-
-      return e.json(200, {
-        success: true,
-        count: scoredList.length,
-        items: scoredList,
-        message:
-          'Ranking recalculado com sucesso no modelo híbrido (1-511 individual, 512+ por nível)!',
-      })
-    } catch (err) {
-      return e.json(500, { success: false, error: err.message })
+  // Desempate: 1º Pontos, 2º Avaliação (stars), 3º Antiguidade (created mais antigo)
+  scores.sort((a, b) => {
+    if (b.points !== a.points) {
+      return b.points - a.points
     }
-  },
-  $apis.requireAuth(),
-)
+    if (b.stars !== a.stars) {
+      return b.stars - a.stars
+    }
+    return new Date(a.created).getTime() - new Date(b.created).getTime()
+  })
+
+  // Save ranking
+  const rankCol = $app.findCollectionByNameOrId('rank_entries')
+  for (let i = 0; i < scores.length; i++) {
+    const s = scores[i]
+    let entry
+    try {
+      entry = $app.findFirstRecordByData('rank_entries', 'user', s.user.id)
+    } catch (_) {
+      entry = new Record(rankCol)
+    }
+
+    const createdTime = s.created ? new Date(s.created).getTime() : Date.now()
+    const seniorityDays = Math.max(
+      0,
+      Math.floor((Date.now() - createdTime) / (1000 * 60 * 60 * 24)),
+    )
+
+    entry.set('user', s.user.id)
+    entry.set('cycle', cycle)
+    entry.set('points', s.points)
+    entry.set('services_count', s.services_count)
+    entry.set('referrals_count', s.referrals_count)
+    entry.set('referrals_this_cycle', s.referrals_this_cycle)
+    entry.set('stars', s.stars)
+    entry.set('ranking_position', i + 1)
+    entry.set('tie_break_details', {
+      stars: s.stars,
+      seniority_days: seniorityDays,
+      account_age: seniorityDays,
+      cycle_days: 30,
+      referrals_cycle_used: s.referrals_this_cycle,
+    })
+    $app.save(entry)
+  }
+
+  return c.json(200, {
+    status: 'ok',
+    total_ranked: scores.length,
+    cycle,
+    message:
+      'Ranking recalculado com sucesso com a fórmula 369 (ciclo mensal de 30 dias de indicações).',
+  })
+})

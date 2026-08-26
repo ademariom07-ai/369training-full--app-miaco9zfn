@@ -26,10 +26,13 @@ import ArtesMarciais from '@/pages/aluno/ArtesMarciais'
 import Comunidade from '@/pages/aluno/Comunidade'
 import ChatScreen from '@/pages/aluno/ChatScreen'
 import AlunoPerfil from '@/pages/aluno/AlunoPerfil'
+import ConteudosEmDestaque from '@/pages/aluno/ConteudosEmDestaque'
 
 // Profissional Pages
 import ProfissionalDashboard from '@/pages/profissional/ProfissionalDashboard'
 import GestaoAlunos from '@/pages/profissional/GestaoAlunos'
+import ProfissionalChatScreen from '@/pages/profissional/ProfissionalChatScreen'
+import ProfissionalConteudos from '@/pages/profissional/ProfissionalConteudos'
 import CriacaoTreino from '@/pages/profissional/CriacaoTreino'
 import CriacaoDieta from '@/pages/profissional/CriacaoDieta'
 import AgendaServicos from '@/pages/profissional/AgendaServicos'
@@ -53,6 +56,7 @@ export default function App() {
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/conteudos" element={<ConteudosEmDestaque />} />
           <Route path="/termos-de-uso" element={<TermosDeUso />} />
           <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
           <Route path="/lgpd-consentimentos" element={<LgpdConsentimentos />} />
@@ -94,6 +98,16 @@ export default function App() {
               <RoleGuard allowedRoles={['aluno']}>
                 <Layout>
                   <EncontrarProfissional />
+                </Layout>
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/aluno/conteudos"
+            element={
+              <RoleGuard allowedRoles={['aluno']}>
+                <Layout>
+                  <ConteudosEmDestaque />
                 </Layout>
               </RoleGuard>
             }
@@ -186,6 +200,36 @@ export default function App() {
               <RoleGuard allowedRoles={['profissional']}>
                 <Layout>
                   <GestaoAlunos />
+                </Layout>
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/profissional/chat"
+            element={
+              <RoleGuard allowedRoles={['profissional']}>
+                <Layout>
+                  <ProfissionalChatScreen />
+                </Layout>
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/profissional/chat/:alunoId"
+            element={
+              <RoleGuard allowedRoles={['profissional']}>
+                <Layout>
+                  <ProfissionalChatScreen />
+                </Layout>
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/profissional/conteudos"
+            element={
+              <RoleGuard allowedRoles={['profissional']}>
+                <Layout>
+                  <ProfissionalConteudos />
                 </Layout>
               </RoleGuard>
             }

@@ -82,10 +82,12 @@ export default function EncontrarProfissional() {
   const [profSchedules, setProfSchedules] = useState<WeeklyScheduleRecord[]>([])
   const [selectedSchedule, setSelectedSchedule] = useState<WeeklyScheduleRecord | null>(null)
   const [selectedServiceType, setSelectedServiceType] = useState<
-    'treino' | 'nutrição' | 'fisioterapia' | 'artes_marciais'
+    'treino' | 'nutrição' | 'psicologia' | 'fisioterapia' | 'artes_marciais'
   >('treino')
   const [isPartnerListStudent, setIsPartnerListStudent] = useState<boolean>(false)
   const [checkingPartnerList, setCheckingPartnerList] = useState<boolean>(false)
+  const [isFirstConsultation, setIsFirstConsultation] = useState<boolean>(false)
+  const [checkingFirstConsultation, setCheckingFirstConsultation] = useState<boolean>(false)
   const [loadingAgenda, setLoadingAgenda] = useState<boolean>(false)
   const [confirmingBooking, setConfirmingBooking] = useState<boolean>(false)
 
@@ -209,25 +211,42 @@ export default function EncontrarProfissional() {
     }
 
     if (user) {
+      setCheckingFirstConsultation(true)
       try {
-        const ref = await pb
-          .collection('referrals')
-          .getFirstListItem(`referrer = "${prof.id}" && referred = "${user.id}"`)
+        const [ref, priorAppointments] = await Promise.all([
+          pb
+            .collection('referrals')
+            .getFirstListItem(`referrer = "${prof.id}" && referred = "${user.id}"`)
+            .catch(() => null),
+          pb
+            .collection('appointments')
+            .getList(1, 1, {
+              filter: `profissional = "${prof.id}" && aluno = "${user.id}" && status = "concluido"`,
+            })
+            .catch(() => ({ totalItems: 0 })),
+        ])
         setIsPartnerListStudent(!!ref)
+        setIsFirstConsultation(priorAppointments.totalItems === 0)
       } catch (_) {
         setIsPartnerListStudent(false)
+        setIsFirstConsultation(true)
       } finally {
         setCheckingPartnerList(false)
+        setCheckingFirstConsultation(false)
       }
     } else {
       setIsPartnerListStudent(false)
       setCheckingPartnerList(false)
+      setIsFirstConsultation(true)
+      setCheckingFirstConsultation(false)
     }
   }
 
   // Base price for service type
   const getBaseServicePrice = (type: string, _plan?: string) => {
     switch (type) {
+      case 'psicologia':
+        return 190.0
       case 'nutrição':
         return 180.0
       case 'fisioterapia':
@@ -262,8 +281,11 @@ export default function EncontrarProfissional() {
     try {
       const basePrice = getBaseServicePrice(selectedServiceType, selectedProf.plan)
       const extraFee = isPartnerListStudent ? 0 : basePrice * 0.5
+      const totalPrice = basePrice + extraFee
+      const sinalAmount = isFirstConsultation ? totalPrice * 0.3 : 0
+      const remainingAmount = isFirstConsultation ? totalPrice * 0.7 : totalPrice
 
-      await pb.collection('appointments').create({
+      const appt = await pb.collection('appointments').create({
         profissional: selectedProf.id,
         aluno: user.id,
         schedule: selectedSchedule.id,
@@ -271,10 +293,33 @@ export default function EncontrarProfissional() {
         status: 'confirmado',
         valor: basePrice,
         taxa_extra: extraFee,
+        requires_advance: isFirstConsultation,
+        advance_percentage: isFirstConsultation ? 30 : 0,
+        advance_amount: sinalAmount,
+        remaining_amount: remainingAmount,
       })
 
+      // Se for 1ª consulta, gerar a wallet_transaction pendente do adiantamento (PIX)
+      if (isFirstConsultation && sinalAmount > 0) {
+        try {
+          await pb.collection('wallet_transactions').create({
+            user: user.id,
+            type: 'deposito',
+            amount: sinalAmount,
+            status: 'pendente',
+            reference_type: 'appointment',
+            reference_id: appt.id,
+            description: `Adiantamento de 30% (Sinal PIX) - 1ª Consulta com ${selectedProf.name}`,
+          })
+        } catch (e) {
+          console.warn('Erro ao registrar transação de sinal:', e)
+        }
+      }
+
       toast.success(
-        `Agendamento confirmado com sucesso para ${selectedSchedule.dia_da_semana} (${selectedSchedule.data}) das ${selectedSchedule.hora_inicio} às ${selectedSchedule.hora_fim}!`,
+        isFirstConsultation
+          ? `1ª Consulta agendada! Sinal de R$ ${sinalAmount.toFixed(2)} (30%) gerado para pagamento.`
+          : `Agendamento confirmado com sucesso para ${selectedSchedule.dia_da_semana} (${selectedSchedule.data}) das ${selectedSchedule.hora_inicio} às ${selectedSchedule.hora_fim}!`,
       )
       setAgendaModalOpen(false)
     } catch (err: unknown) {
@@ -348,6 +393,7 @@ export default function EncontrarProfissional() {
               <option value="Todas">Todas Especialidades</option>
               <option value="Educação Física">Educação Física / Personal</option>
               <option value="Nutrição">Nutrição</option>
+              <option value="Psicologia">Psicologia</option>
               <option value="Fisioterapia">Fisioterapia</option>
               <option value="Artes Marciais">Artes Marciais</option>
             </select>
@@ -747,11 +793,12 @@ export default function EncontrarProfissional() {
                 <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-2">
                   1. Escolha a Modalidade de Atendimento:
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {(
                     [
-                      { id: 'treino', label: 'Treino / Personal', price: 150 },
+                      { id: 'treino', label: 'Treino', price: 150 },
                       { id: 'nutrição', label: 'Nutrição', price: 180 },
+                      { id: 'psicologia', label: 'Psicologia', price: 190 },
                       { id: 'fisioterapia', label: 'Fisioterapia', price: 200 },
                       { id: 'artes_marciais', label: 'Artes Marciais', price: 160 },
                     ] as const
@@ -904,6 +951,58 @@ export default function EncontrarProfissional() {
                         </span>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* RECURSO 3: ADIANTAMENTO DE 30% NA 1ª CONSULTA */}
+                {checkingFirstConsultation ? (
+                  <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center gap-2 text-xs text-gray-400">
+                    <Loader2 className="w-4 h-4 text-[#D4AF37] animate-spin" />
+                    <span>Verificando histórico de consultas...</span>
+                  </div>
+                ) : isFirstConsultation ? (
+                  <div className="p-4 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/40 text-xs space-y-2.5">
+                    <div className="flex items-center gap-2 text-[#0057FF] font-bold font-montserrat uppercase">
+                      <Sparkles className="w-4 h-4" />
+                      1ª Consulta com este Especialista (Sinal de 30% Requerido)
+                    </div>
+                    <p className="text-gray-300 font-inter">
+                      Para garantir a reserva do horário no seu primeiro atendimento, aplica-se o
+                      adiantamento fixo de 30% via PIX. As consultas seguintes têm pagamento livre a
+                      critério do profissional.
+                    </p>
+
+                    {(() => {
+                      const baseP = getBaseServicePrice(selectedServiceType, selectedProf.plan)
+                      const extraF = isPartnerListStudent ? 0 : baseP * 0.5
+                      const totalP = baseP + extraF
+                      const sinal = totalP * 0.3
+                      const restante = totalP * 0.7
+                      return (
+                        <div className="p-3 rounded-lg bg-[#141414] border border-[#0057FF]/30 space-y-1.5 font-mono">
+                          <div className="flex justify-between items-center text-gray-300">
+                            <span>Valor total da consulta:</span>
+                            <span className="font-bold text-white">R$ {totalP.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[#D4AF37] font-bold">
+                            <span>Sinal (30%):</span>
+                            <span>R$ {sinal.toFixed(2)} — pago agora via PIX</span>
+                          </div>
+                          <div className="flex justify-between items-center text-gray-400 text-[11px]">
+                            <span>Restante (70%):</span>
+                            <span>R$ {restante.toFixed(2)} — no dia da consulta</span>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#141414] border border-[#22C55E]/30 text-[11px] text-[#22C55E] flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>
+                      Consulta recorrente (2ª em diante): Pagamento livre sem adiantamento
+                      obrigatório.
+                    </span>
                   </div>
                 )}
 

@@ -20,13 +20,18 @@ import { PresentationVideoPlayer } from '@/components/PresentationVideoPlayer'
 export default function AprovacoesProfissionais() {
   const [pendingList, setPendingList] = useState<UserProfile[]>([])
   const [pendingDeposits, setPendingDeposits] = useState<any[]>([])
+  const [pendingContents, setPendingContents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'profissionais' | 'depositos'>('depositos')
+  const [activeTab, setActiveTab] = useState<'depositos' | 'profissionais' | 'conteudos'>(
+    'depositos',
+  )
   const [processingTxId, setProcessingTxId] = useState<string | null>(null)
+  const [rejectReasonMap, setRejectReasonMap] = useState<Record<string, string>>({})
+  const [showRejectInput, setShowRejectInput] = useState<Record<string, boolean>>({})
 
   const loadPending = async () => {
     try {
-      const [resProf, resDep] = await Promise.all([
+      const [resProf, resDep, resCont] = await Promise.all([
         pb.collection('users').getList<UserProfile>(1, 50, {
           filter: 'role = "profissional" && approved = false',
           sort: '-created',
@@ -36,9 +41,18 @@ export default function AprovacoesProfissionais() {
           sort: '-created',
           expand: 'user',
         }),
+        pb
+          .collection('contents')
+          .getList(1, 50, {
+            filter: 'status = "pendente"',
+            sort: '-created',
+            expand: 'professional_id',
+          })
+          .catch(() => ({ items: [] })),
       ])
       setPendingList(resProf.items)
       setPendingDeposits(resDep.items)
+      setPendingContents(resCont.items)
     } catch {
       /* intentionally ignored */
     }
@@ -132,6 +146,35 @@ export default function AprovacoesProfissionais() {
     }
   }
 
+  const handleApproveContent = async (item: any) => {
+    try {
+      await pb.collection('contents').update(item.id, {
+        status: 'aprovado',
+        rejection_reason: '',
+      })
+      toast.success(`Conteúdo "${item.title}" aprovado e publicado com sucesso!`)
+      loadPending()
+    } catch (err: unknown) {
+      const error = err as Error
+      toast.error(error.message || 'Erro ao aprovar conteúdo.')
+    }
+  }
+
+  const handleRejectContent = async (item: any) => {
+    const reason = rejectReasonMap[item.id] || 'Material fora das diretrizes da plataforma 369.'
+    try {
+      await pb.collection('contents').update(item.id, {
+        status: 'rejeitado',
+        rejection_reason: reason,
+      })
+      toast.info(`Conteúdo "${item.title}" rejeitado.`)
+      loadPending()
+    } catch (err: unknown) {
+      const error = err as Error
+      toast.error(error.message || 'Erro ao rejeitar conteúdo.')
+    }
+  }
+
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
@@ -150,7 +193,7 @@ export default function AprovacoesProfissionais() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-[#141414] p-1 rounded-xl border border-[#2A2A2A] max-w-md">
+      <div className="flex bg-[#141414] p-1 rounded-xl border border-[#2A2A2A] max-w-xl">
         <button
           type="button"
           onClick={() => setActiveTab('depositos')}
@@ -191,6 +234,27 @@ export default function AprovacoesProfissionais() {
               }`}
             >
               {pendingList.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('conteudos')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all font-montserrat uppercase flex items-center justify-center gap-2 ${
+            activeTab === 'conteudos'
+              ? 'bg-[#22C55E] text-black shadow-md'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <span>Conteúdos</span>
+          {pendingContents.length > 0 && (
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                activeTab === 'conteudos' ? 'bg-black text-[#22C55E]' : 'bg-[#22C55E] text-black'
+              }`}
+            >
+              {pendingContents.length}
             </span>
           )}
         </button>
@@ -424,6 +488,129 @@ export default function AprovacoesProfissionais() {
             ))}
           </div>
         ))}
+
+      {/* ABA CONTEÚDOS PENDENTES (RECURSO 6: APROVAÇÃO DE CONTEÚDOS) */}
+      {activeTab === 'conteudos' && (
+        <div className="space-y-4">
+          {pendingContents.length === 0 ? (
+            <Card className="bg-[#181818] border border-[#2A2A2A] p-12 text-center rounded-2xl">
+              <CheckCircle2 className="w-12 h-12 text-[#22C55E] mx-auto mb-3" />
+              <h3 className="text-lg font-bold font-montserrat text-white">
+                Nenhum Conteúdo Pendente de Aprovação
+              </h3>
+              <p className="text-xs text-gray-400 font-inter mt-1">
+                Todos os PDFs, planilhas, e-books e vídeos submetidos foram auditados.
+              </p>
+            </Card>
+          ) : (
+            pendingContents.map((item) => {
+              const prof = item.expand?.professional_id
+              const hasFile = !!item.file
+              const downloadUrl = hasFile ? pb.files.getURL(item, item.file) : item.file_url
+
+              return (
+                <Card
+                  key={item.id}
+                  className="bg-[#181818] border border-amber-500/30 p-6 rounded-2xl flex flex-col gap-4"
+                >
+                  <div className="flex flex-col lg:flex-row items-start justify-between gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30">
+                          {item.type}
+                        </span>
+                        <h3 className="font-bold font-montserrat text-white text-base">
+                          {item.title}
+                        </h3>
+                        <span className="text-xs font-mono text-gray-400">
+                          Preço: {item.price > 0 ? `R$ ${item.price.toFixed(2)}` : 'Gratuito'}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-gray-400 font-inter">
+                        Profissional:{' '}
+                        <strong className="text-white">{prof?.name || 'Parceiro 369'}</strong> (
+                        {prof?.email})
+                      </p>
+
+                      {item.description && (
+                        <p className="text-xs text-gray-300 font-inter max-w-2xl bg-[#141414] p-3 rounded-xl border border-[#2A2A2A]">
+                          {item.description}
+                        </p>
+                      )}
+
+                      {/* Visualizador de Arquivo / Link */}
+                      <div className="flex items-center gap-3 pt-1">
+                        {downloadUrl && (
+                          <a
+                            href={downloadUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-[#0057FF] hover:underline font-semibold"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Abrir / Baixar Arquivo Anexado ({item.type.toUpperCase()})
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Botões de Decisão */}
+                    <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto shrink-0">
+                      <Button
+                        onClick={() => handleApproveContent(item)}
+                        className="w-full sm:w-auto bg-[#22C55E] text-black hover:bg-[#1eb354] font-bold text-xs uppercase px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.25)]"
+                      >
+                        <CheckCircle2 className="w-4 h-4" /> Aprovar Conteúdo
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          setShowRejectInput((prev) => ({
+                            ...prev,
+                            [item.id]: !prev[item.id],
+                          }))
+                        }
+                        className="w-full sm:w-auto border-red-900 text-red-400 hover:bg-red-950/30 text-xs uppercase px-4 py-2.5 rounded-xl"
+                      >
+                        <XCircle className="w-4 h-4 mr-1" /> Rejeitar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Input de Motivo para Rejeição */}
+                  {showRejectInput[item.id] && (
+                    <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/40 space-y-3">
+                      <label className="block text-xs font-bold text-red-400 uppercase font-montserrat">
+                        Motivo da Reprovação:
+                      </label>
+                      <input
+                        type="text"
+                        value={rejectReasonMap[item.id] || ''}
+                        onChange={(e) =>
+                          setRejectReasonMap((prev) => ({
+                            ...prev,
+                            [item.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="Ex: Formatação do PDF incompleta, resolução baixa, ou conteúdo fora das diretrizes..."
+                        className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-red-500/40 text-white text-xs"
+                      />
+                      <Button
+                        onClick={() => handleRejectContent(item)}
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-lg px-4 py-2"
+                      >
+                        Confirmar Rejeição
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              )
+            })
+          )}
+        </div>
+      )}
     </div>
   )
 }

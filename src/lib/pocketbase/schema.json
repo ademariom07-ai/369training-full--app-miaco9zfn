@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-24T22:59:02.258Z",
+  "generatedAt": "2026-08-26T20:12:56.038Z",
   "collections": [
     {
       "name": "users",
@@ -155,6 +155,24 @@
           "type": "bool",
           "required": false,
           "system": false
+        },
+        {
+          "name": "crp",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sub_specialties",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -212,6 +230,31 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "validated_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "referral_bonus_paid",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["pending", "validated"]
+        },
+        {
+          "name": "services_count",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -768,6 +811,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "referrals_this_cycle",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1054,6 +1103,18 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "reported",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "report_reason",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1563,6 +1624,24 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "requires_advance",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "advance_amount",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "advance_paid",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1570,6 +1649,222 @@
         "CREATE INDEX idx_appointments_aluno ON appointments (aluno)",
         "CREATE INDEX idx_appointments_sched ON appointments (schedule)",
         "CREATE INDEX idx_appointments_status ON appointments (status)"
+      ]
+    },
+    {
+      "name": "chat_terms_acceptances",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "accepted_at",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ip_address",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "user_agent",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "version",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_chat_terms_user ON chat_terms_acceptances (user)"]
+    },
+    {
+      "name": "contents",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["video", "pdf", "ebook", "spreadsheet"]
+        },
+        {
+          "name": "file",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "file_url",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "preview_url",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "price",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["pendente", "aprovado", "rejeitado"]
+        },
+        {
+          "name": "professional_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_contents_prof ON contents (professional_id)",
+        "CREATE INDEX idx_contents_status ON contents (status)"
+      ]
+    },
+    {
+      "name": "content_purchases",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "content",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "contents"
+        },
+        {
+          "name": "price_paid",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "platform_fee",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "professional_revenue",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_cp_user ON content_purchases (user)",
+        "CREATE INDEX idx_cp_content ON content_purchases (content)"
       ]
     }
   ]

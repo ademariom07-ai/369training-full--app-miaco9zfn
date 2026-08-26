@@ -33,6 +33,7 @@ export default function Cadastro() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
+  const [country, setCountry] = useState('Brasil')
   const [city, setCity] = useState('São Paulo')
   const [state, setState] = useState('SP')
 
@@ -42,7 +43,9 @@ export default function Cadastro() {
   // Profissional specific
   const [professionalType, setProfessionalType] = useState<'Pessoa Física' | 'MEI'>('Pessoa Física')
   const [specialties, setSpecialties] = useState<string[]>(['Educação Física'])
+  const [subSpecialties, setSubSpecialties] = useState<string[]>([])
   const [cref, setCref] = useState('')
+  const [crp, setCrp] = useState('')
   const [consentTerms, setConsentTerms] = useState(false)
   const [consentLgpd, setConsentLgpd] = useState(false)
 
@@ -56,6 +59,14 @@ export default function Cadastro() {
       }
     } else {
       setSpecialties([...specialties, spec])
+    }
+  }
+
+  const toggleSubSpecialty = (sub: string) => {
+    if (subSpecialties.includes(sub)) {
+      setSubSpecialties(subSpecialties.filter((s) => s !== sub))
+    } else {
+      setSubSpecialties([...subSpecialties, sub])
     }
   }
 
@@ -73,7 +84,12 @@ export default function Cadastro() {
     }
 
     if (role === 'profissional') {
-      if (!cref) {
+      const isPsychology = specialties.includes('Psicologia')
+      if (isPsychology && !crp.trim()) {
+        toast.error('Informe seu número de registro CRP (Psicologia).')
+        return
+      }
+      if (!isPsychology && !cref.trim()) {
         toast.error('Informe seu número de registro profissional (CREF/CRN/CREFITO).')
         return
       }
@@ -104,6 +120,7 @@ export default function Cadastro() {
         plan_type: role,
         approved: role === 'aluno', // alunos are auto-approved, profissionais require review
         phone: phone.trim(),
+        country,
         city: city.trim(),
         state: state.trim().toUpperCase(),
         referral_code: referralCode,
@@ -115,7 +132,9 @@ export default function Cadastro() {
       } else {
         payload.professional_type = professionalType
         payload.cref = cref.trim()
+        payload.crp = crp.trim()
         payload.specialties = specialties
+        payload.sub_specialties = subSpecialties
       }
 
       await pb.collection('users').create(payload)
@@ -260,8 +279,27 @@ export default function Cadastro() {
                   </div>
                 </div>
 
-                {/* Telefone & Cidade/Estado */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* País, Telefone & Localização (RECURSO 7: SELEÇÃO DE PAÍS) */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#D4AF37] uppercase tracking-wider mb-1 font-montserrat">
+                      País *
+                    </label>
+                    <select
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#D4AF37]/40 text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                    >
+                      <option value="Brasil">Brasil (LGPD)</option>
+                      <option value="Portugal">Portugal (GDPR)</option>
+                      <option value="Estados Unidos">Estados Unidos (CCPA)</option>
+                      <option value="Reino Unido">Reino Unido (UK GDPR)</option>
+                      <option value="Canadá">Canadá (PIPEDA)</option>
+                      <option value="Austrália">Austrália (Privacy Act)</option>
+                      <option value="Outro">Outro País</option>
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
                       Telefone / WhatsApp *
@@ -296,13 +334,13 @@ export default function Cadastro() {
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
-                      Estado (UF) *
+                      Estado / Província *
                     </label>
                     <Input
                       value={state}
                       onChange={(e) => setState(e.target.value.toUpperCase())}
                       placeholder="SP"
-                      maxLength={2}
+                      maxLength={10}
                       className="bg-[#141414] border-[#2A2A2A] rounded-xl text-white text-center font-bold focus-visible:ring-[#D4AF37]"
                       required
                     />
@@ -352,14 +390,25 @@ export default function Cadastro() {
 
                       <div>
                         <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
-                          Nº de Registro (CREF / CRN / CREFITO) *
+                          {specialties.includes('Psicologia')
+                            ? 'Nº de Registro (CRP / CREF / CRN) *'
+                            : 'Nº de Registro (CREF / CRN / CREFITO) *'}
                         </label>
                         <div className="relative">
                           <Award className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                           <Input
-                            value={cref}
-                            onChange={(e) => setCref(e.target.value)}
-                            placeholder="Ex: CREF 123456-G/SP"
+                            value={specialties.includes('Psicologia') && crp ? crp : cref}
+                            onChange={(e) => {
+                              if (specialties.includes('Psicologia')) {
+                                setCrp(e.target.value)
+                              }
+                              setCref(e.target.value)
+                            }}
+                            placeholder={
+                              specialties.includes('Psicologia')
+                                ? 'Ex: CRP 06/123456'
+                                : 'Ex: CREF 123456-G/SP'
+                            }
                             className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white focus-visible:ring-[#D4AF37]"
                             required
                           />
@@ -367,32 +416,74 @@ export default function Cadastro() {
                       </div>
                     </div>
 
+                    {/* RECURSO 5: PSICOLOGIA & SUB-ESPECIALIDADES */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2 font-montserrat">
                         Especialidades (selecione uma ou mais)
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {['Educação Física', 'Nutrição', 'Fisioterapia', 'Artes Marciais'].map(
-                          (spec) => {
-                            const isSelected = specialties.includes(spec)
-                            return (
-                              <button
-                                type="button"
-                                key={spec}
-                                onClick={() => toggleSpecialty(spec)}
-                                className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
-                                  isSelected
-                                    ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-white'
-                                    : 'bg-[#141414] border-[#2A2A2A] text-gray-400 hover:text-white'
-                                }`}
-                              >
-                                <span>{spec}</span>
-                                {isSelected && <CheckCircle2 className="w-4 h-4 text-[#D4AF37]" />}
-                              </button>
-                            )
-                          },
-                        )}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          'Educação Física',
+                          'Nutrição',
+                          'Psicologia',
+                          'Fisioterapia',
+                          'Artes Marciais',
+                        ].map((spec) => {
+                          const isSelected = specialties.includes(spec)
+                          return (
+                            <button
+                              type="button"
+                              key={spec}
+                              onClick={() => toggleSpecialty(spec)}
+                              className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
+                                isSelected
+                                  ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-white'
+                                  : 'bg-[#141414] border-[#2A2A2A] text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              <span>{spec}</span>
+                              {isSelected && <CheckCircle2 className="w-4 h-4 text-[#D4AF37]" />}
+                            </button>
+                          )
+                        })}
                       </div>
+
+                      {/* Sub-especialidades de Psicologia quando selecionado */}
+                      {specialties.includes('Psicologia') && (
+                        <div className="mt-3 p-3 rounded-xl bg-[#141414] border border-[#D4AF37]/30 space-y-2">
+                          <label className="block text-[11px] font-bold text-[#D4AF37] uppercase font-montserrat">
+                            Sub-especialidades de Psicologia:
+                          </label>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                            {[
+                              'Clínica',
+                              'Esportiva',
+                              'Organizacional',
+                              'Infantil',
+                              'Neuropsicologia',
+                            ].map((sub) => {
+                              const isSubSelected = subSpecialties.includes(sub)
+                              return (
+                                <button
+                                  type="button"
+                                  key={sub}
+                                  onClick={() => toggleSubSpecialty(sub)}
+                                  className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center justify-between transition-all ${
+                                    isSubSelected
+                                      ? 'bg-[#0057FF]/20 border-[#0057FF] text-[#0057FF] font-bold'
+                                      : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white'
+                                  }`}
+                                >
+                                  <span>{sub}</span>
+                                  {isSubSelected && (
+                                    <CheckCircle2 className="w-3 h-3 text-[#0057FF]" />
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Consents */}

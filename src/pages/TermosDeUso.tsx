@@ -69,8 +69,9 @@ export default function TermosDeUso() {
             </h2>
             <p>
               A 369TRAINING é uma plataforma digital que conecta profissionais de Educação Física
-              (CREF), Nutrição (CRN), Fisioterapia (CREFITO) e Artes Marciais a alunos e clientes
-              interessados em serviços de treinamento físico, planejamento alimentar, reabilitação
+              (CREF), Nutrição (CRN), Psicologia (CRP), Fisioterapia (CREFITO) e Artes Marciais a
+              alunos e clientes interessados em serviços de treinamento físico, planejamento
+              alimentar, suporte em saúde mental e psicologia clínica/esportiva, reabilitação
               biomecânica e desenvolvimento de alta performance.
             </p>
             <p>
@@ -96,7 +97,17 @@ export default function TermosDeUso() {
               <li>
                 <strong className="text-white">Profissionais de Saúde e Treinadores:</strong> Devem
                 comprovar habilitação legal e registro ativo perante o respectivo conselho de classe
-                regional (CREF, CRN, CREFITO ou federação de artes marciais reconhecida).
+                regional (CREF, CRN, CRP, CREFITO ou federação de artes marciais reconhecida).
+              </li>
+              <li>
+                <strong className="text-[#D4AF37]">
+                  Cláusula de Sigilo Profissional em Psicologia:
+                </strong>{' '}
+                O atendimento psicológico prestado por profissionais inscritos no CRP submete-se
+                estritamente ao Código de Ética Profissional do Psicólogo. Todas as comunicações,
+                anotações e dados sensíveis de saúde mental são de confidencialidade absoluta, sendo
+                garantida a inviolabilidade do sigilo profissional entre psicólogo e paciente na
+                plataforma.
               </li>
               <li>
                 <strong className="text-white">Auditoria Regulatória:</strong> Todo cadastro
@@ -214,12 +225,19 @@ export default function TermosDeUso() {
           {/* Seção 9 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold font-montserrat text-white uppercase flex items-center gap-2">
-              <span className="text-[#D4AF37]">9.</span> Foro e Legislação Aplicável
+              <span className="text-[#D4AF37]">9.</span> Foro, Legislação e Jurisdição por País
             </h2>
             <p>
-              Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o
-              Foro da Comarca de São Paulo/SP para dirimir quaisquer litígios oriundos deste
-              instrumento, com renúncia expressa a qualquer outro, por mais privilegiado que seja.
+              Estes Termos são regidos prioritariamente pelas leis da República Federativa do
+              Brasil. Fica eleito o Foro da Comarca de São Paulo/SP (Brasil) para dirimir quaisquer
+              controvérsias ou litígios oriundos deste instrumento para usuários domiciliados no
+              Brasil, com renúncia expressa a qualquer outro foro.
+            </p>
+            <p>
+              Para usuários residentes em outros países (Portugal, União Europeia, Reino Unido,
+              Estados Unidos, Canadá e Austrália), aplicar-se-ão os princípios internacionais de
+              proteção ao consumidor e regras de jurisdição correspondentes, mantendo-se a base
+              contratual brasileira na ausência de tratado ou disposição cogente local em contrário.
             </p>
           </section>
 

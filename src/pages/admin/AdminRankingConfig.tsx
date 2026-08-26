@@ -47,6 +47,7 @@ interface RankItem {
   ranking_position: number
   services_count: number
   referrals_count: number
+  referrals_this_cycle?: number
   stars: number
   tie_break_details?: {
     position?: number
@@ -82,6 +83,9 @@ export default function AdminRankingConfig() {
   const [tarifaBasico, setTarifaBasico] = useState('1.00')
   const [tarifaPro, setTarifaPro] = useState('2.00')
   const [tarifaPremium, setTarifaPremium] = useState('3.00')
+
+  // Regra de Indicação e Validação (default: 5 serviços)
+  const [minServicesReferral, setMinServicesReferral] = useState('5')
 
   // Metas ESG por Nível Confirmadas: Bônus 55% + Econômica 15% + Social 15% + Ecológica 15%
   const [esgBonus, setEsgBonus] = useState('55')
@@ -163,6 +167,8 @@ export default function AdminRankingConfig() {
           if (c.value.social !== undefined) setEsgSoc((Number(c.value.social) * 100).toString())
           if (c.value.ecologica !== undefined)
             setEsgEco((Number(c.value.ecologica) * 100).toString())
+        } else if (c.key === 'min_services_to_validate_referral' && c.value !== undefined) {
+          setMinServicesReferral(String(c.value))
         }
       })
 
@@ -294,7 +300,29 @@ export default function AdminRankingConfig() {
         })
       }
 
-      toast.success('Parâmetros de tarifas, divisão de receita e ESG atualizados com sucesso!')
+      // 4. Atualizar min_services_to_validate_referral
+      const minServ = parseInt(minServicesReferral, 10) || 5
+      try {
+        const refRec = await pb
+          .collection('platform_config')
+          .getFirstListItem('key = "min_services_to_validate_referral"')
+        await pb.collection('platform_config').update(refRec.id, {
+          value: minServ,
+          description:
+            'Mínimo de serviços concluídos para validar indicação e liberar cashback de referral',
+        })
+      } catch {
+        await pb.collection('platform_config').create({
+          key: 'min_services_to_validate_referral',
+          value: minServ,
+          description:
+            'Mínimo de serviços concluídos para validar indicação e liberar cashback de referral',
+        })
+      }
+
+      toast.success(
+        'Parâmetros de tarifas, divisão de receita, indicação e ESG atualizados com sucesso!',
+      )
     } catch {
       toast.error('Erro ao salvar parâmetros na nuvem.')
     }
@@ -354,11 +382,15 @@ export default function AdminRankingConfig() {
       })
 
       const currentCycle = new Date().toISOString().slice(0, 7)
+      const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .replace('T', ' ')
       const scored: Array<{
         user_id: string
         points: number
         services_count: number
         referrals_count: number
+        referrals_this_cycle: number
         stars: number
         tarifa_rs: number
       }> = []
@@ -369,13 +401,16 @@ export default function AdminRankingConfig() {
         const tarifaRS = tarifasMap[plan] || 1.0
 
         let referralsCount = 0
+        let referralsThisCycle = 0
         try {
           const refs = await pb.collection('referrals').getFullList({
             filter: `referrer = "${u.id}"`,
           })
           referralsCount = refs.length
+          referralsThisCycle = refs.filter((r) => r.created >= thirtyDaysAgoIso).length
         } catch {
           referralsCount = 0
+          referralsThisCycle = 0
         }
 
         let servicesCount = 0
@@ -388,7 +423,8 @@ export default function AdminRankingConfig() {
           servicesCount = 0
         }
 
-        const variavel = Math.max(referralsCount, 1)
+        // FÓRMULA 369: tarifa * servicos * max(indicacoes_ciclo, 1)
+        const variavel = Math.max(referralsThisCycle, 1)
         const rawPoints = Math.round(tarifaRS * servicesCount * variavel)
         const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
 
@@ -397,6 +433,7 @@ export default function AdminRankingConfig() {
           points,
           services_count: servicesCount,
           referrals_count: referralsCount,
+          referrals_this_cycle: referralsThisCycle,
           stars,
           tarifa_rs: tarifaRS,
         })
@@ -441,6 +478,7 @@ export default function AdminRankingConfig() {
             points: item.points,
             services_count: item.services_count,
             referrals_count: item.referrals_count,
+            referrals_this_cycle: item.referrals_this_cycle,
             stars: item.stars,
             ranking_position: pos,
             tie_break_details: {
@@ -451,7 +489,8 @@ export default function AdminRankingConfig() {
               stars: item.stars,
               tarifa_rs: item.tarifa_rs,
               cycle: currentCycle,
-              formula: 'tarifa_R$ * servicos * max(indicacoes, 1)',
+              formula: 'tarifa_R$ * servicos * max(indicacoes_ciclo, 1)',
+              referrals_cycle_used: item.referrals_this_cycle,
               is_hybrid_calculated: pRecord.is_hybrid_calculated,
               recomputed_at: new Date().toISOString(),
             },
@@ -463,6 +502,7 @@ export default function AdminRankingConfig() {
             points: item.points,
             services_count: item.services_count,
             referrals_count: item.referrals_count,
+            referrals_this_cycle: item.referrals_this_cycle,
             stars: item.stars,
             ranking_position: pos,
             tie_break_details: {
@@ -473,14 +513,15 @@ export default function AdminRankingConfig() {
               stars: item.stars,
               tarifa_rs: item.tarifa_rs,
               cycle: currentCycle,
-              formula: 'tarifa_R$ * servicos * max(indicacoes, 1)',
+              formula: 'tarifa_R$ * servicos * max(indicacoes_ciclo, 1)',
+              referrals_cycle_used: item.referrals_this_cycle,
               is_hybrid_calculated: pRecord.is_hybrid_calculated,
               recomputed_at: new Date().toISOString(),
             },
           })
         }
       }
-      toast.success('Ranking recalculado no modelo híbrido!')
+      toast.success('Ranking recalculado no modelo híbrido com ciclo mensal!')
     } catch {
       toast.error('Erro ao recalcular ranking localmente')
     }
@@ -788,7 +829,7 @@ export default function AdminRankingConfig() {
                   <th className="pb-3 text-center">Tipo de Parâmetro</th>
                   <th className="pb-3 text-center">Tarifa (R$)</th>
                   <th className="pb-3 text-center">Serviços</th>
-                  <th className="pb-3 text-center">Indicações</th>
+                  <th className="pb-3 text-center">Indicações (Ciclo / Total)</th>
                   <th className="pb-3 text-right">Pontuação Final</th>
                 </tr>
               </thead>
@@ -885,7 +926,15 @@ export default function AdminRankingConfig() {
                           {r.services_count || 0}
                         </td>
                         <td className="py-3 text-center font-mono text-gray-300">
-                          {r.referrals_count || 0}
+                          <span className="font-bold text-[#22C55E]">
+                            {r.referrals_this_cycle !== undefined
+                              ? r.referrals_this_cycle
+                              : r.referrals_count || 0}
+                          </span>
+                          <span className="text-gray-500 text-[10px]">
+                            {' '}
+                            / {r.referrals_count || 0}
+                          </span>
                         </td>
                         <td className="py-3 text-right font-mono font-bold text-[#D4AF37] text-sm">
                           {r.points.toLocaleString('pt-BR')} pts
@@ -1574,66 +1623,91 @@ export default function AdminRankingConfig() {
               </div>
             </Card>
 
-            {/* Metas ESG Percentuais */}
-            <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl flex flex-col justify-between">
+            {/* Regra de Indicação & Metas ESG Percentuais */}
+            <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl flex flex-col justify-between space-y-4">
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-bold font-montserrat text-white uppercase">
-                    Metas ESG do Cashback (%)
-                  </h3>
-                  <span
-                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                      totalEsgSum === 100
-                        ? 'bg-[#22C55E]/10 text-[#22C55E]'
-                        : 'bg-red-500/10 text-red-400'
-                    }`}
-                  >
-                    Soma: {totalEsgSum}%
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400 font-inter mb-4">
-                  Bônus 55% + Meta Econômica 15% + Meta Social 15% + Meta Ecológica 15%.
+                <h3 className="text-sm font-bold font-montserrat text-white uppercase flex items-center gap-2 mb-2">
+                  <Users className="w-4 h-4 text-[#0057FF]" /> Regra de Validação de Indicação
+                </h3>
+                <p className="text-xs text-gray-400 font-inter mb-3">
+                  Número mínimo de serviços concluídos pelo aluno indicado para validar a indicação
+                  e creditar o cashback de referral ao profissional indicador.
                 </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] uppercase text-[#FF7A00] font-semibold mb-1">
-                      Bônus Mérito (%)
-                    </label>
-                    <Input
-                      value={esgBonus}
-                      onChange={(e) => setEsgBonus(e.target.value)}
-                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#FF7A00] font-bold"
-                    />
+                <div>
+                  <label className="block text-[10px] uppercase text-[#0057FF] font-semibold mb-1">
+                    Mínimo de Serviços para Validar Indicação (Padrão: 5)
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={minServicesReferral}
+                    onChange={(e) => setMinServicesReferral(e.target.value)}
+                    className="bg-[#141414] border-[#0057FF]/40 rounded-xl text-xs text-white font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[#2A2A2A]">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-bold font-montserrat text-white uppercase">
+                      Metas ESG do Cashback (%)
+                    </h3>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                        totalEsgSum === 100
+                          ? 'bg-[#22C55E]/10 text-[#22C55E]'
+                          : 'bg-red-500/10 text-red-400'
+                      }`}
+                    >
+                      Soma: {totalEsgSum}%
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-[10px] uppercase text-[#D4AF37] font-semibold mb-1">
-                      Econômica (%)
-                    </label>
-                    <Input
-                      value={esgEcon}
-                      onChange={(e) => setEsgEcon(e.target.value)}
-                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#D4AF37] font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase text-[#0057FF] font-semibold mb-1">
-                      Social (%)
-                    </label>
-                    <Input
-                      value={esgSoc}
-                      onChange={(e) => setEsgSoc(e.target.value)}
-                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#0057FF] font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase text-[#22C55E] font-semibold mb-1">
-                      Ecológica (%)
-                    </label>
-                    <Input
-                      value={esgEco}
-                      onChange={(e) => setEsgEco(e.target.value)}
-                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#22C55E] font-bold"
-                    />
+                  <p className="text-xs text-gray-400 font-inter mb-4">
+                    Bônus 55% + Meta Econômica 15% + Meta Social 15% + Meta Ecológica 15%.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] uppercase text-[#FF7A00] font-semibold mb-1">
+                        Bônus Mérito (%)
+                      </label>
+                      <Input
+                        value={esgBonus}
+                        onChange={(e) => setEsgBonus(e.target.value)}
+                        className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#FF7A00] font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-[#D4AF37] font-semibold mb-1">
+                        Econômica (%)
+                      </label>
+                      <Input
+                        value={esgEcon}
+                        onChange={(e) => setEsgEcon(e.target.value)}
+                        className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#D4AF37] font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-[#0057FF] font-semibold mb-1">
+                        Social (%)
+                      </label>
+                      <Input
+                        value={esgSoc}
+                        onChange={(e) => setEsgSoc(e.target.value)}
+                        className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#0057FF] font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-[#22C55E] font-semibold mb-1">
+                        Ecológica (%)
+                      </label>
+                      <Input
+                        value={esgEco}
+                        onChange={(e) => setEsgEco(e.target.value)}
+                        className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#22C55E] font-bold"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

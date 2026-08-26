@@ -5,22 +5,47 @@ import type { MessageRecord } from '@/services/api'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send, Video, Phone, User, CheckCheck, Shield, Loader2 } from 'lucide-react'
+import { Send, Video, Download, CheckCheck, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ChatTermsModal } from '@/components/ChatTermsModal'
+import { exportChatToPdf } from '@/lib/chatExport'
 
 export default function ChatScreen() {
   const { user } = useAuth()
   const [messages, setMessages] = useState<MessageRecord[]>([])
   const [inputText, setInputText] = useState('')
   const [sending, setSending] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Termos do Chat
+  const [termsAccepted, setTermsAccepted] = useState(true)
+  const [checkingTerms, setCheckingTerms] = useState(true)
 
   // Identify linked contact (if aluno -> load Carlos; if prof -> load Lucas)
   const [targetUser, setTargetUser] = useState<{ id: string; name: string; role: string }>({
-    id: 'carlos_coach',
+    id: '',
     name: 'Prof. Carlos Silva',
     role: 'Personal & Nutrição',
   })
+
+  // Check terms acceptance
+  useEffect(() => {
+    if (!user) return
+
+    setCheckingTerms(true)
+    pb.collection('chat_terms_accepted')
+      .getFirstListItem(`user_id = "${user.id}"`)
+      .then(() => {
+        setTermsAccepted(true)
+      })
+      .catch(() => {
+        setTermsAccepted(false)
+      })
+      .finally(() => {
+        setCheckingTerms(false)
+      })
+  }, [user])
 
   // Load message history
   useEffect(() => {
@@ -89,7 +114,7 @@ export default function ChatScreen() {
     try {
       await pb.collection('messages').create({
         sender: user.id,
-        receiver: targetUser.id,
+        receiver: targetUser.id || 'carlos_coach',
         content: inputText,
         read: false,
       })
@@ -102,8 +127,49 @@ export default function ChatScreen() {
     }
   }
 
+  const handleExportChat = async () => {
+    if (!user) return
+    setExporting(true)
+    try {
+      const formattedMessages = messages.map((m) => ({
+        id: m.id,
+        sender_name: m.sender === user.id ? user.name : targetUser.name,
+        content: m.content,
+        created: m.created,
+      }))
+
+      await exportChatToPdf({
+        participants: [user.name, targetUser.name],
+        messages: formattedMessages,
+        title: `Histórico de Conversa — ${user.name} & ${targetUser.name}`,
+      })
+      toast.success('Documento PDF com hash SHA-256 gerado com sucesso!')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao exportar conversa em PDF.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  if (checkingTerms) {
+    return (
+      <div className="h-[calc(100vh-140px)] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+      </div>
+    )
+  }
+
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col pb-4">
+      {/* Modal de Termos do Chat */}
+      {user && !termsAccepted && (
+        <ChatTermsModal
+          open={!termsAccepted}
+          userId={user.id}
+          onAccepted={() => setTermsAccepted(true)}
+        />
+      )}
       {/* Chat Top Bar */}
       <div className="p-4 rounded-t-2xl bg-[#181818] border border-[#2A2A2A] flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-3">
@@ -119,18 +185,33 @@ export default function ChatScreen() {
           </div>
         </div>
 
-        {/* Videochamada placeholder per spec */}
+        {/* Actions: Export PDF + Video */}
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportChat}
+            disabled={exporting || messages.length === 0}
+            className="border-[#D4AF37]/50 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs flex items-center gap-1.5 font-montserrat font-bold"
+          >
+            {exporting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            <span>Exportar Conversa (PDF)</span>
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
             onClick={() =>
               toast.info('Videochamada em alta definição: Recurso em fase final de testes!')
             }
-            className="border-[#2A2A2A] text-gray-300 hover:text-[#D4AF37] hover:border-[#D4AF37] text-xs flex items-center gap-1.5"
+            className="hidden sm:flex border-[#2A2A2A] text-gray-300 hover:text-[#D4AF37] hover:border-[#D4AF37] text-xs items-center gap-1.5"
           >
             <Video className="w-4 h-4" />
-            <span>Videochamada (em breve)</span>
+            <span>Videochamada</span>
           </Button>
         </div>
       </div>
