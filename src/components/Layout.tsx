@@ -67,6 +67,7 @@ export default function Layout({ children }: LayoutProps) {
     { label: 'Início', path: '/aluno', icon: Home },
     { label: 'Monte Seu Treino', path: '/aluno/treino', icon: Dumbbell },
     { label: 'Encontrar Profissional', path: '/aluno/profissionais', icon: Users },
+    { label: 'Conteúdos & E-books', path: '/conteudos', icon: Award },
     { label: 'Minha Carteira', path: '/aluno/carteira', icon: Wallet },
     { label: 'Comunidade', path: '/aluno/comunidade', icon: Trophy },
     { label: 'Chat', path: '/aluno/chat', icon: MessageSquare },
@@ -77,6 +78,7 @@ export default function Layout({ children }: LayoutProps) {
   const profissionalNav = [
     { label: 'BackOffice', path: '/profissional', icon: Home },
     { label: 'Alunos', path: '/profissional/alunos', icon: Users },
+    { label: 'Conteúdos & Materiais', path: '/profissional/conteudos', icon: Award },
     { label: 'Agenda & Serviços', path: '/profissional/agenda', icon: Activity },
     { label: 'Financeiro & Carteira', path: '/profissional/carteira', icon: Wallet },
     { label: 'Perfil / Branding', path: '/profissional/perfil', icon: User },

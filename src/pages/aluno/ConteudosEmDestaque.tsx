@@ -40,6 +40,7 @@ export default function ConteudosEmDestaque() {
   const [contents, setContents] = useState<ContentWithProf[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedType, setSelectedType] = useState<string>('todos')
+  const [selectedProf, setSelectedProf] = useState<string>('todos')
   const [searchQuery, setSearchQuery] = useState('')
   const [activeVideoModal, setActiveVideoModal] = useState<ContentWithProf | null>(null)
 
@@ -61,14 +62,27 @@ export default function ConteudosEmDestaque() {
       })
   }, [])
 
+  // Extrair profissionais únicos para o filtro
+  const professionalsList = Array.from(
+    new Map(
+      contents
+        .filter((c) => c.expand?.professional_id)
+        .map((c) => [c.expand!.professional_id!.id, c.expand!.professional_id!]),
+    ).values(),
+  )
+
   const filteredContents = contents.filter((item) => {
-    const matchType = selectedType === 'todos' || item.type === selectedType
+    const matchType =
+      selectedType === 'todos' ||
+      item.type === selectedType ||
+      (selectedType === 'planilha' && (item.type as any) === 'spreadsheet')
+    const matchProf = selectedProf === 'todos' || item.expand?.professional_id?.id === selectedProf
     const matchSearch =
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.expand?.professional_id?.name &&
         item.expand.professional_id.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    return matchType && matchSearch
+    return matchType && matchProf && matchSearch
   })
 
   const getTypeIcon = (t: string) => {
@@ -124,7 +138,7 @@ export default function ConteudosEmDestaque() {
       <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-5 rounded-2xl shadow-xl space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
           {/* Search */}
-          <div className="sm:col-span-8 relative">
+          <div className="sm:col-span-6 relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <Input
               value={searchQuery}
@@ -135,7 +149,7 @@ export default function ConteudosEmDestaque() {
           </div>
 
           {/* Type Select */}
-          <div className="sm:col-span-4">
+          <div className="sm:col-span-3">
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
@@ -148,24 +162,52 @@ export default function ConteudosEmDestaque() {
               <option value="planilha">Planilhas & Calculadoras</option>
             </select>
           </div>
+
+          {/* Professional Select */}
+          <div className="sm:col-span-3">
+            <select
+              value={selectedProf}
+              onChange={(e) => setSelectedProf(e.target.value)}
+              className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+            >
+              <option value="todos">Todos os Profissionais</option>
+              {professionalsList.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Quick format pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#2A2A2A]">
-          {['todos', 'pdf', 'ebook', 'planilha', 'video'].map((t) => (
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#2A2A2A]">
+          <div className="flex flex-wrap items-center gap-2">
+            {['todos', 'pdf', 'ebook', 'planilha', 'video'].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setSelectedType(t)}
+                className={`px-3 py-1 rounded-lg text-[11px] font-bold font-montserrat uppercase transition-all ${
+                  selectedType === t
+                    ? 'bg-[#D4AF37] text-black shadow-md'
+                    : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
+                }`}
+              >
+                {t === 'todos' ? 'Todos' : getTypeLabel(t)}
+              </button>
+            ))}
+          </div>
+
+          {selectedProf !== 'todos' && (
             <button
-              key={t}
               type="button"
-              onClick={() => setSelectedType(t)}
-              className={`px-3 py-1 rounded-lg text-[11px] font-bold font-montserrat uppercase transition-all ${
-                selectedType === t
-                  ? 'bg-[#D4AF37] text-black shadow-md'
-                  : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
-              }`}
+              onClick={() => setSelectedProf('todos')}
+              className="text-[11px] text-[#D4AF37] hover:underline font-montserrat"
             >
-              {t === 'todos' ? 'Todos' : getTypeLabel(t)}
+              Limpar filtro de profissional
             </button>
-          ))}
+          )}
         </div>
       </Card>
 

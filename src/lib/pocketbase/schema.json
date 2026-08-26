@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-26T20:12:56.038Z",
+  "generatedAt": "2026-08-26T20:21:34.920Z",
   "collections": [
     {
       "name": "users",
@@ -1714,8 +1714,8 @@
       "name": "contents",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' || status = 'aprovado'",
+        "view": "@request.auth.id != '' || status = 'aprovado'",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != ''",
         "delete": "@request.auth.id != ''"
@@ -1797,6 +1797,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "rejection_reason",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [

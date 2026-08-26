@@ -1,11 +1,71 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import { CrestLogo } from '@/components/CrestLogo'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ShieldCheck, FileText, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { ShieldCheck, FileText, ArrowLeft, CheckCircle2, Globe } from 'lucide-react'
 
 export default function TermosDeUso() {
+  const { user } = useAuth()
+  const [selectedCountry, setSelectedCountry] = useState<string>(user?.country || 'Brasil')
+
+  const getForumDetails = (country: string) => {
+    switch (country) {
+      case 'Brasil':
+        return {
+          forumName: 'Foro da Comarca de São Paulo / SP — Brasil',
+          governingLaw: 'Legislação da República Federativa do Brasil (Código Civil, CDC e LGPD)',
+          description:
+            'Fica eleito o Foro da Comarca de São Paulo, Estado de São Paulo, para dirimir quaisquer dúvidas, controvérsias ou litígios decorrentes deste instrumento para usuários domiciliados no Brasil, com renúncia expressa a qualquer outro, por mais privilegiado que seja.',
+        }
+      case 'Portugal':
+        return {
+          forumName: 'Comarca Judicial de Lisboa — Portugal',
+          governingLaw: 'Legislação Portuguesa e Diretivas da União Europeia',
+          description:
+            'Para utilizadores residentes em Portugal ou no território da União Europeia, os litígios poderão ser submetidos à jurisdição da Comarca de Lisboa, aplicando-se subsidiariamente a base contratual e as normas imperativas de proteção ao consumidor da UE.',
+        }
+      case 'Reino Unido':
+        return {
+          forumName: 'Courts of England and Wales (Londres) — Reino Unido',
+          governingLaw: 'Laws of England and Wales / UK Consumer Rights Act',
+          description:
+            'For users residing in the United Kingdom, any dispute shall be governed primarily under English Law and the jurisdiction of the competent courts in London, without prejudice to mandatory consumer statutory rights.',
+        }
+      case 'Estados Unidos':
+        return {
+          forumName: 'State and Federal Courts of Delaware / Alternative Dispute Resolution — EUA',
+          governingLaw: 'Commercial Arbitration & US Federal/State Consumer Framework',
+          description:
+            'For users residing in the United States, disputes shall be subject to binding individual arbitration or the competent courts of jurisdiction, in accordance with applicable US commercial regulations.',
+        }
+      case 'Canadá':
+        return {
+          forumName: 'Courts of the Province of Ontario (Toronto) — Canadá',
+          governingLaw: 'Laws of Canada & Province of Ontario',
+          description:
+            'For users located in Canada, provincial consumer protection rules and the courts of the relevant Canadian jurisdiction shall apply subsidiariamente.',
+        }
+      case 'Austrália':
+        return {
+          forumName: 'Courts of New South Wales (Sydney) — Austrália',
+          governingLaw: 'Australian Consumer Law (ACL)',
+          description:
+            'For users resident in Australia, disputes may be addressed within the framework of Australian Consumer Law and the courts of New South Wales.',
+        }
+      default:
+        return {
+          forumName: 'Foro Central Internacional — São Paulo / SP (Base Contratual)',
+          governingLaw:
+            'Base contratual brasileira na ausência de leis locais cogentes equivalentes',
+          description:
+            'Para usuários domiciliados em outros países, adota-se como foro de referência a Comarca de São Paulo/SP (Brasil), ressalvadas as disposições cogentes e tratados internacionais de ordem pública aplicáveis.',
+        }
+    }
+  }
+
+  const forum = getForumDetails(selectedCountry)
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#D4AF37] selection:text-black font-inter">
       {/* Header */}
@@ -28,16 +88,42 @@ export default function TermosDeUso() {
 
       {/* Hero Section */}
       <div className="max-w-4xl mx-auto px-6 pt-12 pb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat mb-4">
-          <FileText className="w-3.5 h-3.5" />
-          Documento Jurídico Vinculante
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat mb-3">
+              <FileText className="w-3.5 h-3.5" />
+              Documento Jurídico Vinculante
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black font-montserrat text-white uppercase tracking-tight">
+              Termos de Uso & Foro por Jurisdição
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">
+              Última atualização: {new Date().toLocaleDateString('pt-BR')} • Versão 2.4 • País:{' '}
+              <strong className="text-[#D4AF37]">{selectedCountry}</strong>
+            </p>
+          </div>
+
+          {/* Seletor de País / Foro */}
+          <div className="bg-[#141414] border border-[#2A2A2A] p-3 rounded-2xl flex flex-col gap-1 sm:w-64 shrink-0">
+            <label className="text-[10px] font-bold text-[#D4AF37] uppercase font-montserrat flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5" />
+              País do Usuário / Foro Aplicável:
+            </label>
+            <select
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="w-full h-9 px-2.5 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+            >
+              <option value="Brasil">Brasil (São Paulo/SP)</option>
+              <option value="Portugal">Portugal (Lisboa)</option>
+              <option value="Reino Unido">Reino Unido (Londres)</option>
+              <option value="Estados Unidos">Estados Unidos (Delaware / ADR)</option>
+              <option value="Canadá">Canadá (Toronto / Ontário)</option>
+              <option value="Austrália">Austrália (Sydney / NSW)</option>
+              <option value="Outro">Outro País (Base Brasileira)</option>
+            </select>
+          </div>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-black font-montserrat text-white uppercase tracking-tight">
-          Termos de Uso — 369TRAINING
-        </h1>
-        <p className="text-sm text-gray-400 mt-2">
-          Última atualização: {new Date().toLocaleDateString('pt-BR')} • Versão 2.4 (Brasil)
-        </p>
       </div>
 
       {/* Main Content */}
@@ -225,19 +311,27 @@ export default function TermosDeUso() {
           {/* Seção 9 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold font-montserrat text-white uppercase flex items-center gap-2">
-              <span className="text-[#D4AF37]">9.</span> Foro, Legislação e Jurisdição por País
+              <span className="text-[#D4AF37]">9.</span> Foro, Legislação e Jurisdição por País (
+              {selectedCountry})
             </h2>
-            <p>
-              Estes Termos são regidos prioritariamente pelas leis da República Federativa do
-              Brasil. Fica eleito o Foro da Comarca de São Paulo/SP (Brasil) para dirimir quaisquer
-              controvérsias ou litígios oriundos deste instrumento para usuários domiciliados no
-              Brasil, com renúncia expressa a qualquer outro foro.
-            </p>
+            <div className="p-4 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 space-y-2 text-xs">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-[#D4AF37]" />
+                <span className="font-bold text-white uppercase font-montserrat">
+                  Foro Eleito para {selectedCountry}: {forum.forumName}
+                </span>
+              </div>
+              <p className="text-gray-300">
+                <strong className="text-white">Legislação de Regência:</strong> {forum.governingLaw}
+              </p>
+              <p className="text-gray-300 leading-relaxed">{forum.description}</p>
+            </div>
             <p>
               Para usuários residentes em outros países (Portugal, União Europeia, Reino Unido,
               Estados Unidos, Canadá e Austrália), aplicar-se-ão os princípios internacionais de
-              proteção ao consumidor e regras de jurisdição correspondentes, mantendo-se a base
-              contratual brasileira na ausência de tratado ou disposição cogente local em contrário.
+              proteção ao consumidor e regras de jurisdição correspondentes indicadas acima,
+              mantendo-se a base contratual brasileira na ausência de tratado ou disposição cogente
+              local em contrário.
             </p>
           </section>
 

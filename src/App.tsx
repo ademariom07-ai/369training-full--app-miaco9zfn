@@ -52,11 +52,18 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Public Landing & Auth */}
+          {/* Public Landing & Auth & Legal */}
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
-          <Route path="/conteudos" element={<ConteudosEmDestaque />} />
+          <Route
+            path="/conteudos"
+            element={
+              <Layout>
+                <ConteudosEmDestaque />
+              </Layout>
+            }
+          />
           <Route path="/termos-de-uso" element={<TermosDeUso />} />
           <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
           <Route path="/lgpd-consentimentos" element={<LgpdConsentimentos />} />
