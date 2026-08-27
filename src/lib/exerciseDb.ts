@@ -43,7 +43,8 @@ export async function fetchExerciseGif(exerciseName: string): Promise<string | n
   try {
     // Attempt simplified name search (first two words or transliterated)
     const query = encodeURIComponent(cleanName.replace(/[()\d+]/g, '').trim())
-    const controller = new AbortController()    const timeoutId = setTimeout(() => controller.abort(), 3500)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3500)
 
     const res = await fetch(`https://exercisedb-api.vercel.app/api/v1/exercises/name/${query}`, {
       signal: controller.signal,

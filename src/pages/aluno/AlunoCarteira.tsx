@@ -83,14 +83,16 @@ export default function AlunoCarteira() {
       let calcBal = 0
       let calcCb = 0
       res.items.forEach((t) => {
-        if (t.status === 'concluido' || t.status === 'aprovado') {
-          if (t.type === 'deposito' || t.type === 'cashback' || t.type === 'bonus_indicacao') {
+        const status = t.status as string
+        const type = t.type as string
+        if (status === 'concluido' || status === 'aprovado') {
+          if (type === 'deposito' || type === 'cashback' || type === 'bonus_indicacao') {
             calcBal += Number(t.amount) || 0
-          } else if (t.type === 'saque' || t.type === 'pagamento') {
+          } else if (type === 'saque' || type === 'pagamento') {
             calcBal -= Number(t.amount) || 0
           }
         }
-        if (t.type === 'cashback') calcCb += Number(t.amount) || 0
+        if (type === 'cashback') calcCb += Number(t.amount) || 0
       })
       setBalance(calcBal > 0 ? calcBal : 0)
       setCashbackTotal(calcCb)
@@ -438,7 +440,7 @@ export default function AlunoCarteira() {
                     </div>
                   </div>
                   <div>
-                    {t.status === 'concluido' || t.status === 'aprovado' ? (
+                    {(t.status as string) === 'concluido' || (t.status as string) === 'aprovado' ? (
                       <span className="text-[10px] font-bold text-[#22C55E] bg-[#22C55E]/15 px-2 py-0.5 rounded border border-[#22C55E]/30">
                         Aprovado
                       </span>
@@ -493,7 +495,7 @@ export default function AlunoCarteira() {
                     </div>
                   </div>
                   <div>
-                    {t.status === 'concluido' || t.status === 'aprovado' ? (
+                    {(t.status as string) === 'concluido' || (t.status as string) === 'aprovado' ? (
                       <span className="text-[10px] font-bold text-[#22C55E] bg-[#22C55E]/15 px-2 py-0.5 rounded border border-[#22C55E]/30">
                         Transferido
                       </span>
