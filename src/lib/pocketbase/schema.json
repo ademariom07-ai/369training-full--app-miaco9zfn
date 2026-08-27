@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-26T20:21:34.920Z",
+  "generatedAt": "2026-08-27T11:44:30.228Z",
   "collections": [
     {
       "name": "users",
@@ -1872,6 +1872,53 @@
         "CREATE INDEX idx_cp_user ON content_purchases (user)",
         "CREATE INDEX idx_cp_content ON content_purchases (content)"
       ]
+    },
+    {
+      "name": "chat_terms_accepted",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\"",
+        "view": "@request.auth.id != \"\"",
+        "create": "@request.auth.id != \"\"",
+        "update": "@request.auth.id != \"\" && user_id = @request.auth.id",
+        "delete": "@request.auth.id != \"\" && user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "accepted_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ip_hash",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_chat_terms_accepted_user ON chat_terms_accepted (user_id)"]
     }
   ]
 }
