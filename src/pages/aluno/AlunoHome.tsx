@@ -5,6 +5,8 @@ import pb from '@/lib/pocketbase/client'
 import { CrestLogo } from '@/components/CrestLogo'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { HidratacaoSection } from '@/components/HidratacaoSection'
+import { DesafiosAlunoSection } from '@/components/DesafiosAlunoSection'
 import {
   Dumbbell,
   Utensils,
@@ -121,6 +123,12 @@ export default function AlunoHome() {
           />
         </div>
       </Card>
+
+      {/* RECURSO 6: SEÇÃO DE CRONÔMETRO DE HIDRATAÇÃO ACSM */}
+      <HidratacaoSection />
+
+      {/* RECURSO 7: SEÇÃO DE DESAFIOS E GAMIFICAÇÃO */}
+      <DesafiosAlunoSection />
 
       {/* 2x2 CARD GRID */}
       <div>

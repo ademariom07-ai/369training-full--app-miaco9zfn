@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AIExpertsRail } from '@/components/AIExpertsRail'
 import { PlanChangeSection } from '@/components/PlanChangeSection'
+import { GestaoDesafiosProfissional } from '@/components/GestaoDesafiosProfissional'
 import {
   Users,
   Dumbbell,
@@ -181,6 +182,9 @@ export default function ProfissionalDashboard() {
             </span>
           </Card>
         </div>
+
+        {/* RECURSO 7: GESTÃO DE DESAFIOS PELO PROFISSIONAL */}
+        <GestaoDesafiosProfissional />
 
         {/* LISTA DE ALUNOS COMO CARDS */}
         <div>

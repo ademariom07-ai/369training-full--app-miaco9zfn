@@ -28,6 +28,14 @@ export default function Cadastro() {
   const initialRole = searchParams.get('tipo') === 'profissional' ? 'profissional' : 'aluno'
   const [role, setRole] = useState<'aluno' | 'profissional'>(initialRole)
 
+  // Referral code from URL param ?ref= or typed
+  const urlRef = searchParams.get('ref') || ''
+  const [referralCodeInput, setReferralCodeInput] = useState(urlRef)
+  const [referralValidationMsg, setReferralValidationMsg] = useState<{
+    text: string
+    type: 'success' | 'warning' | 'idle'
+  }>({ text: '', type: 'idle' })
+
   // Common Fields
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -137,7 +145,41 @@ export default function Cadastro() {
         payload.sub_specialties = subSpecialties
       }
 
-      await pb.collection('users').create(payload)
+      // Validar código de indicação antes de criar o usuário e o vínculo
+      let referrerUser: any = null
+      const cleanRefInput = referralCodeInput.trim().toUpperCase()
+      if (cleanRefInput) {
+        try {
+          const found = await pb
+            .collection('users')
+            .getFirstListItem(`referral_code = "${cleanRefInput}"`)
+          referrerUser = found
+        } catch (_) {
+          // Código não encontrado - permitir continuar conforme spec, apenas alertar
+          toast.warning(
+            `Código de indicação "${cleanRefInput}" não foi localizado. O cadastro continuará normalmente.`,
+          )
+        }
+      }
+
+      const createdUser = await pb.collection('users').create(payload)
+
+      // Se código de indicação existir e for válido, criar vínculo na tabela referrals
+      if (referrerUser && createdUser?.id) {
+        try {
+          await pb.collection('referrals').create({
+            referrer: referrerUser.id,
+            referred: createdUser.id,
+            code: cleanRefInput,
+            level: 1,
+            status: 'pending',
+            services_count: 0,
+            referral_bonus_paid: false,
+          })
+        } catch (_) {
+          /* Ignora erro no vínculo secundário para não travar o cadastro */
+        }
+      }
 
       setCreatedSuccess(true)
       toast.success('Cadastro realizado com sucesso!')
@@ -345,6 +387,31 @@ export default function Cadastro() {
                       required
                     />
                   </div>
+                </div>
+
+                {/* RECURSO 1: Campo Código de Indicação */}
+                <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider font-montserrat">
+                      Código de Indicação{' '}
+                      <span className="text-gray-500 font-normal lowercase">(opcional)</span>
+                    </label>
+                    {urlRef && (
+                      <span className="text-[10px] text-[#D4AF37] font-bold uppercase font-mono">
+                        Preenchido via link
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    value={referralCodeInput}
+                    onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                    placeholder="Ex: SILV369"
+                    className="bg-[#181818] border-[#2A2A2A] rounded-xl text-white font-mono uppercase tracking-wider text-xs focus-visible:ring-[#D4AF37]"
+                  />
+                  <p className="text-[11px] text-gray-400 font-inter">
+                    Se você foi indicado por um amigo ou profissional, insira o código para vincular
+                    benefícios e bônus de rede.
+                  </p>
                 </div>
 
                 {/* ALUNO SPECIFIC: Objetivo */}

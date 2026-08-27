@@ -204,6 +204,29 @@ export interface AchievementRecord extends RecordModel {
   awarded_at?: string
 }
 
+export interface ChallengeRecord extends RecordModel {
+  title: string
+  description?: string
+  professional_id?: string
+  regras?: string
+  dias_total: number
+  reward_badge?: string
+  expand?: {
+    professional_id?: RecordModel
+  }
+}
+
+export interface ChallengeParticipantRecord extends RecordModel {
+  challenge_id: string
+  aluno_id: string
+  dias_concluidos?: string[]
+  completed?: boolean
+  expand?: {
+    challenge_id?: ChallengeRecord
+    aluno_id?: RecordModel
+  }
+}
+
 // Service helper methods
 export const api = {
   // AI generators via backend hooks
@@ -270,6 +293,26 @@ export const api = {
       max_quota: number
       plan_tier: string
     }>('/backend/v1/experts/chat', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    })
+  },
+
+  loadFeedback: async (params: {
+    exerciseName: string
+    weightUsed: number
+    difficulty: number
+    objective?: string
+    reps?: string
+    sets?: string
+  }) => {
+    return pb.send<{
+      recommendation: string
+      suggestedLoad: string
+      suggestedReps: string
+      rationale: string
+      action: 'increase' | 'maintain' | 'decrease'
+    }>('/backend/v1/generate/load-feedback', {
       method: 'POST',
       body: JSON.stringify(params),
     })

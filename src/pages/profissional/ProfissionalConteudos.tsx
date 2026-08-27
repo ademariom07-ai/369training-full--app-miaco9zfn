@@ -182,12 +182,12 @@ export default function ProfissionalConteudos() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat mb-2">
-            <FolderPlus className="w-3.5 h-3.5" />
-            BackOffice de Conteúdos & Materiais
+            <BookOpen className="w-3.5 h-3.5 text-[#D4AF37]" />
+            Gestão da Evolução
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-white uppercase tracking-tight">
-            Biblioteca de Conteúdos & Materiais
-          </h1>
+            Biblioteca da Evolução
+          </h1>{' '}
           <p className="text-xs sm:text-sm text-gray-400 font-inter mt-1">
             Publique PDFs, e-books, planilhas de cálculo e vídeos de aulas técnicas para seus alunos
             e comunidade.

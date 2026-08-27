@@ -122,10 +122,10 @@ export default function ConteudosEmDestaque() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
-            Biblioteca Pública de Conhecimento 369
+            Biblioteca da Evolução
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-white uppercase tracking-tight">
-            Conteúdos, E-books & Planilhas em Destaque
+            Biblioteca da Evolução • E-books & Aulas em Destaque
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 font-inter mt-1">
             Explore materiais técnicos, protocolos de treino, guias nutricionais e calculadoras

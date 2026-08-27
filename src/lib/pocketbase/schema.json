@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T11:44:30.228Z",
+  "generatedAt": "2026-08-27T15:50:34.404Z",
   "collections": [
     {
       "name": "users",
@@ -1919,6 +1919,128 @@
         }
       ],
       "indexes": ["CREATE INDEX idx_chat_terms_accepted_user ON chat_terms_accepted (user_id)"]
+    },
+    {
+      "name": "challenges",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\"",
+        "view": "@request.auth.id != \"\"",
+        "create": "@request.auth.id != \"\"",
+        "update": "@request.auth.id != \"\"",
+        "delete": "@request.auth.id != \"\""
+      },
+      "fields": [
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "professional_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "regras",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "dias_total",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "reward_badge",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_challenges_prof ON challenges (professional_id)"]
+    },
+    {
+      "name": "challenge_participants",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\"",
+        "view": "@request.auth.id != \"\"",
+        "create": "@request.auth.id != \"\"",
+        "update": "@request.auth.id != \"\"",
+        "delete": "@request.auth.id != \"\""
+      },
+      "fields": [
+        {
+          "name": "challenge_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "challenges"
+        },
+        {
+          "name": "aluno_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "dias_concluidos",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "completed",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_cp_challenge ON challenge_participants (challenge_id)",
+        "CREATE INDEX idx_cp_aluno ON challenge_participants (aluno_id)"
+      ]
     }
   ]
 }

@@ -14,35 +14,35 @@ routerAdd(
       const notes = body.notes || ''
 
       const prompt = `Você é o gerador de treinos com Inteligência Artificial da 369TRAINING.
-Crie um plano de treino estruturado, seguro e motivador para o aluno com os seguintes dados:
-- Objetivo principal: ${objective}
-- Nível de experiência: ${experience}
-- Dias disponíveis por semana: ${daysAvailable} dias
-- Restrições físicas/lesões: ${restrictions}
-- Observações adicionais: ${notes}
+  Crie um plano de treino estruturado, seguro e motivador para o aluno com os seguintes dados:
+  - Objetivo principal: ${objective}
+  - Nível de experiência: ${experience}
+  - Dias disponíveis por semana: ${daysAvailable} dias
+  - Restrições físicas/lesões: ${restrictions}
+  - Observações adicionais: ${notes}
 
-Retorne ESTRITAMENTE um objeto JSON válido (sem markdown, sem blocos de código com crases triplas adicionais se possível, apenas o JSON puro) com a seguinte estrutura:
-{
-  "title": "Treino Personalizado 369 - ${objective}",
-  "objective": "${objective}",
-  "frequency": "${daysAvailable}x na semana",
-  "exercises": [
-    {
-      "id": "ex_1",
-      "name": "Nome do Exercício",
-      "muscle_group": "Grupo Muscular",
-      "sets": "4",
-      "reps": "10-12",
-      "load": "Carga moderada/progressiva",
-      "rest": "60s",
-      "video": "https://www.youtube.com/watch?v=rT7DgCr-3pg",
-      "tips": "Dica de execução técnica e postura",
-      "completed": false
-    }
-  ],
-  "disclaimer": "Orientação de IA não garante resultados e não substitui avaliação profissional."
-}`
-
+  IMPORTANTE: Forneça links de demonstração de vídeo reais do YouTube para cada exercício na chave "video".
+  Retorne ESTRITAMENTE um objeto JSON válido (sem markdown, sem blocos de código com crases triplas adicionais se possível, apenas o JSON puro) com a seguinte estrutura:
+  {
+    "title": "Treino Personalizado 369 - ${objective}",
+    "objective": "${objective}",
+    "frequency": "${daysAvailable}x na semana",
+    "exercises": [
+      {
+        "id": "ex_1",
+        "name": "Nome do Exercício em Português",
+        "muscle_group": "Grupo Muscular",
+        "sets": "4",
+        "reps": "10-12",
+        "load": "Carga moderada/progressiva",
+        "rest": "60s",
+        "video": "https://www.youtube.com/watch?v=rT7DgCr-3pg",
+        "tips": "Dica de execução técnica e postura",
+        "completed": false
+      }
+    ],
+    "disclaimer": "Orientação de IA não garante resultados e não substitui avaliação profissional."
+  }`
       const reply = $ai.chat({
         model: 'fast',
         messages: [
