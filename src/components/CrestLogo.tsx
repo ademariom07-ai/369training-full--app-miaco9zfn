@@ -30,7 +30,7 @@ export const CrestLogo: React.FC<CrestLogoProps> = ({
       >
         {/* Official 369 Training Crest - sem bordas pretas / outline / moldura */}
         <img
-          src={officialLogo}
+          src="/visual-edits/logo-do-projeto01-02fbc174.png"
           alt={alt}
           className="w-full h-full object-contain bg-transparent border-0 outline-none ring-0 shadow-none filter drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)] transition-transform duration-300 hover:scale-105"
           loading="eager"
