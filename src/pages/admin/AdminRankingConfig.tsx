@@ -38,6 +38,7 @@ import {
   HYBRID_THRESHOLD,
   getBinaryTreeLevelsOverview,
   calculateHybridPositionParams,
+  calculateCaminhoCEqualization,
 } from '@/lib/binaryTreeHybrid'
 
 interface RankItem {
@@ -102,8 +103,10 @@ export default function AdminRankingConfig() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalIndividualCount, setTotalIndividualCount] = useState(511)
   const [activeTab, setActiveTab] = useState<
-    'ranking' | 'tree' | 'levels' | 'esg' | 'split' | 'simulador'
-  >('ranking')
+    'ranking' | 'tree' | 'levels' | 'esg' | 'split' | 'simulador' | 'caminhoC'
+  >('caminhoC')
+  const [caminhoCEntrada, setCaminhoCEntrada] = useState(1000)
+  const [caminhoCNiveis, setCaminhoCNiveis] = useState(9)
   const [searchPos, setSearchPos] = useState('')
 
   // Simulador interativo de posições > 511
@@ -792,7 +795,18 @@ export default function AdminRankingConfig() {
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <DollarSign className="w-4 h-4" /> Distribuição Global (Split 38%)
+          <DollarSign className="w-4 h-4" /> Split 38%
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('caminhoC')}
+          className={`px-4 py-2 text-xs font-bold font-montserrat uppercase rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'caminhoC'
+              ? 'bg-[#181818] text-[#22C55E] border-t-2 border-[#22C55E]'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-[#22C55E]" /> Equalizador Caminho C
         </button>
       </div>
 
@@ -1721,6 +1735,133 @@ export default function AdminRankingConfig() {
             <Save className="w-5 h-5" /> Salvar Configurações de Parâmetros
           </Button>
         </form>
+      )}
+
+      {/* TAB 7: EQUALIZADOR CAMINHO C */}
+      {activeTab === 'caminhoC' && (
+        <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#22C55E]" /> Equalizador do Caminho C (Pool 38% +
+                Corretor de Nível)
+              </h3>
+              <p className="text-xs text-gray-400 font-inter mt-1">
+                Fórmula oficial: <code>Corretor Nível 1 = 0,8 / (próx_nível / 2) + 0,2</code>. A
+                cada nível habitado soma-se o passo até atingir 1,8 no último nível.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-[#141414] border border-[#2A2A2A]">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                Entrada Total de Tarifas (R$)
+              </label>
+              <Input
+                type="number"
+                value={caminhoCEntrada}
+                onChange={(e) => setCaminhoCEntrada(Number(e.target.value) || 0)}
+                className="bg-[#181818] border-[#2A2A2A] text-white font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                Níveis Habitados na Rede (1 a 36)
+              </label>
+              <Input
+                type="number"
+                min="1"
+                max="36"
+                value={caminhoCNiveis}
+                onChange={(e) =>
+                  setCaminhoCNiveis(Math.max(1, Math.min(36, Number(e.target.value) || 1)))
+                }
+                className="bg-[#181818] border-[#2A2A2A] text-white font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Resultado da Equalização */}
+          {(() => {
+            const res = calculateCaminhoCEqualization(caminhoCEntrada, caminhoCNiveis)
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">
+                      Pool da Rede (38%)
+                    </span>
+                    <p className="text-lg font-bold text-[#D4AF37] font-mono">
+                      R$ {res.pool.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">
+                      % por Nível
+                    </span>
+                    <p className="text-lg font-bold text-[#0057FF] font-mono">{res.pctDoNivel}%</p>
+                  </div>
+                  <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">
+                      Valor Base por Nível
+                    </span>
+                    <p className="text-lg font-bold text-white font-mono">
+                      R$ {res.valorDoNivel.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">
+                      Soma Equalizada
+                    </span>
+                    <p className="text-lg font-bold text-[#22C55E] font-mono">
+                      R$ {res.somaEqualizados.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-inter">
+                    <thead>
+                      <tr className="border-b border-[#2A2A2A] text-gray-400 font-montserrat uppercase text-[10px]">
+                        <th className="pb-3">Nível</th>
+                        <th className="pb-3 text-center">Pessoas no Nível</th>
+                        <th className="pb-3 text-center">Corretor (Equalizador)</th>
+                        <th className="pb-3 text-center">Limitador Acumulado</th>
+                        <th className="pb-3 text-center">Valor Equalizado</th>
+                        <th className="pb-3 text-right">Valor Aprox. / Pessoa</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2A2A2A]">
+                      {res.levels.map((lvl) => (
+                        <tr key={lvl.level} className="hover:bg-[#141414] transition-colors">
+                          <td className="py-2.5 font-bold text-white font-montserrat">
+                            Nível {lvl.level}
+                          </td>
+                          <td className="py-2.5 text-center font-mono text-gray-300">
+                            {lvl.pessoasNoNivel} {lvl.pessoasNoNivel === 1 ? 'pessoa' : 'pessoas'}
+                          </td>
+                          <td className="py-2.5 text-center font-mono font-bold text-[#0057FF]">
+                            {lvl.corretor.toFixed(2)}
+                          </td>
+                          <td className="py-2.5 text-center font-mono text-gray-400">
+                            {lvl.limitadorNivel.toFixed(2)}
+                          </td>
+                          <td className="py-2.5 text-center font-mono font-bold text-[#D4AF37]">
+                            R$ {lvl.valorEqualizado.toFixed(2)}
+                          </td>
+                          <td className="py-2.5 text-right font-mono font-bold text-[#22C55E]">
+                            R$ {lvl.valorPorPessoa.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
+        </Card>
       )}
     </div>
   )

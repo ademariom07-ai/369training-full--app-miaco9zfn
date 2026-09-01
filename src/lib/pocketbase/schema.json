@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T11:15:11.625Z",
+  "generatedAt": "2026-09-01T14:03:22.583Z",
   "collections": [
     {
       "name": "users",
@@ -171,6 +171,38 @@
         {
           "name": "country",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tree_position",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tree_level",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "linked_professional",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "linked_prof_fee_mode",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["own_plan", "prof_sponsored"]
+        },
+        {
+          "name": "plan_upgraded_at",
+          "type": "date",
           "required": false,
           "system": false
         }
@@ -2040,6 +2072,110 @@
       "indexes": [
         "CREATE INDEX idx_cp_challenge ON challenge_participants (challenge_id)",
         "CREATE INDEX idx_cp_aluno ON challenge_participants (aluno_id)"
+      ]
+    },
+    {
+      "name": "monthly_rank_snapshots",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "cycle",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "points",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "services_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "referrals_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "stars",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "antiguidade",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ranking_position",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "plan",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cashback_earned",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "closed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "details",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_mrs_user_cycle ON monthly_rank_snapshots (user, cycle)",
+        "CREATE INDEX idx_mrs_cycle_pos ON monthly_rank_snapshots (cycle, ranking_position)"
       ]
     }
   ]

@@ -1,41 +1,73 @@
-// Recalculate partner ranking on demand (for admin preview and testing)
-// Formula: pontos = tarifa × servicos × max(indicacoes_ciclo, 1)
-// Recurso 1: As indicações (referrals_this_cycle) são contabilizadas APENAS do ciclo atual (últimos 30 dias).
-// referrals_count mantém o total histórico.
+// Recalculate partner ranking on demand (Caminho C)
+// Formula: PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
+// - PLANO = multiplicador do plano: Grátis 0x / Básico 1x / Pro 2x / Premium 3x
+// - Aluno ou profissional no plano Grátis (multiplicador 0x) NÃO pontua e NÃO aparece no ranking
+// - Snapshots mensais fechados são somados à pontuação do mês vigente
 routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
-  const users = $app.findRecordsByFilter(
-    'users',
-    "role = 'profissional' && approved = true",
-    '-created',
-    500,
-    0,
-  )
+  const users = $app.findRecordsByFilter('users', 'approved = true', '-created', 1000, 0)
 
   const cycle = new Date().toISOString().slice(0, 7)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const now = new Date()
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     .toISOString()
     .replace('T', ' ')
 
-  // Tarifas fixas por plano em R$
-  const tarifaPorPlano = {
-    gratis: 4.0,
-    basico: 1.0,
-    pro: 2.0,
-    premium: 3.0,
+  // Multiplicadores confirmados do Caminho C
+  const planMultipliers = {
+    gratis: 0,
+    basico: 1,
+    pro: 2,
+    premium: 3,
   }
 
   const scores = []
 
   for (const u of users) {
-    const services = $app.findRecordsByFilter(
+    const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
+    const role = u.get('role') || 'aluno'
+
+    // Regra 3: Plano Grátis = multiplicador 0x → NÃO pontua e NÃO aparece no ranking
+    const multiplier = planMultipliers[rawPlan] ?? 0
+    if (multiplier === 0) {
+      continue
+    }
+
+    // Regra de vínculo com profissional para alunos:
+    let effectiveMultiplier = multiplier
+    const linkedProfId = u.get('linked_professional')
+    const feeMode = u.get('linked_prof_fee_mode') || 'own_plan'
+    if (role === 'aluno' && linkedProfId && feeMode === 'prof_sponsored') {
+      try {
+        const profUser = $app.findRecordById('users', linkedProfId)
+        const profPlan = (profUser.get('plan') || 'basico').toLowerCase()
+        effectiveMultiplier = planMultipliers[profPlan] ?? 1
+      } catch (_) {}
+    }
+
+    // Serviços validados no mês corrente
+    const serviceFilter =
+      role === 'profissional'
+        ? `professional = '${u.id}' && status = 'concluido' && created >= '${currentMonthStart}'`
+        : `student = '${u.id}' && status = 'concluido' && created >= '${currentMonthStart}'`
+
+    const servicesThisMonth = $app.findRecordsByFilter(
       'services',
-      `professional = '${u.id}' && status = 'concluido'`,
+      serviceFilter,
       '-created',
       500,
       0,
     )
 
-    // Contar indicações totais (histórico)
+    // Indicações validadas no mês corrente (status = 'validated' ou created no mês)
+    const referralsThisMonth = $app.findRecordsByFilter(
+      'referrals',
+      `referrer = '${u.id}' && created >= '${currentMonthStart}'`,
+      '-created',
+      500,
+      0,
+    )
+
+    // Total de indicações históricas
     const allReferrals = $app.findRecordsByFilter(
       'referrals',
       `referrer = '${u.id}'`,
@@ -44,40 +76,65 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       0,
     )
 
-    // Contar indicações apenas do ciclo atual (últimos 30 dias)
-    const referralsThisCycle = $app.findRecordsByFilter(
-      'referrals',
-      `referrer = '${u.id}' && created >= '${thirtyDaysAgo}'`,
-      '-created',
-      500,
-      0,
-    )
-
-    const userPlan = (u.get('plan') || 'gratis').toLowerCase()
-    const tarifa = tarifaPorPlano[userPlan] ?? 4.0
-    const servicosCount = services.length
+    const servicosCount = servicesThisMonth.length
+    const indicacoesCount = referralsThisMonth.length
     const totalIndicacoes = allReferrals.length
-    const indicacoesCiclo = referralsThisCycle.length
 
-    // Fórmula 369: pontos = tarifa * servicos * max(indicacoes_ciclo, 1)
-    const multiplier = Math.max(indicacoesCiclo, 1)
-    const points = Math.round(tarifa * servicosCount * multiplier)
+    // Avaliação (ex: 1 a 5)
+    const avaliacao = Math.round(Number(u.get('rating_avg') || 5))
+
+    // Antiguidade (ex: anos ou meses na plataforma, min 1)
+    const createdDate = u.get('created') ? new Date(u.get('created')) : new Date()
+    const diffMonths = Math.max(
+      1,
+      Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)),
+    )
+    const antiguidade = Math.min(diffMonths, 10) // 1, 2, 3...
+
+    // Pontos do mês vigente: (PLANO) x (SERVIÇOS) x (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
+    // Observação: se indicações no mês for 0, usa base 1 para não anular a multiplicação dos serviços prestados
+    const indicacoesFator = Math.max(indicacoesCount, 1)
+    const monthlyPoints =
+      effectiveMultiplier * servicosCount * indicacoesFator + avaliacao + antiguidade
+
+    // Buscar histórico de snapshots mensais fechados anteriores
+    let closedPastPoints = 0
+    try {
+      const pastSnapshots = $app.findRecordsByFilter(
+        'monthly_rank_snapshots',
+        `user = '${u.id}' && cycle != '${cycle}'`,
+        '-cycle',
+        100,
+        0,
+      )
+      for (const snap of pastSnapshots) {
+        closedPastPoints += Number(snap.get('points') || 0)
+      }
+    } catch (_) {}
+
+    const totalPoints = closedPastPoints + monthlyPoints
 
     scores.push({
       user: u,
-      points,
+      role,
+      plan: rawPlan,
+      multiplier: effectiveMultiplier,
       services_count: servicosCount,
       referrals_count: totalIndicacoes,
-      referrals_this_cycle: indicacoesCiclo,
-      stars: u.get('rating_avg') || 5.0,
+      referrals_this_cycle: indicacoesCount,
+      stars: avaliacao,
+      antiguidade,
+      monthly_points: monthlyPoints,
+      closed_past_points: closedPastPoints,
+      total_points: totalPoints,
       created: u.get('created'),
     })
   }
 
-  // Desempate: 1º Pontos, 2º Avaliação (stars), 3º Antiguidade (created mais antigo)
+  // Ordenação do Ranking: 1º Pontos Totais, 2º Avaliação, 3º Antiguidade
   scores.sort((a, b) => {
-    if (b.points !== a.points) {
-      return b.points - a.points
+    if (b.total_points !== a.total_points) {
+      return b.total_points - a.total_points
     }
     if (b.stars !== a.stars) {
       return b.stars - a.stars
@@ -85,8 +142,9 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     return new Date(a.created).getTime() - new Date(b.created).getTime()
   })
 
-  // Save ranking
+  // Salvar na coleção rank_entries
   const rankCol = $app.findCollectionByNameOrId('rank_entries')
+
   for (let i = 0; i < scores.length; i++) {
     const s = scores[i]
     let entry
@@ -96,15 +154,9 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       entry = new Record(rankCol)
     }
 
-    const createdTime = s.created ? new Date(s.created).getTime() : Date.now()
-    const seniorityDays = Math.max(
-      0,
-      Math.floor((Date.now() - createdTime) / (1000 * 60 * 60 * 24)),
-    )
-
     entry.set('user', s.user.id)
     entry.set('cycle', cycle)
-    entry.set('points', s.points)
+    entry.set('points', s.total_points)
     entry.set('services_count', s.services_count)
     entry.set('referrals_count', s.referrals_count)
     entry.set('referrals_this_cycle', s.referrals_this_cycle)
@@ -112,10 +164,11 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     entry.set('ranking_position', i + 1)
     entry.set('tie_break_details', {
       stars: s.stars,
-      seniority_days: seniorityDays,
-      account_age: seniorityDays,
-      cycle_days: 30,
-      referrals_cycle_used: s.referrals_this_cycle,
+      antiguidade: s.antiguidade,
+      plan_multiplier: s.multiplier,
+      monthly_points: s.monthly_points,
+      closed_past_points: s.closed_past_points,
+      formula: '(PLANO) x (SERVICOS) x (INDICACOES) + AVALIACAO + ANTIGUIDADE',
     })
     $app.save(entry)
   }
@@ -125,6 +178,6 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     total_ranked: scores.length,
     cycle,
     message:
-      'Ranking recalculado com sucesso com a fórmula 369 (ciclo mensal de 30 dias de indicações).',
+      'Ranking recalculado com sucesso conforme fórmula do Caminho C (PLANO x SERVIÇOS x INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).',
   })
 })

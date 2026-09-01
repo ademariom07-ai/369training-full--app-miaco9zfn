@@ -39,19 +39,36 @@ export interface PlanConfig {
   icon: React.ComponentType<{ className?: string }>
 }
 
-export const PROFISSIONAL_PLANS: PlanConfig[] = [
+export const ALL_PLANS: PlanConfig[] = [
+  {
+    id: 'gratis',
+    name: 'Grátis',
+    tarifa: 'Sem tarifa fixa',
+    tarifaValor: 0.0,
+    description: 'Acesso às rotinas essenciais sem pontuação ou participação no ranking.',
+    benefits: [
+      'Multiplicador 0x no ranking (sem pontuação)',
+      'Sem cashback no fechamento de ciclos',
+      'Monte seu treino manual e cronômetro de hidratação',
+      'Evolução para planos pagos permitida a qualquer momento',
+    ],
+    color: 'text-gray-400',
+    borderColor: 'border-gray-800 hover:border-gray-600',
+    badgeColor: 'bg-gray-800 text-gray-400 border-gray-700',
+    icon: ShieldCheck,
+  },
   {
     id: 'basico',
     name: 'Básico',
     tarifa: 'R$ 1,00 / serviço',
     tarifaValor: 1.0,
-    description: 'Ideal para profissionais iniciando sua carreira na rede 369.',
+    description: 'Ideal para quem busca pontuar com multiplicador 1.0x na rede.',
     benefits: [
-      'Tarifa de R$ 1,00 por serviço concluído',
+      'Multiplicador 1.0x no ranking mensal 369',
+      'Tarifa de R$ 1,00 por atendimento concluído',
       'Até 15 consultas com IA Experts por mês',
-      'Prescrição de Treinos e Dietas ilimitada',
-      'Agenda de horários e geolocalização',
-      'Participação no ranking e cashback base',
+      'Prescrição e acompanhamento de treinos e dietas',
+      'Participação na distribuição equalizada de cashback',
     ],
     color: 'text-gray-300',
     borderColor: 'border-gray-700 hover:border-gray-500',
@@ -63,13 +80,13 @@ export const PROFISSIONAL_PLANS: PlanConfig[] = [
     name: 'Pro',
     tarifa: 'R$ 2,00 / serviço',
     tarifaValor: 2.0,
-    description: 'Para profissionais em expansão que buscam maior relevância e recursos de IA.',
+    description: 'Multiplicador 2.0x e recursos avançados de IA para acelerar seus resultados.',
     benefits: [
-      'Tarifa de R$ 2,00 por serviço concluído',
+      'Multiplicador 2.0x no ranking mensal (2x mais rápido)',
+      'Tarifa de R$ 2,00 por atendimento concluído',
       'Até 50 consultas com IA Experts por mês',
-      'Destaque na busca de alunos por geolocalização',
-      'Acesso prioritário a módulos de biomecânica',
-      'Multiplicador acelerado de pontos no ranking 369',
+      'Destaque no ecossistema e ferramentas completas',
+      'Participação integral no pool de cashback de 38%',
     ],
     recommended: true,
     color: 'text-[#0057FF]',
@@ -82,14 +99,13 @@ export const PROFISSIONAL_PLANS: PlanConfig[] = [
     name: 'Premium',
     tarifa: 'R$ 3,00 / serviço',
     tarifaValor: 3.0,
-    description:
-      'O nível máximo de visibilidade, tecnologia IA ilimitada e posicionamento de elite.',
+    description: 'O nível máximo de visibilidade: multiplicador 3.0x e IA ilimitada.',
     benefits: [
-      'Tarifa de R$ 3,00 por serviço concluído',
+      'Multiplicador 3.0x no ranking (aceleração máxima 3x)',
+      'Tarifa de R$ 3,00 por atendimento concluído',
       'Acesso ILIMITADO a todos os IA Experts 369',
-      'Máxima prioridade e selo de excelência na busca',
-      'Suporte VIP para carreira e gestão de marca',
-      'Maior peso de cashback e liderança de rede',
+      'Máxima prioridade e suporte VIP de ecossistema',
+      'Maior retorno potencial no fechamento mensal de cashback',
     ],
     color: 'text-[#D4AF37]',
     borderColor: 'border-[#D4AF37]/50 hover:border-[#D4AF37]',
@@ -97,6 +113,8 @@ export const PROFISSIONAL_PLANS: PlanConfig[] = [
     icon: Crown,
   },
 ]
+
+export const PROFISSIONAL_PLANS: PlanConfig[] = ALL_PLANS.filter((p) => p.id !== 'gratis')
 
 /**
  * Retorna se a data atual (ou informada) está na janela permitida (dias 1 a 3 do mês)
@@ -116,8 +134,11 @@ export function PlanChangeSection() {
   const currentDay = new Date().getDate()
   const currentPlan = (user?.plan as PlanTier) || 'basico'
 
+  const isFromGratis = currentPlan === 'gratis'
+
   const handleOpenConfirm = (plan: PlanConfig) => {
-    if (!isWindowOpen) {
+    // Regra: Evolução a partir do GRÁTIS permitida a qualquer momento do mês vigente!
+    if (!isFromGratis && !isWindowOpen) {
       toast.error('A troca de plano está disponível apenas do dia 1 ao dia 3 de cada mês.')
       return
     }
@@ -131,7 +152,7 @@ export function PlanChangeSection() {
 
   const handleConfirmChange = async () => {
     if (!user || !selectedPlanToChange) return
-    if (!isPlanChangeWindowOpen()) {
+    if (!isFromGratis && !isPlanChangeWindowOpen()) {
       toast.error('A troca de plano está disponível apenas do dia 1 ao dia 3 de cada mês.')
       setConfirmModalOpen(false)
       return
@@ -141,6 +162,7 @@ export function PlanChangeSection() {
     try {
       await pb.collection('users').update(user.id, {
         plan: selectedPlanToChange.id,
+        plan_upgraded_at: new Date().toISOString(),
       })
 
       // Registrar auditoria se disponível

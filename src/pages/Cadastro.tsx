@@ -45,6 +45,11 @@ export default function Cadastro() {
   const [city, setCity] = useState('São Paulo')
   const [state, setState] = useState('SP')
 
+  // Selected Plan: Grátis (0x), Básico (1x), Pro (2x), Premium (3x)
+  const [selectedPlan, setSelectedPlan] = useState<'gratis' | 'basico' | 'pro' | 'premium'>(
+    initialRole === 'profissional' ? 'basico' : 'gratis',
+  )
+
   // Aluno specific
   const [objective, setObjective] = useState('Hipertrofia')
 
@@ -124,7 +129,7 @@ export default function Cadastro() {
         passwordConfirm: password,
         name: cleanName,
         role,
-        plan: role === 'profissional' ? 'basico' : 'gratis',
+        plan: selectedPlan,
         plan_type: role,
         approved: role === 'aluno', // alunos are auto-approved, profissionais require review
         phone: phone.trim(),
@@ -234,7 +239,10 @@ export default function Cadastro() {
               <div className="flex bg-[#141414] p-1 rounded-xl border border-[#2A2A2A] mb-6">
                 <button
                   type="button"
-                  onClick={() => setRole('aluno')}
+                  onClick={() => {
+                    setRole('aluno')
+                    setSelectedPlan('gratis')
+                  }}
                   className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase ${
                     role === 'aluno'
                       ? 'bg-[#0057FF] text-white shadow-md'
@@ -245,7 +253,10 @@ export default function Cadastro() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRole('profissional')}
+                  onClick={() => {
+                    setRole('profissional')
+                    setSelectedPlan('basico')
+                  }}
                   className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase ${
                     role === 'profissional'
                       ? 'bg-[#D4AF37] text-black shadow-md'
@@ -254,6 +265,116 @@ export default function Cadastro() {
                 >
                   Sou Profissional
                 </button>
+              </div>
+
+              {/* SELEÇÃO DE PLANO NO CADASTRO (GRÁTIS 0x, BÁSICO 1x, PRO 2x, PREMIUM 3x) */}
+              <div className="mb-6 p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-3">
+                <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider font-montserrat flex items-center justify-between">
+                  <span>Escolha seu Plano Inicial:</span>
+                  <span className="text-[10px] text-[#D4AF37] font-semibold">
+                    Multiplicador de Ranking
+                  </span>
+                </label>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    {
+                      id: 'gratis' as const,
+                      name: 'GRÁTIS',
+                      multiplier: '0x',
+                      badge: 'Sem Ranking',
+                      desc: 'Acesso básico',
+                      forRole: 'aluno',
+                    },
+                    {
+                      id: 'basico' as const,
+                      name: 'BÁSICO',
+                      multiplier: '1.0x',
+                      badge: 'Pontuação 1x',
+                      desc: 'R$ 1,00/serviço',
+                      forRole: 'all',
+                    },
+                    {
+                      id: 'pro' as const,
+                      name: 'PRO',
+                      multiplier: '2.0x',
+                      badge: 'Pontuação 2x',
+                      desc: 'R$ 2,00/serviço',
+                      forRole: 'all',
+                    },
+                    {
+                      id: 'premium' as const,
+                      name: 'PREMIUM',
+                      multiplier: '3.0x',
+                      badge: 'Acelerador 3x',
+                      desc: 'R$ 3,00/serviço',
+                      forRole: 'all',
+                    },
+                  ].map((p) => {
+                    const isSelected = selectedPlan === p.id
+                    if (role === 'profissional' && p.id === 'gratis') return null
+
+                    return (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() => setSelectedPlan(p.id)}
+                        className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all relative ${
+                          isSelected
+                            ? p.id === 'premium'
+                              ? 'bg-[#D4AF37]/20 border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.2)]'
+                              : p.id === 'pro'
+                                ? 'bg-[#0057FF]/20 border-[#0057FF] shadow-[0_0_15px_rgba(0,87,255,0.2)]'
+                                : 'bg-[#22C55E]/20 border-[#22C55E]'
+                            : 'bg-[#181818] border-[#2A2A2A] hover:border-gray-600'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs font-black font-montserrat text-white">
+                              {p.name}
+                            </span>
+                            {isSelected && (
+                              <CheckCircle2
+                                className={`w-3.5 h-3.5 ${
+                                  p.id === 'premium'
+                                    ? 'text-[#D4AF37]'
+                                    : p.id === 'pro'
+                                      ? 'text-[#0057FF]'
+                                      : 'text-[#22C55E]'
+                                }`}
+                              />
+                            )}
+                          </div>
+                          <span
+                            className={`text-[10px] font-mono font-bold block ${
+                              p.id === 'gratis'
+                                ? 'text-gray-400'
+                                : p.id === 'premium'
+                                  ? 'text-[#D4AF37]'
+                                  : p.id === 'pro'
+                                    ? 'text-[#0057FF]'
+                                    : 'text-[#22C55E]'
+                            }`}
+                          >
+                            Multiplicador {p.multiplier}
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-gray-400 font-inter mt-1 block">
+                          {p.desc}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {selectedPlan === 'gratis' && (
+                  <p className="text-[11px] text-amber-300/90 font-inter bg-amber-950/20 p-2 rounded-lg border border-amber-500/20">
+                    ℹ️ <strong>Plano Grátis (0x):</strong> O aluno tem acesso às funcionalidades
+                    essenciais, mas não pontua no ranking mensal e não gera cashback de rede até
+                    evoluir para um plano pago.
+                  </p>
+                )}
               </div>
 
               {role === 'profissional' && (

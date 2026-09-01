@@ -1,9 +1,14 @@
 /**
- * Utilitários do Modelo Híbrido da Árvore Binária 369TRAINING
+ * Utilitários do Modelo Caminho C da Rede Única Global 369TRAINING
  * - 36 Níveis
- * - 68.719.476.735 posições no total (2^36 - 1)
- * - Posições 1ª a 511ª: parâmetros individuais da coleção binary_tree_params (última pessoa do nível 9)
- * - Posições 512ª a 68.719.476.735: calculadas matematicamente por nível
+ * - Nível 1: 1 pessoa (acumulado 1)
+ * - Nível 2: 2 pessoas (acumulado 3)
+ * - Nível 3: 4 pessoas (acumulado 7)
+ * - Nível 4: 8 pessoas (acumulado 15)
+ * - Progressão 2^(n-1) por nível, acumulado 2^n - 1 até nível 36 (68.719.476.735)
+ * - Equalização com corretor:
+ *   Nível 1: 0.8 / (próximo_nível / 2) + 0.2
+ *   A cada nível soma-se + 0.8 / (próximo_nível / 2) até chegar a 1.8 no último nível
  */
 
 export interface LevelInfo {
@@ -24,7 +29,7 @@ export const TOTAL_LEVELS = 36
 export const HYBRID_THRESHOLD = 511
 
 /**
- * Retorna as especificações de todos os 36 níveis
+ * Retorna especificações de níveis da Rede Única Global
  */
 export function getBinaryTreeLevelsOverview(): LevelInfo[] {
   const levels: LevelInfo[] = []
@@ -34,16 +39,16 @@ export function getBinaryTreeLevelsOverview(): LevelInfo[] {
     const people = 1n << BigInt(lvl - 1) // 2^(lvl-1)
     const cumulativeEnd = cumulativeStart + people - 1n
 
-    let segment = 'Rede Binária'
-    if (lvl === 1) segment = 'Nível 1 (Top Diamante)'
-    else if (lvl === 2) segment = 'Nível 2 (Top Tier)'
-    else if (lvl === 3) segment = 'Nível 3 (Elite)'
-    else if (lvl === 4) segment = 'Nível 4 (Ouro)'
-    else if (lvl === 5) segment = 'Nível 5 (Prata)'
-    else if (lvl === 6) segment = 'Nível 6 (Bronze)'
-    else if (lvl === 7) segment = 'Nível 7 (Avançado)'
-    else if (lvl === 8) segment = 'Nível 8 (Master)'
-    else if (lvl === 9) segment = 'Nível 9 (Base Individual)'
+    let segment = 'Rede Única Global'
+    if (lvl === 1) segment = 'Nível 1 (Top Diamante - 1 pessoa)'
+    else if (lvl === 2) segment = 'Nível 2 (Top Tier - 2 pessoas)'
+    else if (lvl === 3) segment = 'Nível 3 (Elite - 4 pessoas)'
+    else if (lvl === 4) segment = 'Nível 4 (Ouro - 8 pessoas)'
+    else if (lvl === 5) segment = 'Nível 5 (Prata - 16 pessoas)'
+    else if (lvl === 6) segment = 'Nível 6 (Bronze - 32 pessoas)'
+    else if (lvl === 7) segment = 'Nível 7 (Avançado - 64 pessoas)'
+    else if (lvl === 8) segment = 'Nível 8 (Master - 128 pessoas)'
+    else if (lvl === 9) segment = 'Nível 9 (Base Individual - 256 pessoas)'
     else if (lvl <= 15) segment = `Nível ${lvl} (Expansão Regional)`
     else if (lvl <= 25) segment = `Nível ${lvl} (Expansão Nacional)`
     else segment = `Nível ${lvl} (Escala Global)`
@@ -71,13 +76,12 @@ export function getBinaryTreeLevelsOverview(): LevelInfo[] {
 }
 
 /**
- * Determina o nível e parâmetros matemáticos para qualquer posição até 68 bilhões
+ * Determina o nível e parâmetros da Rede Única para qualquer posição até 68 bilhões
  */
 export function calculateHybridPositionParams(pos: number | bigint) {
   const posBig = typeof pos === 'bigint' ? pos : BigInt(pos || 1)
   const posNum = Number(pos)
 
-  // Encontrar nível (1 a 36)
   let lvl = 1
   while (lvl < 36 && (1n << BigInt(lvl)) - 1n < posBig) {
     lvl++
@@ -97,16 +101,17 @@ export function calculateHybridPositionParams(pos: number | bigint) {
     cashbackWeight = Math.max(0.0001, +(1 / (posNum * 0.8 + 1)).toFixed(5))
   }
 
-  let segment = `Nível ${lvl} (Rede)`
-  if (posBig <= 3n) segment = 'Top Tier Diamante'
-  else if (posBig <= 7n) segment = 'Elite'
-  else if (posBig <= 15n) segment = 'Ouro'
-  else if (posBig <= 31n) segment = 'Prata'
-  else if (posBig <= 63n) segment = 'Bronze'
-  else if (posBig <= 127n) segment = 'Avançado'
-  else if (posBig <= 255n) segment = 'Nível 8 Master'
-  else if (posBig <= 511n) segment = 'Nível 9 Rede'
-  else segment = `Nível ${lvl} (Cálculo Matemático)`
+  let segment = `Nível ${lvl} (Rede Única Global)`
+  if (posBig <= 1n) segment = 'Nível 1 (1 pessoa)'
+  else if (posBig <= 3n) segment = 'Nível 2 (2 pessoas)'
+  else if (posBig <= 7n) segment = 'Nível 3 (4 pessoas)'
+  else if (posBig <= 15n) segment = 'Nível 4 (8 pessoas)'
+  else if (posBig <= 31n) segment = 'Nível 5 (16 pessoas)'
+  else if (posBig <= 63n) segment = 'Nível 6 (32 pessoas)'
+  else if (posBig <= 127n) segment = 'Nível 7 (64 pessoas)'
+  else if (posBig <= 255n) segment = 'Nível 8 (128 pessoas)'
+  else if (posBig <= 511n) segment = 'Nível 9 (256 pessoas)'
+  else segment = `Nível ${lvl} (Cálculo Rede Única)`
 
   return {
     position: posBig,
@@ -121,5 +126,55 @@ export function calculateHybridPositionParams(pos: number | bigint) {
     cashbackWeight,
     isIndividual,
     mode: isIndividual ? ('individual' as const) : ('nivel_matematico' as const),
+  }
+}
+
+/**
+ * Equalizador Caminho C: calcula distribuição por níveis habitados
+ */
+export function calculateCaminhoCEqualization(
+  totalEntradaTarifas: number,
+  niveisHabitados: number = 9,
+) {
+  const pool = totalEntradaTarifas * 0.38
+  const nHab = Math.max(1, Math.min(36, niveisHabitados))
+  const proximoNivel = nHab + 1
+  const step = 0.8 / (proximoNivel / 2)
+  const pctDoNivel = 0.38 / nHab
+  const valorDoNivel = pool / nHab
+
+  const levels = []
+  let somaEqualizados = 0
+  let somaCorretor = 0
+
+  for (let lvl = 1; lvl <= nHab; lvl++) {
+    const corretor = Number((step * lvl + 0.2).toFixed(4))
+    somaCorretor += corretor
+    const valorEqualizado = Number((valorDoNivel * corretor).toFixed(2))
+    const pessoasNoNivel = Math.pow(2, lvl - 1)
+    const valorPorPessoa = Number((valorEqualizado / pessoasNoNivel).toFixed(4))
+
+    somaEqualizados += valorEqualizado
+
+    levels.push({
+      level: lvl,
+      pessoasNoNivel,
+      pctDoNivel: +(pctDoNivel * 100).toFixed(3),
+      valorDoNivel: +valorDoNivel.toFixed(2),
+      corretor,
+      limitadorNivel: +somaCorretor.toFixed(4),
+      valorEqualizado,
+      valorPorPessoa,
+    })
+  }
+
+  return {
+    totalEntradaTarifas,
+    pool,
+    niveisHabitados: nHab,
+    pctDoNivel: +(pctDoNivel * 100).toFixed(3),
+    valorDoNivel: +valorDoNivel.toFixed(2),
+    somaEqualizados: +somaEqualizados.toFixed(2),
+    levels,
   }
 }

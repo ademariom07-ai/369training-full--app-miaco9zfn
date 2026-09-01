@@ -1,41 +1,69 @@
-// Recalculate partner ranking periodically and store historical snapshots
-// Formula: pontos = tarifa × servicos × max(indicacoes_ciclo, 1)
-// Recurso 1: As indicações (referrals_this_cycle) são contabilizadas APENAS do ciclo atual (últimos 30 dias).
-// referrals_count mantém o total histórico.
+// Cron job to recalculate ranking and execute monthly snapshot & cashback closure on the last day of the month
 cronAdd('recalculate_rank', '0 3 * * *', () => {
-  const users = $app.findRecordsByFilter(
-    'users',
-    "role = 'profissional' && approved = true",
-    '-created',
-    500,
-    0,
-  )
+  const users = $app.findRecordsByFilter('users', 'approved = true', '-created', 1000, 0)
 
-  const cycle = new Date().toISOString().slice(0, 7) // '2025-05'
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const now = new Date()
+  const cycle = now.toISOString().slice(0, 7) // 'YYYY-MM'
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     .toISOString()
     .replace('T', ' ')
 
-  // Tarifas fixas por plano em R$
-  const tarifaPorPlano = {
-    gratis: 4.0,
-    basico: 1.0,
-    pro: 2.0,
-    premium: 3.0,
+  // Verificar se hoje é o último dia do mês
+  const tomorrow = new Date(now)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const isLastDayOfMonth = tomorrow.getDate() === 1
+
+  const planMultipliers = {
+    gratis: 0,
+    basico: 1,
+    pro: 2,
+    premium: 3,
   }
 
   const scores = []
 
   for (const u of users) {
-    const services = $app.findRecordsByFilter(
+    const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
+    const role = u.get('role') || 'aluno'
+
+    // Regra 3: Plano Grátis = multiplicador 0x → NÃO pontua e NÃO aparece no ranking
+    const multiplier = planMultipliers[rawPlan] ?? 0
+    if (multiplier === 0) {
+      continue
+    }
+
+    let effectiveMultiplier = multiplier
+    const linkedProfId = u.get('linked_professional')
+    const feeMode = u.get('linked_prof_fee_mode') || 'own_plan'
+    if (role === 'aluno' && linkedProfId && feeMode === 'prof_sponsored') {
+      try {
+        const profUser = $app.findRecordById('users', linkedProfId)
+        const profPlan = (profUser.get('plan') || 'basico').toLowerCase()
+        effectiveMultiplier = planMultipliers[profPlan] ?? 1
+      } catch (_) {}
+    }
+
+    const serviceFilter =
+      role === 'profissional'
+        ? `professional = '${u.id}' && status = 'concluido' && created >= '${currentMonthStart}'`
+        : `student = '${u.id}' && status = 'concluido' && created >= '${currentMonthStart}'`
+
+    const servicesThisMonth = $app.findRecordsByFilter(
       'services',
-      `professional = '${u.id}' && status = 'concluido'`,
+      serviceFilter,
       '-created',
       500,
       0,
     )
 
-    // Contar indicações totais (histórico)
+    const referralsThisMonth = $app.findRecordsByFilter(
+      'referrals',
+      `referrer = '${u.id}' && created >= '${currentMonthStart}'`,
+      '-created',
+      500,
+      0,
+    )
+
     const allReferrals = $app.findRecordsByFilter(
       'referrals',
       `referrer = '${u.id}'`,
@@ -44,40 +72,59 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       0,
     )
 
-    // Contar indicações apenas do ciclo atual (últimos 30 dias)
-    const referralsThisCycle = $app.findRecordsByFilter(
-      'referrals',
-      `referrer = '${u.id}' && created >= '${thirtyDaysAgo}'`,
-      '-created',
-      500,
-      0,
-    )
-
-    const userPlan = (u.get('plan') || 'gratis').toLowerCase()
-    const tarifa = tarifaPorPlano[userPlan] ?? 4.0
-    const servicosCount = services.length
+    const servicosCount = servicesThisMonth.length
+    const indicacoesCount = referralsThisMonth.length
     const totalIndicacoes = allReferrals.length
-    const indicacoesCiclo = referralsThisCycle.length
 
-    // Fórmula 369: pontos = tarifa * servicos * max(indicacoes_ciclo, 1)
-    const multiplier = Math.max(indicacoesCiclo, 1)
-    const points = Math.round(tarifa * servicosCount * multiplier)
+    const avaliacao = Math.round(Number(u.get('rating_avg') || 5))
+    const createdDate = u.get('created') ? new Date(u.get('created')) : new Date()
+    const diffMonths = Math.max(
+      1,
+      Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)),
+    )
+    const antiguidade = Math.min(diffMonths, 10)
+
+    const indicacoesFator = Math.max(indicacoesCount, 1)
+    const monthlyPoints =
+      effectiveMultiplier * servicosCount * indicacoesFator + avaliacao + antiguidade
+
+    let closedPastPoints = 0
+    try {
+      const pastSnapshots = $app.findRecordsByFilter(
+        'monthly_rank_snapshots',
+        `user = '${u.id}' && cycle != '${cycle}'`,
+        '-cycle',
+        100,
+        0,
+      )
+      for (const snap of pastSnapshots) {
+        closedPastPoints += Number(snap.get('points') || 0)
+      }
+    } catch (_) {}
+
+    const totalPoints = closedPastPoints + monthlyPoints
 
     scores.push({
       user: u,
-      points,
+      role,
+      plan: rawPlan,
+      multiplier: effectiveMultiplier,
       services_count: servicosCount,
       referrals_count: totalIndicacoes,
-      referrals_this_cycle: indicacoesCiclo,
-      stars: u.get('rating_avg') || 5.0,
+      referrals_this_cycle: indicacoesCount,
+      stars: avaliacao,
+      antiguidade,
+      monthly_points: monthlyPoints,
+      closed_past_points: closedPastPoints,
+      total_points: totalPoints,
       created: u.get('created'),
     })
   }
 
-  // Desempate: 1º Pontos, 2º Avaliação (stars), 3º Antiguidade (created mais antigo)
+  // Ordenação
   scores.sort((a, b) => {
-    if (b.points !== a.points) {
-      return b.points - a.points
+    if (b.total_points !== a.total_points) {
+      return b.total_points - a.total_points
     }
     if (b.stars !== a.stars) {
       return b.stars - a.stars
@@ -85,7 +132,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     return new Date(a.created).getTime() - new Date(b.created).getTime()
   })
 
-  // Save ranking
+  // Salvar rank_entries atual
   const rankCol = $app.findCollectionByNameOrId('rank_entries')
   for (let i = 0; i < scores.length; i++) {
     const s = scores[i]
@@ -96,15 +143,9 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       entry = new Record(rankCol)
     }
 
-    const createdTime = s.created ? new Date(s.created).getTime() : Date.now()
-    const seniorityDays = Math.max(
-      0,
-      Math.floor((Date.now() - createdTime) / (1000 * 60 * 60 * 24)),
-    )
-
     entry.set('user', s.user.id)
     entry.set('cycle', cycle)
-    entry.set('points', s.points)
+    entry.set('points', s.total_points)
     entry.set('services_count', s.services_count)
     entry.set('referrals_count', s.referrals_count)
     entry.set('referrals_this_cycle', s.referrals_this_cycle)
@@ -112,11 +153,55 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     entry.set('ranking_position', i + 1)
     entry.set('tie_break_details', {
       stars: s.stars,
-      seniority_days: seniorityDays,
-      account_age: seniorityDays,
-      cycle_days: 30,
-      referrals_cycle_used: s.referrals_this_cycle,
+      antiguidade: s.antiguidade,
+      plan_multiplier: s.multiplier,
+      monthly_points: s.monthly_points,
+      closed_past_points: s.closed_past_points,
     })
     $app.save(entry)
+  }
+
+  // SE HOJE FOR O ÚLTIMO DIA DO MÊS: Salvar snapshot mensal e fechar o ciclo
+  if (isLastDayOfMonth) {
+    try {
+      const snapCol = $app.findCollectionByNameOrId('monthly_rank_snapshots')
+      for (let i = 0; i < scores.length; i++) {
+        const s = scores[i]
+        let snap
+        try {
+          snap = $app.findRecordsByFilter(
+            'monthly_rank_snapshots',
+            `user = '${s.user.id}' && cycle = '${cycle}'`,
+            '-created',
+            1,
+            0,
+          )[0]
+        } catch (_) {}
+
+        if (!snap) {
+          snap = new Record(snapCol)
+        }
+
+        snap.set('user', s.user.id)
+        snap.set('cycle', cycle)
+        snap.set('points', s.monthly_points)
+        snap.set('services_count', s.services_count)
+        snap.set('referrals_count', s.referrals_this_cycle)
+        snap.set('stars', s.stars)
+        snap.set('antiguidade', s.antiguidade)
+        snap.set('ranking_position', i + 1)
+        snap.set('plan', s.plan)
+        snap.set('closed_at', now.toISOString())
+        snap.set('details', {
+          multiplier: s.multiplier,
+          monthly_points: s.monthly_points,
+          total_cumulative_points: s.total_points,
+        })
+        $app.save(snap)
+      }
+      console.log(`Snapshot mensal do ciclo ${cycle} salvo com sucesso no fechamento do mês.`)
+    } catch (err) {
+      console.error('Erro ao registrar snapshot mensal no fechamento:', err)
+    }
   }
 })
