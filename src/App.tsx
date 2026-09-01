@@ -170,6 +170,16 @@ export default function App() {
             }
           />
           <Route
+            path="/aluno/chat/:profId"
+            element={
+              <RoleGuard allowedRoles={['aluno']}>
+                <Layout>
+                  <ChatScreen />
+                </Layout>
+              </RoleGuard>
+            }
+          />
+          <Route
             path="/aluno/perfil"
             element={
               <RoleGuard allowedRoles={['aluno']}>

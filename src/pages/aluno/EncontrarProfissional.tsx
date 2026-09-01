@@ -745,8 +745,13 @@ export default function EncontrarProfissional() {
                 </Button>
                 <Button
                   onClick={() => {
+                    const profId = selectedProf?.id
                     setSelectedProf(null)
-                    navigate('/aluno/chat')
+                    if (profId) {
+                      navigate(`/aluno/chat/${profId}`)
+                    } else {
+                      navigate('/aluno/chat')
+                    }
                   }}
                   variant="outline"
                   className="border-[#0057FF] text-white hover:bg-[#0057FF]/10 text-xs font-bold h-11"
