@@ -65,7 +65,7 @@ export default function AprovacoesProfissionais() {
   const handleApproveDeposit = async (txId: string) => {
     setProcessingTxId(txId)
     try {
-      await pb.send('/api/custom/admin/approve-deposit', {
+      await pb.send('/backend/v1/admin/approve_deposit', {
         method: 'POST',
         body: JSON.stringify({ transaction_id: txId, action: 'approve' }),
       })
@@ -81,7 +81,7 @@ export default function AprovacoesProfissionais() {
   const handleRejectDeposit = async (txId: string) => {
     setProcessingTxId(txId)
     try {
-      await pb.send('/api/custom/admin/approve-deposit', {
+      await pb.send('/backend/v1/admin/approve_deposit', {
         method: 'POST',
         body: JSON.stringify({ transaction_id: txId, action: 'reject' }),
       })
