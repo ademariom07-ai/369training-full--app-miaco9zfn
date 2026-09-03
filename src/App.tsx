@@ -46,6 +46,7 @@ import GestaoUsuarios from '@/pages/admin/GestaoUsuarios'
 import AprovacoesProfissionais from '@/pages/admin/AprovacoesProfissionais'
 import AdminRankingConfig from '@/pages/admin/AdminRankingConfig'
 import AdminAuditoria from '@/pages/admin/AdminAuditoria'
+import SmartwatchPage from '@/pages/SmartwatchPage'
 
 export default function App() {
   return (
@@ -67,6 +68,38 @@ export default function App() {
           <Route path="/termos-de-uso" element={<TermosDeUso />} />
           <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
           <Route path="/lgpd-consentimentos" element={<LgpdConsentimentos />} />
+
+          {/* Smartwatch Routes (Aluno & Profissional) */}
+          <Route
+            path="/smartwatch"
+            element={
+              <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
+                <Layout>
+                  <SmartwatchPage />
+                </Layout>
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/aluno/smartwatch"
+            element={
+              <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
+                <Layout>
+                  <SmartwatchPage />
+                </Layout>
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/profissional/smartwatch"
+            element={
+              <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
+                <Layout>
+                  <SmartwatchPage />
+                </Layout>
+              </RoleGuard>
+            }
+          />
 
           {/* Aluno Routes */}
           <Route

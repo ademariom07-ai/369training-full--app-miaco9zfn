@@ -317,4 +317,73 @@ export const api = {
       body: JSON.stringify(params),
     })
   },
+
+  getWearablesStatus: async () => {
+    return pb.send<{
+      status: string
+      is_configured: boolean
+      aggregator: string
+      supported_devices: Array<{ id: string; name: string; icon: string }>
+      metrics_included: string[]
+      gate_rules: {
+        aluno: string
+        profissional: string
+      }
+      message: string
+    }>('/backend/v1/wearables/status', {
+      method: 'GET',
+    })
+  },
+
+  createWearableConnectSession: async (params?: { success_url?: string; failure_url?: string }) => {
+    return pb.send<{
+      status?: string
+      url?: string
+      session_id?: string
+      aggregator?: string
+      is_mock_ready?: boolean
+      is_configured?: boolean
+      error?: string
+      upgrade_required?: boolean
+      message?: string
+    }>('/backend/v1/wearables/connect_session', {
+      method: 'POST',
+      body: JSON.stringify(params || {}),
+    })
+  },
+}
+
+export interface WearableConnectionRecord {
+  id: string
+  user: string
+  provider: string
+  aggregator: string
+  aggregator_user_id?: string
+  reference_id?: string
+  status: 'pending' | 'connected' | 'disconnected' | 'error'
+  last_sync_at?: string
+  metadata?: any
+  created: string
+  updated: string
+}
+
+export interface WearableMetricRecord {
+  id: string
+  user: string
+  provider?: string
+  date: string
+  steps?: number
+  heart_rate_avg?: number
+  heart_rate_min?: number
+  heart_rate_max?: number
+  calories_active?: number
+  calories_total?: number
+  sleep_duration_seconds?: number
+  sleep_score?: number
+  workouts_count?: number
+  workouts_summary?: any
+  distance_meters?: number
+  synced_at?: string
+  created: string
+  updated: string
 }

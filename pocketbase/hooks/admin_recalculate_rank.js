@@ -1,7 +1,8 @@
-// Recalculate partner ranking on demand (Caminho C)
-// Formula: PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
+// Recalculate partner & student ranking on demand (Caminho C)
+// Formula: PONTOS = (PLANO) × (SERVIÇOS EM R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
 // - PLANO = multiplicador do plano: Grátis 0x / Básico 1x / Pro 2x / Premium 3x
 // - Aluno ou profissional no plano Grátis (multiplicador 0x) NÃO pontua e NÃO aparece no ranking
+// - SERVIÇOS (R$) = soma em R$ das tarifas dos serviços concluídos (Básico R$1, Pro R$2, Premium R$3)
 // - Snapshots mensais fechados são somados à pontuação do mês vigente
 routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
   const users = $app.findRecordsByFilter('users', 'approved = true', '-created', 1000, 0)
@@ -18,6 +19,14 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     basico: 1,
     pro: 2,
     premium: 3,
+  }
+
+  // Tarifas em R$ por plano
+  const planTarifas = {
+    gratis: 1.0,
+    basico: 1.0,
+    pro: 2.0,
+    premium: 3.0,
   }
 
   const scores = []
@@ -58,6 +67,27 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       0,
     )
 
+    // SOMA EM R$ DAS TARIFAS DOS SERVIÇOS CONCLUÍDOS
+    // Tarifa do plano do usuário: Básico R$1, Pro R$2, Premium R$3
+    let servicesTarifaRS = 0
+    for (const svc of servicesThisMonth) {
+      // Se houver transação registrada na carteira para o serviço, busca o valor absoluto da tarifa
+      let rate = planTarifas[rawPlan] ?? 1.0
+      try {
+        const txs = $app.findRecordsByFilter(
+          'wallet_transactions',
+          `reference_id = '${svc.id}' && type = 'tarifa'`,
+          '-created',
+          1,
+          0,
+        )
+        if (txs && txs.length > 0) {
+          rate = Math.abs(Number(txs[0].get('amount') || rate))
+        }
+      } catch (_) {}
+      servicesTarifaRS += rate
+    }
+
     // Indicações validadas no mês corrente (status = 'validated' ou created no mês)
     const referralsThisMonth = $app.findRecordsByFilter(
       'referrals',
@@ -83,21 +113,21 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     // Avaliação (ex: 1 a 5)
     const avaliacao = Math.round(Number(u.get('rating_avg') || 5))
 
-    // Antiguidade (ex: anos ou meses na plataforma, min 1)
+    // Antiguidade (ex: meses na plataforma, min 1)
     const createdDate = u.get('created') ? new Date(u.get('created')) : new Date()
     const diffMonths = Math.max(
       1,
       Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)),
     )
-    const antiguidade = Math.min(diffMonths, 10) // 1, 2, 3...
+    const antiguidade = Math.min(diffMonths, 10)
 
-    // Pontos do mês vigente: (PLANO) x (SERVIÇOS) x (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
-    // Observação: se indicações no mês for 0, usa base 1 para não anular a multiplicação dos serviços prestados
+    // Fórmula: PONTOS = PLANO × SERVIÇOS (R$) × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE
+    // Observação: se indicações no mês for 0, usa base 1 para não anular a multiplicação
     const indicacoesFator = Math.max(indicacoesCount, 1)
     const monthlyPoints =
-      effectiveMultiplier * servicosCount * indicacoesFator + avaliacao + antiguidade
+      Math.round(effectiveMultiplier * servicesTarifaRS * indicacoesFator) + avaliacao + antiguidade
 
-    // Buscar histórico de snapshots mensais fechados anteriores
+    // Snapshots anteriores
     let closedPastPoints = 0
     try {
       const pastSnapshots = $app.findRecordsByFilter(
@@ -120,6 +150,7 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       plan: rawPlan,
       multiplier: effectiveMultiplier,
       services_count: servicosCount,
+      services_tarifa_rs: servicesTarifaRS,
       referrals_count: totalIndicacoes,
       referrals_this_cycle: indicacoesCount,
       stars: avaliacao,
@@ -168,7 +199,8 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       plan_multiplier: s.multiplier,
       monthly_points: s.monthly_points,
       closed_past_points: s.closed_past_points,
-      formula: '(PLANO) x (SERVICOS) x (INDICACOES) + AVALIACAO + ANTIGUIDADE',
+      services_tarifa_rs: s.services_tarifa_rs,
+      formula: 'PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
     })
     $app.save(entry)
   }
@@ -178,6 +210,6 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     total_ranked: scores.length,
     cycle,
     message:
-      'Ranking recalculado com sucesso conforme fórmula do Caminho C (PLANO x SERVIÇOS x INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).',
+      'Ranking recalculado com sucesso conforme fórmula do Caminho C (PLANO × SERVIÇOS R$ × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).',
   })
 })

@@ -56,20 +56,24 @@ interface RankItem {
     segment?: string
     cashback_weight?: number
     stars?: number
+    antiguidade?: number
     tarifa_rs?: number
+    services_tarifa_rs?: number
     cycle?: string
     formula?: string
     is_hybrid_calculated?: boolean
   }
   expand?: {
     user?: {
+      id?: string
       name: string
       plan: string
       email: string
+      role?: string
+      referral_code?: string
     }
   }
 }
-
 export default function AdminRankingConfig() {
   // Distribuição Global de Receita Confirmada
   const [partnerPoolPct, setPartnerPoolPct] = useState('38')
@@ -103,8 +107,8 @@ export default function AdminRankingConfig() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalIndividualCount, setTotalIndividualCount] = useState(511)
   const [activeTab, setActiveTab] = useState<
-    'ranking' | 'tree' | 'levels' | 'esg' | 'split' | 'simulador' | 'caminhoC'
-  >('caminhoC')
+    'ranking' | 'rankingAlunos' | 'tree' | 'levels' | 'esg' | 'split' | 'simulador' | 'caminhoC'
+  >('ranking')
   const [caminhoCEntrada, setCaminhoCEntrada] = useState(1000)
   const [caminhoCNiveis, setCaminhoCNiveis] = useState(9)
   const [searchPos, setSearchPos] = useState('')
@@ -334,7 +338,7 @@ export default function AdminRankingConfig() {
   const handleRecalculateRanking = async () => {
     setRecalculating(true)
     try {
-      const response = await fetch('/api/custom/admin/recalculate-ranking', {
+      const response = await fetch('/backend/v1/admin/recalculate_rank', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -343,9 +347,7 @@ export default function AdminRankingConfig() {
       })
 
       if (response.ok) {
-        toast.success(
-          'Ranking recalculado com sucesso no Modelo Híbrido (1-511 individual, 512+ por nível)!',
-        )
+        toast.success('Ranking recalculado com sucesso conforme fórmula do Caminho C!')
       } else {
         await clientSideRecalculate()
       }
@@ -360,85 +362,120 @@ export default function AdminRankingConfig() {
 
   const clientSideRecalculate = async () => {
     try {
-      const tarifaB = parseFloat(tarifaBasico) || 1.0
-      const tarifaP = parseFloat(tarifaPro) || 2.0
-      const tarifaPrem = parseFloat(tarifaPremium) || 3.0
+      const planMultipliers: Record<string, number> = {
+        gratis: 0,
+        basico: 1,
+        pro: 2,
+        premium: 3,
+      }
       const tarifasMap: Record<string, number> = {
-        gratis: tarifaB,
-        basico: tarifaB,
-        pro: tarifaP,
-        premium: tarifaPrem,
+        gratis: 1.0,
+        basico: 1.0,
+        pro: 2.0,
+        premium: 3.0,
       }
 
       const users = await pb.collection('users').getFullList({
-        filter: 'role = "profissional" && approved = true',
-      })
-
-      const allParams = await pb
-        .collection('binary_tree_params')
-        .getFullList<BinaryTreeParamRecord>({
-          sort: 'position',
-        })
-      const paramMap: Record<number, BinaryTreeParamRecord> = {}
-      allParams.forEach((p) => {
-        paramMap[p.position] = p
+        filter: 'approved = true',
       })
 
       const currentCycle = new Date().toISOString().slice(0, 7)
-      const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      const now = new Date()
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
         .toISOString()
         .replace('T', ' ')
+
       const scored: Array<{
         user_id: string
+        role: string
+        plan: string
         points: number
         services_count: number
+        services_tarifa_rs: number
         referrals_count: number
         referrals_this_cycle: number
         stars: number
-        tarifa_rs: number
+        antiguidade: number
+        created: string
       }> = []
 
       for (const u of users) {
-        const plan = (u.plan as string) || 'basico'
-        const stars = Number(u.rating_avg) || 5.0
-        const tarifaRS = tarifasMap[plan] || 1.0
+        const rawPlan = ((u.plan as string) || 'gratis').toLowerCase()
+        const role = (u.role as string) || 'aluno'
+        const multiplier = planMultipliers[rawPlan] ?? 0
+        if (multiplier === 0) continue
 
-        let referralsCount = 0
-        let referralsThisCycle = 0
+        let effectiveMultiplier = multiplier
+        if (
+          role === 'aluno' &&
+          u.linked_professional &&
+          u.linked_prof_fee_mode === 'prof_sponsored'
+        ) {
+          try {
+            const prof = await pb.collection('users').getOne(u.linked_professional as string)
+            const profPlan = ((prof.plan as string) || 'basico').toLowerCase()
+            effectiveMultiplier = planMultipliers[profPlan] ?? 1
+          } catch {
+            // mantém
+          }
+        }
+
+        const serviceFilter =
+          role === 'profissional'
+            ? `professional = "${u.id}" && status = "concluido" && created >= "${currentMonthStart}"`
+            : `student = "${u.id}" && status = "concluido" && created >= "${currentMonthStart}"`
+
+        let svcs: any[] = []
         try {
-          const refs = await pb.collection('referrals').getFullList({
+          svcs = await pb.collection('services').getFullList({
+            filter: serviceFilter,
+          })
+        } catch {
+          svcs = []
+        }
+
+        let servicesTarifaRS = 0
+        const userTarifa = tarifasMap[rawPlan] ?? 1.0
+        servicesTarifaRS = svcs.length * userTarifa
+
+        let refsMonth: any[] = []
+        let allRefs: any[] = []
+        try {
+          allRefs = await pb.collection('referrals').getFullList({
             filter: `referrer = "${u.id}"`,
           })
-          referralsCount = refs.length
-          referralsThisCycle = refs.filter((r) => r.created >= thirtyDaysAgoIso).length
+          refsMonth = allRefs.filter((r) => r.created >= currentMonthStart)
         } catch {
-          referralsCount = 0
-          referralsThisCycle = 0
+          allRefs = []
+          refsMonth = []
         }
 
-        let servicesCount = 0
-        try {
-          const svcs = await pb.collection('services').getFullList({
-            filter: `professional = "${u.id}" && status = "concluido"`,
-          })
-          servicesCount = svcs.length
-        } catch {
-          servicesCount = 0
-        }
+        const avaliacao = Math.round(Number(u.rating_avg) || 5)
+        const userCreated = u.created ? new Date(u.created as string) : new Date()
+        const diffMonths = Math.max(
+          1,
+          Math.floor((now.getTime() - userCreated.getTime()) / (1000 * 60 * 60 * 24 * 30)),
+        )
+        const antiguidade = Math.min(diffMonths, 10)
 
-        // FÓRMULA 369: tarifa * servicos * max(indicacoes_ciclo, 1)
-        const variavel = Math.max(referralsThisCycle, 1)
-        const rawPoints = Math.round(tarifaRS * servicesCount * variavel)
-        const points = Number(rawPoints) >= 0 ? Number(rawPoints) : 0
+        const indicacoesFator = Math.max(refsMonth.length, 1)
+        const monthlyPoints =
+          Math.round(effectiveMultiplier * servicesTarifaRS * indicacoesFator) +
+          avaliacao +
+          antiguidade
 
         scored.push({
           user_id: u.id,
-          points,
-          services_count: servicesCount,
-          referrals_count: referralsCount,
-          referrals_this_cycle: referralsThisCycle,
-          stars,
-          tarifa_rs: tarifaRS,
+          role,
+          plan: rawPlan,
+          points: monthlyPoints,
+          services_count: svcs.length,
+          services_tarifa_rs: servicesTarifaRS,
+          referrals_count: allRefs.length,
+          referrals_this_cycle: refsMonth.length,
+          stars: avaliacao,
+          antiguidade,
+          created: (u.created as string) || new Date().toISOString(),
         })
       }
 
@@ -447,30 +484,6 @@ export default function AdminRankingConfig() {
       for (let i = 0; i < scored.length; i++) {
         const item = scored[i]
         const pos = i + 1
-
-        let pRecord: {
-          level: number
-          segment: string
-          cashback_weight?: number
-          is_hybrid_calculated?: boolean
-        }
-
-        if (pos <= 511 && paramMap[pos]) {
-          pRecord = {
-            level: paramMap[pos].level,
-            segment: paramMap[pos].segment || 'Rede',
-            cashback_weight: paramMap[pos].cashback_weight,
-            is_hybrid_calculated: false,
-          }
-        } else {
-          const calc = calculateHybridPositionParams(pos)
-          pRecord = {
-            level: calc.level,
-            segment: calc.segment,
-            cashback_weight: calc.cashbackWeight,
-            is_hybrid_calculated: true,
-          }
-        }
 
         try {
           const existing = await pb
@@ -486,15 +499,11 @@ export default function AdminRankingConfig() {
             ranking_position: pos,
             tie_break_details: {
               position: pos,
-              level: pRecord.level,
-              segment: pRecord.segment,
-              cashback_weight: pRecord.cashback_weight,
               stars: item.stars,
-              tarifa_rs: item.tarifa_rs,
+              antiguidade: item.antiguidade,
+              services_tarifa_rs: item.services_tarifa_rs,
               cycle: currentCycle,
-              formula: 'tarifa_R$ * servicos * max(indicacoes_ciclo, 1)',
-              referrals_cycle_used: item.referrals_this_cycle,
-              is_hybrid_calculated: pRecord.is_hybrid_calculated,
+              formula: 'PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
               recomputed_at: new Date().toISOString(),
             },
           })
@@ -510,21 +519,17 @@ export default function AdminRankingConfig() {
             ranking_position: pos,
             tie_break_details: {
               position: pos,
-              level: pRecord.level,
-              segment: pRecord.segment,
-              cashback_weight: pRecord.cashback_weight,
               stars: item.stars,
-              tarifa_rs: item.tarifa_rs,
+              antiguidade: item.antiguidade,
+              services_tarifa_rs: item.services_tarifa_rs,
               cycle: currentCycle,
-              formula: 'tarifa_R$ * servicos * max(indicacoes_ciclo, 1)',
-              referrals_cycle_used: item.referrals_this_cycle,
-              is_hybrid_calculated: pRecord.is_hybrid_calculated,
+              formula: 'PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
               recomputed_at: new Date().toISOString(),
             },
           })
         }
       }
-      toast.success('Ranking recalculado no modelo híbrido com ciclo mensal!')
+      toast.success('Ranking recalculado conforme fórmula confirmada!')
     } catch {
       toast.error('Erro ao recalcular ranking localmente')
     }
@@ -740,7 +745,18 @@ export default function AdminRankingConfig() {
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <Trophy className="w-4 h-4" /> Leaderboard Oficial
+          <Trophy className="w-4 h-4" /> Ranking Geral (Alunos + Profissionais)
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('rankingAlunos')}
+          className={`px-4 py-2 text-xs font-bold font-montserrat uppercase rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'rankingAlunos'
+              ? 'bg-[#181818] text-[#0057FF] border-t-2 border-[#0057FF]'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Users className="w-4 h-4 text-[#0057FF]" /> Ranking Alunos/Clientes
         </button>
         <button
           type="button"
@@ -810,21 +826,25 @@ export default function AdminRankingConfig() {
         </button>
       </div>
 
-      {/* TAB 1: RANKING LEADERBOARD */}
+      {/* TAB 1: RANKING GERAL (ALUNOS + PROFISSIONAIS JUNTOS) */}
       {activeTab === 'ranking' && (
         <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
               <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-[#D4AF37]" /> Classificação Geral por Pontos
+                <Trophy className="w-5 h-5 text-[#D4AF37]" /> Classificação Geral (Alunos/Clientes +
+                Profissionais/Parceiros)
               </h3>
               <p className="text-xs text-gray-400 font-inter">
-                Pontuação cumulativa: <code>tarifa_R$ × serviços × max(indicações, 1)</code>
+                Fórmula confirmada:{' '}
+                <code>
+                  PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
+                </code>
               </p>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto">
               <span className="text-[11px] font-mono text-[#22C55E] bg-[#22C55E]/10 px-3 py-1 rounded-full border border-[#22C55E]/30">
-                Modelo Híbrido Ativo
+                Rede Única Global
               </span>
               <span className="text-[11px] font-mono text-[#D4AF37] bg-[#D4AF37]/10 px-3 py-1 rounded-full border border-[#D4AF37]/30">
                 Ciclo {new Date().toISOString().slice(0, 7)}
@@ -836,15 +856,15 @@ export default function AdminRankingConfig() {
             <table className="w-full text-left text-xs font-inter">
               <thead>
                 <tr className="border-b border-[#2A2A2A] text-gray-400 font-montserrat uppercase text-[10px]">
-                  <th className="pb-3">Posição</th>
-                  <th className="pb-3">Profissional</th>
-                  <th className="pb-3">Plano</th>
-                  <th className="pb-3 text-center">Nível Binário</th>
-                  <th className="pb-3 text-center">Tipo de Parâmetro</th>
-                  <th className="pb-3 text-center">Tarifa (R$)</th>
-                  <th className="pb-3 text-center">Serviços</th>
-                  <th className="pb-3 text-center">Indicações (Ciclo / Total)</th>
-                  <th className="pb-3 text-right">Pontuação Final</th>
+                  <th className="pb-3">RANK</th>
+                  <th className="pb-3">CÓDIGO + PRIMEIRO NOME</th>
+                  <th className="pb-3 text-center">TIPO</th>
+                  <th className="pb-3 text-center">PLANO</th>
+                  <th className="pb-3 text-center">SERVIÇOS (R$)</th>
+                  <th className="pb-3 text-center">INDICAÇÕES</th>
+                  <th className="pb-3 text-center">PONTOS</th>
+                  <th className="pb-3 text-center">AVALIAÇÃO</th>
+                  <th className="pb-3 text-right">ANTIGUIDADE</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2A2A2A]">
@@ -852,38 +872,63 @@ export default function AdminRankingConfig() {
                   <tr>
                     <td colSpan={9} className="py-6 text-center text-gray-400">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#D4AF37]" />
-                      Carregando dados do ranking...
+                      Carregando dados do ranking geral...
                     </td>
                   </tr>
                 ) : rankings.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-6 text-center text-gray-400">
-                      Nenhum profissional pontuado ainda. Clique em &ldquo;Recalcular Ranking
+                      Nenhum participante pontuado ainda. Clique em &ldquo;Recalcular Ranking
                       Agora&rdquo;.
                     </td>
                   </tr>
                 ) : (
                   rankings.map((r, index) => {
-                    const plan = r.expand?.user?.plan || 'basico'
-                    const tarifaDisplay =
-                      plan === 'premium' ? 'R$ 3,00' : plan === 'pro' ? 'R$ 2,00' : 'R$ 1,00'
+                    const u = r.expand?.user
+                    const plan = (u?.plan || 'basico').toLowerCase()
                     const pos = r.ranking_position || index + 1
-                    const lvl =
-                      r.tie_break_details?.level ||
-                      Math.min(36, Math.floor(Math.log2(pos || 1)) + 1)
-                    const isHybridCalculated =
-                      pos > 511 || !!r.tie_break_details?.is_hybrid_calculated
+                    const userRole = u?.role || 'profissional'
+
+                    // CÓDIGO + PRIMEIRO NOME (ex: "174928A — Carlos")
+                    const userCode = u?.referral_code || r.user?.slice(0, 7).toUpperCase() || '369'
+                    const rawName = u?.name || 'Participante'
+                    const firstName =
+                      rawName
+                        .replace(/^(Prof\.|Dra\.|Dr\.)\s*/i, '')
+                        .trim()
+                        .split(' ')[0] || 'Participante'
+                    const codeAndName = `${userCode} — ${firstName}`
+
+                    // SERVIÇOS EM R$
+                    const planRate = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
+                    const servicesRS =
+                      r.tie_break_details?.services_tarifa_rs !== undefined
+                        ? Number(r.tie_break_details.services_tarifa_rs)
+                        : (r.services_count || 0) * planRate
+
+                    // INDICAÇÕES
+                    const indicacoes =
+                      r.referrals_this_cycle !== undefined
+                        ? r.referrals_this_cycle
+                        : r.referrals_count || 0
+
+                    // AVALIAÇÃO
+                    const avaliacao = r.stars || 5
+
+                    // ANTIGUIDADE
+                    const antiguidade = r.tie_break_details?.antiguidade ?? 1
+
                     return (
                       <tr key={r.id || index} className="hover:bg-[#141414] transition-colors">
                         <td className="py-3 font-bold font-mono text-[#D4AF37]">
                           <span
                             className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                               pos === 1
-                                ? 'bg-[#D4AF37] text-black font-extrabold'
+                                ? 'bg-[#D4AF37] text-black font-extrabold shadow-[0_0_12px_rgba(212,175,55,0.4)]'
                                 : pos === 2
-                                  ? 'bg-gray-300 text-black'
+                                  ? 'bg-gray-300 text-black font-bold'
                                   : pos === 3
-                                    ? 'bg-amber-700 text-white'
+                                    ? 'bg-amber-700 text-white font-bold'
                                     : 'bg-[#2A2A2A] text-gray-300'
                             }`}
                           >
@@ -891,71 +936,216 @@ export default function AdminRankingConfig() {
                           </span>
                         </td>
                         <td className="py-3 font-semibold text-white">
-                          <div>
-                            <span className="block">
-                              {r.expand?.user?.name || `Profissional (${r.user?.slice(0, 8)})`}
-                            </span>
-                            <span className="text-[10px] text-gray-500 font-mono">
-                              {r.expand?.user?.email}
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#D4AF37]">
+                              {codeAndName}
                             </span>
                           </div>
+                          <span className="text-[10px] text-gray-500 font-mono block">
+                            {u?.email || r.user}
+                          </span>
                         </td>
-                        <td className="py-3">
+                        <td className="py-3 text-center">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase font-montserrat ${
+                              userRole === 'aluno'
+                                ? 'bg-[#0057FF]/15 text-[#0057FF] border border-[#0057FF]/30'
+                                : 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30'
+                            }`}
+                          >
+                            {userRole === 'aluno' ? 'Aluno' : 'Parceiro'}
+                          </span>
+                        </td>
+                        <td className="py-3 text-center">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-montserrat ${
                               plan === 'premium'
-                                ? 'bg-[#D4AF37]/10 text-[#D4AF37]'
+                                ? 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40 shadow-[0_0_10px_rgba(212,175,55,0.2)]'
                                 : plan === 'pro'
-                                  ? 'bg-[#0057FF]/10 text-[#0057FF]'
-                                  : 'bg-gray-800 text-gray-300'
+                                  ? 'bg-[#0057FF]/15 text-[#0057FF] border border-[#0057FF]/40'
+                                  : 'bg-gray-800 text-gray-300 border border-gray-700'
                             }`}
                           >
                             {plan}
                           </span>
                         </td>
-                        <td className="py-3 text-center">
-                          <Badge
-                            variant="outline"
-                            className="border-[#0057FF]/40 text-[#0057FF] text-[10px]"
-                          >
-                            Nível {lvl}
-                          </Badge>
-                        </td>
-                        <td className="py-3 text-center">
-                          <Badge
-                            variant="outline"
-                            className={`text-[9px] ${
-                              isHybridCalculated
-                                ? 'border-purple-500/40 text-purple-400 bg-purple-500/10'
-                                : 'border-[#22C55E]/40 text-[#22C55E] bg-[#22C55E]/10'
-                            }`}
-                          >
-                            {isHybridCalculated ? 'Matemático (512+)' : 'Individual (1-511)'}
-                          </Badge>
-                        </td>
-                        <td className="py-3 text-center font-mono font-bold text-gray-300">
-                          {tarifaDisplay}
-                        </td>
-                        <td className="py-3 text-center font-mono text-gray-300">
-                          {r.services_count || 0}
-                        </td>
-                        <td className="py-3 text-center font-mono text-gray-300">
-                          <span className="font-bold text-[#22C55E]">
-                            {r.referrals_this_cycle !== undefined
-                              ? r.referrals_this_cycle
-                              : r.referrals_count || 0}
-                          </span>
-                          <span className="text-gray-500 text-[10px]">
-                            {' '}
-                            / {r.referrals_count || 0}
+                        <td className="py-3 text-center font-mono font-bold text-white">
+                          R$ {servicesRS.toFixed(2)}
+                          <span className="block text-[10px] text-gray-500 font-normal">
+                            ({r.services_count || 0} svcs)
                           </span>
                         </td>
-                        <td className="py-3 text-right font-mono font-bold text-[#D4AF37] text-sm">
+                        <td className="py-3 text-center font-mono font-bold text-[#22C55E]">
+                          {indicacoes}
+                          <span className="text-[10px] text-gray-500 font-normal block">
+                            (Total: {r.referrals_count || 0})
+                          </span>
+                        </td>
+                        <td className="py-3 text-center font-mono font-black text-[#D4AF37] text-sm">
                           {r.points.toLocaleString('pt-BR')} pts
+                        </td>
+                        <td className="py-3 text-center font-mono text-amber-300 font-bold">
+                          ★ {Number(avaliacao).toFixed(1)}
+                        </td>
+                        <td className="py-3 text-right font-mono text-gray-300 font-semibold">
+                          {antiguidade} {antiguidade === 1 ? 'mês' : 'meses'}
                         </td>
                       </tr>
                     )
                   })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* TAB 1.5: RANKING EXCLUSIVO DE ALUNOS/CLIENTES */}
+      {activeTab === 'rankingAlunos' && (
+        <Card className="bg-[#181818] border border-[#0057FF]/30 p-6 rounded-2xl shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0057FF]/15 border border-[#0057FF]/30 text-xs font-bold text-[#0057FF] uppercase font-montserrat mb-1">
+                <Users className="w-3.5 h-3.5" />
+                Aba Separada — Exclusivo Alunos / Clientes
+              </div>
+              <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-[#0057FF]" /> Classificação Somente de Alunos /
+                Clientes
+              </h3>
+              <p className="text-xs text-gray-400 font-inter">
+                Exibe exclusivamente alunos ativos pontuados conforme a fórmula oficial (PLANO ×
+                SERVIÇOS R$ × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).
+              </p>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="text-[11px] font-mono text-[#0057FF] bg-[#0057FF]/10 px-3 py-1 rounded-full border border-[#0057FF]/30 font-bold">
+                Filtro: role = aluno
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-inter">
+              <thead>
+                <tr className="border-b border-[#2A2A2A] text-gray-400 font-montserrat uppercase text-[10px]">
+                  <th className="pb-3">RANK</th>
+                  <th className="pb-3">CÓDIGO + PRIMEIRO NOME</th>
+                  <th className="pb-3 text-center">PLANO</th>
+                  <th className="pb-3 text-center">SERVIÇOS (R$)</th>
+                  <th className="pb-3 text-center">INDICAÇÕES</th>
+                  <th className="pb-3 text-center">PONTOS</th>
+                  <th className="pb-3 text-center">AVALIAÇÃO</th>
+                  <th className="pb-3 text-right">ANTIGUIDADE</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#2A2A2A]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-6 text-center text-gray-400">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#0057FF]" />
+                      Carregando dados dos alunos...
+                    </td>
+                  </tr>
+                ) : rankings.filter((r) => r.expand?.user?.role === 'aluno').length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-6 text-center text-gray-400">
+                      Nenhum aluno com plano ativo pontuou neste ciclo ainda.
+                    </td>
+                  </tr>
+                ) : (
+                  rankings
+                    .filter((r) => r.expand?.user?.role === 'aluno')
+                    .map((r, subIndex) => {
+                      const u = r.expand?.user
+                      const plan = (u?.plan || 'basico').toLowerCase()
+                      const posAluno = subIndex + 1
+
+                      const userCode =
+                        u?.referral_code || r.user?.slice(0, 7).toUpperCase() || '369'
+                      const rawName = u?.name || 'Aluno'
+                      const firstName =
+                        rawName
+                          .replace(/^(Prof\.|Dra\.|Dr\.)\s*/i, '')
+                          .trim()
+                          .split(' ')[0] || 'Aluno'
+                      const codeAndName = `${userCode} — ${firstName}`
+
+                      const planRate = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
+                      const servicesRS =
+                        r.tie_break_details?.services_tarifa_rs !== undefined
+                          ? Number(r.tie_break_details.services_tarifa_rs)
+                          : (r.services_count || 0) * planRate
+
+                      const indicacoes =
+                        r.referrals_this_cycle !== undefined
+                          ? r.referrals_this_cycle
+                          : r.referrals_count || 0
+                      const avaliacao = r.stars || 5
+                      const antiguidade = r.tie_break_details?.antiguidade ?? 1
+
+                      return (
+                        <tr key={r.id || subIndex} className="hover:bg-[#141414] transition-colors">
+                          <td className="py-3 font-bold font-mono text-[#0057FF]">
+                            <span
+                              className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                                posAluno === 1
+                                  ? 'bg-[#0057FF] text-white font-extrabold shadow-[0_0_12px_rgba(0,87,255,0.4)]'
+                                  : posAluno === 2
+                                    ? 'bg-blue-300 text-black font-bold'
+                                    : posAluno === 3
+                                      ? 'bg-blue-900 text-blue-100 font-bold'
+                                      : 'bg-[#2A2A2A] text-gray-300'
+                              }`}
+                            >
+                              #{posAluno}
+                            </span>
+                          </td>
+                          <td className="py-3 font-semibold text-white">
+                            <span className="font-mono text-xs font-bold text-[#0057FF]">
+                              {codeAndName}
+                            </span>
+                            <span className="text-[10px] text-gray-500 font-mono block">
+                              {u?.email || r.user}
+                            </span>
+                          </td>
+                          <td className="py-3 text-center">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-montserrat ${
+                                plan === 'premium'
+                                  ? 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40'
+                                  : plan === 'pro'
+                                    ? 'bg-[#0057FF]/15 text-[#0057FF] border border-[#0057FF]/40'
+                                    : 'bg-gray-800 text-gray-300 border border-gray-700'
+                              }`}
+                            >
+                              {plan}
+                            </span>
+                          </td>
+                          <td className="py-3 text-center font-mono font-bold text-white">
+                            R$ {servicesRS.toFixed(2)}
+                            <span className="block text-[10px] text-gray-500 font-normal">
+                              ({r.services_count || 0} svcs)
+                            </span>
+                          </td>
+                          <td className="py-3 text-center font-mono font-bold text-[#22C55E]">
+                            {indicacoes}
+                            <span className="text-[10px] text-gray-500 font-normal block">
+                              (Total: {r.referrals_count || 0})
+                            </span>
+                          </td>
+                          <td className="py-3 text-center font-mono font-black text-[#D4AF37] text-sm">
+                            {r.points.toLocaleString('pt-BR')} pts
+                          </td>
+                          <td className="py-3 text-center font-mono text-amber-300 font-bold">
+                            ★ {Number(avaliacao).toFixed(1)}
+                          </td>
+                          <td className="py-3 text-right font-mono text-gray-300 font-semibold">
+                            {antiguidade} {antiguidade === 1 ? 'mês' : 'meses'}
+                          </td>
+                        </tr>
+                      )
+                    })
                 )}
               </tbody>
             </table>

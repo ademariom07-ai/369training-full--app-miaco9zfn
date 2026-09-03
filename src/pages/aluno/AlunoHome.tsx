@@ -127,6 +127,37 @@ export default function AlunoHome() {
       {/* RECURSO 6: SEÇÃO DE CRONÔMETRO DE HIDRATAÇÃO ACSM */}
       <HidratacaoSection />
 
+      {/* RECURSO SMARTWATCH CAMINHO A */}
+      <Card className="bg-gradient-to-r from-[#181818] via-[#151c28] to-[#181818] border border-[#0057FF]/30 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-[#0057FF]/15 border border-[#0057FF]/40 flex items-center justify-center text-[#0057FF] shrink-0">
+            <Activity className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase text-[#0057FF] font-montserrat">
+                Sincronização de Saúde
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] bg-[#D4AF37]/15 text-[#D4AF37] font-bold">
+                Caminho A (Terra/Spike API)
+              </span>
+            </div>
+            <h3 className="text-sm font-bold text-white font-montserrat">
+              Conecte seu Smartwatch (Apple, Garmin, Xiaomi, Fitbit, Samsung, Polar)
+            </h3>
+            <p className="text-[11px] text-gray-400 font-inter">
+              Acompanhe batimentos cardíacos, queima calórica, passos e qualidade do sono em tempo
+              real.
+            </p>
+          </div>
+        </div>
+        <Link to="/smartwatch" className="shrink-0 w-full sm:w-auto">
+          <Button className="w-full sm:w-auto bg-[#0057FF] hover:bg-[#0046d1] text-white text-xs font-bold font-montserrat uppercase px-4 py-2 rounded-xl">
+            Acessar Smartwatch
+          </Button>
+        </Link>
+      </Card>
+
       {/* RECURSO 7: SEÇÃO DE DESAFIOS E GAMIFICAÇÃO */}
       <DesafiosAlunoSection />
 

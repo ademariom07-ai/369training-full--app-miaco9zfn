@@ -20,6 +20,13 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     premium: 3,
   }
 
+  const planTarifas = {
+    gratis: 1.0,
+    basico: 1.0,
+    pro: 2.0,
+    premium: 3.0,
+  }
+
   const scores = []
 
   for (const u of users) {
@@ -56,6 +63,25 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       0,
     )
 
+    // SOMA EM R$ DAS TARIFAS DOS SERVIÇOS CONCLUÍDOS
+    let servicesTarifaRS = 0
+    for (const svc of servicesThisMonth) {
+      let rate = planTarifas[rawPlan] ?? 1.0
+      try {
+        const txs = $app.findRecordsByFilter(
+          'wallet_transactions',
+          `reference_id = '${svc.id}' && type = 'tarifa'`,
+          '-created',
+          1,
+          0,
+        )
+        if (txs && txs.length > 0) {
+          rate = Math.abs(Number(txs[0].get('amount') || rate))
+        }
+      } catch (_) {}
+      servicesTarifaRS += rate
+    }
+
     const referralsThisMonth = $app.findRecordsByFilter(
       'referrals',
       `referrer = '${u.id}' && created >= '${currentMonthStart}'`,
@@ -86,7 +112,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
 
     const indicacoesFator = Math.max(indicacoesCount, 1)
     const monthlyPoints =
-      effectiveMultiplier * servicosCount * indicacoesFator + avaliacao + antiguidade
+      Math.round(effectiveMultiplier * servicesTarifaRS * indicacoesFator) + avaliacao + antiguidade
 
     let closedPastPoints = 0
     try {
@@ -110,6 +136,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       plan: rawPlan,
       multiplier: effectiveMultiplier,
       services_count: servicosCount,
+      services_tarifa_rs: servicesTarifaRS,
       referrals_count: totalIndicacoes,
       referrals_this_cycle: indicacoesCount,
       stars: avaliacao,
@@ -157,6 +184,8 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       plan_multiplier: s.multiplier,
       monthly_points: s.monthly_points,
       closed_past_points: s.closed_past_points,
+      services_tarifa_rs: s.services_tarifa_rs,
+      formula: 'PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
     })
     $app.save(entry)
   }
@@ -196,6 +225,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
           multiplier: s.multiplier,
           monthly_points: s.monthly_points,
           total_cumulative_points: s.total_points,
+          services_tarifa_rs: s.services_tarifa_rs,
         })
         $app.save(snap)
       }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T15:18:03.625Z",
+  "generatedAt": "2026-09-03T23:47:55.869Z",
   "collections": [
     {
       "name": "users",
@@ -2176,6 +2176,229 @@
       "indexes": [
         "CREATE INDEX idx_mrs_user_cycle ON monthly_rank_snapshots (user, cycle)",
         "CREATE INDEX idx_mrs_cycle_pos ON monthly_rank_snapshots (cycle, ranking_position)"
+      ]
+    },
+    {
+      "name": "wearable_connections",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user = @request.auth.id",
+        "view": "@request.auth.id != '' && user = @request.auth.id",
+        "create": "@request.auth.id != '' && user = @request.auth.id",
+        "update": "@request.auth.id != '' && user = @request.auth.id",
+        "delete": "@request.auth.id != '' && user = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "provider",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "apple_watch",
+            "garmin",
+            "fitbit",
+            "xiaomi",
+            "samsung",
+            "polar",
+            "whoop",
+            "suunto",
+            "strava",
+            "other"
+          ]
+        },
+        {
+          "name": "aggregator",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["terra", "spike"]
+        },
+        {
+          "name": "aggregator_user_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reference_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["pending", "connected", "disconnected", "error"]
+        },
+        {
+          "name": "last_sync_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "metadata",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_wc_user ON wearable_connections (user)",
+        "CREATE INDEX idx_wc_provider ON wearable_connections (provider)",
+        "CREATE INDEX idx_wc_agg_user ON wearable_connections (aggregator_user_id)"
+      ]
+    },
+    {
+      "name": "wearable_metrics",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user = @request.auth.id",
+        "view": "@request.auth.id != '' && user = @request.auth.id",
+        "create": "@request.auth.id != '' && user = @request.auth.id",
+        "update": "@request.auth.id != '' && user = @request.auth.id",
+        "delete": "@request.auth.id != '' && user = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "provider",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "date",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "steps",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "heart_rate_avg",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "heart_rate_min",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "heart_rate_max",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "calories_active",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "calories_total",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sleep_duration_seconds",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sleep_score",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "workouts_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "workouts_summary",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "distance_meters",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "raw_payload",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "synced_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_wm_user_date ON wearable_metrics (user, date)",
+        "CREATE INDEX idx_wm_date ON wearable_metrics (date)"
       ]
     }
   ]

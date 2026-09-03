@@ -65,6 +65,7 @@ export default function Layout({ children }: LayoutProps) {
   // Aluno Nav Items
   const alunoNav = [
     { label: 'Início', path: '/aluno', icon: Home },
+    { label: 'Smartwatch', path: '/smartwatch', icon: Activity },
     { label: 'Monte Seu Treino', path: '/aluno/treino', icon: Dumbbell },
     { label: 'Encontrar Profissional', path: '/aluno/profissionais', icon: Users },
     { label: 'Conteúdos & E-books', path: '/conteudos', icon: Award },
@@ -77,6 +78,7 @@ export default function Layout({ children }: LayoutProps) {
   // Profissional Nav Items
   const profissionalNav = [
     { label: 'BackOffice', path: '/profissional', icon: Home },
+    { label: 'Smartwatch', path: '/smartwatch', icon: Activity },
     { label: 'Alunos', path: '/profissional/alunos', icon: Users },
     { label: 'Conteúdos & Materiais', path: '/profissional/conteudos', icon: Award },
     { label: 'Agenda & Serviços', path: '/profissional/agenda', icon: Activity },
