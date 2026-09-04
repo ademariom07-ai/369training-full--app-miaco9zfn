@@ -40,6 +40,7 @@ import {
   calculateHybridPositionParams,
   calculateCaminhoCEqualization,
 } from '@/lib/binaryTreeHybrid'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface RankItem {
   id: string
