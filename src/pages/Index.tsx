@@ -51,7 +51,7 @@ export default function Index() {
       <section className="relative z-10 pt-16 pb-24 px-6 max-w-5xl mx-auto text-center flex flex-col items-center opacity-[1] bg-transparent rounded-[0px]">
         {/* Crest Medallion with Pulse Glow */}
         <div className="mb-8 relative drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]">
-          <CrestLogo size={140} />
+          <CrestLogo size={210} />
         </div>
 
         {/* Brand Headline */}
