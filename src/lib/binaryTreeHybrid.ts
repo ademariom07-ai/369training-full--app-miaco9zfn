@@ -79,8 +79,19 @@ export function getBinaryTreeLevelsOverview(): LevelInfo[] {
  * Determina o nível e parâmetros da Rede Única para qualquer posição até 68 bilhões
  */
 export function calculateHybridPositionParams(pos: number | bigint) {
-  const posBig = typeof pos === 'bigint' ? pos : BigInt(pos || 1)
-  const posNum = Number(pos)
+  let posBig = 1n
+  try {
+    if (typeof pos === 'bigint') {
+      posBig = pos > 0n ? pos : 1n
+    } else {
+      const parsed = Number(pos)
+      posBig = !isNaN(parsed) && parsed > 0 ? BigInt(Math.floor(parsed)) : 1n
+    }
+  } catch {
+    posBig = 1n
+  }
+
+  const posNum = Number(posBig)
 
   let lvl = 1
   while (lvl < 36 && (1n << BigInt(lvl)) - 1n < posBig) {
@@ -133,13 +144,15 @@ export function calculateHybridPositionParams(pos: number | bigint) {
  * Equalizador Caminho C: calcula distribuição por níveis habitados
  */
 export function calculateCaminhoCEqualization(
-  totalEntradaTarifas: number,
+  totalEntradaTarifas: number = 0,
   niveisHabitados: number = 9,
 ) {
-  const pool = totalEntradaTarifas * 0.38
-  const nHab = Math.max(1, Math.min(36, niveisHabitados))
+  const safeEntrada = Math.max(0, Number(totalEntradaTarifas) || 0)
+  const pool = safeEntrada * 0.38
+  const parsedNiveis = Number(niveisHabitados)
+  const nHab = Math.max(1, Math.min(36, isNaN(parsedNiveis) ? 9 : Math.floor(parsedNiveis)))
   const proximoNivel = nHab + 1
-  const step = 0.8 / (proximoNivel / 2)
+  const step = 0.8 / Math.max(0.5, proximoNivel / 2)
   const pctDoNivel = 0.38 / nHab
   const valorDoNivel = pool / nHab
 
@@ -151,7 +164,7 @@ export function calculateCaminhoCEqualization(
     const corretor = Number((step * lvl + 0.2).toFixed(4))
     somaCorretor += corretor
     const valorEqualizado = Number((valorDoNivel * corretor).toFixed(2))
-    const pessoasNoNivel = Math.pow(2, lvl - 1)
+    const pessoasNoNivel = Math.max(1, Math.pow(2, lvl - 1))
     const valorPorPessoa = Number((valorEqualizado / pessoasNoNivel).toFixed(4))
 
     somaEqualizados += valorEqualizado
@@ -169,7 +182,7 @@ export function calculateCaminhoCEqualization(
   }
 
   return {
-    totalEntradaTarifas,
+    totalEntradaTarifas: safeEntrada,
     pool,
     niveisHabitados: nHab,
     pctDoNivel: +(pctDoNivel * 100).toFixed(3),
