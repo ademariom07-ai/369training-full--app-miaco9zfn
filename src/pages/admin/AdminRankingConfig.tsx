@@ -40,6 +40,7 @@ import {
   calculateHybridPositionParams,
   calculateCaminhoCEqualization,
 } from '@/lib/binaryTreeHybrid'
+import { PlanilhaCashbackDistribuicao } from '@/components/PlanilhaCashbackDistribuicao'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface RankItem {
@@ -108,7 +109,15 @@ export default function AdminRankingConfig() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalIndividualCount, setTotalIndividualCount] = useState(511)
   const [activeTab, setActiveTab] = useState<
-    'ranking' | 'rankingAlunos' | 'tree' | 'levels' | 'esg' | 'split' | 'simulador' | 'caminhoC'
+    | 'ranking'
+    | 'rankingAlunos'
+    | 'planilhaCashback'
+    | 'tree'
+    | 'levels'
+    | 'esg'
+    | 'split'
+    | 'simulador'
+    | 'caminhoC'
   >('ranking')
   const [caminhoCEntrada, setCaminhoCEntrada] = useState(1000)
   const [caminhoCNiveis, setCaminhoCNiveis] = useState(9)
@@ -407,19 +416,10 @@ export default function AdminRankingConfig() {
   const handleRecalculateRanking = async () => {
     setRecalculating(true)
     try {
-      const response = await fetch('/backend/v1/admin/recalculate_rank', {
+      await pb.send('/backend/v1/admin/recalculate_rank', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: pb.authStore.token,
-        },
       })
-
-      if (response.ok) {
-        toast.success('Ranking recalculado com sucesso conforme fórmula do Caminho C!')
-      } else {
-        await clientSideRecalculate()
-      }
+      toast.success('Ranking recalculado com sucesso conforme fórmula do Caminho C!')
       await loadData()
     } catch {
       await clientSideRecalculate()
@@ -874,6 +874,17 @@ export default function AdminRankingConfig() {
             }`}
           >
             <Users className="w-4 h-4 text-[#0057FF]" /> Ranking Alunos/Clientes
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('planilhaCashback')}
+            className={`px-4 py-2 text-xs font-bold font-montserrat uppercase rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'planilhaCashback'
+                ? 'bg-[#181818] text-[#22C55E] border-t-2 border-[#22C55E]'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <DollarSign className="w-4 h-4 text-[#22C55E]" /> Planilha de Distribuição de Cashback
           </button>
           <button
             type="button"
@@ -2260,6 +2271,15 @@ export default function AdminRankingConfig() {
               }
             })()}
           </Card>
+        )}
+
+        {/* TAB 8: PLANILHA DE DISTRIBUIÇÃO DE CASHBACK (v0.065) */}
+        {activeTab === 'planilhaCashback' && (
+          <PlanilhaCashbackDistribuicao
+            realRankings={rankings}
+            defaultBaseTarifas={1000000}
+            defaultPositionsCount={1023}
+          />
         )}
       </div>
     </ErrorBoundary>
