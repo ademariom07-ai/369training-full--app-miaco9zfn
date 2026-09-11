@@ -160,37 +160,27 @@ export function PlanChangeSection() {
 
     setIsUpdating(true)
     try {
-      await pb.collection('users').update(user.id, {
-        plan: selectedPlanToChange.id,
-        plan_upgraded_at: new Date().toISOString(),
+      // TAREFA 2: Chamar o hook seguro do backend /backend/v1/plans/change
+      const res = await pb.send('/backend/v1/plans/change', {
+        method: 'POST',
+        body: {
+          plan: selectedPlanToChange.id,
+        },
       })
 
-      // Registrar auditoria se disponível
-      try {
-        await pb.collection('audits').create({
-          actor: user.id,
-          target_type: 'users',
-          target_id: user.id,
-          action: 'troca_plano_profissional',
-          details: {
-            previous_plan: currentPlan,
-            new_plan: selectedPlanToChange.id,
-            changed_at: new Date().toISOString(),
-            day_of_month: currentDay,
-          },
-        })
-      } catch (_) {
-        // auditoria opcional
+      if (res && res.success === false) {
+        throw new Error(res.message || 'Falha ao alterar plano.')
       }
 
       await refreshUser()
       toast.success(
-        `Plano alterado com sucesso para ${selectedPlanToChange.name}! O novo badge já está ativo.`,
+        res?.message ||
+          `Plano alterado com sucesso para ${selectedPlanToChange.name}! O novo badge já está ativo.`,
       )
       setConfirmModalOpen(false)
       setSelectedPlanToChange(null)
     } catch (err: unknown) {
-      const error = err as Error
+      const error = err as { message?: string }
       toast.error(error.message || 'Erro ao trocar de plano. Tente novamente.')
     } finally {
       setIsUpdating(false)

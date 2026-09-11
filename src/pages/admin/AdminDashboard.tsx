@@ -136,14 +136,23 @@ export default function AdminDashboard() {
           Authorization: pb.authStore.token || '',
         },
       })
+      const data = await res.json().catch(() => ({}))
       if (res.ok) {
-        toast.success('Fechamento mensal e cálculo equalizado de cashback executados com sucesso!')
+        toast.success(
+          data.message ||
+            'Fechamento mensal e cálculo equalizado de cashback executados com sucesso!',
+        )
       } else {
-        toast.info('Fechamento calculado e registrado com sucesso nos modelos em nuvem.')
+        // Critério de aceite: se não houver tarifas reais no mês, avisar "sem lastro para distribuição"
+        if (data.code === 'SEM_LASTRO' || data.message?.includes('sem lastro')) {
+          toast.error('sem lastro para distribuição')
+        } else {
+          toast.error(data.message || 'Erro ao processar fechamento mensal.')
+        }
       }
       loadAdminMetrics()
     } catch {
-      toast.info('Fechamento registrado com sucesso.')
+      toast.error('Erro de conexão ao processar fechamento mensal.')
     } finally {
       setFechandoCiclo(false)
     }

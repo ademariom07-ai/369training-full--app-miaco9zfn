@@ -5,6 +5,7 @@ import { RoleGuard } from '@/components/RoleGuard'
 import Layout from '@/components/Layout'
 import { Toaster } from '@/components/ui/sonner'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import { ClinicalAreaGuard } from '@/components/ClinicalAreaGuard'
 
 // Public Pages
 import Index from '@/pages/Index'
@@ -151,7 +152,9 @@ export default function App() {
               element={
                 <RoleGuard allowedRoles={['aluno']}>
                   <Layout>
-                    <MonteSeuTreino />
+                    <ClinicalAreaGuard areaName="Treinamento & Biomecânica">
+                      <MonteSeuTreino />
+                    </ClinicalAreaGuard>
                   </Layout>
                 </RoleGuard>
               }
@@ -181,7 +184,9 @@ export default function App() {
               element={
                 <RoleGuard allowedRoles={['aluno']}>
                   <Layout>
-                    <Nutricao />
+                    <ClinicalAreaGuard areaName="Nutrição & Dieta">
+                      <Nutricao />
+                    </ClinicalAreaGuard>
                   </Layout>
                 </RoleGuard>
               }
@@ -191,7 +196,9 @@ export default function App() {
               element={
                 <RoleGuard allowedRoles={['aluno']}>
                   <Layout>
-                    <Fisioterapia />
+                    <ClinicalAreaGuard areaName="Fisioterapia & Reabilitação">
+                      <Fisioterapia />
+                    </ClinicalAreaGuard>
                   </Layout>
                 </RoleGuard>
               }
@@ -313,7 +320,9 @@ export default function App() {
               element={
                 <RoleGuard allowedRoles={['profissional']}>
                   <Layout>
-                    <CriacaoTreino />
+                    <ClinicalAreaGuard areaName="Prescrição de Treinos">
+                      <CriacaoTreino />
+                    </ClinicalAreaGuard>
                   </Layout>
                 </RoleGuard>
               }
@@ -323,7 +332,9 @@ export default function App() {
               element={
                 <RoleGuard allowedRoles={['profissional']}>
                   <Layout>
-                    <CriacaoDieta />
+                    <ClinicalAreaGuard areaName="Prescrição Nutricional">
+                      <CriacaoDieta />
+                    </ClinicalAreaGuard>
                   </Layout>
                 </RoleGuard>
               }

@@ -40,6 +40,20 @@ routerAdd('GET', '/api/hooks/login', (e) => {
 
     const token = $tokens.recordAuthToken($app, record)
 
+    // MCI Art. 15: Registrar log de login
+    try {
+      const logCol = $app.findCollectionByNameOrId('access_logs')
+      const logRec = new Record(logCol)
+      const info = e.requestInfo()
+      logRec.set('user', record.id)
+      logRec.set('ip', info.headers['x-forwarded-for'] || 'client')
+      logRec.set('user_agent', info.headers['user-agent'] || 'browser')
+      logRec.set('path', '/pb/auth-proxy')
+      logRec.set('method', 'POST')
+      logRec.set('details', { action: 'user_login', identity: identity })
+      $app.save(logRec)
+    } catch (_) {}
+
     return e.json(200, {
       token: token,
       record: record,
@@ -146,6 +160,20 @@ routerAdd('POST', '/pb/auth-proxy', (e) => {
     }
 
     const token = $tokens.recordAuthToken($app, record)
+
+    // MCI Art. 15: Registrar log de login no POST /pb/auth-proxy
+    try {
+      const logCol = $app.findCollectionByNameOrId('access_logs')
+      const logRec = new Record(logCol)
+      const info = e.requestInfo()
+      logRec.set('user', record.id)
+      logRec.set('ip', info.headers['x-forwarded-for'] || 'client')
+      logRec.set('user_agent', info.headers['user-agent'] || 'browser')
+      logRec.set('path', '/pb/auth-proxy')
+      logRec.set('method', 'POST')
+      logRec.set('details', { action: 'user_login', identity: identity })
+      $app.save(logRec)
+    } catch (_) {}
 
     return e.json(200, {
       token: token,

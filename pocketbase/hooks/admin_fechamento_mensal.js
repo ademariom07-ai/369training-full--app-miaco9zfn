@@ -10,6 +10,7 @@
 // 5. VALOR EQUALIZADO(nível) = VALOR DO NÍVEL x CORRETOR DO NÍVEL
 // 6. VALOR POR PESSOA = VALOR EQUALIZADO / PESSOAS NO NÍVEL (progressão 2^(n-1))
 // 7. Cashback creditado na carteira apenas no fechamento!
+// CRITÉRIO DE ACEITE: Fechamento mensal sem tarifas reais NÃO distribui cashback e avisa "sem lastro para distribuição".
 routerAdd('POST', '/backend/v1/admin/fechamento_mensal', (c) => {
   const now = new Date()
   const cycle = now.toISOString().slice(0, 7) // 'YYYY-MM'
@@ -31,24 +32,21 @@ routerAdd('POST', '/backend/v1/admin/fechamento_mensal', (c) => {
     totalTarifasEntrada += Math.abs(Number(t.get('amount')) || 0)
   }
 
-  // Se não houver transações gravadas ainda, estimar com base nos serviços concluídos
+  // TAREFA 2: Fechamento mensal: remover os fallbacks fictícios (totalTarifasEntrada = 1000.0 quando < 10 e a estimativa de R$ 2/serviço).
+  // Se não houver tarifas reais no mês, o fechamento deve retornar erro/aviso "sem lastro para distribuição" e NÃO creditar cashback.
   if (totalTarifasEntrada <= 0) {
-    const servicesCompleted = $app.findRecordsByFilter(
-      'services',
-      `status = 'concluido' && created >= '${currentMonthStart}'`,
-      '-created',
-      5000,
-      0,
-    )
-    totalTarifasEntrada = servicesCompleted.length * 2.0 // média de R$ 2,00 por serviço
+    return c.json(400, {
+      status: 'error',
+      code: 'SEM_LASTRO',
+      cycle,
+      total_tarifas_entrada: 0,
+      partner_pool_38_pct: 0,
+      usuarios_beneficiados: 0,
+      message: 'sem lastro para distribuição',
+    })
   }
 
-  // Fallback caso entrada total esteja vazia para teste
-  if (totalTarifasEntrada < 10) {
-    totalTarifasEntrada = 1000.0 // R$ 1.000,00 base
-  }
-
-  // 2. Pool da Rede Única = 38% da entrada total de tarifas
+  // 2. Pool da Rede Única = 38% da entrada total de tarifas reais
   const partnerPool = totalTarifasEntrada * 0.38
 
   // 3. Descobrir níveis habitados na rede única global

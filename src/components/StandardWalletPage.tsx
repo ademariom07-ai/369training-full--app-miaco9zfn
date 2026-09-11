@@ -78,7 +78,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
   // Modais de PIX Depósito e Saque
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
   const [depositAmount, setDepositAmount] = useState('100.00')
-  const [comprovanteBase64, setComprovanteBase64] = useState('')
+  const [comprovanteFile, setComprovanteFile] = useState<File | null>(null)
   const [comprovanteFileName, setComprovanteFileName] = useState('')
   const [submittingDeposit, setSubmittingDeposit] = useState(false)
 
@@ -91,8 +91,9 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
   const [upgrading, setUpgrading] = useState(false)
 
-  const pixKeyFicticia = '369training@pagamento.com'
-  const titularFicticio = '369TRAINING LTDA'
+  // Configuração real de PIX obtida da platform_config
+  const [platformPixKey, setPlatformPixKey] = useState('financeiro@369training.com')
+  const [platformPixHolder, setPlatformPixHolder] = useState('369TRAINING LTDA')
 
   const userPlan = (user?.plan || 'gratis').toLowerCase()
   const isGratis = userPlan === 'gratis'
@@ -110,6 +111,20 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
         .toISOString()
         .replace('T', ' ')
+
+      // Carregar platform_config para pix_config
+      try {
+        const configRec = await pb
+          .collection('platform_config')
+          .getFirstListItem('key = "pix_config"')
+        if (configRec && configRec.value) {
+          const cfg = configRec.value as any
+          if (cfg.pix_key) setPlatformPixKey(cfg.pix_key)
+          if (cfg.pix_holder) setPlatformPixHolder(cfg.pix_holder)
+        }
+      } catch {
+        /* intentionally ignored */
+      }
 
       // 1. Transações de Carteira (saldo + cashback)
       const txRes = await pb
@@ -242,10 +257,11 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
           const rankEntry = await pb
             .collection('rank_entries')
             .getFirstListItem(`user = "${user.id}"`)
-          setPosicaoRanking(rankEntry.ranking_position || 1)
+          setPosicaoRanking(rankEntry.ranking_position || 0)
         } catch (_) {
-          const simulatedPos = Math.max(1, Math.min(100, 50 - Math.floor(totPts / 20)))
-          setPosicaoRanking(simulatedPos)
+          // TAREFA 2: Ranking simulado: remover a posição simulada no frontend (simulatedPos).
+          // Se não houver rank_entries, exibir 0 ("—" / "fora do ranking").
+          setPosicaoRanking(0)
         }
       }
 
@@ -268,7 +284,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
     loadAllWalletData()
   }, [user, role])
 
-  // Submissão de Depósito PIX
+  // Submissão de Depósito PIX via hook do backend com upload real de comprovante
   const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
@@ -280,19 +296,35 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
 
     setSubmittingDeposit(true)
     try {
-      await pb.collection('wallet_transactions').create({
-        user: user.id,
-        type: 'deposito',
-        amount: amt,
-        status: 'pendente',
-        pix_code: pixKeyFicticia,
-        description: `Depósito PIX ${comprovanteFileName ? `(Comprovante: ${comprovanteFileName})` : ''}`,
+      // TAREFA 2: Upload real de arquivo via FormData para o hook /backend/v1/wallet/deposit
+      const formData = new FormData()
+      formData.append('amount', String(amt))
+      formData.append('pix_code', platformPixKey)
+      formData.append(
+        'description',
+        `Depósito PIX para ${platformPixHolder} (R$ ${amt.toFixed(2)})${
+          comprovanteFileName ? ` - Anexo: ${comprovanteFileName}` : ''
+        }`,
+      )
+      if (comprovanteFile) {
+        formData.append('comprovante_file', comprovanteFile)
+      }
+
+      const res = await pb.send('/backend/v1/wallet/deposit', {
+        method: 'POST',
+        body: formData,
       })
 
+      if (res && res.success === false) {
+        throw new Error(res.message || 'Falha ao submeter depósito.')
+      }
+
       toast.success(
-        'Depósito enviado para validação administrativa! Em breve seu saldo será creditado.',
+        res?.message || 'Depósito enviado para validação administrativa com comprovante anexado!',
       )
       setIsDepositModalOpen(false)
+      setComprovanteFile(null)
+      setComprovanteFileName('')
       loadAllWalletData()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao registrar depósito.')
@@ -301,7 +333,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
     }
   }
 
-  // Submissão de Saque PIX
+  // Submissão de Saque PIX via hook do backend /backend/v1/wallet/withdraw
   const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
@@ -321,17 +353,25 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
 
     setSubmittingWithdraw(true)
     try {
-      await pb.collection('wallet_transactions').create({
-        user: user.id,
-        type: 'saque',
-        amount: -amt,
-        status: 'pendente',
-        pix_code: `${pixKeyType}: ${pixKeyValue}`,
-        description: `Solicitação de Saque PIX (${pixKeyType}: ${pixKeyValue})`,
+      // TAREFA 2: Chamar hook do backend que valida saldo real e titularidade
+      const res = await pb.send('/backend/v1/wallet/withdraw', {
+        method: 'POST',
+        body: {
+          amount: amt,
+          pix_key: pixKeyValue.trim(),
+          pix_key_type: pixKeyType,
+        },
       })
 
-      toast.success('Solicitação de saque via PIX enviada com sucesso!')
+      if (res && res.success === false) {
+        throw new Error(res.message || 'Falha ao solicitar saque.')
+      }
+
+      toast.success(
+        res?.message || 'Solicitação de saque via PIX enviada com sucesso para análise!',
+      )
       setIsWithdrawModalOpen(false)
+      setPixKeyValue('')
       loadAllWalletData()
     } catch (err: any) {
       toast.error(err.message || 'Erro ao solicitar saque.')
@@ -340,18 +380,26 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
     }
   }
 
-  // Evolução rápida de plano (permitida a qualquer momento a partir do Grátis)
+  // Evolução rápida de plano via hook do backend /backend/v1/plans/change
   const handleUpgradePlan = async (targetPlan: 'basico' | 'pro' | 'premium') => {
     if (!user) return
     setUpgrading(true)
     try {
-      await pb.collection('users').update(user.id, {
-        plan: targetPlan,
-        plan_upgraded_at: new Date().toISOString(),
+      const res = await pb.send('/backend/v1/plans/change', {
+        method: 'POST',
+        body: {
+          plan: targetPlan,
+        },
       })
+
+      if (res && res.success === false) {
+        throw new Error(res.message || 'Erro ao evoluir plano.')
+      }
+
       await refreshUser()
       toast.success(
-        `Parabéns! Você evoluiu para o Plano ${targetPlan.toUpperCase()}. Sua pontuação e cashback agora estão ativos!`,
+        res?.message ||
+          `Parabéns! Você evoluiu para o Plano ${targetPlan.toUpperCase()}. Sua pontuação e cashback agora estão ativos!`,
       )
       setIsUpgradeModalOpen(false)
       loadAllWalletData()
@@ -481,12 +529,14 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
             <Trophy className="w-4 h-4 text-[#22C55E]" />
           </div>
           <p className="text-2xl sm:text-3xl font-black text-[#22C55E] font-montserrat tracking-tight">
-            {isGratis ? '—' : `#${posicaoRanking}`}
+            {isGratis || posicaoRanking <= 0 ? '—' : `#${posicaoRanking}`}
           </p>
           <span className="text-[10px] text-gray-400 font-inter mt-1 block">
             {isGratis
               ? 'Não listado (Plano Grátis)'
-              : `Pontuação Total: ${pontuacaoTotal.toLocaleString('pt-BR')} pts`}
+              : posicaoRanking <= 0
+                ? 'Fora do ranking'
+                : `Pontuação Total: ${pontuacaoTotal.toLocaleString('pt-BR')} pts`}
           </span>
         </Card>
 
@@ -762,25 +812,48 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
 
             <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2A2A2A] space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-400">Chave PIX (E-mail):</span>
-                <span className="text-white font-mono font-bold">{pixKeyFicticia}</span>
+                <span className="text-gray-400">Chave PIX Oficial:</span>
+                <span className="text-white font-mono font-bold">{platformPixKey}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-400">Favorecido:</span>
-                <span className="text-gray-300 font-montserrat">{titularFicticio}</span>
+                <span className="text-gray-300 font-montserrat">{platformPixHolder}</span>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(pixKeyFicticia)
+                  navigator.clipboard.writeText(platformPixKey)
                   toast.success('Chave PIX copiada!')
                 }}
                 className="w-full border-[#2A2A2A] text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs font-bold mt-1"
               >
                 <Copy className="w-3.5 h-3.5 mr-1.5" /> Copiar Chave PIX
               </Button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                Upload Real do Comprovante (Imagem ou PDF)
+              </label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,application/pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    setComprovanteFile(file)
+                    setComprovanteFileName(file.name)
+                  }
+                }}
+                className="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#2A2A2A] file:text-white hover:file:bg-[#333] cursor-pointer"
+              />
+              {comprovanteFileName && (
+                <p className="text-[11px] text-[#22C55E] mt-1 font-inter flex items-center gap-1">
+                  Arquivo selecionado: {comprovanteFileName}
+                </p>
+              )}
             </div>
 
             <DialogFooter className="flex gap-2 pt-2">
