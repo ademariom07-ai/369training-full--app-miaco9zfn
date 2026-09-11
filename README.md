@@ -120,6 +120,14 @@ Este template inclui uma biblioteca completa de componentes Shadcn UI baseados e
 6. Crie a build: `npm run build`
 7. Visualize a build: `npm run preview`
 
+## 💳 Integração Futura com Gateway de Pagamentos
+
+Ordem obrigatória para a integração futura do gateway de pagamentos na plataforma 369TRAINING:
+
+1. **Conta Gateway**: Criação e configuração da conta principal da plataforma junto ao gateway (credenciais de API, webhooks e homologação de ambiente).
+2. **Split por Serviço**: Configuração de split de pagamentos por serviço/agendamento (distribuição automática das porcentagens entre plataforma e profissional/prestador no momento da transação).
+3. **Saque Automático via API**: Habilitação e parametrização das transferências/payouts automáticos para os profissionais credenciados via endpoints da API do gateway, respeitando regras de conciliação e retenção.
+
 ## 📦 Build e Deploy
 
 Para criar uma build otimizada para produção:

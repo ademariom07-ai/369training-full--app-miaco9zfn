@@ -129,30 +129,21 @@ export default function AdminDashboard() {
   const handleTriggerFechamento = async () => {
     setFechandoCiclo(true)
     try {
-      const res = await fetch('/backend/v1/admin/fechamento_mensal', {
+      const data: any = await pb.send('/backend/v1/admin/fechamento_mensal', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: pb.authStore.token || '',
-        },
       })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        toast.success(
-          data.message ||
-            'Fechamento mensal e cálculo equalizado de cashback executados com sucesso!',
-        )
+      toast.success(
+        data?.message ||
+          'Fechamento mensal e cálculo equalizado de cashback executados com sucesso!',
+      )
+      loadAdminMetrics()
+    } catch (err: any) {
+      if (err?.data?.code === 'SEM_LASTRO' || err?.message?.includes('sem lastro')) {
+        toast.error('sem lastro para distribuição')
       } else {
-        // Critério de aceite: se não houver tarifas reais no mês, avisar "sem lastro para distribuição"
-        if (data.code === 'SEM_LASTRO' || data.message?.includes('sem lastro')) {
-          toast.error('sem lastro para distribuição')
-        } else {
-          toast.error(data.message || 'Erro ao processar fechamento mensal.')
-        }
+        toast.error(err?.data?.message || err?.message || 'Erro ao processar fechamento mensal.')
       }
       loadAdminMetrics()
-    } catch {
-      toast.error('Erro de conexão ao processar fechamento mensal.')
     } finally {
       setFechandoCiclo(false)
     }

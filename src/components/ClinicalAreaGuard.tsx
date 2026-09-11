@@ -11,7 +11,7 @@ interface ClinicalAreaGuardProps {
 }
 
 export function ClinicalAreaGuard({ areaName, children }: ClinicalAreaGuardProps) {
-  const { user, loading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const navigate = useNavigate()
   const [checkingConsent, setCheckingConsent] = useState(true)
   const [hasConsent, setHasConsent] = useState(false)
