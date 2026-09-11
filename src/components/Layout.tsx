@@ -22,6 +22,7 @@ import {
   Trophy,
   Sliders,
   ChevronDown,
+  FileText,
 } from 'lucide-react'
 import type { NotificationRecord } from '@/services/api'
 

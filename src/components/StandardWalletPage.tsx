@@ -379,7 +379,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
           <p className="text-xs sm:text-sm text-gray-400 font-inter mt-1">
             Padronização 369TRAINING:{' '}
             <strong className="text-white">
-              (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
+              PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
             </strong>
           </p>
         </div>
@@ -586,7 +586,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
       <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl">
         <h3 className="text-sm font-bold font-montserrat text-white uppercase flex items-center gap-2 mb-3">
           <Sparkles className="w-4 h-4 text-[#D4AF37]" />
-          Regra de Pontuação Caminho C: (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO +
+          Regra de Pontuação Caminho C: PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO +
           ANTIGUIDADE
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs font-inter text-gray-300">

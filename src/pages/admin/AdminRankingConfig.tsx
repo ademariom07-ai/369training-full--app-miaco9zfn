@@ -61,6 +61,7 @@ interface RankItem {
     antiguidade?: number
     tarifa_rs?: number
     services_tarifa_rs?: number
+    services_count?: number
     cycle?: string
     formula?: string
     is_hybrid_calculated?: boolean
@@ -529,9 +530,7 @@ export default function AdminRankingConfig() {
 
         const indicacoesFator = Math.max(refsMonth.length, 1)
         const monthlyPoints =
-          Math.round(effectiveMultiplier * servicesTarifaRS * indicacoesFator) +
-          avaliacao +
-          antiguidade
+          Math.round(effectiveMultiplier * svcs.length * indicacoesFator) + avaliacao + antiguidade
 
         scored.push({
           user_id: u.id,
@@ -570,9 +569,9 @@ export default function AdminRankingConfig() {
               position: pos,
               stars: item.stars,
               antiguidade: item.antiguidade,
-              services_tarifa_rs: item.services_tarifa_rs,
+              services_count: item.services_count,
               cycle: currentCycle,
-              formula: 'PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
+              formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
               recomputed_at: new Date().toISOString(),
             },
           })
@@ -590,9 +589,9 @@ export default function AdminRankingConfig() {
               position: pos,
               stars: item.stars,
               antiguidade: item.antiguidade,
-              services_tarifa_rs: item.services_tarifa_rs,
+              services_count: item.services_count,
               cycle: currentCycle,
-              formula: 'PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
+              formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
               recomputed_at: new Date().toISOString(),
             },
           })
@@ -817,14 +816,15 @@ export default function AdminRankingConfig() {
                 <Calculator className="w-4 h-4" /> Motor de Ranking Exclusivamente por Pontos
               </div>
               <div className="text-xl sm:text-2xl font-black font-mono text-white tracking-tight">
-                pontos = <span className="text-[#D4AF37]">tarifa_R$</span> ×{' '}
-                <span className="text-[#0057FF]">serviços</span> ×{' '}
-                <span className="text-[#22C55E]">max(indicações, 1)</span>
+                PONTOS = <span className="text-[#D4AF37]">(PLANO)</span> ×{' '}
+                <span className="text-[#0057FF]">(SERVIÇOS)</span> ×{' '}
+                <span className="text-[#22C55E]">(INDICAÇÕES)</span> + AVALIAÇÃO + ANTIGUIDADE
               </div>
               <p className="text-xs text-gray-300 font-inter">
-                Classificação <strong>exclusivamente por pontuação</strong>. Se posição ≤ 511: busca
-                parâmetros individuais na coleção. Se posição &gt; 511: o motor determina o nível e
-                aplica as fórmulas do modelo híbrido.
+                Classificação <strong>exclusivamente por pontuação</strong> (contagem de serviços,
+                cada serviço = 1 pt no plano básico). Se posição ≤ 511: busca parâmetros individuais
+                na coleção. Se posição &gt; 511: o motor determina o nível e aplica as fórmulas do
+                modelo híbrido.
               </p>
             </div>
 
@@ -966,7 +966,7 @@ export default function AdminRankingConfig() {
                 <p className="text-xs text-gray-400 font-inter">
                   Fórmula confirmada:{' '}
                   <code>
-                    PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
+                    PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
                   </code>
                 </p>
               </div>
@@ -988,7 +988,7 @@ export default function AdminRankingConfig() {
                     <th className="pb-3">CÓDIGO + PRIMEIRO NOME</th>
                     <th className="pb-3 text-center">TIPO</th>
                     <th className="pb-3 text-center">PLANO</th>
-                    <th className="pb-3 text-center">SERVIÇOS (R$)</th>
+                    <th className="pb-3 text-center">SERVIÇOS (QTD)</th>
                     <th className="pb-3 text-center">INDICAÇÕES</th>
                     <th className="pb-3 text-center">PONTOS</th>
                     <th className="pb-3 text-center">AVALIAÇÃO</th>
@@ -1033,13 +1033,12 @@ export default function AdminRankingConfig() {
                           .split(' ')[0] || 'Participante'
                       const codeAndName = `${userCode} — ${firstName}`
 
-                      // SERVIÇOS EM R$
-                      const planRate = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
-                      const rawSvcTarifa = r.tie_break_details?.services_tarifa_rs
-                      const servicesRS =
-                        rawSvcTarifa !== undefined && rawSvcTarifa !== null
-                          ? Number(rawSvcTarifa) || 0
-                          : (Number(r.services_count) || 0) * planRate
+                      // SERVIÇOS (QTD) — Contagem direta de serviços concluídos
+                      const servicesQtd =
+                        r.tie_break_details?.services_count !== undefined &&
+                        r.tie_break_details?.services_count !== null
+                          ? Number(r.tie_break_details.services_count) || 0
+                          : Number(r.services_count) || 0
 
                       // INDICAÇÕES
                       const indicacoes =
@@ -1111,10 +1110,7 @@ export default function AdminRankingConfig() {
                             </span>
                           </td>
                           <td className="py-3 text-center font-mono font-bold text-white">
-                            R$ {servicesRS.toFixed(2)}
-                            <span className="block text-[10px] text-gray-500 font-normal">
-                              ({Number(r.services_count) || 0} svcs)
-                            </span>
+                            {servicesQtd} {servicesQtd === 1 ? 'serviço' : 'serviços'}
                           </td>
                           <td className="py-3 text-center font-mono font-bold text-[#22C55E]">
                             {indicacoes}
@@ -1156,7 +1152,7 @@ export default function AdminRankingConfig() {
                 </h3>
                 <p className="text-xs text-gray-400 font-inter">
                   Exibe exclusivamente alunos ativos pontuados conforme a fórmula oficial (PLANO ×
-                  SERVIÇOS R$ × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).
+                  SERVIÇOS × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -1173,7 +1169,7 @@ export default function AdminRankingConfig() {
                     <th className="pb-3">RANK</th>
                     <th className="pb-3">CÓDIGO + PRIMEIRO NOME</th>
                     <th className="pb-3 text-center">PLANO</th>
-                    <th className="pb-3 text-center">SERVIÇOS (R$)</th>
+                    <th className="pb-3 text-center">SERVIÇOS (QTD)</th>
                     <th className="pb-3 text-center">INDICAÇÕES</th>
                     <th className="pb-3 text-center">PONTOS</th>
                     <th className="pb-3 text-center">AVALIAÇÃO</th>
@@ -1216,12 +1212,11 @@ export default function AdminRankingConfig() {
                             .split(' ')[0] || 'Aluno'
                         const codeAndName = `${userCode} — ${firstName}`
 
-                        const planRate = plan === 'premium' ? 3.0 : plan === 'pro' ? 2.0 : 1.0
-                        const rawSvcTarifa = r.tie_break_details?.services_tarifa_rs
-                        const servicesRS =
-                          rawSvcTarifa !== undefined && rawSvcTarifa !== null
-                            ? Number(rawSvcTarifa) || 0
-                            : (Number(r.services_count) || 0) * planRate
+                        const servicesQtd =
+                          r.tie_break_details?.services_count !== undefined &&
+                          r.tie_break_details?.services_count !== null
+                            ? Number(r.tie_break_details.services_count) || 0
+                            : Number(r.services_count) || 0
 
                         const indicacoes =
                           r.referrals_this_cycle !== undefined && r.referrals_this_cycle !== null
@@ -1273,10 +1268,7 @@ export default function AdminRankingConfig() {
                               </span>
                             </td>
                             <td className="py-3 text-center font-mono font-bold text-white">
-                              R$ {servicesRS.toFixed(2)}
-                              <span className="block text-[10px] text-gray-500 font-normal">
-                                ({Number(r.services_count) || 0} svcs)
-                              </span>
+                              {servicesQtd} {servicesQtd === 1 ? 'serviço' : 'serviços'}
                             </td>
                             <td className="py-3 text-center font-mono font-bold text-[#22C55E]">
                               {indicacoes}
@@ -1975,7 +1967,8 @@ export default function AdminRankingConfig() {
                     Concluído (R$)
                   </h3>
                   <p className="text-xs text-gray-400 font-inter mb-4">
-                    Valores em Reais aplicados na fórmula de pontos do ranking (tarifa_R$).
+                    Valores de tarifas em Reais utilizados como base de faturamento e pool de
+                    cashback (38%).
                   </p>
 
                   <div className="space-y-3">
