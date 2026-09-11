@@ -6,48 +6,49 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%; /* #0A0A0A */
-    --foreground: 0 0% 98%; /* #FAFAFA */
+    /* 369TRAINING Off-white Global Theme (#FAFAF7 / #F7F5F0) */
+    --background: 48 20% 97.5%; /* #FAFAF7 */
+    --foreground: 0 0% 10%; /* #1A1A1A */
 
-    --card: 0 0% 9.5%; /* #181818 */
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 0 0% 10%; /* #1A1A1A */
 
-    --popover: 0 0% 8%; /* #141414 */
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --popover-foreground: 0 0% 10%; /* #1A1A1A */
 
-    --primary: 47 65% 52%; /* #D4AF37 Gold */
-    --primary-foreground: 0 0% 5%;
+    --primary: 47 65% 42%; /* #B8962E contrast-friendly Gold for light theme */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 100% 50%; /* #0057FF Royal Blue */
+    --secondary: 220 100% 48%; /* #0052F2 Royal Blue */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 15%; /* #262626 */
-    --muted-foreground: 215 16% 65%; /* #9CA3AF */
+    --muted: 48 15% 93%; /* #F0EFEA */
+    --muted-foreground: 0 0% 40%; /* #666666 */
 
-    --accent: 47 65% 52%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 47 65% 45%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 16.5%; /* #2A2A2A */
-    --input: 0 0% 16.5%;
-    --ring: 47 65% 52%;
+    --border: 45 15% 88%; /* #E4E2DC */
+    --input: 45 15% 88%;
+    --ring: 47 65% 45%;
 
     --radius: 0.75rem; /* 12px */
 
-    --gold-primary: #d4af37;
-    --gold-hover: #e6c65c;
-    --gold-dark: #b8962e;
-    --gold-metallic: #f4d77a;
+    --gold-primary: #b8962e;
+    --gold-hover: #99771c;
+    --gold-dark: #7a5f16;
+    --gold-metallic: #d4af37;
     --royal-blue: #0057ff;
     --orange-gamify: #ff7a00;
     --purple-martial: #6a00ff;
   }
 
   body {
-    background-color: #000000;
-    color: #f4f4f4;
+    background-color: #fafaf7;
+    color: #1a1a1a;
     font-family: 'Inter', sans-serif;
   }
 
@@ -61,25 +62,83 @@
   }
 }
 
+/* Compatibility mapping for legacy dark utility classes to clean off-white design */
+.bg-\[\#0A0A0A\],
+.bg-\[\#000000\],
+.bg-\[\#070707\],
+.bg-\[\#0B0B0C\],
+.bg-\[\#0E0E0E\],
+.bg-\[\#0F0F0F\],
+.bg-\[\#101010\] {
+  background-color: #fafaf7 !important;
+}
+
+.bg-\[\#181818\],
+.bg-\[\#141414\],
+.bg-\[\#121212\],
+.bg-\[\#1f1f1f\],
+.bg-\[\#202020\] {
+  background-color: #ffffff !important;
+}
+
+.border-\[\#2A2A2A\],
+.border-\[\#222222\],
+.border-\[\#333\],
+.border-\[\#1f1f1f\] {
+  border-color: #e5e3dc !important;
+}
+
+/* Ensure text contrast on light off-white surfaces */
+.text-white {
+  color: #1a1a1a !important;
+}
+
+.text-gray-300,
+.text-gray-200 {
+  color: #374151 !important;
+}
+
+.text-gray-400 {
+  color: #4b5563 !important;
+}
+
+.text-gray-500 {
+  color: #6b7280 !important;
+}
+
+/* Preserve white text on vibrant primary/action buttons & badges */
+.bg-\[\#0057FF\] .text-white,
+.bg-\[\#0057FF\].text-white,
+.bg-red-600.text-white,
+.bg-red-600 .text-white,
+.btn-primary .text-white,
+button.bg-\[\#0057FF\],
+button.bg-red-600,
+.badge-solid-white-text,
+.video-overlay-text,
+.reels-overlay-text {
+  color: #ffffff !important;
+}
+
 /* Custom 369TRAINING v0.0.43 utilities */
 .gold-gradient-text {
-  background: linear-gradient(135deg, #f4d77a 0%, #d4af37 45%, #99771c 100%);
+  background: linear-gradient(135deg, #a68019 0%, #c49a2c 50%, #806012 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .gold-gradient-bg {
-  background: linear-gradient(135deg, #f4d77a 0%, #d4af37 50%, #99771c 100%);
+  background: linear-gradient(135deg, #d4af37 0%, #b8962e 50%, #99771c 100%);
 }
 
 .gold-border-glow {
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(184, 150, 46, 0.35);
+  box-shadow: 0 4px 16px rgba(184, 150, 46, 0.15);
 }
 
 .gold-border-glow:hover {
-  border-color: rgba(212, 175, 55, 0.8);
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.25);
+  border-color: rgba(184, 150, 46, 0.8);
+  box-shadow: 0 6px 24px rgba(184, 150, 46, 0.25);
 }
 
 .blue-glow {

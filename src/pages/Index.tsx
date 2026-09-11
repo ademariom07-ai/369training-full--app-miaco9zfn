@@ -19,27 +19,27 @@ import {
 
 export default function Index() {
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#D4AF37] selection:text-black overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAFAF7] text-[#1A1A1A] selection:bg-[#D4AF37] selection:text-black overflow-x-hidden">
       {/* Background Glows and Radial Pattern */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-[#D4AF37]/10 rounded-full blur-[100px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(#D4AF37_1px,transparent_1px)] [background-size:48px_48px] opacity-[0.03]" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-[#D4AF37]/15 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(#B8962E_1px,transparent_1px)] [background-size:48px_48px] opacity-[0.05]" />
       </div>
 
       {/* Top Bar for Landing */}
-      <header className="relative z-10 border-b border-[#2A2A2A]/60 backdrop-blur-md bg-[#0A0A0A]/80 sticky top-0 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto">
+      <header className="relative z-10 border-b border-[#E5E3DC] backdrop-blur-md bg-white/90 sticky top-0 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto shadow-xs">
         <CrestLogo size={42} showText subText />
         <div className="flex items-center gap-3">
           <Link to="/login">
             <Button
               variant="ghost"
-              className="text-gray-300 hover:text-[#D4AF37] hover:bg-white/5 font-semibold text-sm"
+              className="text-gray-700 hover:text-[#B8962E] hover:bg-black/5 font-semibold text-sm"
             >
               Entrar
             </Button>
           </Link>
           <Link to="/cadastro">
-            <Button className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-semibold text-sm shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all">
+            <Button className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-semibold text-sm shadow-md transition-all">
               Criar Conta
             </Button>
           </Link>
@@ -322,35 +322,35 @@ export default function Index() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-[#2A2A2A] bg-[#0B0B0C] py-12 px-6">
+      <footer className="border-t border-[#E5E3DC] bg-[#F7F5F0] py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col items-center md:items-start text-center md:text-left">
             <CrestLogo size={48} showText subText />
-            <p className="text-xs text-gray-500 mt-3 font-inter max-w-sm">
+            <p className="text-xs text-gray-600 mt-3 font-inter max-w-sm">
               Plataforma de alta performance para profissionais e alunos de Educação Física,
               Nutrição, Fisioterapia e Artes Marciais.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-400 font-inter">
-            <Link to="/termos-de-uso" className="hover:text-[#D4AF37] transition-colors">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-600 font-inter">
+            <Link to="/termos-de-uso" className="hover:text-[#B8962E] transition-colors">
               Termos de Uso
             </Link>
-            <Link to="/politica-de-privacidade" className="hover:text-[#D4AF37] transition-colors">
+            <Link to="/politica-de-privacidade" className="hover:text-[#B8962E] transition-colors">
               Política de Privacidade
             </Link>
-            <Link to="/lgpd-consentimentos" className="hover:text-[#D4AF37] transition-colors">
+            <Link to="/lgpd-consentimentos" className="hover:text-[#B8962E] transition-colors">
               LGPD & Consentimentos
             </Link>
             <a
               href="mailto:suporte@369training.com"
-              className="hover:text-[#D4AF37] transition-colors"
+              className="hover:text-[#B8962E] transition-colors"
             >
               Suporte 369
             </a>
           </div>
 
-          <div className="text-center md:text-right text-xs text-gray-600 font-inter">
+          <div className="text-center md:text-right text-xs text-gray-500 font-inter">
             © {new Date().getFullYear()} 369TRAINING. Todos os direitos reservados.
           </div>
         </div>

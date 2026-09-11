@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { HidratacaoSection } from '@/components/HidratacaoSection'
 import { DesafiosAlunoSection } from '@/components/DesafiosAlunoSection'
+import { AlunoProfissionaisFeed } from '@/components/AlunoProfissionaisFeed'
 import {
   Dumbbell,
   Utensils,
@@ -18,6 +19,7 @@ import {
   Award,
   ChevronRight,
   Sparkles,
+  Users,
 } from 'lucide-react'
 import type { AchievementRecord, WorkoutRecord, NotificationRecord } from '@/services/api'
 
@@ -60,8 +62,11 @@ export default function AlunoHome() {
 
   return (
     <div className="space-y-8 pb-12">
+      {/* 7.2 SEÇÃO ENCONTRE UM PROFISSIONAL NO INÍCIO COM FEED REELS/TIKTOK */}
+      <AlunoProfissionaisFeed />
+
       {/* Top Greeting & Student Crest Photo */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-[#181818] via-[#141414] to-[#181818] border border-[#2A2A2A] shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-[#E5E3DC] shadow-xs">
         <div className="flex items-center gap-5">
           {/* Crest with student photo inside */}
           <div className="relative group">
@@ -76,17 +81,17 @@ export default function AlunoHome() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#D4AF37] uppercase tracking-widest font-montserrat">
+              <span className="text-xs font-bold text-[#B8962E] uppercase tracking-widest font-montserrat">
                 Plano {user?.plan?.toUpperCase() || 'PRO'}
               </span>
               <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-white mt-0.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-[#1A1A1A] mt-0.5">
               Olá, {user?.name?.split(' ')[0] || 'Atleta'}!
             </h1>
-            <p className="text-xs sm:text-sm text-gray-400 font-inter mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 font-inter mt-1">
               Foco no objetivo:{' '}
-              <span className="text-[#D4AF37] font-semibold">
+              <span className="text-[#B8962E] font-semibold">
                 {user?.objective || 'Evolução Contínua'}
               </span>
             </p>
@@ -95,7 +100,7 @@ export default function AlunoHome() {
 
         {/* Falar com Profissional Button */}
         <Link to="/aluno/chat">
-          <Button className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold shadow-[0_0_20px_rgba(212,175,55,0.25)] flex items-center gap-2">
+          <Button className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold shadow-xs flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
             Falar com meu Profissional
           </Button>
@@ -103,20 +108,20 @@ export default function AlunoHome() {
       </div>
 
       {/* Weekly Progress Bar (Blue to Gold with Shimmer) */}
-      <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl shadow-lg">
+      <Card className="bg-white border border-[#E5E3DC] p-6 rounded-2xl shadow-xs">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <Flame className="w-5 h-5 text-[#FF7A00]" />
-            <span className="font-bold font-montserrat text-white text-sm uppercase">
+            <span className="font-bold font-montserrat text-[#1A1A1A] text-sm uppercase">
               Progresso Semanal de Treinos
             </span>
           </div>
-          <span className="text-sm font-extrabold font-montserrat text-[#D4AF37]">
+          <span className="text-sm font-extrabold font-montserrat text-[#B8962E]">
             {completedCount} de {totalCount} concluídos ({weeklyProgress}%)
           </span>
         </div>
 
-        <div className="w-full h-4 bg-[#121212] rounded-full overflow-hidden border border-[#2A2A2A] p-0.5">
+        <div className="w-full h-4 bg-[#FAFAF7] rounded-full overflow-hidden border border-[#E5E3DC] p-0.5">
           <div
             className="h-full rounded-full bg-gradient-to-r from-[#0057FF] via-[#8A67FF] to-[#D4AF37] relative animate-shimmer transition-all duration-500"
             style={{ width: `${weeklyProgress}%` }}

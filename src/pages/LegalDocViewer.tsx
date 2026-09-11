@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { pb } from '@/lib/pocketbase/client'
+import pb from '@/lib/pocketbase/client'
 import { LegalDocumentRecord } from '@/services/api'
 import { CrestLogo } from '@/components/CrestLogo'
 import { Card } from '@/components/ui/card'

@@ -105,9 +105,9 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col selection:bg-[#D4AF37] selection:text-black">
+    <div className="min-h-screen bg-[#FAFAF7] text-[#1A1A1A] flex flex-col selection:bg-[#D4AF37] selection:text-black">
       {/* TOP NAVIGATION BAR */}
-      <header className="sticky top-0 z-40 w-full border-b border-[#2A2A2A] bg-[#0A0A0A]/90 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-lg">
+      <header className="sticky top-0 z-40 w-full border-b border-[#E5E3DC] bg-white/95 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
         {/* Brand Left Lockup */}
         <Link
           to={
@@ -133,8 +133,8 @@ export default function Layout({ children }: LayoutProps) {
                 to={item.path}
                 className={`px-3 py-2 rounded-xl text-xs font-bold font-montserrat uppercase flex items-center gap-1.5 transition-all ${
                   isActive
-                    ? 'bg-[#181818] text-[#D4AF37] border border-[#D4AF37]/50 shadow-[0_0_15px_rgba(212,175,55,0.15)]'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#FAFAF7] text-[#B8962E] border border-[#D4AF37]/50 shadow-xs'
+                    : 'text-gray-600 hover:text-[#1A1A1A] hover:bg-black/5'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -164,11 +164,11 @@ export default function Layout({ children }: LayoutProps) {
           {/* Real-time Notification Bell */}
           <Link
             to={user?.role === 'profissional' ? '/profissional/agenda' : '/aluno'}
-            className="relative p-2 rounded-xl bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:text-[#D4AF37] hover:border-[#D4AF37] transition-all"
+            className="relative p-2 rounded-xl bg-[#FAFAF7] border border-[#E5E3DC] text-gray-700 hover:text-[#B8962E] hover:border-[#D4AF37] transition-all"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white font-bold text-[9px] flex items-center justify-center font-mono animate-pulse">
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 !text-white font-bold text-[9px] flex items-center justify-center font-mono animate-pulse">
                 {unreadCount}
               </span>
             )}
@@ -179,40 +179,40 @@ export default function Layout({ children }: LayoutProps) {
             <button
               type="button"
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 p-1.5 rounded-xl bg-[#141414] border border-[#2A2A2A] hover:border-[#D4AF37] transition-all"
+              className="flex items-center gap-2 p-1.5 rounded-xl bg-[#FAFAF7] border border-[#E5E3DC] hover:border-[#D4AF37] transition-all"
             >
               <img
                 src="https://img.usecurling.com/ppl/medium?gender=male&seed=1"
                 alt="Avatar"
                 className="w-7 h-7 rounded-lg object-cover border border-[#D4AF37]"
               />
-              <span className="hidden md:inline-block text-xs font-bold font-montserrat text-white max-w-[120px] truncate">
+              <span className="hidden md:inline-block text-xs font-bold font-montserrat text-[#1A1A1A] max-w-[120px] truncate">
                 {user?.name?.split(' ')[0] || 'Usuário'}
               </span>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
             </button>
 
             {/* Dropdown Menu */}
             {userMenuOpen && (
               <div
-                className="absolute right-0 mt-2 w-48 rounded-xl bg-[#141414] border border-[#2A2A2A] p-1.5 shadow-2xl z-50 animate-fade-in font-inter text-xs"
+                className="absolute right-0 mt-2 w-48 rounded-xl bg-white border border-[#E5E3DC] p-1.5 shadow-xl z-50 animate-fade-in font-inter text-xs"
                 onMouseLeave={() => setUserMenuOpen(false)}
               >
-                <div className="px-3 py-2 border-b border-[#2A2A2A] mb-1">
-                  <p className="font-bold text-white font-montserrat truncate">{user?.name}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
+                <div className="px-3 py-2 border-b border-[#E5E3DC] mb-1">
+                  <p className="font-bold text-[#1A1A1A] font-montserrat truncate">{user?.name}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{user?.email}</p>
                 </div>
                 <Link
                   to={user?.role === 'profissional' ? '/profissional/carteira' : '/aluno/carteira'}
                   onClick={() => setUserMenuOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:text-[#1A1A1A] hover:bg-black/5"
                 >
-                  <Wallet className="w-3.5 h-3.5 text-[#D4AF37]" /> Minha Carteira
+                  <Wallet className="w-3.5 h-3.5 text-[#B8962E]" /> Minha Carteira
                 </Link>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:bg-red-950/30 text-left font-semibold"
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 text-left font-semibold"
                 >
                   <LogOut className="w-3.5 h-3.5" /> Sair da Conta
                 </button>
@@ -224,7 +224,7 @@ export default function Layout({ children }: LayoutProps) {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-xl bg-[#141414] border border-[#2A2A2A] text-gray-300 hover:text-white"
+            className="lg:hidden p-2 rounded-xl bg-[#FAFAF7] border border-[#E5E3DC] text-gray-700 hover:text-black"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -233,7 +233,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* MOBILE DRAWER */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-x-0 top-[65px] bg-[#101010]/95 backdrop-blur-xl border-b border-[#2A2A2A] z-40 p-4 space-y-2 animate-fade-in">
+        <div className="lg:hidden fixed inset-x-0 top-[65px] bg-white/95 backdrop-blur-xl border-b border-[#E5E3DC] z-40 p-4 space-y-2 animate-fade-in shadow-lg">
           {currentNav.map((item) => {
             const isActive = location.pathname === item.path
             const Icon = item.icon
@@ -244,8 +244,8 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`w-full px-4 py-3 rounded-xl text-xs font-bold font-montserrat uppercase flex items-center gap-2.5 ${
                   isActive
-                    ? 'bg-[#181818] text-[#D4AF37] border border-[#D4AF37]/50'
-                    : 'text-gray-300 hover:bg-white/5'
+                    ? 'bg-[#FAFAF7] text-[#B8962E] border border-[#D4AF37]/50'
+                    : 'text-gray-700 hover:bg-black/5'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -254,11 +254,11 @@ export default function Layout({ children }: LayoutProps) {
             )
           })}
 
-          <div className="pt-2 border-t border-[#2A2A2A]">
+          <div className="pt-2 border-t border-[#E5E3DC]">
             <Button
               onClick={handleLogout}
               variant="outline"
-              className="w-full border-red-900 text-red-400 text-xs font-bold"
+              className="w-full border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold"
             >
               <LogOut className="w-4 h-4 mr-1.5" /> Sair
             </Button>
@@ -273,11 +273,11 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* BOTTOM TAB BAR (Aluno Mobile Only: Home | Comunidade | Chat | Perfil) */}
       {user?.role === 'aluno' && (
-        <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-[#0E0E0E]/95 backdrop-blur-lg border-t border-[#2A2A2A] px-2 py-2 flex items-center justify-around shadow-2xl">
+        <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-[#E5E3DC] px-2 py-2 flex items-center justify-around shadow-lg">
           <Link
             to="/aluno"
             className={`flex flex-col items-center gap-0.5 text-[10px] font-bold font-montserrat uppercase ${
-              location.pathname === '/aluno' ? 'text-[#D4AF37]' : 'text-gray-400'
+              location.pathname === '/aluno' ? 'text-[#B8962E]' : 'text-gray-500'
             }`}
           >
             <Home className="w-5 h-5" /> Início
@@ -285,7 +285,7 @@ export default function Layout({ children }: LayoutProps) {
           <Link
             to="/aluno/comunidade"
             className={`flex flex-col items-center gap-0.5 text-[10px] font-bold font-montserrat uppercase ${
-              location.pathname === '/aluno/comunidade' ? 'text-[#D4AF37]' : 'text-gray-400'
+              location.pathname === '/aluno/comunidade' ? 'text-[#B8962E]' : 'text-gray-500'
             }`}
           >
             <Trophy className="w-5 h-5" /> Comunidade
@@ -293,7 +293,7 @@ export default function Layout({ children }: LayoutProps) {
           <Link
             to="/aluno/chat"
             className={`flex flex-col items-center gap-0.5 text-[10px] font-bold font-montserrat uppercase ${
-              location.pathname === '/aluno/chat' ? 'text-[#D4AF37]' : 'text-gray-400'
+              location.pathname === '/aluno/chat' ? 'text-[#B8962E]' : 'text-gray-500'
             }`}
           >
             <MessageSquare className="w-5 h-5" /> Chat
@@ -301,7 +301,7 @@ export default function Layout({ children }: LayoutProps) {
           <Link
             to="/aluno/perfil"
             className={`flex flex-col items-center gap-0.5 text-[10px] font-bold font-montserrat uppercase ${
-              location.pathname === '/aluno/perfil' ? 'text-[#D4AF37]' : 'text-gray-400'
+              location.pathname === '/aluno/perfil' ? 'text-[#B8962E]' : 'text-gray-500'
             }`}
           >
             <User className="w-5 h-5" /> Perfil
@@ -310,31 +310,31 @@ export default function Layout({ children }: LayoutProps) {
       )}
 
       {/* FOOTER */}
-      <footer className="border-t border-[#2A2A2A] bg-[#070707] py-6 px-6 text-center text-xs text-gray-500 font-inter">
+      <footer className="border-t border-[#E5E3DC] bg-[#F7F5F0] py-6 px-6 text-center text-xs text-gray-600 font-inter">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© {new Date().getFullYear()} 369 TRAINING — FOCO • LEGADO • ESTRATÉGIA</p>
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-400">
-            <Link to="/termos-de-uso" className="hover:text-[#D4AF37] transition-colors">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-600">
+            <Link to="/termos-de-uso" className="hover:text-[#B8962E] transition-colors">
               Termos do Aluno
             </Link>
             <span>•</span>
-            <Link to="/contrato-parceria" className="hover:text-[#D4AF37] transition-colors">
+            <Link to="/contrato-parceria" className="hover:text-[#B8962E] transition-colors">
               Contrato de Parceria
             </Link>
             <span>•</span>
-            <Link to="/regulamento-cashback" className="hover:text-[#D4AF37] transition-colors">
+            <Link to="/regulamento-cashback" className="hover:text-[#B8962E] transition-colors">
               Regulamento Cashback
             </Link>
             <span>•</span>
-            <Link to="/politica-de-privacidade" className="hover:text-[#D4AF37] transition-colors">
+            <Link to="/politica-de-privacidade" className="hover:text-[#B8962E] transition-colors">
               Política de Privacidade
             </Link>
             <span>•</span>
-            <Link to="/lgpd-consentimentos" className="hover:text-[#D4AF37] transition-colors">
+            <Link to="/lgpd-consentimentos" className="hover:text-[#B8962E] transition-colors">
               LGPD & Consentimentos
             </Link>
           </div>
-          <p className="italic text-[11px] text-gray-400">
+          <p className="italic text-[11px] text-gray-500">
             &ldquo;Se você soubesse a magnificência dos números 3, 6 e 9...&rdquo; — Nikola Tesla
           </p>
         </div>

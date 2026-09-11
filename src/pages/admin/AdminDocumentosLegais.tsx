@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { pb } from '@/lib/pocketbase/client'
+import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { LegalDocumentRecord } from '@/services/api'
 import { Card } from '@/components/ui/card'

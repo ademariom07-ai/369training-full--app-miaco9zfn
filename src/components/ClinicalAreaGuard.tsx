@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { pb } from '@/lib/pocketbase/client'
+import pb from '@/lib/pocketbase/client'
 import { SensitiveDataConsentModal } from '@/components/SensitiveDataConsentModal'
 import { Loader2 } from 'lucide-react'
 

@@ -5,7 +5,7 @@ import { CrestLogo } from '@/components/CrestLogo'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { pb } from '@/lib/pocketbase/client'
+import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
 import {
   ShieldCheck,
