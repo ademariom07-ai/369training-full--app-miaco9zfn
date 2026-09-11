@@ -91,10 +91,10 @@ export default function Layout({ children }: LayoutProps) {
     { label: 'Dashboard', path: '/admin', icon: Home },
     { label: 'Usuários', path: '/admin/usuarios', icon: Users },
     { label: 'Aprovações', path: '/admin/aprovacoes', icon: FileCheck2 },
+    { label: 'Documentos Legais', path: '/admin/documentos-legais', icon: FileText },
     { label: 'Ranking & Cashback', path: '/admin/ranking', icon: Sliders },
     { label: 'Auditoria', path: '/admin/auditoria', icon: ShieldCheck },
   ]
-
   const currentNav =
     user?.role === 'admin' ? adminNav : user?.role === 'profissional' ? profissionalNav : alunoNav
 
@@ -314,7 +314,15 @@ export default function Layout({ children }: LayoutProps) {
           <p>© {new Date().getFullYear()} 369 TRAINING — FOCO • LEGADO • ESTRATÉGIA</p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-400">
             <Link to="/termos-de-uso" className="hover:text-[#D4AF37] transition-colors">
-              Termos de Uso
+              Termos do Aluno
+            </Link>
+            <span>•</span>
+            <Link to="/contrato-parceria" className="hover:text-[#D4AF37] transition-colors">
+              Contrato de Parceria
+            </Link>
+            <span>•</span>
+            <Link to="/regulamento-cashback" className="hover:text-[#D4AF37] transition-colors">
+              Regulamento Cashback
             </Link>
             <span>•</span>
             <Link to="/politica-de-privacidade" className="hover:text-[#D4AF37] transition-colors">

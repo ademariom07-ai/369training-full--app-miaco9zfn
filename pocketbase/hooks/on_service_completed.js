@@ -220,10 +220,9 @@ onRecordAfterUpdateSuccess((e) => {
       const antiguidade = Math.min(diffMonths, 10)
 
       const indicacoesFator = Math.max(indicacoesCount, 1)
+      // NOVA REGRA (Tarefa 6): PONTOS = (PLANO) × (SERVIÇOS — contagem) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
       const monthlyPoints =
-        Math.round(effectiveMultiplier * servicesTarifaRS * indicacoesFator) +
-        avaliacao +
-        antiguidade
+        Math.round(effectiveMultiplier * servicosCount * indicacoesFator) + avaliacao + antiguidade
 
       let closedPastPoints = 0
       try {
@@ -289,8 +288,8 @@ onRecordAfterUpdateSuccess((e) => {
         plan_multiplier: s.multiplier,
         monthly_points: s.monthly_points,
         closed_past_points: s.closed_past_points,
-        services_tarifa_rs: s.services_tarifa_rs,
-        formula: 'PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
+        services_count: s.services_count,
+        formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
       })
       $app.save(entry)
     }

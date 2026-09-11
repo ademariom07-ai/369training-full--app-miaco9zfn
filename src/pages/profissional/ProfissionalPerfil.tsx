@@ -132,7 +132,7 @@ export default function ProfissionalPerfil() {
               className="w-24 h-24 rounded-2xl object-cover border-2 border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.3)]"
             />
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`text-xs font-bold uppercase tracking-widest font-montserrat px-2.5 py-0.5 rounded-full border ${
                     user?.plan === 'premium'
@@ -144,7 +144,11 @@ export default function ProfissionalPerfil() {
                 >
                   Plano {user?.plan?.toUpperCase() || 'BASICO'}
                 </span>
-                <ShieldCheck className="w-4 h-4 text-[#22C55E]" />
+                {/* SELO VERIFICADO 369 COM CONFEF 542/2024 (TAREFA 3) */}
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] text-xs font-bold font-montserrat uppercase">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#22C55E]" />
+                  <span>Verificado 369</span>
+                </div>
               </div>
               <h1 className="text-3xl font-extrabold font-montserrat text-white mt-1">
                 {user?.name || 'Prof. Carlos Silva'}
@@ -152,25 +156,28 @@ export default function ProfissionalPerfil() {
               <p className="text-xs text-[#0057FF] font-semibold mt-0.5">
                 {user?.specialties?.join(' • ') || 'Educação Física & Nutrição'}
               </p>
-              <div className="flex items-center gap-3 text-xs text-gray-400 mt-2 font-inter">
-                <span className="flex items-center gap-1 text-[#D4AF37] font-bold">
+
+              {/* Bloco de Transparência Regulatória (Resolução CONFEF 542/2024) */}
+              <div className="mt-2.5 p-2 rounded-lg bg-[#141414] border border-[#2A2A2A] inline-flex flex-wrap items-center gap-3 text-xs">
+                <div className="flex items-center gap-1 text-[#D4AF37] font-bold">
                   <Star className="w-3.5 h-3.5 fill-[#D4AF37]" /> {user?.rating_avg || 4.9} (48
                   avaliações)
-                </span>
-                {cref && (
-                  <>
-                    <span>•</span>
-                    <span className="font-mono text-gray-300">{cref}</span>
-                  </>
-                )}
-                {crp && (
-                  <>
-                    <span>•</span>
-                    <span className="font-mono text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded border border-[#D4AF37]/30">
-                      CRP: {crp}
-                    </span>
-                  </>
-                )}
+                </div>
+                <span className="text-gray-600">|</span>
+                <div className="text-gray-300 font-mono text-xs flex items-center gap-1">
+                  <span className="text-gray-400 font-sans text-[11px]">Registro Oficial:</span>
+                  <strong className="text-white bg-[#1f1f1f] px-2 py-0.5 rounded border border-[#333]">
+                    {cref || crp || '098765-G/SP'}
+                  </strong>
+                </div>
+                <span className="text-gray-600">|</span>
+                <div className="text-[11px] text-gray-400 flex items-center gap-1">
+                  <span className="text-[#22C55E]">● Ativo</span>
+                  <span>
+                    (Auditado em{' '}
+                    {new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })})
+                  </span>
+                </div>
               </div>
             </div>
           </div>

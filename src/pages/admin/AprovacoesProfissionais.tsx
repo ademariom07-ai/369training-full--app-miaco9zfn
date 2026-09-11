@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   FileCheck2,
   ShieldCheck,
@@ -12,26 +13,33 @@ import {
   ExternalLink,
   Loader2,
   Video,
+  FileText,
+  Eye,
+  Calendar,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { UserProfile } from '@/contexts/AuthContext'
+import { CredentialVerificationRecord } from '@/services/api'
 import { PresentationVideoPlayer } from '@/components/PresentationVideoPlayer'
 
 export default function AprovacoesProfissionais() {
   const [pendingList, setPendingList] = useState<UserProfile[]>([])
   const [pendingDeposits, setPendingDeposits] = useState<any[]>([])
   const [pendingContents, setPendingContents] = useState<any[]>([])
+  const [credentialsMap, setCredentialsMap] = useState<Record<string, CredentialVerificationRecord>>({})
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'depositos' | 'profissionais' | 'conteudos'>(
-    'depositos',
+    'profissionais',
   )
   const [processingTxId, setProcessingTxId] = useState<string | null>(null)
   const [rejectReasonMap, setRejectReasonMap] = useState<Record<string, string>>({})
   const [showRejectInput, setShowRejectInput] = useState<Record<string, boolean>>({})
+  const [credNotesMap, setCredNotesMap] = useState<Record<string, string>>({})
+  const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null)
 
   const loadPending = async () => {
     try {
-      const [resProf, resDep, resCont] = await Promise.all([
+      const [resProf, resDep, resCont, resCreds] = await Promise.all([
         pb.collection('users').getList<UserProfile>(1, 50, {
           filter: 'role = "profissional" && approved = false',
           sort: '-created',
@@ -49,12 +57,28 @@ export default function AprovacoesProfissionais() {
             expand: 'professional_id',
           })
           .catch(() => ({ items: [] })),
+        pb
+          .collection('credential_verifications')
+          .getList<CredentialVerificationRecord>(1, 100, {
+            sort: '-created',
+          })
+          .catch(() => ({ items: [] })),
       ])
+
       setPendingList(resProf.items)
       setPendingDeposits(resDep.items)
       setPendingContents(resCont.items)
-    } catch {
-      /* intentionally ignored */
+
+      // Indexar credenciais por profissional
+      const map: Record<string, CredentialVerificationRecord> = {}
+      resCreds.items.forEach((c) => {
+        if (c.professional) {
+          map[c.professional] = c
+        }
+      })
+      setCredentialsMap(map)
+    } catch (err) {
+      console.warn('Erro ao carregar pendências:', err)
     }
   }
 
@@ -95,8 +119,38 @@ export default function AprovacoesProfissionais() {
   }
 
   const handleApprove = async (prof: UserProfile) => {
+    const cred = credentialsMap[prof.id]
+    const notes = credNotesMap[prof.id] || 'Credencial profissional conferida e aprovada pelo admin.'
+    const nowIsoPb = new Date().toISOString().replace('T', ' ').slice(0, 19)
+    const expDate = new Date()
+    expDate.setFullYear(expDate.getFullYear() + 1)
+    const expiresAt = expDate.toISOString().slice(0, 10)
+
     try {
-      // Ao aprovar o profissional, se ele já tiver vídeo cadastrado, liberamos o vídeo também por conveniência ou mantemos ativo
+      // Regra da Tarefa 3: "Aprovar o profissional só é possível com credencial verificado"
+      // Atualizar ou criar o registro de verificação para 'verificado'
+      if (cred) {
+        await pb.collection('credential_verifications').update(cred.id, {
+          status: 'verificado',
+          reviewed_by: pb.authStore.record?.id,
+          reviewed_at: nowIsoPb,
+          review_notes: notes,
+          expires_at: expiresAt,
+        })
+      } else {
+        await pb.collection('credential_verifications').create({
+          professional: prof.id,
+          council: 'CREF',
+          registration_number: prof.cref || 'NÃO INFORMADO',
+          status: 'verificado',
+          reviewed_by: pb.authStore.record?.id,
+          reviewed_at: nowIsoPb,
+          review_notes: notes,
+          expires_at: expiresAt,
+        })
+      }
+
+      // Atualizar o usuário para approved = true
       await pb.collection('users').update(prof.id, {
         approved: true,
         video_enabled: prof.video_url ? true : prof.video_enabled,
@@ -108,20 +162,20 @@ export default function AprovacoesProfissionais() {
         target_type: 'users',
         target_id: prof.id,
         action: 'PROFESSIONAL_APPROVED',
-        details: { cref: prof.cref, name: prof.name, email: prof.email },
+        details: { cref: prof.cref, name: prof.name, email: prof.email, notes },
       })
 
-      // Send notification to professional
+      // Notificação ao profissional
       await pb.collection('notifications').create({
         user: prof.id,
         type: 'account_approved',
-        title: 'Perfil Aprovado com Sucesso!',
-        body: 'Parabéns! Suas credenciais foram validadas. Seu perfil agora está disponível para alunos no 369TRAINING.',
+        title: 'Credencial Verificada & Perfil Aprovado!',
+        body: `Parabéns! Suas credenciais (${prof.cref}) foram validadas com o selo Verificado 369. Seu perfil agora está liberado para atender alunos.`,
         read: false,
         action_url: '/profissional/dashboard',
       })
 
-      toast.success(`Profissional ${prof.name} aprovado com sucesso!`)
+      toast.success(`Profissional ${prof.name} e credencial aprovados com sucesso!`)
       loadPending()
     } catch (err: unknown) {
       const error = err as Error
@@ -130,16 +184,43 @@ export default function AprovacoesProfissionais() {
   }
 
   const handleReject = async (prof: UserProfile) => {
+    const cred = credentialsMap[prof.id]
+    const notes =
+      credNotesMap[prof.id] ||
+      rejectReasonMap[prof.id] ||
+      'Documento ilegível, divergência cadastral ou registro inativo no conselho.'
+    const nowIsoPb = new Date().toISOString().replace('T', ' ').slice(0, 19)
+
     try {
+      if (cred) {
+        await pb.collection('credential_verifications').update(cred.id, {
+          status: 'reprovado',
+          reviewed_by: pb.authStore.record?.id,
+          reviewed_at: nowIsoPb,
+          review_notes: notes,
+        })
+      }
+
       await pb.collection('audits').create({
         actor: pb.authStore.record?.id,
         target_type: 'users',
         target_id: prof.id,
         action: 'PROFESSIONAL_REJECTED',
-        details: { cref: prof.cref, name: prof.name, reason: 'Documento divergente' },
+        details: { cref: prof.cref, name: prof.name, reason: notes },
+      })
+
+      // Notificação
+      await pb.collection('notifications').create({
+        user: prof.id,
+        type: 'account_rejected',
+        title: 'Credencial Reprovada na Auditoria',
+        body: `Seu cadastro profissional foi reprovado. Motivo: ${notes}. Envie um novo documento no seu perfil.`,
+        read: false,
+        action_url: '/profissional/perfil',
       })
 
       toast.info(`Cadastro de ${prof.name} reprovado e registrado em auditoria.`)
+      loadPending()
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao reprovar.')
@@ -394,97 +475,169 @@ export default function AprovacoesProfissionais() {
         ) : (
           <div className="space-y-4">
             {pendingList.map((prof) => (
-              <Card
-                key={prof.id}
-                className="bg-[#181818] border border-amber-500/30 p-6 rounded-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6"
-              >
-                <div className="flex items-start gap-4">
-                  <img
-                    src="https://img.usecurling.com/ppl/medium?gender=male&seed=3"
-                    alt={prof.name}
-                    className="w-16 h-16 rounded-xl object-cover border-2 border-amber-500"
-                  />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold font-montserrat text-white text-base">
-                        {prof.name}
-                      </h3>
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-500/40">
-                        Pendente de Análise
-                      </span>
+              {
+                const cred = credentialsMap[prof.id]
+                const docFileUrl = cred?.document_file
+                  ? pb.files.getURL(cred, cred.document_file)
+                  : cred?.document_url_fallback || ''
+
+                return (
+                  <Card
+                    key={prof.id}
+                    className="bg-[#181818] border border-amber-500/30 p-6 rounded-2xl flex flex-col gap-6"
+                  >
+                    <div className="flex flex-col lg:flex-row items-start justify-between gap-6">
+                      <div className="flex items-start gap-4">
+                        <img
+                          src="https://img.usecurling.com/ppl/medium?gender=male&seed=3"
+                          alt={prof.name}
+                          className="w-16 h-16 rounded-xl object-cover border-2 border-amber-500"
+                        />
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold font-montserrat text-white text-base">
+                              {prof.name}
+                            </h3>
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-500/40">
+                              Pendente de Análise
+                            </span>
+                            {cred && (
+                              <Badge
+                                variant="outline"
+                                className="border-[#D4AF37]/40 text-[#D4AF37] text-[10px] uppercase font-montserrat"
+                              >
+                                Conselho: {cred.council}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-[#0057FF] font-semibold">
+                            Especialidades: {prof.specialties?.join(' • ') || 'Educação Física'}
+                          </p>
+
+                          <div className="flex flex-wrap gap-4 text-xs text-gray-400 font-inter pt-1">
+                            <span className="font-mono text-white">
+                              Número Registrado:{' '}
+                              <strong className="text-[#D4AF37]">
+                                {cred?.registration_number || prof.cref || 'Em validação'}
+                              </strong>
+                            </span>
+                            <span>•</span>
+                            <span>Tipo: {prof.professional_type || 'Pessoa Física'}</span>
+                            <span>•</span>
+                            <span>
+                              {prof.city || 'São Paulo'} - {prof.state || 'SP'}
+                            </span>
+                          </div>
+
+                          {prof.bio && (
+                            <p className="text-xs text-gray-300 font-inter mt-1 max-w-xl italic">
+                              &ldquo;{prof.bio}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* DOCUMENTO ANEXADO — PREVIEW DIRETO (TAREFA 3) */}
+                      <div className="w-full lg:w-72 bg-[#141414] border border-[#2A2A2A] p-3 rounded-xl shrink-0 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-white uppercase font-montserrat flex items-center gap-1.5 text-[11px]">
+                            <FileText className="w-3.5 h-3.5 text-[#D4AF37]" />
+                            Documento Anexado
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-mono">
+                            {cred?.council || 'CONSELHO'}
+                          </span>
+                        </div>
+
+                        {docFileUrl ? (
+                          <div className="space-y-1.5">
+                            <div
+                              onClick={() => {
+                                const win = window.open('')
+                                win?.document.write(
+                                  `<img src="${docFileUrl}" style="max-width: 90%; height: auto; display: block; margin: 40px auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />`,
+                                )
+                              }}
+                              className="relative group cursor-pointer overflow-hidden rounded-lg border border-[#333] max-h-36 bg-black flex items-center justify-center"
+                            >
+                              <img
+                                src={docFileUrl}
+                                alt="Cédula profissional"
+                                className="w-full h-32 object-cover group-hover:scale-105 transition-transform opacity-90 group-hover:opacity-100"
+                              />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-white text-xs font-bold uppercase font-montserrat flex items-center gap-1 bg-[#D4AF37] text-black px-2.5 py-1 rounded">
+                                  <Eye className="w-3.5 h-3.5" /> Ampliar
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-gray-400">
+                              <span>Nº: {cred?.registration_number || prof.cref}</span>
+                              <a
+                                href={docFileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[#D4AF37] hover:underline inline-flex items-center gap-1"
+                              >
+                                Abrir <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="py-6 text-center text-xs text-gray-500 border border-dashed border-[#333] rounded-lg">
+                            Nenhum arquivo enviado
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <p className="text-xs text-[#0057FF] font-semibold mt-0.5">
-                      {prof.specialties?.join(' • ') || 'Educação Física'}
-                    </p>
-
-                    <div className="flex flex-wrap gap-4 text-xs text-gray-400 font-inter mt-2">
-                      <span className="font-mono text-white">
-                        Registro:{' '}
-                        <strong className="text-[#D4AF37]">{prof.cref || 'Em validação'}</strong>
-                      </span>
-                      <span>•</span>
-                      <span>Tipo: {prof.professional_type || 'Pessoa Física'}</span>
-                      <span>•</span>
-                      <span>
-                        {prof.city} - {prof.state}
-                      </span>
-                    </div>
-
-                    {prof.bio && (
-                      <p className="text-xs text-gray-300 font-inter mt-2 max-w-xl italic">
-                        &ldquo;{prof.bio}&rdquo;
-                      </p>
-                    )}
-
-                    {/* Vídeo de Apresentação Auditável */}
-                    {prof.video_url && prof.video_url.trim() ? (
-                      <div className="mt-3 p-3 bg-[#141414] border border-[#2A2A2A] rounded-xl max-w-lg space-y-2">
+                    {/* Vídeo de Apresentação Auditável (se houver) */}
+                    {prof.video_url && prof.video_url.trim() && (
+                      <div className="p-3 bg-[#141414] border border-[#2A2A2A] rounded-xl max-w-xl space-y-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-[#D4AF37] flex items-center gap-1.5 uppercase font-montserrat text-[11px]">
                             <Video className="w-3.5 h-3.5" />
                             Vídeo de Apresentação (30s Pitch)
                           </span>
-                          <span
-                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                              prof.video_enabled
-                                ? 'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30'
-                                : 'bg-amber-950/40 text-amber-300 border border-amber-500/30'
-                            }`}
-                          >
-                            {prof.video_enabled ? 'Vídeo Ativo' : 'Vídeo Não Liberado'}
-                          </span>
                         </div>
                         <PresentationVideoPlayer url={prof.video_url} profName={prof.name} />
                       </div>
-                    ) : (
-                      <div className="mt-2 text-[11px] text-gray-500 flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded bg-gray-800 text-gray-400 text-[10px] uppercase font-bold">
-                          Sem Vídeo
-                        </span>
-                        <span>Profissional não cadastrou link de apresentação.</span>
-                      </div>
                     )}
-                  </div>
-                </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 w-full lg:w-auto">
-                  <Button
-                    onClick={() => handleApprove(prof)}
-                    className="flex-1 lg:flex-initial bg-[#22C55E] text-black hover:bg-[#1eb354] font-bold text-xs uppercase px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.25)]"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Aprovar Cadastro
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleReject(prof)}
-                    className="flex-1 lg:flex-initial border-red-900 text-red-400 hover:bg-red-950/30 text-xs uppercase px-4 py-2.5 rounded-xl"
-                  >
-                    <XCircle className="w-4 h-4 mr-1" /> Reprovar
-                  </Button>
-                </div>
-              </Card>
+                    {/* Nota do Auditor e Ações */}
+                    <div className="pt-3 border-t border-[#2A2A2A] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={credNotesMap[prof.id] || ''}
+                          onChange={(e) =>
+                            setCredNotesMap({ ...credNotesMap, [prof.id]: e.target.value })
+                          }
+                          placeholder="Nota da auditoria (ex: Cédula conferida no portal do conselho, regular e ativa)..."
+                          className="w-full h-9 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-xs focus:ring-1 focus:ring-[#D4AF37]"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => handleApprove(prof)}
+                          className="bg-[#22C55E] text-black hover:bg-[#1eb354] font-bold text-xs uppercase px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.25)]"
+                        >
+                          <CheckCircle2 className="w-4 h-4" /> Aprovar com Credencial
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleReject(prof)}
+                          className="border-red-900 text-red-400 hover:bg-red-950/30 text-xs uppercase px-4 py-2 rounded-xl"
+                        >
+                          <XCircle className="w-4 h-4 mr-1" /> Reprovar
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              }
             ))}
           </div>
         ))}

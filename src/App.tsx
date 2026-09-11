@@ -47,6 +47,9 @@ import GestaoUsuarios from '@/pages/admin/GestaoUsuarios'
 import AprovacoesProfissionais from '@/pages/admin/AprovacoesProfissionais'
 import AdminRankingConfig from '@/pages/admin/AdminRankingConfig'
 import AdminAuditoria from '@/pages/admin/AdminAuditoria'
+import AdminDocumentosLegais from '@/pages/admin/AdminDocumentosLegais'
+import LegalDocViewer from '@/pages/LegalDocViewer'
+import ReacceptanceModal from '@/components/ReacceptanceModal'
 import SmartwatchPage from '@/pages/SmartwatchPage'
 
 export default function App() {
@@ -67,9 +70,28 @@ export default function App() {
                 </Layout>
               }
             />
-            <Route path="/termos-de-uso" element={<TermosDeUso />} />
-            <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
-            <Route path="/lgpd-consentimentos" element={<LgpdConsentimentos />} />
+            <Route path="/termos-de-uso" element={<LegalDocViewer slugOverride="termos-aluno" />} />
+            <Route
+              path="/politica-de-privacidade"
+              element={<LegalDocViewer slugOverride="politica-privacidade" />}
+            />
+            <Route
+              path="/lgpd-consentimentos"
+              element={<LegalDocViewer slugOverride="lgpd-consentimentos" />}
+            />
+            <Route
+              path="/contrato-parceria"
+              element={<LegalDocViewer slugOverride="contrato-parceria-profissional" />}
+            />
+            <Route
+              path="/regulamento-cashback"
+              element={<LegalDocViewer slugOverride="regulamento-cashback" />}
+            />
+            <Route
+              path="/politica-reembolso"
+              element={<LegalDocViewer slugOverride="politica-reembolso" />}
+            />
+            <Route path="/documento/:slug" element={<LegalDocViewer />} />
 
             {/* Smartwatch Routes (Aluno & Profissional) */}
             <Route
@@ -398,11 +420,22 @@ export default function App() {
                 </RoleGuard>
               }
             />
+            <Route
+              path="/admin/documentos-legais"
+              element={
+                <RoleGuard allowedRoles={['admin']}>
+                  <Layout>
+                    <AdminDocumentosLegais />
+                  </Layout>
+                </RoleGuard>
+              }
+            />
 
             {/* 404 & Fallbacks */}
             <Route path="*" element={<NotFound />} />
           </Routes>
           <CookieConsentBanner />
+          <ReacceptanceModal />
           <Toaster richColors position="top-right" />
         </Router>
       </AuthProvider>

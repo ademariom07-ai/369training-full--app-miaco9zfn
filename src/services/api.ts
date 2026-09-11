@@ -387,3 +387,65 @@ export interface WearableMetricRecord {
   created: string
   updated: string
 }
+
+export interface LegalDocumentRecord {
+  id: string
+  slug: string
+  title: string
+  body: string
+  version: number
+  status: 'rascunho' | 'publicado' | 'arquivado'
+  audience: 'aluno' | 'profissional' | 'todos'
+  published_at?: string
+  updated_by?: string
+  version_history?: Array<{
+    version: number
+    title: string
+    body: string
+    published_at: string
+    published_by?: string
+  }>
+  created: string
+  updated: string
+}
+
+export interface LegalAcceptanceRecord {
+  id: string
+  user: string
+  document: string
+  document_slug?: string
+  version: number
+  accepted_at: string
+  ip?: string
+  user_agent?: string
+  consent_type?: string
+  created: string
+  updated: string
+}
+
+export interface CredentialVerificationRecord {
+  id: string
+  professional: string
+  council: 'CREF' | 'CRN' | 'CREFITO' | 'CRP' | 'FEDERACAO'
+  registration_number: string
+  document_file?: string
+  document_url_fallback?: string
+  status: 'pendente' | 'verificado' | 'reprovado'
+  reviewed_by?: string
+  reviewed_at?: string
+  review_notes?: string
+  expires_at?: string
+  created: string
+  updated: string
+  expand?: {
+    professional?: {
+      id: string
+      name: string
+      email: string
+      avatar?: string
+      specialties?: string[]
+      cref?: string
+      approved?: boolean
+    }
+  }
+}

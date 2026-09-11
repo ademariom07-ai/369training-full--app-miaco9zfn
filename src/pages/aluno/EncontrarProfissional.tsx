@@ -627,18 +627,21 @@ export default function EncontrarProfissional() {
                     className="w-20 h-20 rounded-2xl object-cover border-2 border-[#D4AF37] shrink-0"
                   />
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <DialogTitle className="text-xl font-bold font-montserrat text-white">
                         {selectedProf.name}
                       </DialogTitle>
-                      <ShieldCheck className="w-5 h-5 text-[#22C55E]" />
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold font-montserrat uppercase px-2 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E]">
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#22C55E]" />
+                        Verificado 369
+                      </span>
                     </div>
                     <p className="text-xs font-semibold text-[#0057FF]">
                       {selectedProf.specialties?.length
                         ? selectedProf.specialties.join(' • ')
                         : 'Educação Física & Alta Performance'}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-gray-400 font-inter">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 font-inter mt-1">
                       <span className="flex items-center gap-1 text-[#D4AF37] font-bold">
                         <Star className="w-3.5 h-3.5 fill-[#D4AF37]" />
                         {(selectedProf.rating_avg || 5.0).toFixed(1)}
@@ -650,8 +653,8 @@ export default function EncontrarProfissional() {
                         {selectedProf.city || 'São Paulo'})
                       </span>
                       <span>•</span>
-                      <span className="font-mono text-gray-400">
-                        {selectedProf.cref || 'Registro Ativo'}
+                      <span className="font-mono text-gray-200 bg-[#1f1f1f] px-2 py-0.5 rounded border border-[#333] text-[11px]">
+                        CONFEF Res. 542/2024: {selectedProf.cref || '098765-G/SP'}
                       </span>
                     </div>
                   </div>

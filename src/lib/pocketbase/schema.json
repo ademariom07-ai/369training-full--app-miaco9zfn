@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-09T19:35:14.482Z",
+  "generatedAt": "2026-09-11T20:55:16.805Z",
   "collections": [
     {
       "name": "users",
@@ -2399,6 +2399,270 @@
       "indexes": [
         "CREATE INDEX idx_wm_user_date ON wearable_metrics (user, date)",
         "CREATE INDEX idx_wm_date ON wearable_metrics (date)"
+      ]
+    },
+    {
+      "name": "legal_documents",
+      "type": "base",
+      "apiRules": {
+        "list": "status = 'publicado' || @request.auth.role = 'admin'",
+        "view": "status = 'publicado' || @request.auth.role = 'admin'",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "slug",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "body",
+          "type": "editor",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "version",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["rascunho", "publicado", "arquivado"]
+        },
+        {
+          "name": "audience",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["aluno", "profissional", "todos"]
+        },
+        {
+          "name": "published_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "updated_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "version_history",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_legal_docs_slug ON legal_documents (slug)",
+        "CREATE INDEX idx_legal_docs_status ON legal_documents (status)"
+      ]
+    },
+    {
+      "name": "legal_acceptances",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' || @request.body.user != ''",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "document",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "legal_documents"
+        },
+        {
+          "name": "document_slug",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "version",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "accepted_at",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ip",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "user_agent",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "consent_type",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_legal_acc_user ON legal_acceptances (user)",
+        "CREATE INDEX idx_legal_acc_doc ON legal_acceptances (document)"
+      ]
+    },
+    {
+      "name": "credential_verifications",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (professional = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (professional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' || @request.body.professional != ''",
+        "update": "@request.auth.role = 'admin' || (@request.auth.id = professional && status = 'pendente')",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "council",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["CREF", "CRN", "CREFITO", "CRP", "FEDERACAO"]
+        },
+        {
+          "name": "registration_number",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "document_file",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "document_url_fallback",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["pendente", "verificado", "reprovado"]
+        },
+        {
+          "name": "reviewed_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "reviewed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "review_notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "expires_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_cred_prof ON credential_verifications (professional)",
+        "CREATE INDEX idx_cred_status ON credential_verifications (status)"
       ]
     }
   ]

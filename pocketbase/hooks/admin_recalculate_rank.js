@@ -121,11 +121,11 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     )
     const antiguidade = Math.min(diffMonths, 10)
 
-    // Fórmula: PONTOS = PLANO × SERVIÇOS (R$) × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE
+    // Fórmula NOVA (Tarefa 6): PONTOS = PLANO × SERVIÇOS (contagem) × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE
     // Observação: se indicações no mês for 0, usa base 1 para não anular a multiplicação
     const indicacoesFator = Math.max(indicacoesCount, 1)
     const monthlyPoints =
-      Math.round(effectiveMultiplier * servicesTarifaRS * indicacoesFator) + avaliacao + antiguidade
+      Math.round(effectiveMultiplier * servicosCount * indicacoesFator) + avaliacao + antiguidade
 
     // Snapshots anteriores
     let closedPastPoints = 0
@@ -199,8 +199,8 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       plan_multiplier: s.multiplier,
       monthly_points: s.monthly_points,
       closed_past_points: s.closed_past_points,
-      services_tarifa_rs: s.services_tarifa_rs,
-      formula: 'PONTOS = (PLANO) × (SERVIÇOS R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
+      services_count: s.services_count,
+      formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
     })
     $app.save(entry)
   }
@@ -210,6 +210,6 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     total_ranked: scores.length,
     cycle,
     message:
-      'Ranking recalculado com sucesso conforme fórmula do Caminho C (PLANO × SERVIÇOS R$ × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).',
+      'Ranking recalculado com sucesso conforme fórmula confirmada (PLANO × SERVIÇOS × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).',
   })
 })

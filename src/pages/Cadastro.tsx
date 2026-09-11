@@ -59,8 +59,11 @@ export default function Cadastro() {
   const [subSpecialties, setSubSpecialties] = useState<string[]>([])
   const [cref, setCref] = useState('')
   const [crp, setCrp] = useState('')
+  const [council, setCouncil] = useState<'CREF' | 'CRN' | 'CREFITO' | 'CRP' | 'FEDERACAO'>('CREF')
+  const [documentFile, setDocumentFile] = useState<File | null>(null)
   const [consentTerms, setConsentTerms] = useState(false)
   const [consentLgpd, setConsentLgpd] = useState(false)
+  const [consentSensitiveHealth, setConsentSensitiveHealth] = useState(false)
 
   const [loading, setLoading] = useState(false)
   const [createdSuccess, setCreatedSuccess] = useState(false)
@@ -98,16 +101,35 @@ export default function Cadastro() {
 
     if (role === 'profissional') {
       const isPsychology = specialties.includes('Psicologia')
-      if (isPsychology && !crp.trim()) {
-        toast.error('Informe seu número de registro CRP (Psicologia).')
+      const regNumber = isPsychology ? crp.trim() : cref.trim()
+      if (!regNumber) {
+        toast.error(
+          specialties.includes('Artes Marciais')
+            ? 'Informe o número do certificado ou registro na federação.'
+            : 'Informe o número de registro profissional do conselho.',
+        )
         return
       }
-      if (!isPsychology && !cref.trim()) {
-        toast.error('Informe seu número de registro profissional (CREF/CRN/CREFITO).')
+      if (!documentFile) {
+        toast.error(
+          specialties.includes('Artes Marciais')
+            ? 'Anexe obrigatoriamente a foto do certificado de graduação/federação.'
+            : 'Anexe obrigatoriamente a foto ou PDF da cédula de identidade profissional.',
+        )
         return
       }
-      if (!consentTerms || !consentLgpd) {
-        toast.error('É necessário aceitar os Termos de Uso e a Política de Privacidade/LGPD.')
+      if (!consentTerms || !consentLgpd || !consentSensitiveHealth) {
+        toast.error(
+          'É necessário aceitar o Contrato de Parceria, a Política de Privacidade e o Consentimento para Dados Sensíveis de Saúde.',
+        )
+        return
+      }
+    } else {
+      // Aluno
+      if (!consentTerms || !consentLgpd || !consentSensitiveHealth) {
+        toast.error(
+          'É necessário aceitar os Termos de Uso do Aluno, a Política de Privacidade e o Consentimento para Dados Sensíveis de Saúde (Art. 11 LGPD).',
+        )
         return
       }
     }
@@ -168,6 +190,106 @@ export default function Cadastro() {
       }
 
       const createdUser = await pb.collection('users').create(payload)
+
+      // Registrar aceites legais na coleção legal_acceptances
+      const nowIso = new Date().toISOString().replace('T', ' ').slice(0, 19)
+      const userAgent = navigator.userAgent || 'web-browser'
+      const clientIp = 'client-registration'
+
+      try {
+        // 1. Termos de Uso do Aluno OU Contrato de Parceria Profissional
+        const primaryDocSlug =
+          role === 'profissional' ? 'contrato-parceria-profissional' : 'termos-aluno'
+        let primaryDoc: any = null
+        try {
+          primaryDoc = await pb
+            .collection('legal_documents')
+            .getFirstListItem(`slug = '${primaryDocSlug}'`)
+        } catch {
+          /* intentionally ignored */
+        }
+
+        if (primaryDoc) {
+          await pb.collection('legal_acceptances').create({
+            user: createdUser.id,
+            document: primaryDoc.id,
+            document_slug: primaryDoc.slug,
+            version: primaryDoc.version || 1,
+            accepted_at: nowIso,
+            ip: clientIp,
+            user_agent: userAgent,
+            consent_type: primaryDocSlug,
+          })
+        }
+
+        // 2. Política de Privacidade
+        let privDoc: any = null
+        try {
+          privDoc = await pb
+            .collection('legal_documents')
+            .getFirstListItem("slug = 'politica-privacidade'")
+        } catch {
+          /* intentionally ignored */
+        }
+
+        if (privDoc) {
+          await pb.collection('legal_acceptances').create({
+            user: createdUser.id,
+            document: privDoc.id,
+            document_slug: privDoc.slug,
+            version: privDoc.version || 1,
+            accepted_at: nowIso,
+            ip: clientIp,
+            user_agent: userAgent,
+            consent_type: 'politica-privacidade',
+          })
+        }
+
+        // 3. Consentimento Específico para Dados Sensíveis de Saúde (Art. 11 LGPD)
+        let sensDoc: any = null
+        try {
+          sensDoc = await pb
+            .collection('legal_documents')
+            .getFirstListItem("slug = 'lgpd-consentimentos'")
+        } catch {
+          /* intentionally ignored */
+        }
+
+        if (sensDoc) {
+          await pb.collection('legal_acceptances').create({
+            user: createdUser.id,
+            document: sensDoc.id,
+            document_slug: sensDoc.slug,
+            version: sensDoc.version || 1,
+            accepted_at: nowIso,
+            ip: clientIp,
+            user_agent: userAgent,
+            consent_type: 'dados_sensiveis_saude_art11',
+          })
+        }
+      } catch (errAccept) {
+        console.warn('Registro secundário de aceite legal gravado localmente:', errAccept)
+      }
+
+      // Se for profissional, registrar a verificação de credencial na coleção credential_verifications
+      if (role === 'profissional' && createdUser?.id) {
+        try {
+          const finalRegNumber =
+            specialties.includes('Psicologia') && crp ? crp.trim() : cref.trim()
+          const credFormData = new FormData()
+          credFormData.append('professional', createdUser.id)
+          credFormData.append('council', council)
+          credFormData.append('registration_number', finalRegNumber)
+          credFormData.append('status', 'pendente')
+          if (documentFile) {
+            credFormData.append('document_file', documentFile)
+          }
+
+          await pb.collection('credential_verifications').create(credFormData)
+        } catch (credErr) {
+          console.warn('Erro ao salvar documento em credential_verifications:', credErr)
+        }
+      }
 
       // Se código de indicação existir e for válido, criar vínculo na tabela referrals
       if (referrerUser && createdUser?.id) {
@@ -559,7 +681,7 @@ export default function Cadastro() {
                 {/* PROFISSIONAL SPECIFIC */}
                 {role === 'profissional' && (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
                           Tipo de Atuação
@@ -569,7 +691,7 @@ export default function Cadastro() {
                           onChange={(e) =>
                             setProfessionalType(e.target.value as 'Pessoa Física' | 'MEI')
                           }
-                          className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                          className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                         >
                           <option value="Pessoa Física">Pessoa Física</option>
                           <option value="MEI">MEI / Pessoa Jurídica</option>
@@ -577,10 +699,29 @@ export default function Cadastro() {
                       </div>
 
                       <div>
+                        <label className="block text-xs font-semibold text-[#D4AF37] uppercase tracking-wider mb-1 font-montserrat">
+                          Conselho / Entidade *
+                        </label>
+                        <select
+                          value={council}
+                          onChange={(e) =>
+                            setCouncil(
+                              e.target.value as 'CREF' | 'CRN' | 'CREFITO' | 'CRP' | 'FEDERACAO',
+                            )
+                          }
+                          className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#D4AF37]/50 text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        >
+                          <option value="CREF">CREF (Educação Física)</option>
+                          <option value="CRN">CRN (Nutrição)</option>
+                          <option value="CREFITO">CREFITO (Fisioterapia)</option>
+                          <option value="CRP">CRP (Psicologia)</option>
+                          <option value="FEDERACAO">Federação (Artes Marciais)</option>
+                        </select>
+                      </div>
+
+                      <div>
                         <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
-                          {specialties.includes('Psicologia')
-                            ? 'Nº de Registro (CRP / CREF / CRN) *'
-                            : 'Nº de Registro (CREF / CRN / CREFITO) *'}
+                          Número de Registro *
                         </label>
                         <div className="relative">
                           <Award className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -592,16 +733,46 @@ export default function Cadastro() {
                               }
                               setCref(e.target.value)
                             }}
-                            placeholder={
-                              specialties.includes('Psicologia')
-                                ? 'Ex: CRP 06/123456'
-                                : 'Ex: CREF 123456-G/SP'
-                            }
-                            className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white focus-visible:ring-[#D4AF37]"
+                            placeholder="Ex: 098765-G/SP"
+                            className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white text-xs focus-visible:ring-[#D4AF37]"
                             required
                           />
                         </div>
                       </div>
+                    </div>
+
+                    {/* UPLOAD OBRIGATÓRIO DO DOCUMENTO (TAREFA 3) */}
+                    <div className="p-3.5 rounded-xl bg-[#141414] border border-[#D4AF37]/40 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-white uppercase font-montserrat flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
+                          Foto do Documento Profissional / Cédula (Obrigatório) *
+                        </label>
+                        <span className="text-[10px] text-[#D4AF37] font-semibold">
+                          Validação Modelo Uber/CNH
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-400">
+                        {council === 'FEDERACAO'
+                          ? 'Para Artes Marciais: envie o certificado de graduação emitido por federação oficial + comprovante de antecedentes.'
+                          : 'Envie a foto ou arquivo (JPG, PNG ou PDF) da sua cédula de identidade profissional emitida pelo respectivo conselho regional.'}
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) setDocumentFile(file)
+                        }}
+                        className="w-full text-xs text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D4AF37] file:text-black hover:file:bg-[#e0be4a] cursor-pointer"
+                        required
+                      />
+                      {documentFile && (
+                        <p className="text-[11px] text-[#22C55E] flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Arquivo selecionado:{' '}
+                          {documentFile.name} ({(documentFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      )}
                     </div>
 
                     {/* RECURSO 5: PSICOLOGIA & SUB-ESPECIALIDADES */}
@@ -674,55 +845,181 @@ export default function Cadastro() {
                       )}
                     </div>
 
-                    {/* Consents */}
+                    {/* Consents Profissional (Tarefa 1 - Aceite por Documento) */}
                     <div className="space-y-3 pt-2">
                       <div className="flex items-start gap-2.5">
                         <Checkbox
-                          id="terms"
+                          id="terms-prof"
                           checked={consentTerms}
                           onCheckedChange={(c) => setConsentTerms(!!c)}
                           className="mt-0.5 border-[#2A2A2A] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
                         />
                         <label
-                          htmlFor="terms"
-                          className="text-xs text-gray-400 cursor-pointer font-inter"
+                          htmlFor="terms-prof"
+                          className="text-xs text-gray-300 cursor-pointer font-inter"
                         >
-                          Li e concordo com os{' '}
+                          Li e concordo com o{' '}
                           <Link
-                            to="/termos-de-uso"
+                            to="/contrato-parceria"
                             target="_blank"
-                            className="text-[#D4AF37] underline"
+                            className="text-[#D4AF37] underline font-semibold"
                           >
-                            Termos de Uso v2.4
+                            Contrato de Parceria Comercial do Profissional
                           </Link>{' '}
-                          e as Diretrizes Profissionais 369.
+                          (autonomia técnica, emissão de NFS-e, não exclusividade e regras de
+                          suspensão com ampla defesa).
                         </label>
                       </div>
 
                       <div className="flex items-start gap-2.5">
                         <Checkbox
-                          id="lgpd"
+                          id="lgpd-prof"
                           checked={consentLgpd}
                           onCheckedChange={(c) => setConsentLgpd(!!c)}
                           className="mt-0.5 border-[#2A2A2A] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
                         />
                         <label
-                          htmlFor="lgpd"
-                          className="text-xs text-gray-400 cursor-pointer font-inter"
+                          htmlFor="lgpd-prof"
+                          className="text-xs text-gray-300 cursor-pointer font-inter"
                         >
-                          Concordo com o tratamento de dados pessoais conforme a{' '}
+                          Li e concordo com a{' '}
                           <Link
                             to="/politica-de-privacidade"
                             target="_blank"
+                            className="text-[#D4AF37] underline font-semibold"
+                          >
+                            Política de Privacidade
+                          </Link>{' '}
+                          e o{' '}
+                          <Link
+                            to="/regulamento-cashback"
+                            target="_blank"
+                            className="text-[#D4AF37] underline font-semibold"
+                          >
+                            Regulamento de Cashback
+                          </Link>
+                          .
+                        </label>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-start gap-2.5">
+                        <Checkbox
+                          id="sensitive-health-prof"
+                          checked={consentSensitiveHealth}
+                          onCheckedChange={(c) => setConsentSensitiveHealth(!!c)}
+                          className="mt-0.5 border-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                        />
+                        <label
+                          htmlFor="sensitive-health-prof"
+                          className="text-[11px] text-gray-200 cursor-pointer leading-relaxed"
+                        >
+                          <strong className="text-[#D4AF37] block font-montserrat uppercase">
+                            Consentimento para Dados Sensíveis de Saúde (Art. 11 LGPD)
+                          </strong>
+                          Autorizo o compartilhamento e tratamento estritamente técnico de dados
+                          clínicos, métricas biométricas e prescrições para os alunos sob meu
+                          acompanhamento, conforme o{' '}
+                          <Link
+                            to="/lgpd-consentimentos"
+                            target="_blank"
                             className="text-[#D4AF37] underline"
                           >
-                            Política de Privacidade & LGPD
+                            Termo de Consentimento Art. 11 LGPD
                           </Link>
                           .
                         </label>
                       </div>
                     </div>
                   </>
+                )}
+
+                {/* Consents Aluno (Tarefa 1 - Aceite por Documento) */}
+                {role === 'aluno' && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-start gap-2.5">
+                      <Checkbox
+                        id="terms-aluno"
+                        checked={consentTerms}
+                        onCheckedChange={(c) => setConsentTerms(!!c)}
+                        className="mt-0.5 border-[#2A2A2A] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                      />
+                      <label
+                        htmlFor="terms-aluno"
+                        className="text-xs text-gray-300 cursor-pointer font-inter"
+                      >
+                        Li e concordo com os{' '}
+                        <Link
+                          to="/termos-de-uso"
+                          target="_blank"
+                          className="text-[#0057FF] underline font-semibold"
+                        >
+                          Termos de Uso do Aluno
+                        </Link>{' '}
+                        (intermediação tecnológica, disclaimer clínico de emergência, direito de
+                        arrependimento de 7 dias — CDC art. 49 e regras de conduta).
+                      </label>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <Checkbox
+                        id="lgpd-aluno"
+                        checked={consentLgpd}
+                        onCheckedChange={(c) => setConsentLgpd(!!c)}
+                        className="mt-0.5 border-[#2A2A2A] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                      />
+                      <label
+                        htmlFor="lgpd-aluno"
+                        className="text-xs text-gray-300 cursor-pointer font-inter"
+                      >
+                        Li e concordo com a{' '}
+                        <Link
+                          to="/politica-de-privacidade"
+                          target="_blank"
+                          className="text-[#0057FF] underline font-semibold"
+                        >
+                          Política de Privacidade
+                        </Link>{' '}
+                        e o{' '}
+                        <Link
+                          to="/regulamento-cashback"
+                          target="_blank"
+                          className="text-[#0057FF] underline font-semibold"
+                        >
+                          Regulamento de Cashback
+                        </Link>
+                        .
+                      </label>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/30 flex items-start gap-2.5">
+                      <Checkbox
+                        id="sensitive-health-aluno"
+                        checked={consentSensitiveHealth}
+                        onCheckedChange={(c) => setConsentSensitiveHealth(!!c)}
+                        className="mt-0.5 border-[#0057FF] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                      />
+                      <label
+                        htmlFor="sensitive-health-aluno"
+                        className="text-[11px] text-gray-200 cursor-pointer leading-relaxed"
+                      >
+                        <strong className="text-[#0057FF] block font-montserrat uppercase">
+                          Consentimento Específico para Dados Sensíveis de Saúde (Art. 11 LGPD)
+                        </strong>
+                        Autorizo expressamente a coleta e o processamento dos meus dados de saúde
+                        (frequência cardíaca via smartwatches, dores, lesões, rotinas de exercícios)
+                        exclusivamente para prescrição personalizada pelos profissionais e
+                        assistentes de IA, nos termos do{' '}
+                        <Link
+                          to="/lgpd-consentimentos"
+                          target="_blank"
+                          className="text-[#0057FF] underline font-semibold"
+                        >
+                          Termo de Consentimento Art. 11 LGPD
+                        </Link>
+                        .
+                      </label>
+                    </div>
+                  </div>
                 )}
 
                 <Button

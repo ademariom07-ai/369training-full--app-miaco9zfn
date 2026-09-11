@@ -600,20 +600,22 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
           <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-1">
             <strong className="text-[#22C55E] font-montserrat block">Plano Básico (1.0x)</strong>
             <p className="text-gray-400">
-              Multiplicador base 1.0x. Pontua 1 ponto por serviço × indicação + avaliação e
-              antiguidade.
+              Multiplicador base 1.0x. Pontua 1 ponto por serviço concluído (quantidade) × indicação
+              + avaliação e antiguidade.
             </p>
           </div>
           <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-1">
             <strong className="text-[#0057FF] font-montserrat block">Plano Pro (2.0x)</strong>
             <p className="text-gray-400">
-              Multiplicador 2.0x. Pontuação acelerada em 2 vezes em todos os serviços do mês.
+              Multiplicador 2.0x. Cada serviço concluído conta com peso dobrado (2 × qtd_serviços ×
+              indicações).
             </p>
           </div>
           <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-1">
             <strong className="text-[#D4AF37] font-montserrat block">Plano Premium (3.0x)</strong>
             <p className="text-gray-400">
-              Multiplicador 3.0x. Aceleração máxima no ranking (3x mais rápido) e IA ilimitada.
+              Multiplicador 3.0x. Aceleração máxima no ranking (3 × qtd_serviços × indicações) e IA
+              ilimitada.
             </p>
           </div>
         </div>
@@ -916,21 +918,21 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
               {
                 id: 'basico' as const,
                 name: 'BÁSICO (1.0x)',
-                desc: 'Multiplicador 1.0x • R$ 1,00/serviço • Entrada no Ranking',
+                desc: 'Multiplicador 1.0x • 1 ponto/serviço • Entrada no Ranking',
                 color: 'border-gray-600 hover:border-[#22C55E]',
                 badge: '1x Pontuação',
               },
               {
                 id: 'pro' as const,
                 name: 'PRO (2.0x)',
-                desc: 'Multiplicador 2.0x • R$ 2,00/serviço • Acelere 2x no Ranking',
+                desc: 'Multiplicador 2.0x • 2x por serviço • Acelere 2x no Ranking',
                 color: 'border-[#0057FF]/50 hover:border-[#0057FF]',
                 badge: '2x Mais Rápido',
               },
               {
                 id: 'premium' as const,
                 name: 'PREMIUM (3.0x)',
-                desc: 'Multiplicador 3.0x • R$ 3,00/serviço • IA Ilimitada e Máxima Visibilidade',
+                desc: 'Multiplicador 3.0x • 3x por serviço • IA Ilimitada e Máxima Visibilidade',
                 color: 'border-[#D4AF37]/60 hover:border-[#D4AF37]',
                 badge: '3x Aceleração Máxima',
               },
