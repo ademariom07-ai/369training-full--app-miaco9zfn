@@ -74,10 +74,10 @@ export interface CashbackDistributionResult {
 export function getLevelForPosition(pos: number): number {
   if (pos <= 1) return 1
   let lvl = 1
-  while ((1 << lvl) - 1 < pos && lvl < 36) {
+  while (Math.pow(2, lvl) - 1 < pos && lvl < 36) {
     lvl++
   }
-  return lvl
+  return Math.min(36, lvl)
 }
 
 /**
@@ -174,6 +174,12 @@ export function calculateCashbackDistribution(
   const participants: CashbackParticipant[] = []
   let totalDistributedCents = 0
 
+  // Se maxPos for muito grande (ex: nível 36 com 68 bilhões), não instanciamos
+  // 68 bilhões de objetos no array em memória. Geramos até MAX_GENERATE_PARTICIPANTS (ex: 5.000),
+  // garantindo fluidez instantânea e permitindo a renderização dos primeiros milhares de posições.
+  const MAX_GENERATE_PARTICIPANTS = 5000
+  const shouldLimitParticipantsArray = maxPos > MAX_GENERATE_PARTICIPANTS
+
   for (let lvl = 1; lvl <= maxHabitedLevel; lvl++) {
     const { startPos, endPos, count } = getLevelBounds(lvl)
     const corretor = Number((step * lvl + 0.2).toFixed(4))
@@ -183,53 +189,142 @@ export function calculateCashbackDistribution(
     const effectivePeopleInLevel = Math.max(0, Math.min(endPos, maxPos) - startPos + 1)
     if (effectivePeopleInLevel <= 0) continue
 
-    // Valor por pessoa no nível (base antes do fator de individualização)
-    // O valor do nível é dividido pela capacidade total do nível ocupado
-    const valorPorPessoa = effectivePeopleInLevel > 0 ? valorEqualizado / count : 0
-
-    let sumLevelDistributed = 0
-
     const currentLevelEnd = Math.min(endPos, maxPos)
-    for (let pos = startPos; pos <= currentLevelEnd; pos++) {
-      const factor = getPositionFactor(pos, lvl)
-      let individualAmount = Number((valorPorPessoa * factor).toFixed(2))
+    const isLevelFull = effectivePeopleInLevel === count
 
-      // Buscar dados reais ou mock de posição
-      const real = realMap.get(pos)
-      let userCode = `369-P${pos}`
-      let name = `Participante #${pos}`
-      let email = `posicao${pos}@369training.com`
-      let role = 'profissional'
-      let plan = 'pro'
-      let points = Math.max(1, 1000 - pos)
-      const isRealUser = !!real
+    // Cálculo do valor por pessoa e individualização por nível:
+    // Nível 10 em diante (10+): divisão IGUAL entre as pessoas efetivamente ocupadas do nível
+    // Níveis 1 a 9: individualização por fórmula; se o nível estiver parcialmente ocupado,
+    // normalizar fatores para que a soma dos valores pagos no nível = valorEqualizado exato.
+    const valorPorPessoa = valorEqualizado / effectivePeopleInLevel
 
-      if (real) {
-        if (real.userCode) userCode = real.userCode
-        if (real.name) name = real.name
-        if (real.email) email = real.email
-        if (real.role) role = real.role
-        if (real.plan) plan = real.plan
-        if (real.points !== undefined) points = real.points
+    let sumLevelDistributedCents = 0
+
+    if (lvl >= 10) {
+      // Divisão igualitária entre todos os ocupados do nível 10+
+      const valorPorPessoaCents = Math.floor((valorEqualizado * 100) / effectivePeopleInLevel)
+      const centsRemainder =
+        Math.round(valorEqualizado * 100) - valorPorPessoaCents * effectivePeopleInLevel
+
+      if (!shouldLimitParticipantsArray || startPos <= MAX_GENERATE_PARTICIPANTS) {
+        const loopEnd = shouldLimitParticipantsArray
+          ? Math.min(currentLevelEnd, MAX_GENERATE_PARTICIPANTS)
+          : currentLevelEnd
+
+        for (let pos = startPos; pos <= loopEnd; pos++) {
+          const factor = 1.0
+          // Para os primeiros centavos de resto, somar 1 centavo
+          const indexInLevel = pos - startPos
+          const personCents = valorPorPessoaCents + (indexInLevel < centsRemainder ? 1 : 0)
+          const individualAmount = personCents / 100
+
+          const real = realMap.get(pos)
+          let userCode = `369-P${pos}`
+          let name = `Participante #${pos}`
+          let email = `posicao${pos}@369training.com`
+          let role = 'profissional'
+          let plan = 'pro'
+          let points = Math.max(1, 1000 - pos)
+          const isRealUser = !!real
+
+          if (real) {
+            if (real.userCode) userCode = real.userCode
+            if (real.name) name = real.name
+            if (real.email) email = real.email
+            if (real.role) role = real.role
+            if (real.plan) plan = real.plan
+            if (real.points !== undefined) points = real.points
+          }
+
+          participants.push({
+            position: pos,
+            level: lvl,
+            userCode,
+            name,
+            email,
+            role,
+            plan,
+            points,
+            factor,
+            baseLevelPerPerson: Number(valorPorPessoa.toFixed(4)),
+            cashbackMonth: individualAmount,
+            isRealUser,
+          })
+        }
       }
 
-      sumLevelDistributed += individualAmount
-      totalDistributedCents += Math.round(individualAmount * 100)
+      sumLevelDistributedCents = Math.round(valorEqualizado * 100)
+      totalDistributedCents += sumLevelDistributedCents
+    } else {
+      // Níveis 1 a 9:
+      // Fatores teóricos
+      const rawFactors: number[] = []
+      let sumRawFactors = 0
+      for (let pos = startPos; pos <= currentLevelEnd; pos++) {
+        const f = getPositionFactor(pos, lvl)
+        rawFactors.push(f)
+        sumRawFactors += f
+      }
 
-      participants.push({
-        position: pos,
-        level: lvl,
-        userCode,
-        name,
-        email,
-        role,
-        plan,
-        points,
-        factor,
-        baseLevelPerPerson: Number(valorPorPessoa.toFixed(4)),
-        cashbackMonth: individualAmount,
-        isRealUser,
-      })
+      // Se o nível estiver incompleto (ou mesmo completo), normalizamos os fatores:
+      // individualAmount_i = valorEqualizado * (factor_i / soma_dos_fatores_das_pessoas_ocupadas)
+      const levelTotalCents = Math.round(valorEqualizado * 100)
+      let allocatedLevelCents = 0
+
+      for (let i = 0; i < rawFactors.length; i++) {
+        const pos = startPos + i
+        const rawFactor = rawFactors[i]
+        // Fator proporcional normalizado
+        const proportion = sumRawFactors > 0 ? rawFactor / sumRawFactors : 1 / rawFactors.length
+        const isLastInLevel = i === rawFactors.length - 1
+
+        let personCents = 0
+        if (isLastInLevel) {
+          // Última pessoa do nível absorve o resíduo de arredondamento para fechar em exato levelTotalCents
+          personCents = levelTotalCents - allocatedLevelCents
+        } else {
+          personCents = Math.round(levelTotalCents * proportion)
+          allocatedLevelCents += personCents
+        }
+
+        const individualAmount = personCents / 100
+        sumLevelDistributedCents += personCents
+
+        const real = realMap.get(pos)
+        let userCode = `369-P${pos}`
+        let name = `Participante #${pos}`
+        let email = `posicao${pos}@369training.com`
+        let role = 'profissional'
+        let plan = 'pro'
+        let points = Math.max(1, 1000 - pos)
+        const isRealUser = !!real
+
+        if (real) {
+          if (real.userCode) userCode = real.userCode
+          if (real.name) name = real.name
+          if (real.email) email = real.email
+          if (real.role) role = real.role
+          if (real.plan) plan = real.plan
+          if (real.points !== undefined) points = real.points
+        }
+
+        participants.push({
+          position: pos,
+          level: lvl,
+          userCode,
+          name,
+          email,
+          role,
+          plan,
+          points,
+          factor: rawFactor,
+          baseLevelPerPerson: Number(valorPorPessoa.toFixed(4)),
+          cashbackMonth: individualAmount,
+          isRealUser,
+        })
+      }
+
+      totalDistributedCents += sumLevelDistributedCents
     }
 
     levelsSummary.push({
@@ -240,32 +335,24 @@ export function calculateCashbackDistribution(
       corretor,
       valorEqualizado,
       valorPorPessoa: Number(valorPorPessoa.toFixed(4)),
-      totalDistribuidoNivel: Number(sumLevelDistributed.toFixed(2)),
+      totalDistribuidoNivel: Number((sumLevelDistributedCents / 100).toFixed(2)),
     })
   }
 
-  // Ajuste fino de resíduo:
-  // Se a simulação ocupou todas as posições dos níveis habitados (ex: 1023 posições para 10 níveis),
-  // a soma teórica é exatamente o Pool de 38% (R$ 380.000 para base R$ 1.000.000).
-  // Arredondamentos de centavos podem dar uma discreta sobra ou resíduo.
-  // Regra: o total NUNCA pode ultrapassar o Pool (38%).
+  // Ajuste de resíduo global:
+  // A soma dos níveis equalizados deve fechar exatamente no Pool 38%.
+  // A diferença entre o pool e o total distribuído (centavos de arredondamento)
+  // é alocada na última posição habitada (ou última disponível em participants) para totalDistributed === pool38.
   let totalDistributed = totalDistributedCents / 100
   let diff = Number((pool - totalDistributed).toFixed(2))
 
-  // Se houver resíduo em simulação plena (até R$ 5,00 de diferença por arredondamento de centavos em 1023 registros)
-  // distribuímos ou ajustamos na última ou primeira posição para fechar em exatos 38% ou manter sem ultrapassar.
-  if (Math.abs(diff) > 0 && Math.abs(diff) < 5.0 && participants.length > 0) {
-    if (diff > 0) {
-      // Sobrou centavos: podemos alocar no primeiro colocado ou manter estritamente <= pool
-      // Para conferência perfeita de R$ 380.000, adicionamos a diferença no nível 1 posição 1
-      participants[0].cashbackMonth = Number((participants[0].cashbackMonth + diff).toFixed(2))
-      totalDistributed = Number((totalDistributed + diff).toFixed(2))
-      diff = 0
-    } else if (diff < 0) {
-      // Ultrapassou: removemos o excesso da posição 1 para NUNCA ultrapassar 38%
-      const excess = Math.abs(diff)
-      participants[0].cashbackMonth = Number((participants[0].cashbackMonth - excess).toFixed(2))
-      totalDistributed = Number((totalDistributed - excess).toFixed(2))
+  if (Math.abs(diff) > 0 && participants.length > 0) {
+    const lastIndex = participants.length - 1
+    const adjustedAmount = Number((participants[lastIndex].cashbackMonth + diff).toFixed(2))
+    if (adjustedAmount >= 0) {
+      participants[lastIndex].cashbackMonth = adjustedAmount
+      totalDistributedCents += Math.round(diff * 100)
+      totalDistributed = totalDistributedCents / 100
       diff = 0
     }
   }
@@ -274,7 +361,7 @@ export function calculateCashbackDistribution(
     totalTarifasBase: safeBase,
     pool38: pool,
     maxHabitedLevel,
-    totalOccupiedPositions: participants.length,
+    totalOccupiedPositions: maxPos,
     totalDistributed,
     differenceToPool: diff,
     levelsSummary,

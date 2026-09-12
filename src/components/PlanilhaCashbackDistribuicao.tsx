@@ -92,7 +92,7 @@ export function PlanilhaCashbackDistribuicao({
   const distributionResult = useMemo(() => {
     return calculateCashbackDistribution(
       Number(baseTarifas) || 0,
-      Math.max(1, Math.min(10000, Number(posicoesOcupadas) || 1023)),
+      Math.max(1, Math.min(68719476735, Number(posicoesOcupadas) || 1023)),
       mappedRealParticipants,
     )
   }, [baseTarifas, posicoesOcupadas, mappedRealParticipants])
@@ -263,42 +263,67 @@ export function PlanilhaCashbackDistribuicao({
           <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat flex items-center justify-between">
             <span>Posições Ocupadas na Rede</span>
             <span className="text-[10px] text-[#22C55E] font-mono">
-              Nível máx: {distributionResult.maxHabitedLevel}
+              Nível máx: {distributionResult.maxHabitedLevel} / 36
             </span>
           </label>
           <Input
             type="number"
             min="1"
-            max="10000"
+            max="68719476735"
             value={posicoesOcupadas}
             onChange={(e) => {
-              setPosicoesOcupadas(Math.max(1, Math.min(10000, Number(e.target.value) || 1)))
+              setPosicoesOcupadas(Math.max(1, Math.min(68719476735, Number(e.target.value) || 1)))
               setCurrentPage(1)
             }}
             className="bg-[#181818] border-[#2A2A2A] text-white font-mono"
             placeholder="1023"
           />
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
             <button
               type="button"
-              onClick={() => setPosicoesOcupadas(1023)}
-              className="text-[10px] text-[#D4AF37] hover:underline"
+              onClick={() => {
+                setPosicoesOcupadas(1023)
+                setCurrentPage(1)
+              }}
+              className="text-[10px] bg-[#1a1a1a] hover:bg-[#252525] px-2 py-0.5 rounded border border-[#333] text-[#D4AF37]"
             >
-              1.023 (Níveis 1-10)
+              Nível 10 (1.023)
             </button>
-            <span className="text-gray-600">•</span>
             <button
               type="button"
-              onClick={() => setPosicoesOcupadas(511)}
-              className="text-[10px] text-[#D4AF37] hover:underline"
+              onClick={() => {
+                setPosicoesOcupadas(1048575)
+                setCurrentPage(1)
+              }}
+              className="text-[10px] bg-[#1a1a1a] hover:bg-[#252525] px-2 py-0.5 rounded border border-[#333] text-[#D4AF37]"
             >
-              511 (Níveis 1-9)
+              Nível 20 (1.048.575)
             </button>
-            <span className="text-gray-600">•</span>
+            <button
+              type="button"
+              onClick={() => {
+                setPosicoesOcupadas(1073741823)
+                setCurrentPage(1)
+              }}
+              className="text-[10px] bg-[#1a1a1a] hover:bg-[#252525] px-2 py-0.5 rounded border border-[#333] text-[#D4AF37]"
+            >
+              Nível 30
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPosicoesOcupadas(68719476735)
+                setCurrentPage(1)
+                toast.success('Simulação até o Nível 36 (68.719.476.735 posições)!')
+              }}
+              className="text-[10px] bg-[#22C55E]/15 hover:bg-[#22C55E]/25 text-[#22C55E] font-bold px-2 py-0.5 rounded border border-[#22C55E]/40"
+            >
+              Rodar até o Nível 36
+            </button>
             <button
               type="button"
               onClick={handleLoadRealDataSimulation}
-              className="text-[10px] text-[#0057FF] hover:underline font-bold"
+              className="text-[10px] text-[#0057FF] hover:underline font-bold ml-1"
             >
               Real ({mappedRealParticipants.length})
             </button>
@@ -310,16 +335,8 @@ export function PlanilhaCashbackDistribuicao({
             <span className="text-xs text-gray-400 uppercase font-semibold font-montserrat">
               Status da Auditoria
             </span>
-            <Badge
-              variant="outline"
-              className={
-                isExactPool
-                  ? 'border-[#22C55E]/40 text-[#22C55E] bg-[#22C55E]/10'
-                  : 'border-amber-500/40 text-amber-400 bg-amber-500/10'
-              }
-            >
-              <ShieldCheck className="w-3 h-3 mr-1" />
-              {isExactPool ? '100% Fidedigno' : 'Ajustado ao Teto'}
+            <Badge variant="outline" className="border-[#22C55E]/40 text-[#22C55E] bg-[#22C55E]/10">
+              <ShieldCheck className="w-3 h-3 mr-1" />✓ Fecha exato no pool
             </Badge>
           </div>
           <div className="mt-2 space-y-1">
@@ -420,8 +437,8 @@ export function PlanilhaCashbackDistribuicao({
                 minimumFractionDigits: 2,
               })}
             </p>
-            <span className="text-[10px] text-gray-400 font-inter">
-              {isExactPool ? '✓ Fecha exatamente 38%' : '✓ Limite 38% respeitado'}
+            <span className="text-[10px] text-[#22C55E] font-inter font-semibold">
+              ✓ Fecha exato no pool (100% dos 38%)
             </span>
           </div>
         </div>

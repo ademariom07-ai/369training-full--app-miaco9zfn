@@ -64,6 +64,9 @@ export default function Cadastro() {
   const [consentTerms, setConsentTerms] = useState(false)
   const [consentLgpd, setConsentLgpd] = useState(false)
   const [consentSensitiveHealth, setConsentSensitiveHealth] = useState(false)
+  const [missingConsentHighlight, setMissingConsentHighlight] = useState<
+    'terms' | 'lgpd' | 'sensitive' | null
+  >(null)
 
   const [loading, setLoading] = useState(false)
   const [createdSuccess, setCreatedSuccess] = useState(false)
@@ -118,18 +121,54 @@ export default function Cadastro() {
         )
         return
       }
-      if (!consentTerms || !consentLgpd || !consentSensitiveHealth) {
-        toast.error(
-          'É necessário aceitar o Contrato de Parceria, a Política de Privacidade e o Consentimento para Dados Sensíveis de Saúde.',
-        )
+      if (!consentTerms) {
+        setMissingConsentHighlight('terms')
+        const el = document.getElementById('consent-terms-container')
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => setMissingConsentHighlight(null), 2500)
+        toast.error('Falta aceitar o Contrato de Parceria Comercial do Profissional.')
+        return
+      }
+      if (!consentLgpd) {
+        setMissingConsentHighlight('lgpd')
+        const el = document.getElementById('consent-lgpd-container')
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => setMissingConsentHighlight(null), 2500)
+        toast.error('Falta aceitar a Política de Privacidade e Regulamento de Cashback.')
+        return
+      }
+      if (!consentSensitiveHealth) {
+        setMissingConsentHighlight('sensitive')
+        const el = document.getElementById('consent-sensitive-container')
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => setMissingConsentHighlight(null), 2500)
+        toast.error('Falta aceitar o Consentimento para Dados Sensíveis de Saúde (Art. 11 LGPD).')
         return
       }
     } else {
       // Aluno
-      if (!consentTerms || !consentLgpd || !consentSensitiveHealth) {
-        toast.error(
-          'É necessário aceitar os Termos de Uso do Aluno, a Política de Privacidade e o Consentimento para Dados Sensíveis de Saúde (Art. 11 LGPD).',
-        )
+      if (!consentTerms) {
+        setMissingConsentHighlight('terms')
+        const el = document.getElementById('consent-terms-container')
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => setMissingConsentHighlight(null), 2500)
+        toast.error('Falta aceitar os Termos de Uso do Aluno.')
+        return
+      }
+      if (!consentLgpd) {
+        setMissingConsentHighlight('lgpd')
+        const el = document.getElementById('consent-lgpd-container')
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => setMissingConsentHighlight(null), 2500)
+        toast.error('Falta aceitar a Política de Privacidade e Regulamento de Cashback.')
+        return
+      }
+      if (!consentSensitiveHealth) {
+        setMissingConsentHighlight('sensitive')
+        const el = document.getElementById('consent-sensitive-container')
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => setMissingConsentHighlight(null), 2500)
+        toast.error('Falta aceitar o Consentimento para Dados Sensíveis de Saúde (Art. 11 LGPD).')
         return
       }
     }
@@ -324,7 +363,7 @@ export default function Cadastro() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0A0A0A] flex flex-col justify-center items-center px-4 pt-12 pb-32 relative overflow-hidden">
       {/* Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D4AF37]/10 rounded-full blur-[140px] pointer-events-none" />
 
@@ -845,24 +884,34 @@ export default function Cadastro() {
                       )}
                     </div>
 
-                    {/* Consents Profissional (Tarefa 1 - Aceite por Documento) */}
-                    <div className="space-y-3 pt-2">
-                      <div className="flex items-start gap-2.5">
-                        <Checkbox
-                          id="terms-prof"
-                          checked={consentTerms}
-                          onCheckedChange={(c) => setConsentTerms(!!c)}
-                          className="mt-0.5 border-[#2A2A2A] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
-                        />
+                    {/* Consents Profissional */}
+                    <div className="space-y-3 pt-2 relative z-10">
+                      <div
+                        id="consent-terms-container"
+                        className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-[#141414]/80 border ${
+                          missingConsentHighlight === 'terms'
+                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
+                            : 'border-[#2A2A2A] hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                          <Checkbox
+                            id="terms-prof"
+                            checked={consentTerms}
+                            onCheckedChange={(c) => setConsentTerms(!!c)}
+                            className="w-5 h-5 border-[#2A2A2A] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                          />
+                        </div>
                         <label
                           htmlFor="terms-prof"
-                          className="text-xs text-gray-300 cursor-pointer font-inter"
+                          className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
                         >
                           Li e concordo com o{' '}
                           <Link
                             to="/contrato-parceria"
                             target="_blank"
-                            className="text-[#D4AF37] underline font-semibold"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[#D4AF37] underline font-semibold relative z-20 hover:text-[#E6C65C]"
                           >
                             Contrato de Parceria Comercial do Profissional
                           </Link>{' '}
@@ -871,22 +920,32 @@ export default function Cadastro() {
                         </label>
                       </div>
 
-                      <div className="flex items-start gap-2.5">
-                        <Checkbox
-                          id="lgpd-prof"
-                          checked={consentLgpd}
-                          onCheckedChange={(c) => setConsentLgpd(!!c)}
-                          className="mt-0.5 border-[#2A2A2A] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
-                        />
+                      <div
+                        id="consent-lgpd-container"
+                        className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-[#141414]/80 border ${
+                          missingConsentHighlight === 'lgpd'
+                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
+                            : 'border-[#2A2A2A] hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                          <Checkbox
+                            id="lgpd-prof"
+                            checked={consentLgpd}
+                            onCheckedChange={(c) => setConsentLgpd(!!c)}
+                            className="w-5 h-5 border-[#2A2A2A] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                          />
+                        </div>
                         <label
                           htmlFor="lgpd-prof"
-                          className="text-xs text-gray-300 cursor-pointer font-inter"
+                          className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
                         >
                           Li e concordo com a{' '}
                           <Link
                             to="/politica-de-privacidade"
                             target="_blank"
-                            className="text-[#D4AF37] underline font-semibold"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[#D4AF37] underline font-semibold relative z-20 hover:text-[#E6C65C]"
                           >
                             Política de Privacidade
                           </Link>{' '}
@@ -894,7 +953,8 @@ export default function Cadastro() {
                           <Link
                             to="/regulamento-cashback"
                             target="_blank"
-                            className="text-[#D4AF37] underline font-semibold"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[#D4AF37] underline font-semibold relative z-20 hover:text-[#E6C65C]"
                           >
                             Regulamento de Cashback
                           </Link>
@@ -902,16 +962,25 @@ export default function Cadastro() {
                         </label>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-start gap-2.5">
-                        <Checkbox
-                          id="sensitive-health-prof"
-                          checked={consentSensitiveHealth}
-                          onCheckedChange={(c) => setConsentSensitiveHealth(!!c)}
-                          className="mt-0.5 border-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
-                        />
+                      <div
+                        id="consent-sensitive-container"
+                        className={`p-2.5 rounded-xl bg-[#D4AF37]/10 border flex items-start gap-3 transition-all ${
+                          missingConsentHighlight === 'sensitive'
+                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
+                            : 'border-[#D4AF37]/30 hover:border-[#D4AF37]/50'
+                        }`}
+                      >
+                        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                          <Checkbox
+                            id="sensitive-health-prof"
+                            checked={consentSensitiveHealth}
+                            onCheckedChange={(c) => setConsentSensitiveHealth(!!c)}
+                            className="w-5 h-5 border-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                          />
+                        </div>
                         <label
                           htmlFor="sensitive-health-prof"
-                          className="text-[11px] text-gray-200 cursor-pointer leading-relaxed"
+                          className="text-[11px] text-gray-200 cursor-pointer leading-relaxed select-none py-1 flex-1"
                         >
                           <strong className="text-[#D4AF37] block font-montserrat uppercase">
                             Consentimento para Dados Sensíveis de Saúde (Art. 11 LGPD)
@@ -922,7 +991,8 @@ export default function Cadastro() {
                           <Link
                             to="/lgpd-consentimentos"
                             target="_blank"
-                            className="text-[#D4AF37] underline"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[#D4AF37] underline relative z-20 hover:text-[#E6C65C]"
                           >
                             Termo de Consentimento Art. 11 LGPD
                           </Link>
@@ -935,23 +1005,33 @@ export default function Cadastro() {
 
                 {/* Consents Aluno (Tarefa 1 - Aceite por Documento) */}
                 {role === 'aluno' && (
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-start gap-2.5">
-                      <Checkbox
-                        id="terms-aluno"
-                        checked={consentTerms}
-                        onCheckedChange={(c) => setConsentTerms(!!c)}
-                        className="mt-0.5 border-[#2A2A2A] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
-                      />
+                  <div className="space-y-3 pt-2 relative z-10">
+                    <div
+                      id="consent-terms-container"
+                      className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-[#141414]/80 border ${
+                        missingConsentHighlight === 'terms'
+                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
+                          : 'border-[#2A2A2A] hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                        <Checkbox
+                          id="terms-aluno"
+                          checked={consentTerms}
+                          onCheckedChange={(c) => setConsentTerms(!!c)}
+                          className="w-5 h-5 border-[#2A2A2A] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                        />
+                      </div>
                       <label
                         htmlFor="terms-aluno"
-                        className="text-xs text-gray-300 cursor-pointer font-inter"
+                        className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
                       >
                         Li e concordo com os{' '}
                         <Link
                           to="/termos-de-uso"
                           target="_blank"
-                          className="text-[#0057FF] underline font-semibold"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[#0057FF] underline font-semibold relative z-20 hover:text-[#3B82F6]"
                         >
                           Termos de Uso do Aluno
                         </Link>{' '}
@@ -960,22 +1040,32 @@ export default function Cadastro() {
                       </label>
                     </div>
 
-                    <div className="flex items-start gap-2.5">
-                      <Checkbox
-                        id="lgpd-aluno"
-                        checked={consentLgpd}
-                        onCheckedChange={(c) => setConsentLgpd(!!c)}
-                        className="mt-0.5 border-[#2A2A2A] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
-                      />
+                    <div
+                      id="consent-lgpd-container"
+                      className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-[#141414]/80 border ${
+                        missingConsentHighlight === 'lgpd'
+                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
+                          : 'border-[#2A2A2A] hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                        <Checkbox
+                          id="lgpd-aluno"
+                          checked={consentLgpd}
+                          onCheckedChange={(c) => setConsentLgpd(!!c)}
+                          className="w-5 h-5 border-[#2A2A2A] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                        />
+                      </div>
                       <label
                         htmlFor="lgpd-aluno"
-                        className="text-xs text-gray-300 cursor-pointer font-inter"
+                        className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
                       >
                         Li e concordo com a{' '}
                         <Link
                           to="/politica-de-privacidade"
                           target="_blank"
-                          className="text-[#0057FF] underline font-semibold"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[#0057FF] underline font-semibold relative z-20 hover:text-[#3B82F6]"
                         >
                           Política de Privacidade
                         </Link>{' '}
@@ -983,7 +1073,8 @@ export default function Cadastro() {
                         <Link
                           to="/regulamento-cashback"
                           target="_blank"
-                          className="text-[#0057FF] underline font-semibold"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[#0057FF] underline font-semibold relative z-20 hover:text-[#3B82F6]"
                         >
                           Regulamento de Cashback
                         </Link>
@@ -991,16 +1082,25 @@ export default function Cadastro() {
                       </label>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/30 flex items-start gap-2.5">
-                      <Checkbox
-                        id="sensitive-health-aluno"
-                        checked={consentSensitiveHealth}
-                        onCheckedChange={(c) => setConsentSensitiveHealth(!!c)}
-                        className="mt-0.5 border-[#0057FF] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
-                      />
+                    <div
+                      id="consent-sensitive-container"
+                      className={`p-2.5 rounded-xl bg-[#0057FF]/10 border flex items-start gap-3 transition-all ${
+                        missingConsentHighlight === 'sensitive'
+                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
+                          : 'border-[#0057FF]/30 hover:border-[#0057FF]/50'
+                      }`}
+                    >
+                      <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                        <Checkbox
+                          id="sensitive-health-aluno"
+                          checked={consentSensitiveHealth}
+                          onCheckedChange={(c) => setConsentSensitiveHealth(!!c)}
+                          className="w-5 h-5 border-[#0057FF] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                        />
+                      </div>
                       <label
                         htmlFor="sensitive-health-aluno"
-                        className="text-[11px] text-gray-200 cursor-pointer leading-relaxed"
+                        className="text-[11px] text-gray-200 cursor-pointer leading-relaxed select-none py-1 flex-1"
                       >
                         <strong className="text-[#0057FF] block font-montserrat uppercase">
                           Consentimento Específico para Dados Sensíveis de Saúde (Art. 11 LGPD)
@@ -1012,7 +1112,8 @@ export default function Cadastro() {
                         <Link
                           to="/lgpd-consentimentos"
                           target="_blank"
-                          className="text-[#0057FF] underline font-semibold"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[#0057FF] underline font-semibold relative z-20 hover:text-[#3B82F6]"
                         >
                           Termo de Consentimento Art. 11 LGPD
                         </Link>

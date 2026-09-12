@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-09-11T22:04:18.085Z",
+  "generatedAt": "2026-09-12T18:14:24.481Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && role = 'profissional')",
-        "view": "id = @request.auth.id",
+        "list": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && role = 'profissional') || (@request.auth.role = 'profissional' && role = 'aluno')",
+        "view": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && role = 'profissional') || (@request.auth.role = 'profissional' && role = 'aluno')",
         "create": "@request.body.role != 'admin'",
         "update": "@request.auth.role = 'admin' || (id = @request.auth.id && @request.body.plan:isset = false && @request.body.role:isset = false && @request.body.approved:isset = false && @request.body.tree_position:isset = false && @request.body.tree_level:isset = false)",
         "delete": "id = @request.auth.id"
@@ -1150,11 +1150,11 @@
       "name": "messages",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "sender = @request.auth.id || receiver = @request.auth.id",
+        "view": "sender = @request.auth.id || receiver = @request.auth.id",
+        "create": "@request.body.sender = @request.auth.id && @request.body.receiver != @request.auth.id",
+        "update": "sender = @request.auth.id || receiver = @request.auth.id",
+        "delete": "sender = @request.auth.id"
       },
       "fields": [
         {
