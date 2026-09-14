@@ -78,6 +78,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsub = pb.authStore.onChange((newToken, record) => {
       setToken(newToken)
       setUser(record as unknown as UserProfile)
+
+      // Se o token mudar (ex: login, logout, refresh de token), o realtime precisa
+      // re-submeter as subscriptions com o novo token ou novo clientId.
+      const realtime = (pb as any).realtime
+      if (realtime && typeof realtime.submitSubscriptions === 'function') {
+        realtime.submitSubscriptions().catch(() => {})
+      }
     })
 
     refreshUser().finally(() => {

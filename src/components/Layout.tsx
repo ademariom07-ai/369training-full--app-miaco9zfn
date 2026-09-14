@@ -52,14 +52,38 @@ export default function Layout({ children }: LayoutProps) {
       })
       .catch(() => {})
 
-    const unsub = pb.collection('notifications').subscribe('*', (e) => {
-      if (e.action === 'create' && (e.record as unknown as NotificationRecord).user === user.id) {
-        setUnreadCount((prev) => prev + 1)
-      }
-    })
+    let unsubscribeFn: (() => Promise<void>) | undefined
+    let cancelled = false
+
+    pb.collection('notifications')
+      .subscribe('*', (e) => {
+        if (e.action === 'create' && (e.record as unknown as NotificationRecord).user === user.id) {
+          setUnreadCount((prev) => prev + 1)
+        }
+      })
+      .then((fn) => {
+        if (cancelled) {
+          fn().catch(() => {})
+        } else {
+          unsubscribeFn = fn
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          '[Realtime notifications] Ignorando erro silenciosamente:',
+          err?.message || err,
+        )
+      })
 
     return () => {
-      pb.collection('notifications').unsubscribe('*')
+      cancelled = true
+      if (unsubscribeFn) {
+        unsubscribeFn().catch(() => {})
+      } else {
+        pb.collection('notifications')
+          .unsubscribe('*')
+          .catch(() => {})
+      }
     }
   }, [user])
 

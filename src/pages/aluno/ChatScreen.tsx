@@ -184,35 +184,44 @@ export default function ChatScreen() {
         setMessages([])
       })
 
+    let unsubscribeFn: (() => Promise<void>) | undefined
+    let cancelled = false
+
     // Realtime subscription
-    try {
-      pb.collection('messages')
-        .subscribe('*', (e) => {
-          if (e.action === 'create') {
-            const newMsg = e.record as unknown as MessageRecord
-            if (
-              (newMsg.sender === user.id && newMsg.receiver === activeProf.id) ||
-              (newMsg.sender === activeProf.id && newMsg.receiver === user.id)
-            ) {
-              setMessages((prev) => {
-                if (prev.some((m) => m.id === newMsg.id)) return prev
-                return [...prev, newMsg]
-              })
-            }
+    pb.collection('messages')
+      .subscribe('*', (e) => {
+        if (e.action === 'create') {
+          const newMsg = e.record as unknown as MessageRecord
+          if (
+            (newMsg.sender === user.id && newMsg.receiver === activeProf.id) ||
+            (newMsg.sender === activeProf.id && newMsg.receiver === user.id)
+          ) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMsg.id)) return prev
+              return [...prev, newMsg]
+            })
           }
-        })
-        .catch(() => {})
-    } catch {
-      // Ignora erro de realtime
-    }
+        }
+      })
+      .then((fn) => {
+        if (cancelled) {
+          fn().catch(() => {})
+        } else {
+          unsubscribeFn = fn
+        }
+      })
+      .catch((err) => {
+        console.warn('[Realtime messages] Ignorando erro silenciosamente:', err?.message || err)
+      })
 
     return () => {
-      try {
+      cancelled = true
+      if (unsubscribeFn) {
+        unsubscribeFn().catch(() => {})
+      } else {
         pb.collection('messages')
           .unsubscribe('*')
           .catch(() => {})
-      } catch {
-        // Ignora erro
       }
     }
   }, [user, activeProf])
