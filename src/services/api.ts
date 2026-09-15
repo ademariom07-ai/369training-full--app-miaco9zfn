@@ -351,6 +351,73 @@ export const api = {
       body: JSON.stringify(params || {}),
     })
   },
+
+  validateGroupSessionAttendance: async (params: {
+    participant_id: string
+    action?: 'confirm' | 'mark_absent'
+    notes?: string
+  }) => {
+    return pb.send<{
+      success: boolean
+      participant_id: string
+      attendance_status: string
+      is_registered_user: boolean
+      fee_charged: boolean
+      points_awarded: boolean
+      service_id?: string
+      message: string
+    }>('/backend/v1/group-sessions/validate-attendance', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    })
+  },
+}
+
+export type GroupSessionSpecialty =
+  | 'educacao_fisica'
+  | 'nutricao'
+  | 'fisioterapia'
+  | 'artes_marciais'
+  | 'psicologia'
+
+export interface GroupSessionRecord extends RecordModel {
+  professional: string
+  title: string
+  specialty: GroupSessionSpecialty
+  date: string
+  start_time: string
+  end_time?: string
+  location?: string
+  max_capacity?: number
+  status: 'agendada' | 'em_andamento' | 'concluida' | 'cancelada'
+  group_selfie?: string
+  selfie_uploaded_at?: string
+  validation_window_hours?: number
+  price_per_participant?: number
+  notes?: string
+  expand?: {
+    professional?: RecordModel
+    group_session_participants_via_session?: GroupSessionParticipantRecord[]
+  }
+}
+
+export interface GroupSessionParticipantRecord extends RecordModel {
+  session: string
+  student?: string
+  guest_name?: string
+  guest_email?: string
+  attendance_status: 'pendente' | 'confirmado' | 'ausente' | 'marcado_presente'
+  confirmed_at?: string
+  confirmation_method?: 'self_app' | 'professional_manual'
+  is_registered_user?: boolean
+  fee_charged?: boolean
+  points_awarded?: boolean
+  service_record?: string
+  notes?: string
+  expand?: {
+    student?: RecordModel
+    session?: GroupSessionRecord
+  }
 }
 
 export interface WearableConnectionRecord {

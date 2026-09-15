@@ -9,6 +9,7 @@ import { HidratacaoSection } from '@/components/HidratacaoSection'
 import { DesafiosAlunoSection } from '@/components/DesafiosAlunoSection'
 import { AlunoProfissionaisFeed } from '@/components/AlunoProfissionaisFeed'
 import { Agente369Section } from '@/components/Agente369Section'
+import { MinhasAulasColetivasAluno } from '@/components/MinhasAulasColetivasAluno'
 import {
   Dumbbell,
   Utensils,
@@ -129,6 +130,9 @@ export default function AlunoHome() {
           />
         </div>
       </Card>
+
+      {/* AULAS COLETIVAS MULTI-ALUNO E CONFIRMAÇÃO DE PRESENÇA (SELFIE COLETIVA) */}
+      {user && <MinhasAulasColetivasAluno currentUserId={user.id} />}
 
       {/* AGENTE 369 DO ALUNO (BENEFÍCIO DO PLANO, MOTOR DETERMINÍSTICO E FRANQUIAS) */}
       <Agente369Section />

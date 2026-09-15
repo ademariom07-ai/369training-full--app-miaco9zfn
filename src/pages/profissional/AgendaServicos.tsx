@@ -29,9 +29,11 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { WeeklyScheduleRecord, AppointmentRecord } from '@/services/api'
+import { GestaoSessoesColetivas } from '@/components/GestaoSessoesColetivas'
 
 // Grade fixa de 19 faixas horárias de 1 em 1 hora (05:00 às 00:00)
 export const FIXED_TIME_SLOTS = [
@@ -124,7 +126,7 @@ export default function AgendaServicos() {
   const [appValue, setAppValue] = useState('150.00')
   const [savingApp, setSavingApp] = useState(false)
   // Active view tab
-  const [activeTab, setActiveTab] = useState<'grid' | 'appointments'>('grid')
+  const [activeTab, setActiveTab] = useState<'grid' | 'appointments' | 'coletivo'>('grid')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
 
   // Load Data
@@ -592,12 +594,23 @@ export default function AgendaServicos() {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            Atendimentos Marcados
+            Individuais
             {appointments.length > 0 && (
               <span className="w-4 h-4 rounded-full bg-black/20 text-[10px] flex items-center justify-center">
                 {appointments.length}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveTab('coletivo')}
+            className={`flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs font-bold font-montserrat transition-all uppercase flex items-center justify-center gap-1.5 ${
+              activeTab === 'coletivo'
+                ? 'bg-[#D4AF37] text-black shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            Aulas Coletivas
           </button>
         </div>
       </div>
@@ -850,6 +863,11 @@ export default function AgendaServicos() {
             </div>
           )}
         </div>
+      )}
+
+      {/* TAB 3: GESTÃO DE SESSÕES COLETIVAS MULTI-ALUNO & SELFIE */}
+      {activeTab === 'coletivo' && user && (
+        <GestaoSessoesColetivas currentUserId={user.id} students={students} />
       )}
 
       {/* TAB 2: APPOINTMENTS LIST */}
