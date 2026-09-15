@@ -13,10 +13,10 @@
 routerAdd(
   'POST',
   '/backend/v1/aluno/agent_status',
-  (c) => {
-    const authUser = c.get('authRecord')
+  (e) => {
+    const authUser = e.auth
     if (!authUser) {
-      return c.json(401, { error: 'Usuário não autenticado.' })
+      return e.json(401, { error: 'Não autenticado' })
     }
 
     const userId = authUser.id
@@ -162,7 +162,7 @@ routerAdd(
     const workoutsRemaining = Math.max(0, limits.workouts_per_month - workoutsGenerated)
     const messagesRemaining = Math.max(0, limits.messages_per_month - chatMessages)
 
-    return c.json(200, {
+    return e.json(200, {
       plan: rawPlan,
       is_linked: isLinked,
       month: currentMonth,
@@ -193,18 +193,18 @@ routerAdd(
 routerAdd(
   'POST',
   '/backend/v1/aluno/save_parq',
-  (c) => {
-    const authUser = c.get('authRecord')
-    if (!authUser) return c.json(401, { error: 'Não autenticado' })
+  (e) => {
+    const authUser = e.auth
+    if (!authUser) return e.json(401, { error: 'Não autenticado' })
 
-    const data = $apis.requestInfo(c).data || {}
-    const hasHeart = !!data.has_heart_condition
-    const hasChestPainActivity = !!data.has_chest_pain_activity
-    const hasChestPainRest = !!data.has_chest_pain_rest
-    const hasDizziness = !!data.has_dizziness_loss_consciousness
-    const hasBoneJoint = !!data.has_bone_joint_problem
-    const hasPrescription = !!data.has_prescription_blood_pressure_heart
-    const hasOtherReason = !!data.has_other_reason_preventing_activity
+    const body = e.requestInfo().body || {}
+    const hasHeart = !!body.has_heart_condition
+    const hasChestPainActivity = !!body.has_chest_pain_activity
+    const hasChestPainRest = !!body.has_chest_pain_rest
+    const hasDizziness = !!body.has_dizziness_loss_consciousness
+    const hasBoneJoint = !!body.has_bone_joint_problem
+    const hasPrescription = !!body.has_prescription_blood_pressure_heart
+    const hasOtherReason = !!body.has_other_reason_preventing_activity
 
     const anyYes =
       hasHeart ||
@@ -243,12 +243,12 @@ routerAdd(
     rec.set('has_other_reason_preventing_activity', hasOtherReason)
     rec.set('passed_clean', passedClean)
     rec.set('medical_clearance_required', medicalClearanceRequired)
-    rec.set('medical_clearance_notes', data.medical_clearance_notes || '')
+    rec.set('medical_clearance_notes', body.medical_clearance_notes || '')
     rec.set('completed_at', new Date().toISOString())
 
     $app.save(rec)
 
-    return c.json(200, {
+    return e.json(200, {
       success: true,
       passed_clean: passedClean,
       medical_clearance_required: medicalClearanceRequired,
@@ -264,9 +264,9 @@ routerAdd(
 routerAdd(
   'POST',
   '/backend/v1/aluno/generate_workout',
-  (c) => {
-    const authUser = c.get('authRecord')
-    if (!authUser) return c.json(401, { error: 'Não autenticado' })
+  (e) => {
+    const authUser = e.auth
+    if (!authUser) return e.json(401, { error: 'Não autenticado' })
 
     const userId = authUser.id
     const user = $app.findRecordById('users', userId)
@@ -289,7 +289,7 @@ routerAdd(
     }
 
     if (rawPlan === 'gratis' && !isLinked) {
-      return c.json(403, {
+      return e.json(403, {
         error:
           'O Agente 369 está disponível a partir do Plano Básico (R$ 10/mês). Faça upgrade do seu plano para liberar treinos inteligentes.',
       })
@@ -309,14 +309,14 @@ routerAdd(
     } catch (_) {}
 
     if (!parqCompleted) {
-      return c.json(400, {
+      return e.json(400, {
         error: 'PAR_Q_REQUIRED',
         message:
           'É obrigatório responder ao questionário de prontidão PAR-Q+ antes do primeiro treino gerado pelo Agente 369.',
       })
     }
 
-    const body = $apis.requestInfo(c).data || {}
+    const body = e.requestInfo().body || {}
     const symptomsReported = body.symptoms || ''
     const ageGroup = body.age_group || (body.age >= 60 ? '60+' : '40-59')
     const preferredTemplateCode = body.template_code
@@ -342,7 +342,7 @@ routerAdd(
     const textToCheck = `${symptomsReported} ${body.notes || ''}`.toLowerCase()
     for (const kw of redFlagKeywords) {
       if (textToCheck.includes(kw)) {
-        return c.json(400, {
+        return e.json(400, {
           error: 'RED_FLAG_DETECTED',
           red_flag: kw,
           message: `ATENÇÃO MÉDICA IMEDIATA: Sintoma crítico detectado ("${kw}"). Por estrito compliance CREF e segurança à sua integridade física, a geração de exercícios foi INTERROMPIDA. Interrompa qualquer atividade física imediatamente e procure atendimento médico de emergência ou seu médico assistente.`,
@@ -421,7 +421,7 @@ routerAdd(
       chargedAmount = overageCosts.workout_cost
       const currentBalance = Number(user.get('wallet_balance') || 0)
       if (currentBalance < chargedAmount) {
-        return c.json(402, {
+        return e.json(402, {
           error: 'WALLET_BALANCE_INSUFFICIENT',
           message: `Saldo insuficiente na carteira (R$ ${currentBalance.toFixed(2)}). Recarregue ao menos R$ ${chargedAmount.toFixed(2)} para usar o excedente.`,
           required_balance: chargedAmount,
@@ -473,7 +473,7 @@ routerAdd(
     } catch (_) {}
 
     if (!templateRec) {
-      return c.json(500, {
+      return e.json(500, {
         error: 'Nenhum template de treino determinístico aprovado encontrado para seu perfil.',
       })
     }
@@ -567,7 +567,7 @@ routerAdd(
     }
     $app.save(usageRec)
 
-    return c.json(200, {
+    return e.json(200, {
       success: true,
       workout: {
         id: workout.id,
@@ -597,9 +597,9 @@ routerAdd(
 routerAdd(
   'POST',
   '/backend/v1/aluno/agent_chat',
-  (c) => {
-    const authUser = c.get('authRecord')
-    if (!authUser) return c.json(401, { error: 'Não autenticado' })
+  (e) => {
+    const authUser = e.auth
+    if (!authUser) return e.json(401, { error: 'Não autenticado' })
 
     const userId = authUser.id
     const user = $app.findRecordById('users', userId)
@@ -667,16 +667,16 @@ routerAdd(
 
     const limits = studentAiLimits[rawPlan] || studentAiLimits.gratis
     if (limits.messages_per_month === 0 && !isLinked) {
-      return c.json(403, {
+      return e.json(403, {
         error:
           'O chat interativo com o Agente 369 está disponível a partir do Plano Pro (10 msgs/mês) e Premium (60 msgs/mês).',
       })
     }
 
-    const body = $apis.requestInfo(c).data || {}
+    const body = e.requestInfo().body || {}
     const userMessage = (body.message || '').trim()
     if (!userMessage) {
-      return c.json(400, { error: 'Mensagem vazia.' })
+      return e.json(400, { error: 'Mensagem vazia.' })
     }
 
     // RED FLAGS CHECK
@@ -697,7 +697,7 @@ routerAdd(
     const lowerMsg = userMessage.toLowerCase()
     for (const kw of redFlagKeywords) {
       if (lowerMsg.includes(kw)) {
-        return c.json(200, {
+        return e.json(200, {
           is_red_flag: true,
           reply: `ATENÇÃO MÉDICA IMEDIATA: Você relatou um sintoma crítico ("${kw}"). Por estrito protocolo de segurança biológica e conformidade com o CREF/CFM, qualquer orientação de treino está IMEDIATAMENTE INTERROMPIDA. Por favor, sente-se em local arejado, não continue esforços físicos e procure auxílio médico de urgência ou contate imediatamente um profissional de saúde.`,
           fixed_disclaimer:
@@ -729,7 +729,7 @@ routerAdd(
       chargedAmount = overageCosts.message_cost
       const currentBalance = Number(user.get('wallet_balance') || 0)
       if (currentBalance < chargedAmount) {
-        return c.json(402, {
+        return e.json(402, {
           error: 'WALLET_BALANCE_INSUFFICIENT',
           message: `Saldo insuficiente na carteira (R$ ${currentBalance.toFixed(2)}). Recarregue ao menos R$ ${chargedAmount.toFixed(2)} para enviar mensagens excedentes.`,
           required_balance: chargedAmount,
@@ -756,19 +756,16 @@ routerAdd(
 
     // CHAMADA AO AGENTE NATIVO OU SKIP AI GATEWAY
     let agentReply = ''
+    let conversationId = body.conversation_id || null
     try {
       if (typeof $ai !== 'undefined' && typeof $ai.agent === 'function') {
-        const agent = $ai.agent('agente-aluno-369')
-        const response = agent.chat([
-          {
-            role: 'user',
-            content: `Aluno: ${authUser.get('name') || 'Aluno'}. Plano: ${rawPlan}. Pergunta: ${userMessage}`,
-          },
-        ])
-        agentReply =
-          (response && response.content) ||
-          (response && response.message && response.message.content) ||
-          ''
+        const result = $ai.agent('agente-aluno-369').chat({
+          user_id: authUser.id,
+          conversation_id: body.conversation_id || null,
+          message: userMessage,
+        })
+        agentReply = result.content
+        conversationId = result.conversation_id
       }
     } catch (agentErr) {
       console.log('Tentando fallback para $ai.chat:', agentErr.message)
@@ -777,6 +774,7 @@ routerAdd(
     if (!agentReply) {
       try {
         const completion = $ai.chat({
+          model: 'fast',
           messages: [
             {
               role: 'system',
@@ -828,9 +826,10 @@ Finalize sempre com o disclaimer obrigatório.`,
     }
     $app.save(usageRec)
 
-    return c.json(200, {
+    return e.json(200, {
       success: true,
       reply: agentReply,
+      conversation_id: conversationId,
       usage: {
         chat_messages: chatMessages + 1,
         messages_limit: limits.messages_per_month,
@@ -848,9 +847,9 @@ Finalize sempre com o disclaimer obrigatório.`,
 routerAdd(
   'POST',
   '/backend/v1/aluno/cycle_log',
-  (c) => {
-    const authUser = c.get('authRecord')
-    if (!authUser) return c.json(401, { error: 'Não autenticado' })
+  (e) => {
+    const authUser = e.auth
+    if (!authUser) return e.json(401, { error: 'Não autenticado' })
 
     const userId = authUser.id
     const user = $app.findRecordById('users', userId)
@@ -871,7 +870,7 @@ routerAdd(
     }
 
     if (rawPlan !== 'premium') {
-      return c.json(403, {
+      return e.json(403, {
         error: 'CYCLE_MODULE_PREMIUM_ONLY',
         message:
           'O módulo de ciclo menstrual e ajuste por sintomas é exclusivo do Plano Premium (R$ 30/mês).',
@@ -891,14 +890,14 @@ routerAdd(
     } catch (_) {}
 
     if (!lgpdHealthConsentActive) {
-      return c.json(403, {
+      return e.json(403, {
         error: 'LGPD_CONSENT_REVOKED',
         message:
           'O tratamento de dados sensíveis de saúde requer seu consentimento expresso (Art. 11 da LGPD). Caso tenha sido revogado, o módulo permanece bloqueado até nova autorização no Painel LGPD.',
       })
     }
 
-    const body = $apis.requestInfo(c).data || {}
+    const body = e.requestInfo().body || {}
     const date = body.date || new Date().toISOString().slice(0, 10)
 
     const cycleCol = $app.findCollectionByNameOrId('menstrual_cycle_logs')
@@ -925,7 +924,7 @@ routerAdd(
     rec.set('notes', body.notes || '')
     $app.save(rec)
 
-    return c.json(200, {
+    return e.json(200, {
       success: true,
       message:
         'Registro diário do ciclo menstrual salvo com segurança e privacidade (Art. 11 LGPD).',
