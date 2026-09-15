@@ -31,7 +31,11 @@ export default function CookieConsentBanner() {
   if (!isVisible) return null
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 p-4 sm:p-6 bg-[#0E0E0E]/95 backdrop-blur-xl border-t border-[#D4AF37]/30 shadow-[0_-10px_35px_rgba(0,0,0,0.8)] animate-fade-in font-inter">
+    <div
+      role="region"
+      aria-label="Consentimento de Cookies"
+      className="fixed bottom-0 inset-x-0 z-40 p-4 sm:p-6 bg-[#0E0E0E]/95 backdrop-blur-xl border-t border-[#D4AF37]/30 shadow-[0_-10px_35px_rgba(0,0,0,0.8)] animate-fade-in font-inter"
+    >
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-start gap-3.5 text-xs text-gray-300">
           <div className="p-2 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37] shrink-0 mt-0.5">

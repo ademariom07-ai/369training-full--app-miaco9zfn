@@ -67,17 +67,45 @@ export default function Cadastro() {
   const [missingConsentHighlight, setMissingConsentHighlight] = useState<
     'terms' | 'lgpd' | 'sensitive' | null
   >(null)
+  const [pulseConsent, setPulseConsent] = useState<'terms' | 'lgpd' | 'sensitive' | null>(null)
+
+  const triggerPulse = (type: 'terms' | 'lgpd' | 'sensitive') => {
+    setPulseConsent(type)
+    setTimeout(() => {
+      setPulseConsent((prev) => (prev === type ? null : prev))
+    }, 350)
+  }
 
   const [loading, setLoading] = useState(false)
   const [createdSuccess, setCreatedSuccess] = useState(false)
 
   const toggleSpecialty = (spec: string) => {
+    let nextSpecialties: string[]
     if (specialties.includes(spec)) {
       if (specialties.length > 1) {
-        setSpecialties(specialties.filter((s) => s !== spec))
+        nextSpecialties = specialties.filter((s) => s !== spec)
+      } else {
+        nextSpecialties = specialties
       }
     } else {
-      setSpecialties([...specialties, spec])
+      nextSpecialties = [...specialties, spec]
+    }
+    setSpecialties(nextSpecialties)
+
+    // Ajustar automaticamente o conselho/entidade de acordo com a especialidade prioritária selecionada
+    if (
+      nextSpecialties.includes('Artes Marciais') &&
+      (!nextSpecialties.includes('Educação Física') || spec === 'Artes Marciais')
+    ) {
+      setCouncil('FEDERACAO')
+    } else if (nextSpecialties.includes('Educação Física') && spec === 'Educação Física') {
+      setCouncil('CREF')
+    } else if (nextSpecialties.includes('Nutrição') && spec === 'Nutrição') {
+      setCouncil('CRN')
+    } else if (nextSpecialties.includes('Fisioterapia') && spec === 'Fisioterapia') {
+      setCouncil('CREFITO')
+    } else if (nextSpecialties.includes('Psicologia') && spec === 'Psicologia') {
+      setCouncil('CRP')
     }
   }
 
@@ -313,6 +341,16 @@ export default function Cadastro() {
       // Se for profissional, registrar a verificação de credencial na coleção credential_verifications
       if (role === 'profissional' && createdUser?.id) {
         try {
+          // Autenticar imediatamente o novo profissional para garantir permissão total de escrita com arquivo
+          try {
+            await pb.collection('users').authWithPassword(email.trim().toLowerCase(), password)
+          } catch (authErr) {
+            console.warn(
+              'Auto-login pós-cadastro falhou, tentando criar credencial mesmo assim:',
+              authErr,
+            )
+          }
+
           const finalRegNumber =
             specialties.includes('Psicologia') && crp ? crp.trim() : cref.trim()
           const credFormData = new FormData()
@@ -324,9 +362,25 @@ export default function Cadastro() {
             credFormData.append('document_file', documentFile)
           }
 
-          await pb.collection('credential_verifications').create(credFormData)
-        } catch (credErr) {
-          console.warn('Erro ao salvar documento em credential_verifications:', credErr)
+          try {
+            await pb.collection('credential_verifications').create(credFormData)
+          } catch (createErr: any) {
+            console.warn(
+              'Tentativa direta de criar credencial falhou, usando endpoint alternativo do backend:',
+              createErr?.response?.data || createErr?.message,
+            )
+            // Fallback para o endpoint de backend com upload de arquivo
+            await pb.send('/backend/v1/professional/submit-credential', {
+              method: 'POST',
+              body: credFormData,
+            })
+          }
+        } catch (credErr: any) {
+          console.error(
+            'Erro ao salvar documento em credential_verifications:',
+            credErr,
+            credErr?.response?.data || credErr?.data || credErr?.message,
+          )
         }
       }
 
@@ -894,14 +948,25 @@ export default function Cadastro() {
                             : 'border-[#2A2A2A] hover:border-gray-600'
                         }`}
                       >
-                        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                        <label
+                          htmlFor="terms-prof"
+                          className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
+                            pulseConsent === 'terms'
+                              ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
+                              : 'active:bg-white/5'
+                          }`}
+                        >
                           <Checkbox
                             id="terms-prof"
                             checked={consentTerms}
-                            onCheckedChange={(c) => setConsentTerms(!!c)}
-                            className="w-5 h-5 border-[#2A2A2A] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                            onCheckedChange={(c) => {
+                              const next = !!c
+                              setConsentTerms(next)
+                              if (next) triggerPulse('terms')
+                            }}
+                            className="w-5 h-5 border-[#2A2A2A] transition-none data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
                           />
-                        </div>
+                        </label>
                         <label
                           htmlFor="terms-prof"
                           className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
@@ -928,14 +993,25 @@ export default function Cadastro() {
                             : 'border-[#2A2A2A] hover:border-gray-600'
                         }`}
                       >
-                        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                        <label
+                          htmlFor="lgpd-prof"
+                          className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
+                            pulseConsent === 'lgpd'
+                              ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
+                              : 'active:bg-white/5'
+                          }`}
+                        >
                           <Checkbox
                             id="lgpd-prof"
                             checked={consentLgpd}
-                            onCheckedChange={(c) => setConsentLgpd(!!c)}
-                            className="w-5 h-5 border-[#2A2A2A] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                            onCheckedChange={(c) => {
+                              const next = !!c
+                              setConsentLgpd(next)
+                              if (next) triggerPulse('lgpd')
+                            }}
+                            className="w-5 h-5 border-[#2A2A2A] transition-none data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
                           />
-                        </div>
+                        </label>
                         <label
                           htmlFor="lgpd-prof"
                           className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
@@ -970,14 +1046,25 @@ export default function Cadastro() {
                             : 'border-[#D4AF37]/30 hover:border-[#D4AF37]/50'
                         }`}
                       >
-                        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                        <label
+                          htmlFor="sensitive-health-prof"
+                          className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
+                            pulseConsent === 'sensitive'
+                              ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
+                              : 'active:bg-white/5'
+                          }`}
+                        >
                           <Checkbox
                             id="sensitive-health-prof"
                             checked={consentSensitiveHealth}
-                            onCheckedChange={(c) => setConsentSensitiveHealth(!!c)}
-                            className="w-5 h-5 border-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                            onCheckedChange={(c) => {
+                              const next = !!c
+                              setConsentSensitiveHealth(next)
+                              if (next) triggerPulse('sensitive')
+                            }}
+                            className="w-5 h-5 border-[#D4AF37] transition-none data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
                           />
-                        </div>
+                        </label>
                         <label
                           htmlFor="sensitive-health-prof"
                           className="text-[11px] text-gray-200 cursor-pointer leading-relaxed select-none py-1 flex-1"
@@ -1014,14 +1101,25 @@ export default function Cadastro() {
                           : 'border-[#2A2A2A] hover:border-gray-600'
                       }`}
                     >
-                      <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                      <label
+                        htmlFor="terms-aluno"
+                        className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
+                          pulseConsent === 'terms'
+                            ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
+                            : 'active:bg-white/5'
+                        }`}
+                      >
                         <Checkbox
                           id="terms-aluno"
                           checked={consentTerms}
-                          onCheckedChange={(c) => setConsentTerms(!!c)}
-                          className="w-5 h-5 border-[#2A2A2A] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                          onCheckedChange={(c) => {
+                            const next = !!c
+                            setConsentTerms(next)
+                            if (next) triggerPulse('terms')
+                          }}
+                          className="w-5 h-5 border-[#2A2A2A] transition-none data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
                         />
-                      </div>
+                      </label>
                       <label
                         htmlFor="terms-aluno"
                         className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
@@ -1048,14 +1146,25 @@ export default function Cadastro() {
                           : 'border-[#2A2A2A] hover:border-gray-600'
                       }`}
                     >
-                      <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                      <label
+                        htmlFor="lgpd-aluno"
+                        className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
+                          pulseConsent === 'lgpd'
+                            ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
+                            : 'active:bg-white/5'
+                        }`}
+                      >
                         <Checkbox
                           id="lgpd-aluno"
                           checked={consentLgpd}
-                          onCheckedChange={(c) => setConsentLgpd(!!c)}
-                          className="w-5 h-5 border-[#2A2A2A] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                          onCheckedChange={(c) => {
+                            const next = !!c
+                            setConsentLgpd(next)
+                            if (next) triggerPulse('lgpd')
+                          }}
+                          className="w-5 h-5 border-[#2A2A2A] transition-none data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
                         />
-                      </div>
+                      </label>
                       <label
                         htmlFor="lgpd-aluno"
                         className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
@@ -1090,14 +1199,25 @@ export default function Cadastro() {
                           : 'border-[#0057FF]/30 hover:border-[#0057FF]/50'
                       }`}
                     >
-                      <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2">
+                      <label
+                        htmlFor="sensitive-health-aluno"
+                        className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
+                          pulseConsent === 'sensitive'
+                            ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
+                            : 'active:bg-white/5'
+                        }`}
+                      >
                         <Checkbox
                           id="sensitive-health-aluno"
                           checked={consentSensitiveHealth}
-                          onCheckedChange={(c) => setConsentSensitiveHealth(!!c)}
-                          className="w-5 h-5 border-[#0057FF] data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                          onCheckedChange={(c) => {
+                            const next = !!c
+                            setConsentSensitiveHealth(next)
+                            if (next) triggerPulse('sensitive')
+                          }}
+                          className="w-5 h-5 border-[#0057FF] transition-none data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
                         />
-                      </div>
+                      </label>
                       <label
                         htmlFor="sensitive-health-aluno"
                         className="text-[11px] text-gray-200 cursor-pointer leading-relaxed select-none py-1 flex-1"
