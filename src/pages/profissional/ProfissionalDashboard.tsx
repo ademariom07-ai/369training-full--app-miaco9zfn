@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { AIExpertsRail } from '@/components/AIExpertsRail'
 import { PlanChangeSection } from '@/components/PlanChangeSection'
 import { GestaoDesafiosProfissional } from '@/components/GestaoDesafiosProfissional'
+import { Radar369Section } from '@/components/Radar369Section'
+import { PainelCarteiraIA } from '@/components/PainelCarteiraIA'
 import {
   Users,
   Dumbbell,
@@ -77,17 +79,23 @@ export default function ProfissionalDashboard() {
             />
             <div>
               <div className="flex items-center gap-2">
-                <span
-                  className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border font-montserrat ${
-                    user?.plan === 'premium'
-                      ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
-                      : user?.plan === 'pro'
-                        ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
-                        : 'bg-gray-800 border-gray-700 text-gray-300'
-                  }`}
-                >
-                  Plano {user?.plan?.toUpperCase() || 'BASICO'}
-                </span>
+                {user?.plan === 'pro_parceiro' ? (
+                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#00C853]/20 border border-[#00C853] text-[#00C853] font-montserrat shadow-[0_0_10px_rgba(0,200,83,0.3)]">
+                    ★ Parceiro PRO
+                  </span>
+                ) : (
+                  <span
+                    className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border font-montserrat ${
+                      user?.plan === 'premium'
+                        ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
+                        : user?.plan === 'pro'
+                          ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
+                          : 'bg-gray-800 border-gray-700 text-gray-300'
+                    }`}
+                  >
+                    Plano {user?.plan?.toUpperCase() || 'BASICO'}
+                  </span>
+                )}
                 <span className="text-xs text-[#22C55E] font-bold">✓ Verificado</span>
               </div>
 
@@ -182,6 +190,12 @@ export default function ProfissionalDashboard() {
             </span>
           </Card>
         </div>
+
+        {/* RADAR 369 — O QUE HÁ DE NOVO NA WEB (SEMANAL) */}
+        <Radar369Section specialties={user?.specialties || ['Educação Física']} />
+
+        {/* PAINEL DE CARTEIRA COM IA (ALERTAS DE ADERÊNCIA) */}
+        <PainelCarteiraIA />
 
         {/* ATALHO SMARTWATCH CAMINHO A PARA PROFISSIONAL */}
         <Card className="bg-gradient-to-r from-[#181818] via-[#151c28] to-[#181818] border border-[#D4AF37]/40 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">

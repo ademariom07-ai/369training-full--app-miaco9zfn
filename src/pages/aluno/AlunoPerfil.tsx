@@ -24,6 +24,7 @@ import {
   DollarSign,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PlanChangeSection } from '@/components/PlanChangeSection'
 
 export default function AlunoPerfil() {
   const { user, refreshUser } = useAuth()
@@ -307,6 +308,37 @@ export default function AlunoPerfil() {
             </div>
           )}
         </Card>
+      </div>
+
+      {/* SEÇÃO DE PLANOS & MENSALIDADE v2 */}
+      <div>
+        <PlanChangeSection />
+      </div>
+
+      {/* REGRAS DE VÍNCULO E BORDA */}
+      <div className="bg-[#141414] border border-[#222222] p-5 rounded-2xl space-y-3">
+        <h4 className="text-sm font-bold font-montserrat text-[#D4AF37] uppercase flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-[#D4AF37]" /> Regras de Vínculo e Borda (v2)
+        </h4>
+        <ul className="text-xs text-gray-300 font-inter space-y-1.5 list-disc pl-4 leading-relaxed">
+          <li>
+            <strong>Vínculo com Mentor:</strong> Alunos vinculados a um profissional credenciado são
+            100% isentos de mensalidade e pontuam com o multiplicador do plano do profissional.
+          </li>
+          <li>
+            <strong>Desvinculação Voluntária:</strong> Caso haja desvinculação, a mensalidade só
+            passa a ser exigida a partir do ciclo seguinte, com aviso prévio de 30 dias.
+          </li>
+          <li>
+            <strong>Profissional Suspenso/Desligado:</strong> Os alunos vinculados recebem aviso
+            imediato e uma janela de 15 dias para vincular-se a outro mentor ou contratar um plano
+            direto.
+          </li>
+          <li>
+            <strong>Garantia de Reembolso:</strong> Conforme o Art. 49 do CDC, cancelamentos em até
+            7 dias têm direito a reembolso integral.
+          </li>
+        </ul>
       </div>
 
       {/* DICAS DE SAÚDE (Sol, Alimentação, Exercícios, Água, Meditação) */}

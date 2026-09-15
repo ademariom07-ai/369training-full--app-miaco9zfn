@@ -1,7 +1,7 @@
 // Hook triggered whenever a service status changes to 'concluido'
-// 1. Debitar tarifa do serviço conforme o plano e registrar no extrato
+// 1. Debitar tarifa do serviço SEMPRE DO PROFISSIONAL (v2: R$ 1/2/3 por serviço ou R$ 2 no pro_parceiro)
 // 2. Validar indicação se o aluno atingiu o mínimo de serviços
-// 3. RECÁLCULO INSTANTÂNEO DO RANKING (Decisão v0.0.52 confirmada)
+// 3. RECÁLCULO INSTANTÂNEO DO RANKING (com suporte a pro_parceiro floor e planos v2)
 onRecordAfterUpdateSuccess((e) => {
   const service = e.record
   const oldStatus = e.oldRecord ? e.oldRecord.get('status') : ''
@@ -14,37 +14,17 @@ onRecordAfterUpdateSuccess((e) => {
   const profId = service.get('professional')
   const studentId = service.get('student')
 
-  // 1. DÉBITO DA TARIFA DE SERVIÇO
+  // 1. DÉBITO DA TARIFA DE SERVIÇO: SEMPRE debitar do profissional (removido modo own_plan do aluno)
   try {
     const prof = $app.findRecordById('users', profId)
     const profPlan = (prof.get('plan') || 'basico').toLowerCase()
 
-    let student = null
-    let studentPlan = 'gratis'
-    if (studentId) {
-      try {
-        student = $app.findRecordById('users', studentId)
-        studentPlan = (student.get('plan') || 'gratis').toLowerCase()
-      } catch (_) {}
-    }
-
-    // Regra de Vínculo:
-    // Opção 1: Aluno usa o próprio plano, pagando a tarifa (ex: Premium R$3)
-    // Opção 2: Profissional patrocina a tarifa do serviço (não desconta do aluno)
-    const feeMode = student ? student.get('linked_prof_fee_mode') || 'own_plan' : 'own_plan'
-
-    let payerUserId = profId
     let rate = 1.0
-
     if (profPlan === 'pro') rate = 2.0
     if (profPlan === 'premium') rate = 3.0
+    if (profPlan === 'pro_parceiro') rate = 2.0 // Tarifa por serviço continua R$ 2,00 no pro_parceiro
 
-    if (student && student.get('linked_professional') === profId && feeMode === 'own_plan') {
-      payerUserId = studentId
-      if (studentPlan === 'pro') rate = 2.0
-      if (studentPlan === 'premium') rate = 3.0
-      if (studentPlan === 'basico' || studentPlan === 'gratis') rate = 1.0
-    }
+    const payerUserId = profId // Tarifa SEMPRE debitada do profissional
 
     const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
     const feeTx = new Record(walletCol)
@@ -129,6 +109,7 @@ onRecordAfterUpdateSuccess((e) => {
       basico: 1,
       pro: 2,
       premium: 3,
+      pro_parceiro: 2,
     }
 
     const planTarifas = {
@@ -136,28 +117,47 @@ onRecordAfterUpdateSuccess((e) => {
       basico: 1.0,
       pro: 2.0,
       premium: 3.0,
+      pro_parceiro: 2.0,
     }
+
+    let proParceiroFloor = 10
+    try {
+      const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
+      if (floorRec) {
+        const v = floorRec.get('value')
+        if (typeof v === 'number') proParceiroFloor = v
+      }
+    } catch (_) {}
 
     const scores = []
 
     for (const u of users) {
       const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
       const role = u.get('role') || 'aluno'
+      const isProParceiro = rawPlan === 'pro_parceiro'
 
-      const multiplier = planMultipliers[rawPlan] ?? 0
-      if (multiplier === 0) {
-        continue
-      }
-
-      let effectiveMultiplier = multiplier
+      // Aluno com vínculo ativo pontua no plano do profissional
+      let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
       const linkedProf = u.get('linked_professional')
-      const feeM = u.get('linked_prof_fee_mode') || 'own_plan'
-      if (role === 'aluno' && linkedProf && feeM === 'prof_sponsored') {
+
+      if (role === 'aluno' && linkedProf) {
         try {
           const pUser = $app.findRecordById('users', linkedProf)
           const pPlan = (pUser.get('plan') || 'basico').toLowerCase()
           effectiveMultiplier = planMultipliers[pPlan] ?? 1
         } catch (_) {}
+      }
+
+      // Regra de Inadimplência: se assinatura estiver inadimplente, downgrade temporário para Grátis (0x)
+      const subStatus = u.get('subscription_status') || 'ativa'
+      if (subStatus === 'inadimplente' || subStatus === 'cancelada') {
+        if (role === 'aluno' && !linkedProf) {
+          effectiveMultiplier = 0
+        }
+      }
+
+      if (effectiveMultiplier === 0 && !isProParceiro) {
+        continue
       }
 
       const serviceFilter =
@@ -207,7 +207,13 @@ onRecordAfterUpdateSuccess((e) => {
         0,
       )
 
-      const servicosCount = servicesThisMonth.length
+      let realServicesCount = servicesThisMonth.length
+      // Para PRO PARCEIRO: piso de pontuação max(servicos_reais, piso_fixo)
+      let effectiveServicesCount = realServicesCount
+      if (isProParceiro) {
+        effectiveServicesCount = Math.max(realServicesCount, proParceiroFloor)
+      }
+
       const indicacoesCount = referralsThisMonth.length
       const totalIndicacoes = allReferrals.length
 
@@ -220,9 +226,10 @@ onRecordAfterUpdateSuccess((e) => {
       const antiguidade = Math.min(diffMonths, 10)
 
       const indicacoesFator = Math.max(indicacoesCount, 1)
-      // NOVA REGRA (Tarefa 6): PONTOS = (PLANO) × (SERVIÇOS — contagem) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
       const monthlyPoints =
-        Math.round(effectiveMultiplier * servicosCount * indicacoesFator) + avaliacao + antiguidade
+        Math.round(effectiveMultiplier * effectiveServicesCount * indicacoesFator) +
+        avaliacao +
+        antiguidade
 
       let closedPastPoints = 0
       try {
@@ -245,7 +252,8 @@ onRecordAfterUpdateSuccess((e) => {
         role,
         plan: rawPlan,
         multiplier: effectiveMultiplier,
-        services_count: servicosCount,
+        services_count: effectiveServicesCount,
+        services_real_count: realServicesCount,
         services_tarifa_rs: servicesTarifaRS,
         referrals_count: totalIndicacoes,
         referrals_this_cycle: indicacoesCount,
@@ -289,6 +297,7 @@ onRecordAfterUpdateSuccess((e) => {
         monthly_points: s.monthly_points,
         closed_past_points: s.closed_past_points,
         services_count: s.services_count,
+        services_real_count: s.services_real_count,
         formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
       })
       $app.save(entry)

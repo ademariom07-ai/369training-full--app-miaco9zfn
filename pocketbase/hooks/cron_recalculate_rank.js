@@ -1,4 +1,4 @@
-// Cron job to recalculate ranking and execute monthly snapshot & cashback closure on the last day of the month
+// Cron job to recalculate ranking and execute monthly snapshot & cashback closure on the last day of the month (v2)
 cronAdd('recalculate_rank', '0 3 * * *', () => {
   const users = $app.findRecordsByFilter('users', 'approved = true', '-created', 1000, 0)
 
@@ -8,7 +8,6 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     .toISOString()
     .replace('T', ' ')
 
-  // Verificar se hoje é o último dia do mês
   const tomorrow = new Date(now)
   tomorrow.setDate(tomorrow.getDate() + 1)
   const isLastDayOfMonth = tomorrow.getDate() === 1
@@ -18,6 +17,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     basico: 1,
     pro: 2,
     premium: 3,
+    pro_parceiro: 2,
   }
 
   const planTarifas = {
@@ -25,29 +25,46 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     basico: 1.0,
     pro: 2.0,
     premium: 3.0,
+    pro_parceiro: 2.0,
   }
+
+  let proParceiroFloor = 10
+  try {
+    const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
+    if (floorRec) {
+      const v = floorRec.get('value')
+      if (typeof v === 'number') proParceiroFloor = v
+    }
+  } catch (_) {}
 
   const scores = []
 
   for (const u of users) {
     const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
     const role = u.get('role') || 'aluno'
+    const isProParceiro = rawPlan === 'pro_parceiro'
 
-    // Regra 3: Plano Grátis = multiplicador 0x → NÃO pontua e NÃO aparece no ranking
-    const multiplier = planMultipliers[rawPlan] ?? 0
-    if (multiplier === 0) {
-      continue
-    }
-
-    let effectiveMultiplier = multiplier
+    let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
     const linkedProfId = u.get('linked_professional')
-    const feeMode = u.get('linked_prof_fee_mode') || 'own_plan'
-    if (role === 'aluno' && linkedProfId && feeMode === 'prof_sponsored') {
+    if (role === 'aluno' && linkedProfId) {
       try {
         const profUser = $app.findRecordById('users', linkedProfId)
         const profPlan = (profUser.get('plan') || 'basico').toLowerCase()
         effectiveMultiplier = planMultipliers[profPlan] ?? 1
       } catch (_) {}
+    }
+
+    const subStatus = (u.get('subscription_status') || 'ativa').toLowerCase()
+    if (
+      (subStatus === 'inadimplente' || subStatus === 'cancelada') &&
+      !linkedProfId &&
+      role === 'aluno'
+    ) {
+      effectiveMultiplier = 0
+    }
+
+    if (effectiveMultiplier === 0 && !isProParceiro) {
+      continue
     }
 
     const serviceFilter =
@@ -63,7 +80,6 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       0,
     )
 
-    // SOMA EM R$ DAS TARIFAS DOS SERVIÇOS CONCLUÍDOS
     let servicesTarifaRS = 0
     for (const svc of servicesThisMonth) {
       let rate = planTarifas[rawPlan] ?? 1.0
@@ -98,7 +114,12 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       0,
     )
 
-    const servicosCount = servicesThisMonth.length
+    const realServicesCount = servicesThisMonth.length
+    let effectiveServicesCount = realServicesCount
+    if (isProParceiro) {
+      effectiveServicesCount = Math.max(realServicesCount, proParceiroFloor)
+    }
+
     const indicacoesCount = referralsThisMonth.length
     const totalIndicacoes = allReferrals.length
 
@@ -111,9 +132,10 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     const antiguidade = Math.min(diffMonths, 10)
 
     const indicacoesFator = Math.max(indicacoesCount, 1)
-    // NOVA REGRA (Tarefa 6): PONTOS = (PLANO) × (SERVIÇOS — contagem) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
     const monthlyPoints =
-      Math.round(effectiveMultiplier * servicosCount * indicacoesFator) + avaliacao + antiguidade
+      Math.round(effectiveMultiplier * effectiveServicesCount * indicacoesFator) +
+      avaliacao +
+      antiguidade
 
     let closedPastPoints = 0
     try {
@@ -136,7 +158,8 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       role,
       plan: rawPlan,
       multiplier: effectiveMultiplier,
-      services_count: servicosCount,
+      services_count: effectiveServicesCount,
+      services_real_count: realServicesCount,
       services_tarifa_rs: servicesTarifaRS,
       referrals_count: totalIndicacoes,
       referrals_this_cycle: indicacoesCount,
@@ -149,7 +172,6 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     })
   }
 
-  // Ordenação
   scores.sort((a, b) => {
     if (b.total_points !== a.total_points) {
       return b.total_points - a.total_points
@@ -160,7 +182,6 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     return new Date(a.created).getTime() - new Date(b.created).getTime()
   })
 
-  // Salvar rank_entries atual
   const rankCol = $app.findCollectionByNameOrId('rank_entries')
   for (let i = 0; i < scores.length; i++) {
     const s = scores[i]
@@ -186,12 +207,12 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       monthly_points: s.monthly_points,
       closed_past_points: s.closed_past_points,
       services_count: s.services_count,
+      services_real_count: s.services_real_count,
       formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
     })
     $app.save(entry)
   }
 
-  // SE HOJE FOR O ÚLTIMO DIA DO MÊS: Salvar snapshot mensal e fechar o ciclo
   if (isLastDayOfMonth) {
     try {
       const snapCol = $app.findCollectionByNameOrId('monthly_rank_snapshots')
@@ -227,6 +248,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
           monthly_points: s.monthly_points,
           total_cumulative_points: s.total_points,
           services_tarifa_rs: s.services_tarifa_rs,
+          services_real_count: s.services_real_count,
         })
         $app.save(snap)
       }

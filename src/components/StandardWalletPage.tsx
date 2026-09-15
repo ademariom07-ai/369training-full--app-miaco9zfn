@@ -98,9 +98,19 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
   const userPlan = (user?.plan || 'gratis').toLowerCase()
   const isGratis = userPlan === 'gratis'
 
-  // Multiplicador vigente
+  // Multiplicador vigente (com suporte a pro_parceiro e vínculo de aluno)
+  const isLinked = Boolean(user?.linked_professional)
+  const isProParceiro = userPlan === 'pro_parceiro'
   const planMultiplier =
-    userPlan === 'premium' ? 3.0 : userPlan === 'pro' ? 2.0 : userPlan === 'basico' ? 1.0 : 0.0
+    userPlan === 'premium'
+      ? 3.0
+      : userPlan === 'pro' || userPlan === 'pro_parceiro'
+        ? 2.0
+        : userPlan === 'basico'
+          ? 1.0
+          : isLinked
+            ? 1.0 // Aluno vinculado pontua no multiplicador do mentor (mínimo 1x)
+            : 0.0
 
   const loadAllWalletData = async () => {
     if (!user) return
@@ -148,7 +158,8 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
             txType === 'saque' ||
             txType === 'tarifa' ||
             txType === 'pagamento' ||
-            txType === 'servico'
+            txType === 'servico' ||
+            txType === 'mensalidade'
           ) {
             calcSaldo += amt // amount já pode vir negativo
           }
@@ -381,7 +392,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
   }
 
   // Evolução rápida de plano via hook do backend /backend/v1/plans/change
-  const handleUpgradePlan = async (targetPlan: 'basico' | 'pro' | 'premium') => {
+  const handleUpgradePlan = async (targetPlan: 'basico' | 'pro' | 'premium' | 'pro_parceiro') => {
     if (!user) return
     setUpgrading(true)
     try {

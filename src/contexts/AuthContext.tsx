@@ -3,7 +3,7 @@ import pb from '@/lib/pocketbase/client'
 import type { RecordModel } from 'pocketbase'
 
 export type UserRole = 'aluno' | 'profissional' | 'admin'
-export type PlanTier = 'gratis' | 'basico' | 'pro' | 'premium'
+export type PlanTier = 'gratis' | 'basico' | 'pro' | 'premium' | 'pro_parceiro'
 
 export interface UserProfile extends RecordModel {
   email: string
@@ -27,6 +27,10 @@ export interface UserProfile extends RecordModel {
   avatar?: string
   video_url?: string
   video_enabled?: boolean
+  linked_professional?: string
+  linked_prof_fee_mode?: 'own_plan' | 'prof_sponsored'
+  subscription_status?: 'ativa' | 'inadimplente' | 'cancelada'
+  subscription_expires_at?: string
 }
 
 interface AuthContextType {

@@ -133,17 +133,23 @@ export default function ProfissionalPerfil() {
             />
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`text-xs font-bold uppercase tracking-widest font-montserrat px-2.5 py-0.5 rounded-full border ${
-                    user?.plan === 'premium'
-                      ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
-                      : user?.plan === 'pro'
-                        ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
-                        : 'bg-gray-800 border-gray-700 text-gray-300'
-                  }`}
-                >
-                  Plano {user?.plan?.toUpperCase() || 'BASICO'}
-                </span>
+                {user?.plan === 'pro_parceiro' ? (
+                  <span className="text-xs font-black uppercase tracking-widest font-montserrat px-3 py-1 rounded-full bg-[#00C853]/20 border border-[#00C853] text-[#00C853] shadow-[0_0_12px_rgba(0,200,83,0.3)]">
+                    ★ Parceiro PRO
+                  </span>
+                ) : (
+                  <span
+                    className={`text-xs font-bold uppercase tracking-widest font-montserrat px-2.5 py-0.5 rounded-full border ${
+                      user?.plan === 'premium'
+                        ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
+                        : user?.plan === 'pro'
+                          ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
+                          : 'bg-gray-800 border-gray-700 text-gray-300'
+                    }`}
+                  >
+                    Plano {user?.plan?.toUpperCase() || 'BASICO'}
+                  </span>
+                )}
                 {/* SELO VERIFICADO 369 COM CONFEF 542/2024 (TAREFA 3) */}
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] text-xs font-bold font-montserrat uppercase">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#22C55E]" />

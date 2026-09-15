@@ -39,6 +39,8 @@ export function LegalDocViewer({ slugOverride }: LegalDocViewerProps) {
         return 'contrato-parceria-profissional'
       case 'regulamento-cashback':
         return 'regulamento-cashback'
+      case 'regulamento-planos-mensalidades':
+        return 'regulamento-planos-mensalidades'
       case 'politica-reembolso':
         return 'politica-reembolso'
       default:
@@ -328,6 +330,15 @@ export function LegalDocViewer({ slugOverride }: LegalDocViewerProps) {
                 Regulamento do Cashback
               </Button>
             </Link>
+            <Link to="/regulamento-planos-mensalidades">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] border-[#2A2A2A] text-gray-300 hover:text-white"
+              >
+                Planos & Mensalidades
+              </Button>
+            </Link>
             <Link to="/politica-de-privacidade">
               <Button
                 variant="outline"
@@ -369,6 +380,12 @@ export function LegalDocViewer({ slugOverride }: LegalDocViewerProps) {
             </Link>
             <Link to="/termos-de-uso" className="text-gray-400 hover:text-[#D4AF37]">
               Termos de Uso
+            </Link>
+            <Link
+              to="/regulamento-planos-mensalidades"
+              className="text-gray-400 hover:text-[#D4AF37]"
+            >
+              Planos & Mensalidades
             </Link>
           </div>
         </div>

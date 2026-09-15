@@ -511,17 +511,23 @@ export default function EncontrarProfissional() {
                             <h3 className="font-bold font-montserrat text-white text-base sm:text-lg group-hover/card:text-[#D4AF37] transition-colors">
                               {prof.name}
                             </h3>
-                            <span
-                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                                prof.plan === 'premium'
-                                  ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
-                                  : prof.plan === 'pro'
-                                    ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
-                                    : 'bg-gray-800 border-gray-600 text-gray-300'
-                              }`}
-                            >
-                              {prof.plan || 'PRO'}
-                            </span>
+                            {prof.plan === 'pro_parceiro' ? (
+                              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#00C853]/20 border border-[#00C853] text-[#00C853] shadow-[0_0_10px_rgba(0,200,83,0.3)]">
+                                ★ Parceiro PRO
+                              </span>
+                            ) : (
+                              <span
+                                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                                  prof.plan === 'premium'
+                                    ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#D4AF37]'
+                                    : prof.plan === 'pro'
+                                      ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF]'
+                                      : 'bg-gray-800 border-gray-600 text-gray-300'
+                                }`}
+                              >
+                                {prof.plan || 'PRO'}
+                              </span>
+                            )}
                             <ShieldCheck className="w-4 h-4 text-[#22C55E]" />
                           </div>
 
@@ -631,6 +637,11 @@ export default function EncontrarProfissional() {
                       <DialogTitle className="text-xl font-bold font-montserrat text-white">
                         {selectedProf.name}
                       </DialogTitle>
+                      {selectedProf.plan === 'pro_parceiro' && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-black font-montserrat uppercase px-2.5 py-0.5 rounded-full bg-[#00C853]/20 border border-[#00C853] text-[#00C853] shadow-md">
+                          ★ Parceiro PRO
+                        </span>
+                      )}
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold font-montserrat uppercase px-2 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E]">
                         <ShieldCheck className="w-3.5 h-3.5 text-[#22C55E]" />
                         Verificado 369

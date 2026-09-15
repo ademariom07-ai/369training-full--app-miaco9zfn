@@ -498,7 +498,7 @@ export default function Cadastro() {
                       name: 'GRÁTIS',
                       multiplier: '0x',
                       badge: 'Sem Ranking',
-                      desc: 'Acesso básico',
+                      desc: role === 'aluno' ? 'R$ 0 / mês' : 'Acesso básico',
                       forRole: 'aluno',
                     },
                     {
@@ -506,7 +506,7 @@ export default function Cadastro() {
                       name: 'BÁSICO',
                       multiplier: '1.0x',
                       badge: 'Pontuação 1x',
-                      desc: 'R$ 1,00/serviço',
+                      desc: role === 'aluno' ? 'R$ 10 / mês' : 'R$ 1,00/serviço',
                       forRole: 'all',
                     },
                     {
@@ -514,7 +514,7 @@ export default function Cadastro() {
                       name: 'PRO',
                       multiplier: '2.0x',
                       badge: 'Pontuação 2x',
-                      desc: 'R$ 2,00/serviço',
+                      desc: role === 'aluno' ? 'R$ 20 / mês' : 'R$ 2,00/serviço',
                       forRole: 'all',
                     },
                     {
@@ -522,12 +522,21 @@ export default function Cadastro() {
                       name: 'PREMIUM',
                       multiplier: '3.0x',
                       badge: 'Acelerador 3x',
-                      desc: 'R$ 3,00/serviço',
+                      desc: role === 'aluno' ? 'R$ 30 / mês' : 'R$ 3,00/serviço',
                       forRole: 'all',
+                    },
+                    {
+                      id: 'pro_parceiro' as const,
+                      name: 'PRO PARCEIRO',
+                      multiplier: '2.0x (Piso 10)',
+                      badge: 'Parceiro PRO',
+                      desc: 'R$ 49/mês + Radar 369',
+                      forRole: 'profissional',
                     },
                   ].map((p) => {
                     const isSelected = selectedPlan === p.id
                     if (role === 'profissional' && p.id === 'gratis') return null
+                    if (role === 'aluno' && p.id === 'pro_parceiro') return null
 
                     return (
                       <button
@@ -586,8 +595,8 @@ export default function Cadastro() {
                 {selectedPlan === 'gratis' && (
                   <p className="text-[11px] text-amber-300/90 font-inter bg-amber-950/20 p-2 rounded-lg border border-amber-500/20">
                     ℹ️ <strong>Plano Grátis (0x):</strong> O aluno tem acesso às funcionalidades
-                    essenciais, mas não pontua no ranking mensal e não gera cashback de rede até
-                    evoluir para um plano pago.
+                    essenciais. Caso se vincule a um profissional credenciado, passa a usufruir de
+                    isenção total e pontuação no plano do mentor!
                   </p>
                 )}
               </div>

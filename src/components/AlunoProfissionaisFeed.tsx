@@ -479,6 +479,11 @@ function VideoCardItem({
               <h3 className="font-bold font-montserrat text-base sm:text-lg text-white leading-tight reels-overlay-text">
                 {prof.name}
               </h3>
+              {prof.plan === 'pro_parceiro' && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#00C853]/25 border border-[#00C853] text-[#00C853] reels-overlay-text shadow-sm">
+                  ★ Parceiro PRO
+                </span>
+              )}
               {prof.hasVerifiedCred && (
                 <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#22C55E]/20 border border-[#22C55E]/50 text-[#4ade80] reels-overlay-text">
                   <ShieldCheck className="w-3 h-3 text-[#4ade80]" /> Verificado 369

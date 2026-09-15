@@ -89,6 +89,10 @@ export default function App() {
               element={<LegalDocViewer slugOverride="regulamento-cashback" />}
             />
             <Route
+              path="/regulamento-planos-mensalidades"
+              element={<LegalDocViewer slugOverride="regulamento-planos-mensalidades" />}
+            />
+            <Route
               path="/politica-reembolso"
               element={<LegalDocViewer slugOverride="politica-reembolso" />}
             />

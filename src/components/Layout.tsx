@@ -349,6 +349,12 @@ export default function Layout({ children }: LayoutProps) {
             <Link to="/regulamento-cashback" className="hover:text-[#B8962E] transition-colors">
               Regulamento Cashback
             </Link>
+            <Link
+              to="/regulamento-planos-mensalidades"
+              className="hover:text-[#B8962E] transition-colors"
+            >
+              Planos & Mensalidades
+            </Link>
             <span>•</span>
             <Link to="/politica-de-privacidade" className="hover:text-[#B8962E] transition-colors">
               Política de Privacidade

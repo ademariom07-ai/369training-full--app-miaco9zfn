@@ -1,9 +1,8 @@
-// Recalculate partner & student ranking on demand (Caminho C)
-// Formula: PONTOS = (PLANO) × (SERVIÇOS EM R$) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
-// - PLANO = multiplicador do plano: Grátis 0x / Básico 1x / Pro 2x / Premium 3x
-// - Aluno ou profissional no plano Grátis (multiplicador 0x) NÃO pontua e NÃO aparece no ranking
-// - SERVIÇOS (R$) = soma em R$ das tarifas dos serviços concluídos (Básico R$1, Pro R$2, Premium R$3)
-// - Snapshots mensais fechados são somados à pontuação do mês vigente
+// Recalculate partner & student ranking on demand (Caminho C - v2)
+// Formula: PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
+// - Aluno vinculado pontua no plano do profissional
+// - Aluno inadimplente sem vínculo sofre downgrade temporário para 0x
+// - PRO PARCEIRO: piso de contagem max(serviços reais, pro_parceiro_floor)
 routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
   const users = $app.findRecordsByFilter('users', 'approved = true', '-created', 1000, 0)
 
@@ -13,39 +12,42 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     .toISOString()
     .replace('T', ' ')
 
-  // Multiplicadores confirmados do Caminho C
   const planMultipliers = {
     gratis: 0,
     basico: 1,
     pro: 2,
     premium: 3,
+    pro_parceiro: 2,
   }
 
-  // Tarifas em R$ por plano
   const planTarifas = {
     gratis: 1.0,
     basico: 1.0,
     pro: 2.0,
     premium: 3.0,
+    pro_parceiro: 2.0,
   }
+
+  let proParceiroFloor = 10
+  try {
+    const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
+    if (floorRec) {
+      const v = floorRec.get('value')
+      if (typeof v === 'number') proParceiroFloor = v
+    }
+  } catch (_) {}
 
   const scores = []
 
   for (const u of users) {
     const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
     const role = u.get('role') || 'aluno'
+    const isProParceiro = rawPlan === 'pro_parceiro'
 
-    // Regra 3: Plano Grátis = multiplicador 0x → NÃO pontua e NÃO aparece no ranking
-    const multiplier = planMultipliers[rawPlan] ?? 0
-    if (multiplier === 0) {
-      continue
-    }
-
-    // Regra de vínculo com profissional para alunos:
-    let effectiveMultiplier = multiplier
+    let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
     const linkedProfId = u.get('linked_professional')
-    const feeMode = u.get('linked_prof_fee_mode') || 'own_plan'
-    if (role === 'aluno' && linkedProfId && feeMode === 'prof_sponsored') {
+
+    if (role === 'aluno' && linkedProfId) {
       try {
         const profUser = $app.findRecordById('users', linkedProfId)
         const profPlan = (profUser.get('plan') || 'basico').toLowerCase()
@@ -53,7 +55,20 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       } catch (_) {}
     }
 
-    // Serviços validados no mês corrente
+    // Regra de inadimplência
+    const subStatus = (u.get('subscription_status') || 'ativa').toLowerCase()
+    if (
+      (subStatus === 'inadimplente' || subStatus === 'cancelada') &&
+      !linkedProfId &&
+      role === 'aluno'
+    ) {
+      effectiveMultiplier = 0
+    }
+
+    if (effectiveMultiplier === 0 && !isProParceiro) {
+      continue
+    }
+
     const serviceFilter =
       role === 'profissional'
         ? `professional = '${u.id}' && status = 'concluido' && created >= '${currentMonthStart}'`
@@ -67,11 +82,8 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       0,
     )
 
-    // SOMA EM R$ DAS TARIFAS DOS SERVIÇOS CONCLUÍDOS
-    // Tarifa do plano do usuário: Básico R$1, Pro R$2, Premium R$3
     let servicesTarifaRS = 0
     for (const svc of servicesThisMonth) {
-      // Se houver transação registrada na carteira para o serviço, busca o valor absoluto da tarifa
       let rate = planTarifas[rawPlan] ?? 1.0
       try {
         const txs = $app.findRecordsByFilter(
@@ -88,7 +100,6 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       servicesTarifaRS += rate
     }
 
-    // Indicações validadas no mês corrente (status = 'validated' ou created no mês)
     const referralsThisMonth = $app.findRecordsByFilter(
       'referrals',
       `referrer = '${u.id}' && created >= '${currentMonthStart}'`,
@@ -97,7 +108,6 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       0,
     )
 
-    // Total de indicações históricas
     const allReferrals = $app.findRecordsByFilter(
       'referrals',
       `referrer = '${u.id}'`,
@@ -106,14 +116,17 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       0,
     )
 
-    const servicosCount = servicesThisMonth.length
+    const realServicesCount = servicesThisMonth.length
+    let effectiveServicesCount = realServicesCount
+    if (isProParceiro) {
+      effectiveServicesCount = Math.max(realServicesCount, proParceiroFloor)
+    }
+
     const indicacoesCount = referralsThisMonth.length
     const totalIndicacoes = allReferrals.length
 
-    // Avaliação (ex: 1 a 5)
     const avaliacao = Math.round(Number(u.get('rating_avg') || 5))
 
-    // Antiguidade (ex: meses na plataforma, min 1)
     const createdDate = u.get('created') ? new Date(u.get('created')) : new Date()
     const diffMonths = Math.max(
       1,
@@ -121,13 +134,12 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     )
     const antiguidade = Math.min(diffMonths, 10)
 
-    // Fórmula NOVA (Tarefa 6): PONTOS = PLANO × SERVIÇOS (contagem) × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE
-    // Observação: se indicações no mês for 0, usa base 1 para não anular a multiplicação
     const indicacoesFator = Math.max(indicacoesCount, 1)
     const monthlyPoints =
-      Math.round(effectiveMultiplier * servicosCount * indicacoesFator) + avaliacao + antiguidade
+      Math.round(effectiveMultiplier * effectiveServicesCount * indicacoesFator) +
+      avaliacao +
+      antiguidade
 
-    // Snapshots anteriores
     let closedPastPoints = 0
     try {
       const pastSnapshots = $app.findRecordsByFilter(
@@ -149,7 +161,8 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       role,
       plan: rawPlan,
       multiplier: effectiveMultiplier,
-      services_count: servicosCount,
+      services_count: effectiveServicesCount,
+      services_real_count: realServicesCount,
       services_tarifa_rs: servicesTarifaRS,
       referrals_count: totalIndicacoes,
       referrals_this_cycle: indicacoesCount,
@@ -162,7 +175,6 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     })
   }
 
-  // Ordenação do Ranking: 1º Pontos Totais, 2º Avaliação, 3º Antiguidade
   scores.sort((a, b) => {
     if (b.total_points !== a.total_points) {
       return b.total_points - a.total_points
@@ -173,7 +185,6 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     return new Date(a.created).getTime() - new Date(b.created).getTime()
   })
 
-  // Salvar na coleção rank_entries
   const rankCol = $app.findCollectionByNameOrId('rank_entries')
 
   for (let i = 0; i < scores.length; i++) {
@@ -200,6 +211,7 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
       monthly_points: s.monthly_points,
       closed_past_points: s.closed_past_points,
       services_count: s.services_count,
+      services_real_count: s.services_real_count,
       formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
     })
     $app.save(entry)
@@ -210,6 +222,6 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     total_ranked: scores.length,
     cycle,
     message:
-      'Ranking recalculado com sucesso conforme fórmula confirmada (PLANO × SERVIÇOS × INDICAÇÕES + AVALIAÇÃO + ANTIGUIDADE).',
+      'Ranking recalculado com sucesso conforme fórmula confirmada e suporte a PRO PARCEIRO.',
   })
 })

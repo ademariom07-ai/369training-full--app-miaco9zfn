@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-15T00:02:41.890Z",
+  "generatedAt": "2026-09-15T00:22:49.394Z",
   "collections": [
     {
       "name": "users",
@@ -240,6 +240,19 @@
         {
           "name": "cpf",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "subscription_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["ativa", "inadimplente", "cancelada"]
+        },
+        {
+          "name": "subscription_expires_at",
+          "type": "date",
           "required": false,
           "system": false
         }
@@ -2794,6 +2807,64 @@
         "CREATE INDEX idx_access_logs_created ON access_logs (created DESC)",
         "CREATE INDEX idx_access_logs_path ON access_logs (path)"
       ]
+    },
+    {
+      "name": "radar_briefings",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "specialty",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cycle",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "items",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "published_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_mock",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_radar_specialty_cycle ON radar_briefings (specialty, cycle)"]
     }
   ]
 }
