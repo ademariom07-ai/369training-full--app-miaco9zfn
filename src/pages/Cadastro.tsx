@@ -45,10 +45,10 @@ export default function Cadastro() {
   const [city, setCity] = useState('São Paulo')
   const [state, setState] = useState('SP')
 
-  // Selected Plan: Grátis (0x), Básico (1x), Pro (2x), Premium (3x)
-  const [selectedPlan, setSelectedPlan] = useState<'gratis' | 'basico' | 'pro' | 'premium'>(
-    initialRole === 'profissional' ? 'basico' : 'gratis',
-  )
+  // Selected Plan: Grátis (0x), Básico (1x), Pro (2x), Premium (3x), PRO Parceiro
+  const [selectedPlan, setSelectedPlan] = useState<
+    'gratis' | 'basico' | 'pro' | 'premium' | 'pro_parceiro'
+  >(initialRole === 'profissional' ? 'basico' : 'gratis')
 
   // Aluno specific
   const [objective, setObjective] = useState('Hipertrofia')

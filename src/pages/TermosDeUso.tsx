@@ -256,9 +256,14 @@ export default function TermosDeUso() {
                 validação do comprovante.
               </li>
               <li>
-                <strong className="text-white">Cashback e Pool 38%:</strong> Os créditos de cashback
-                gerados por serviços concluídos são distribuídos conforme as regras matemáticas da
-                árvore binária e possuem validade promocional para consumo na rede.
+                <strong className="text-white">Cashback e Pool 38%:</strong> O Pool Global de 38% é
+                alimentado de forma colaborativa por: (i) mensalidades fixas de alunos não
+                vinculados a profissionais (R$ 10, R$ 20 e R$ 30); (ii) percentual regulamentar da
+                mensalidade do plano PRO PARCEIRO (38%); e (iii) tarifas operacionais dos serviços
+                concluídos no ecossistema (R$ 1,00 a R$ 3,00). Os créditos de cashback gerados são
+                distribuídos conforme as regras matemáticas da árvore binária e possuem validade
+                promocional para consumo ou resgate na rede, condicionados a lastro financeiro real
+                apurado a cada ciclo.
               </li>
               <li>
                 <strong className="text-white">Saques:</strong> Profissionais habilitados podem

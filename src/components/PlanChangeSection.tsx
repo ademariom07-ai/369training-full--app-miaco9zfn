@@ -351,7 +351,7 @@ export function PlanChangeSection() {
               displayPrice =
                 billingPeriod === 'annual'
                   ? plan.anualAluno || plan.tarifa
-                  : plan.mensalAluno || plan.tarifa
+                  : plan.mensalidadeAluno || plan.tarifa
               periodLabel = billingPeriod === 'annual' ? '' : ''
             }
           } else if (plan.isProParceiro) {
@@ -549,7 +549,7 @@ export function PlanChangeSection() {
                       : isAluno
                         ? billingPeriod === 'annual'
                           ? selectedPlanToChange.anualAluno
-                          : selectedPlanToChange.mensalAluno
+                          : selectedPlanToChange.mensalidadeAluno
                         : selectedPlanToChange.isProParceiro
                           ? billingPeriod === 'annual'
                             ? 'R$ 490,00'
