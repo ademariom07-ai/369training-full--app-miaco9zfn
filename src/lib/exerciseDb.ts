@@ -31,7 +31,8 @@ const KNOWN_EXERCISE_GIFS: Record<string, string> = {
   abdominal: 'https://img.usecurling.com/p/320/240?q=crunches%20abs%20gym',
 }
 
-export async function fetchExerciseGif(exerciseName: string): Promise<string | null> {
+export async function fetchExerciseGif(exerciseName?: string | null): Promise<string | null> {
+  if (!exerciseName || typeof exerciseName !== 'string') return null
   const cleanName = exerciseName.trim().toLowerCase()
   if (!cleanName) return null
 

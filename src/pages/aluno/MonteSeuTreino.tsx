@@ -100,6 +100,7 @@ export default function MonteSeuTreino() {
     const loadGifs = async () => {
       const gifs: Record<string, string> = {}
       for (const ex of currentWorkout.exercises || []) {
+        if (!ex?.name || typeof ex.name !== 'string') continue
         const url = await fetchExerciseGif(ex.name)
         if (url) {
           gifs[ex.name] = url
@@ -443,14 +444,14 @@ export default function MonteSeuTreino() {
           {/* Exercise List */}
           <div className="grid grid-cols-1 gap-4">
             {currentWorkout.exercises?.map((exercise, idx) => {
-              const gifUrl = exerciseGifs[exercise.name]
-              const hasVideoLink = !!exercise.video
+              const gifUrl = exercise?.name ? exerciseGifs[exercise.name] : undefined
+              const hasVideoLink = !!exercise?.video
 
               return (
                 <Card
-                  key={exercise.id || idx}
+                  key={exercise?.id || idx}
                   className={`p-5 rounded-xl border transition-all ${
-                    exercise.completed
+                    exercise?.completed
                       ? 'bg-[#121212]/70 border-[#22C55E]/40 opacity-85'
                       : 'bg-[#181818] border-[#2A2A2A] hover:border-[#D4AF37]/60'
                   }`}
@@ -463,7 +464,7 @@ export default function MonteSeuTreino() {
                           gifUrl ? (
                             <img
                               src={gifUrl}
-                              alt={exercise.name}
+                              alt={exercise?.name || 'Exercício'}
                               className="w-full h-full object-cover rounded-xl"
                               loading="lazy"
                             />
@@ -492,12 +493,12 @@ export default function MonteSeuTreino() {
                           </span>
                           <h4
                             className={`font-bold font-montserrat text-base ${
-                              exercise.completed ? 'line-through text-gray-400' : 'text-white'
+                              exercise?.completed ? 'line-through text-gray-400' : 'text-white'
                             }`}
                           >
-                            {exercise.name}
+                            {exercise?.name || 'Exercício'}
                           </h4>
-                          {exercise.muscle_group && (
+                          {exercise?.muscle_group && (
                             <span className="text-[10px] px-2 py-0.5 rounded bg-[#141414] border border-[#2A2A2A] text-gray-400 uppercase">
                               {exercise.muscle_group}
                             </span>
@@ -507,20 +508,20 @@ export default function MonteSeuTreino() {
                         {/* Series, Reps, Carga, Descanso Chips */}
                         <div className="flex flex-wrap gap-2">
                           <span className="text-[11px] px-2.5 py-1 rounded-md bg-[#141414] border border-[#2A2A2A] text-gray-300 font-mono">
-                            <strong>Séries:</strong> {exercise.sets}
+                            <strong>Séries:</strong> {exercise?.sets}
                           </span>
                           <span className="text-[11px] px-2.5 py-1 rounded-md bg-[#141414] border border-[#2A2A2A] text-gray-300 font-mono">
-                            <strong>Reps:</strong> {exercise.reps}
+                            <strong>Reps:</strong> {exercise?.reps}
                           </span>
                           <span className="text-[11px] px-2.5 py-1 rounded-md bg-[#141414] border border-[#2A2A2A] text-[#D4AF37] font-mono">
-                            <strong>Carga:</strong> {exercise.load}
+                            <strong>Carga:</strong> {exercise?.load}
                           </span>
                           <span className="text-[11px] px-2.5 py-1 rounded-md bg-[#141414] border border-[#2A2A2A] text-gray-400 font-mono">
-                            <strong>Descanso:</strong> {exercise.rest}
+                            <strong>Descanso:</strong> {exercise?.rest}
                           </span>
                         </div>
 
-                        {exercise.tips && (
+                        {exercise?.tips && (
                           <p className="text-xs text-gray-400 font-inter italic">
                             💡 {exercise.tips}
                           </p>
@@ -547,15 +548,15 @@ export default function MonteSeuTreino() {
                     <div className="flex flex-row md:flex-col items-center gap-2 w-full md:w-auto">
                       <Button
                         onClick={() => handleOpenExerciseFeedback(idx)}
-                        variant={exercise.completed ? 'outline' : 'default'}
+                        variant={exercise?.completed ? 'outline' : 'default'}
                         className={`w-full md:w-auto font-bold text-xs uppercase px-5 py-2.5 rounded-xl transition-all shadow-md ${
-                          exercise.completed
+                          exercise?.completed
                             ? 'border-[#22C55E] text-[#22C55E] hover:bg-[#22C55E]/10'
                             : 'bg-[#D4AF37] text-black hover:bg-[#E6C65C]'
                         }`}
                       >
                         <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                        {exercise.completed ? 'Concluído ✓' : 'Concluir com IA'}
+                        {exercise?.completed ? 'Concluído ✓' : 'Concluir com IA'}
                       </Button>
                     </div>
                   </div>
