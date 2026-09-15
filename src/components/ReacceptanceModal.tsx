@@ -26,61 +26,90 @@ export function ReacceptanceModal() {
   useEffect(() => {
     if (!user) return
 
-    async function checkPendingAcceptances() {
-      try {
-        // 1. Obter todos os documentos publicados relevantes para o papel do usuário
-        const targetAudience = user.role === 'profissional' ? 'profissional' : 'aluno'
-        const filter = `status = 'publicado' && (audience = 'todos' || audience = '${targetAudience}')`
-        const publishedDocs = await pb
-          .collection('legal_documents')
-          .getFullList<LegalDocumentRecord>({ filter })
+    const run = async () => {
+      await checkPendingAcceptances()
+    }
+    run()
+  }, [user])
 
-        if (publishedDocs.length === 0) return
+  const checkPendingAcceptances = async () => {
+    if (!user) return
+    try {
+      // 1. Obter todos os documentos publicados relevantes para o papel do usuário
+      const targetAudience = user.role === 'profissional' ? 'profissional' : 'aluno'
+      const filter = `status = 'publicado' && (audience = 'todos' || audience = '${targetAudience}')`
+      const publishedDocs = await pb
+        .collection('legal_documents')
+        .getFullList<LegalDocumentRecord>({ filter })
 
-        // 2. Buscar os aceites registrados para este usuário
-        const userAcceptances = await pb
-          .collection('legal_acceptances')
-          .getFullList<LegalAcceptanceRecord>({
-            filter: `user = '${user.id}'`,
-          })
+      if (publishedDocs.length === 0) {
+        setPendingDocs([])
+        setIsOpen(false)
+        return
+      }
 
-        // Mapear aceites por documentId ou slug para a versão aceita
-        const acceptedMap = new Map<string, number>()
-        userAcceptances.forEach((acc) => {
-          const key = acc.document || acc.document_slug
-          const currentMax = acceptedMap.get(key) || 0
-          if (acc.version > currentMax) {
-            acceptedMap.set(key, acc.version)
-          }
-          if (acc.document_slug) {
-            const currentSlugMax = acceptedMap.get(acc.document_slug) || 0
-            if (acc.version > currentSlugMax) {
-              acceptedMap.set(acc.document_slug, acc.version)
-            }
-          }
+      // 2. Buscar os aceites registrados para este usuário
+      const userAcceptances = await pb
+        .collection('legal_acceptances')
+        .getFullList<LegalAcceptanceRecord>({
+          filter: `user = '${user.id}'`,
         })
 
-        // 3. Documentos que o usuário ainda não aceitou nesta versão
-        const unaccepted: LegalDocumentRecord[] = []
-        for (const doc of publishedDocs) {
-          const acceptedVer = acceptedMap.get(doc.id) ?? acceptedMap.get(doc.slug) ?? 0
-          if (acceptedVer < doc.version) {
-            unaccepted.push(doc)
+      // Mapear aceites por slug e por id para o conjunto de versões já aceitas
+      // Reconciliação canônica: aceites de 'consentimento-dados-sensiveis-saude' também contam para 'lgpd-consentimentos'
+      const acceptedVersionsBySlug = new Map<string, Set<number>>()
+      const acceptedVersionsById = new Map<string, Set<number>>()
+
+      const addAccepted = (slugOrId: string, ver: number, isId = false) => {
+        if (!slugOrId) return
+        const map = isId ? acceptedVersionsById : acceptedVersionsBySlug
+        if (!map.has(slugOrId)) {
+          map.set(slugOrId, new Set<number>())
+        }
+        map.get(slugOrId)!.add(Number(ver))
+      }
+
+      userAcceptances.forEach((acc) => {
+        const ver = Number(acc.version) || 1
+        if (acc.document) addAccepted(acc.document, ver, true)
+        if (acc.document_slug) {
+          addAccepted(acc.document_slug, ver, false)
+          // Reconciliar o slug alternativo de dados sensíveis
+          if (acc.document_slug === 'consentimento-dados-sensiveis-saude') {
+            addAccepted('lgpd-consentimentos', ver, false)
+          } else if (acc.document_slug === 'lgpd-consentimentos') {
+            addAccepted('consentimento-dados-sensiveis-saude', ver, false)
           }
         }
+      })
 
-        if (unaccepted.length > 0) {
-          setPendingDocs(unaccepted)
-          setCurrentIndex(0)
-          setIsOpen(true)
+      // 3. Documentos que o usuário ainda não aceitou na VERSÃO atual (slug + versão)
+      const unaccepted: LegalDocumentRecord[] = []
+      for (const doc of publishedDocs) {
+        const targetVer = Number(doc.version) || 1
+        const slugVersions = acceptedVersionsBySlug.get(doc.slug)
+        const idVersions = acceptedVersionsById.get(doc.id)
+
+        const hasAcceptedCurrentVersion =
+          (slugVersions && slugVersions.has(targetVer)) || (idVersions && idVersions.has(targetVer))
+
+        if (!hasAcceptedCurrentVersion) {
+          unaccepted.push(doc)
         }
-      } catch (err) {
-        console.warn('Erro ao verificar documentos legais pendentes:', err)
       }
-    }
 
-    checkPendingAcceptances()
-  }, [user])
+      if (unaccepted.length > 0) {
+        setPendingDocs(unaccepted)
+        setCurrentIndex(0)
+        setIsOpen(true)
+      } else {
+        setPendingDocs([])
+        setIsOpen(false)
+      }
+    } catch (err) {
+      console.warn('Erro ao verificar documentos legais pendentes:', err)
+    }
+  }
 
   if (!isOpen || pendingDocs.length === 0) return null
 
@@ -115,8 +144,8 @@ export function ReacceptanceModal() {
         setCurrentIndex((prev) => prev + 1)
         setAcceptedCheck(false)
       } else {
-        setIsOpen(false)
-        setPendingDocs([])
+        // Revalidar imediatamente a checagem na mesma sessão sem exigir novo login
+        await checkPendingAcceptances()
       }
     } catch (err: any) {
       console.error('Erro ao gravar aceite legal:', err)

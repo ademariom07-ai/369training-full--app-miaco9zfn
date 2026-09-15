@@ -258,84 +258,34 @@ export default function Cadastro() {
 
       const createdUser = await pb.collection('users').create(payload)
 
-      // Registrar aceites legais na coleção legal_acceptances
+      // Registrar aceites legais na coleção legal_acceptances para TODOS os documentos aplicáveis ao papel
       const nowIso = new Date().toISOString().replace('T', ' ').slice(0, 19)
       const userAgent = navigator.userAgent || 'web-browser'
       const clientIp = 'client-registration'
 
       try {
-        // 1. Termos de Uso do Aluno OU Contrato de Parceria Profissional
-        const primaryDocSlug =
-          role === 'profissional' ? 'contrato-parceria-profissional' : 'termos-aluno'
-        let primaryDoc: any = null
-        try {
-          primaryDoc = await pb
-            .collection('legal_documents')
-            .getFirstListItem(`slug = '${primaryDocSlug}'`)
-        } catch {
-          /* intentionally ignored */
-        }
+        const targetAudience = role === 'profissional' ? 'profissional' : 'aluno'
+        const filter = `status = 'publicado' && (audience = 'todos' || audience = '${targetAudience}')`
+        const applicableDocs = await pb.collection('legal_documents').getFullList({ filter })
 
-        if (primaryDoc) {
-          await pb.collection('legal_acceptances').create({
-            user: createdUser.id,
-            document: primaryDoc.id,
-            document_slug: primaryDoc.slug,
-            version: primaryDoc.version || 1,
-            accepted_at: nowIso,
-            ip: clientIp,
-            user_agent: userAgent,
-            consent_type: primaryDocSlug,
-          })
-        }
-
-        // 2. Política de Privacidade
-        let privDoc: any = null
-        try {
-          privDoc = await pb
-            .collection('legal_documents')
-            .getFirstListItem("slug = 'politica-privacidade'")
-        } catch {
-          /* intentionally ignored */
-        }
-
-        if (privDoc) {
-          await pb.collection('legal_acceptances').create({
-            user: createdUser.id,
-            document: privDoc.id,
-            document_slug: privDoc.slug,
-            version: privDoc.version || 1,
-            accepted_at: nowIso,
-            ip: clientIp,
-            user_agent: userAgent,
-            consent_type: 'politica-privacidade',
-          })
-        }
-
-        // 3. Consentimento Específico para Dados Sensíveis de Saúde (Art. 11 LGPD)
-        let sensDoc: any = null
-        try {
-          sensDoc = await pb
-            .collection('legal_documents')
-            .getFirstListItem("slug = 'lgpd-consentimentos'")
-        } catch {
-          /* intentionally ignored */
-        }
-
-        if (sensDoc) {
-          await pb.collection('legal_acceptances').create({
-            user: createdUser.id,
-            document: sensDoc.id,
-            document_slug: sensDoc.slug,
-            version: sensDoc.version || 1,
-            accepted_at: nowIso,
-            ip: clientIp,
-            user_agent: userAgent,
-            consent_type: 'dados_sensiveis_saude_art11',
-          })
+        for (const doc of applicableDocs) {
+          try {
+            await pb.collection('legal_acceptances').create({
+              user: createdUser.id,
+              document: doc.id,
+              document_slug: doc.slug,
+              version: doc.version || 1,
+              accepted_at: nowIso,
+              ip: clientIp,
+              user_agent: userAgent,
+              consent_type: doc.slug,
+            })
+          } catch (itemErr) {
+            console.warn(`Erro ao registrar aceite de ${doc.slug}:`, itemErr)
+          }
         }
       } catch (errAccept) {
-        console.warn('Registro secundário de aceite legal gravado localmente:', errAccept)
+        console.warn('Registro de aceites legais pós-cadastro:', errAccept)
       }
 
       // Se for profissional, registrar a verificação de credencial na coleção credential_verifications
@@ -506,7 +456,7 @@ export default function Cadastro() {
                       name: 'BÁSICO',
                       multiplier: '1.0x',
                       badge: 'Pontuação 1x',
-                      desc: role === 'aluno' ? 'R$ 10 / mês' : 'R$ 1,00/serviço',
+                      desc: role === 'aluno' ? 'R$ 10 / mês' : 'Tarifa R$ 1,00/serviço',
                       forRole: 'all',
                     },
                     {
@@ -514,7 +464,7 @@ export default function Cadastro() {
                       name: 'PRO',
                       multiplier: '2.0x',
                       badge: 'Pontuação 2x',
-                      desc: role === 'aluno' ? 'R$ 20 / mês' : 'R$ 2,00/serviço',
+                      desc: role === 'aluno' ? 'R$ 20 / mês' : 'Tarifa R$ 2,00/serviço',
                       forRole: 'all',
                     },
                     {
@@ -522,15 +472,15 @@ export default function Cadastro() {
                       name: 'PREMIUM',
                       multiplier: '3.0x',
                       badge: 'Acelerador 3x',
-                      desc: role === 'aluno' ? 'R$ 30 / mês' : 'R$ 3,00/serviço',
+                      desc: role === 'aluno' ? 'R$ 30 / mês' : 'Tarifa R$ 3,00/serviço',
                       forRole: 'all',
                     },
                     {
                       id: 'pro_parceiro' as const,
                       name: 'PRO PARCEIRO',
-                      multiplier: '2.0x (Piso 10)',
+                      multiplier: '1.0x (Piso 150)',
                       badge: 'Parceiro PRO',
-                      desc: 'R$ 49/mês + Radar 369',
+                      desc: 'R$ 149/mês + Radar 369',
                       forRole: 'profissional',
                     },
                   ].map((p) => {

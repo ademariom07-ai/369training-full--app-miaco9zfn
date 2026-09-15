@@ -77,9 +77,9 @@ export const ALL_PLANS: PlanConfig[] = [
     description: 'Ideal para quem busca pontuar com multiplicador 1.0x na rede.',
     benefits: [
       'Multiplicador 1.0x no ranking mensal 369',
-      'Mensalidade fixa de R$ 10 (ou 10× no anual por R$ 100)',
-      'Isenção total enquanto vinculado a um profissional credenciado',
-      'Tarifa de R$ 1,00 por atendimento (paga pelo profissional)',
+      'Sem mensalidade fixa para profissionais (R$ 1,00 por atendimento concluído)',
+      'Aluno: R$ 10/mês (ou R$ 100 anual 10x) — Isento se vinculado a profissional',
+      'Tarifa operacional de R$ 1,00 por serviço concluído',
       'Participação na distribuição equalizada de cashback',
     ],
     color: 'text-gray-300',
@@ -98,9 +98,9 @@ export const ALL_PLANS: PlanConfig[] = [
     description: 'Multiplicador 2.0x e recursos avançados para acelerar seus resultados.',
     benefits: [
       'Multiplicador 2.0x no ranking mensal (2x mais rápido)',
-      'Mensalidade fixa de R$ 20 (ou 10× no anual por R$ 200)',
-      'Isenção total enquanto vinculado a um profissional',
-      'Tarifa de R$ 2,00 por atendimento concluído (debitada do profissional)',
+      'Sem mensalidade fixa para profissionais (R$ 2,00 por atendimento concluído)',
+      'Aluno: R$ 20/mês (ou R$ 200 anual 10x) — Isento se vinculado a profissional',
+      'Tarifa operacional de R$ 2,00 por atendimento concluído',
       'Participação integral no pool de cashback de 38%',
     ],
     recommended: true,
@@ -120,9 +120,9 @@ export const ALL_PLANS: PlanConfig[] = [
     description: 'O nível máximo de visibilidade: multiplicador 3.0x e IA ilimitada.',
     benefits: [
       'Multiplicador 3.0x no ranking (aceleração máxima 3x)',
-      'Mensalidade fixa de R$ 30 (ou 10× no anual por R$ 300)',
-      'Isenção total enquanto vinculado a um profissional',
-      'Tarifa de R$ 3,00 por atendimento concluído (paga pelo profissional)',
+      'Sem mensalidade fixa para profissionais (R$ 3,00 por atendimento concluído)',
+      'Aluno: R$ 30/mês (ou R$ 300 anual 10x) — Isento se vinculado a profissional',
+      'Tarifa operacional de R$ 3,00 por atendimento concluído',
       'Acesso ILIMITADO a todos os recursos e IA Experts 369',
     ],
     color: 'text-[#D4AF37]',
@@ -256,35 +256,65 @@ export function PlanChangeSection() {
           </p>
         </div>
 
-        {/* Toggle Período Mensal / Anual (10x) */}
+        {/* Toggle Período Mensal / Anual (10x) — visível para alunos ou quando PRO PARCEIRO for relevante */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-[#101010] p-1 rounded-xl border border-[#2A2A2A]">
-            <button
-              type="button"
-              onClick={() => setBillingPeriod('monthly')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-montserrat font-bold transition-all ${
-                billingPeriod === 'monthly'
-                  ? 'bg-[#D4AF37] text-black shadow'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Mensal
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillingPeriod('annual')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-montserrat font-bold flex items-center gap-1 transition-all ${
-                billingPeriod === 'annual'
-                  ? 'bg-[#D4AF37] text-black shadow'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Anual (10×)
-              <span className="bg-emerald-500 text-black text-[9px] px-1.5 py-0.2 rounded-full font-black">
-                2 MESES OFF
-              </span>
-            </button>
-          </div>
+          {isAluno ? (
+            <div className="flex items-center bg-[#101010] p-1 rounded-xl border border-[#2A2A2A]">
+              <button
+                type="button"
+                onClick={() => setBillingPeriod('monthly')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-montserrat font-bold transition-all ${
+                  billingPeriod === 'monthly'
+                    ? 'bg-[#D4AF37] text-black shadow'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Mensal
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingPeriod('annual')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-montserrat font-bold flex items-center gap-1 transition-all ${
+                  billingPeriod === 'annual'
+                    ? 'bg-[#D4AF37] text-black shadow'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Anual (10×)
+                <span className="bg-emerald-500 text-black text-[9px] px-1.5 py-0.2 rounded-full font-black">
+                  2 MESES OFF
+                </span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-400 font-inter">Período PRO PARCEIRO:</span>
+              <div className="flex items-center bg-[#101010] p-1 rounded-xl border border-[#2A2A2A]">
+                <button
+                  type="button"
+                  onClick={() => setBillingPeriod('monthly')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-montserrat font-bold transition-all ${
+                    billingPeriod === 'monthly'
+                      ? 'bg-[#00C853] text-black shadow'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Mensal (R$ 149)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingPeriod('annual')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-montserrat font-bold transition-all ${
+                    billingPeriod === 'annual'
+                      ? 'bg-[#00C853] text-black shadow'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Anual (R$ 1.490)
+                </button>
+              </div>
+            </div>
+          )}
 
           {!isAluno && (
             <div>
@@ -358,6 +388,11 @@ export function PlanChangeSection() {
             }
           } else if (plan.isProParceiro) {
             displayPrice = billingPeriod === 'annual' ? 'R$ 1.490 / ano' : 'R$ 149 / mês'
+            periodLabel = 'Tarifa R$ 2,00/serviço + Mensalidade'
+          } else {
+            // Planos do profissional (Básico R$ 1, Pro R$ 2, Premium R$ 3) SEM MENSALIDADE FIXA
+            displayPrice = `Tarifa R$ ${plan.tarifaValor.toFixed(2).replace('.', ',')} / serviço`
+            periodLabel = 'Sem mensalidade fixa'
           }
 
           return (
@@ -554,9 +589,9 @@ export function PlanChangeSection() {
                           : selectedPlanToChange.mensalidadeAluno
                         : selectedPlanToChange.isProParceiro
                           ? billingPeriod === 'annual'
-                            ? 'R$ 490,00'
-                            : 'R$ 49,00'
-                          : selectedPlanToChange.tarifa}
+                            ? 'R$ 1.490,00'
+                            : 'R$ 149,00'
+                          : `R$ 0,00 (Sem mensalidade fixa — Tarifa R$ ${selectedPlanToChange.tarifaValor.toFixed(2).replace('.', ',')} por serviço)`}
                   </span>
                 </div>
               </div>

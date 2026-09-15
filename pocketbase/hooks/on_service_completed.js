@@ -109,7 +109,7 @@ onRecordAfterUpdateSuccess((e) => {
       basico: 1,
       pro: 2,
       premium: 3,
-      pro_parceiro: 2,
+      pro_parceiro: 1,
     }
 
     const planTarifas = {
@@ -120,12 +120,13 @@ onRecordAfterUpdateSuccess((e) => {
       pro_parceiro: 2.0,
     }
 
-    let proParceiroFloor = 10
+    let proParceiroFloor = 150
     try {
       const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
       if (floorRec) {
         const v = floorRec.get('value')
         if (typeof v === 'number') proParceiroFloor = v
+        else if (typeof v === 'string' && !isNaN(Number(v))) proParceiroFloor = Number(v)
       }
     } catch (_) {}
 
