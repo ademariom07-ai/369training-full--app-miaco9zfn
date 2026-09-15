@@ -561,20 +561,20 @@ export function PlanChangeSection() {
                   <span className="text-gray-400 font-montserrat uppercase">Novo Plano:</span>
                   <span
                     className={`font-black uppercase text-sm ${
-                      selectedPlanToChange.isProParceiro
+                      selectedPlanToChange?.isProParceiro
                         ? 'text-[#00C853]'
-                        : selectedPlanToChange.id === 'premium'
+                        : selectedPlanToChange?.id === 'premium'
                           ? 'text-[#D4AF37]'
-                          : selectedPlanToChange.id === 'pro'
+                          : selectedPlanToChange?.id === 'pro'
                             ? 'text-[#0057FF]'
                             : 'text-white'
                     }`}
                   >
-                    {selectedPlanToChange.name}
+                    {selectedPlanToChange?.name}
                   </span>
                 </div>
                 {/* Ciclo Selecionado: apenas para Aluno ou para PRO PARCEIRO */}
-                {(isAluno || selectedPlanToChange.isProParceiro) && (
+                {(isAluno || Boolean(selectedPlanToChange?.isProParceiro)) && (
                   <div className="flex justify-between items-center text-xs pt-2 border-t border-[#262626]">
                     <span className="text-gray-400 font-montserrat uppercase">
                       Ciclo Selecionado:
@@ -585,7 +585,7 @@ export function PlanChangeSection() {
                   </div>
                 )}
                 {/* Para profissionais Básico / Pro / Premium: indicar que não há mensalidade */}
-                {!isAluno && !selectedPlanToChange.isProParceiro && (
+                {!isAluno && !selectedPlanToChange?.isProParceiro && (
                   <div className="flex justify-between items-center text-xs pt-2 border-t border-[#262626]">
                     <span className="text-gray-400 font-montserrat uppercase">
                       Cobrança Recorrente:
@@ -602,13 +602,13 @@ export function PlanChangeSection() {
                       ? 'R$ 0,00 (Vínculo Ativo com Profissional)'
                       : isAluno
                         ? billingPeriod === 'annual'
-                          ? selectedPlanToChange.anualAluno
-                          : selectedPlanToChange.mensalidadeAluno
-                        : selectedPlanToChange.isProParceiro
+                          ? selectedPlanToChange?.anualAluno
+                          : selectedPlanToChange?.mensalidadeAluno
+                        : selectedPlanToChange?.isProParceiro
                           ? billingPeriod === 'annual'
                             ? 'R$ 1.490,00 / ano'
                             : 'R$ 149,00 / mês'
-                          : `R$ 0,00 (Sem mensalidade fixa — Tarifa R$ ${selectedPlanToChange.tarifaValor.toFixed(2).replace('.', ',')} por serviço)`}
+                          : `R$ 0,00 (Sem mensalidade fixa — Tarifa R$ ${(selectedPlanToChange?.tarifaValor ?? 0).toFixed(2).replace('.', ',')} por serviço)`}
                   </span>
                 </div>
               </div>
@@ -642,7 +642,7 @@ export function PlanChangeSection() {
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />{' '}
-                  {!isAluno && !selectedPlanToChange.isProParceiro
+                  {!isAluno && !selectedPlanToChange?.isProParceiro
                     ? 'Confirmar Escolha de Plano'
                     : 'Confirmar Assinatura'}
                 </>
