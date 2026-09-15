@@ -17,7 +17,7 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     basico: 1,
     pro: 2,
     premium: 3,
-    pro_parceiro: 2,
+    pro_parceiro: 1, // Multiplicador de plano 1X para parceiro e aluno vinculado
   }
 
   const planTarifas = {
@@ -28,7 +28,7 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     pro_parceiro: 2.0,
   }
 
-  let proParceiroFloor = 10
+  let proParceiroFloor = 150
   try {
     const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
     if (floorRec) {

@@ -133,19 +133,21 @@ export const ALL_PLANS: PlanConfig[] = [
   {
     id: 'pro_parceiro',
     name: 'PRO Parceiro',
-    tarifa: 'R$ 2,00 / serviço + R$ 49/mês',
+    tarifa: 'R$ 2,00 / serviço + R$ 149/mês',
     tarifaValor: 2.0,
-    mensalidadeProf: 'R$ 49 / mês',
-    anualProf: 'R$ 490 / ano (10×)',
-    multiplicador: '2x (Piso 10)',
-    description: 'Plano fixo do profissional com piso de pontuação e Radar 369.',
+    mensalidadeProf: 'R$ 149 / mês',
+    anualProf: 'R$ 1.490 / ano (10×)',
+    multiplicador: '1x (Piso 150)',
+    description:
+      'Plano fixo do profissional com piso de 150 serviços, alunos ilimitados e Radar 369.',
     benefits: [
-      'Pontuação com piso fixo: max(serviços reais, 10)',
-      'Selo público "Parceiro PRO" em destaque na busca',
+      'Alunos ILIMITADOS na carteira do parceiro PRO',
+      'Multiplicador 1x oficial para parceiro e alunos vinculados',
+      'Pontuação com piso fixo garantido: max(serviços reais, 150)',
+      'Selo público "Parceiro PRO" em destaque nas buscas e perfil',
       'Acesso exclusivo ao Radar 369 semanal com evidências científicas',
-      'Painel de carteira com IA e alertas de aderência de alunos',
-      'Franquia de 60 treinos/mês + 120 msgs/mês com perfil individualizado',
-      'Tarifa por serviço concluído: R$ 2,00 (alimenta o pool)',
+      'Painel de carteira com IA e alertas preditivos de aderência de alunos',
+      'Tarifa por serviço concluído: R$ 2,00 (alimenta diretamente o Pool 38%)',
     ],
     isProParceiro: true,
     color: 'text-[#00C853]',
@@ -355,7 +357,7 @@ export function PlanChangeSection() {
               periodLabel = billingPeriod === 'annual' ? '' : ''
             }
           } else if (plan.isProParceiro) {
-            displayPrice = billingPeriod === 'annual' ? 'R$ 490 / ano' : 'R$ 49 / mês'
+            displayPrice = billingPeriod === 'annual' ? 'R$ 1.490 / ano' : 'R$ 149 / mês'
           }
 
           return (

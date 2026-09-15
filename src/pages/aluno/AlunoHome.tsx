@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { HidratacaoSection } from '@/components/HidratacaoSection'
 import { DesafiosAlunoSection } from '@/components/DesafiosAlunoSection'
 import { AlunoProfissionaisFeed } from '@/components/AlunoProfissionaisFeed'
+import { Agente369Section } from '@/components/Agente369Section'
 import {
   Dumbbell,
   Utensils,
@@ -128,6 +129,9 @@ export default function AlunoHome() {
           />
         </div>
       </Card>
+
+      {/* AGENTE 369 DO ALUNO (BENEFÍCIO DO PLANO, MOTOR DETERMINÍSTICO E FRANQUIAS) */}
+      <Agente369Section />
 
       {/* RECURSO 6: SEÇÃO DE CRONÔMETRO DE HIDRATAÇÃO ACSM */}
       <HidratacaoSection />

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-15T00:31:48.561Z",
+  "generatedAt": "2026-09-15T00:53:29.837Z",
   "collections": [
     {
       "name": "users",
@@ -2865,6 +2865,315 @@
         }
       ],
       "indexes": ["CREATE INDEX idx_radar_specialty_cycle ON radar_briefings (specialty, cycle)"]
+    },
+    {
+      "name": "agent_usage",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user = @request.auth.id",
+        "view": "@request.auth.id != '' && user = @request.auth.id",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "month",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "workouts_generated",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "chat_messages",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_agent_usage_user_month ON agent_usage (user, month)",
+        "CREATE INDEX idx_agent_usage_month ON agent_usage (month)"
+      ]
+    },
+    {
+      "name": "menstrual_cycle_logs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user = @request.auth.id",
+        "view": "@request.auth.id != '' && user = @request.auth.id",
+        "create": "@request.auth.id != '' && user = @request.auth.id",
+        "update": "@request.auth.id != '' && user = @request.auth.id",
+        "delete": "@request.auth.id != '' && user = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "date",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "flow",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["nenhum", "leve", "moderado", "intenso"]
+        },
+        {
+          "name": "energy_level",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "symptoms",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "perceived_recovery",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_cycle_logs_user_date ON menstrual_cycle_logs (user, date)"]
+    },
+    {
+      "name": "workout_templates",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "code",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "target_age_group",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["40-59", "60+"]
+        },
+        {
+          "name": "modality",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "approved_by_cref",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "exercises_structure",
+          "type": "json",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "guidelines",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_workout_templates_code ON workout_templates (code)",
+        "CREATE INDEX idx_workout_templates_group ON workout_templates (target_age_group)"
+      ]
+    },
+    {
+      "name": "parq_onboarding",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user = @request.auth.id",
+        "view": "@request.auth.id != '' && user = @request.auth.id",
+        "create": "@request.auth.id != '' && user = @request.auth.id",
+        "update": "@request.auth.id != '' && user = @request.auth.id",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "has_heart_condition",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "has_chest_pain_activity",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "has_chest_pain_rest",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "has_dizziness_loss_consciousness",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "has_bone_joint_problem",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "has_prescription_blood_pressure_heart",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "has_other_reason_preventing_activity",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "passed_clean",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "medical_clearance_required",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "medical_clearance_notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_parq_user ON parq_onboarding (user)"]
     }
   ]
 }

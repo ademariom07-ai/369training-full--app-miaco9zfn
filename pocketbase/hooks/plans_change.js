@@ -71,7 +71,23 @@ routerAdd(
               : (studentMonthlyPrices[targetPlan] ?? 0)
         }
       } else if (targetPlan === 'pro_parceiro') {
-        planPrice = billingPeriod === 'annual' ? 490 : 49
+        let monthly = 149
+        let annual = 1490
+        try {
+          const mRec = $app.findFirstRecordByData(
+            'platform_config',
+            'key',
+            'pro_parceiro_price_monthly',
+          )
+          if (mRec) monthly = Number(mRec.get('value')) || 149
+          const aRec = $app.findFirstRecordByData(
+            'platform_config',
+            'key',
+            'pro_parceiro_price_annual',
+          )
+          if (aRec) annual = Number(aRec.get('value')) || monthly * 10
+        } catch (_) {}
+        planPrice = billingPeriod === 'annual' ? annual : monthly
       }
 
       // Atualizar plano do usuário

@@ -92,6 +92,11 @@ export default function AdminRankingConfig() {
   const [tarifaPro, setTarifaPro] = useState('2.00')
   const [tarifaPremium, setTarifaPremium] = useState('3.00')
 
+  // Configurações Oficiais do Plano PRO PARCEIRO (R$ 149,00 / Piso 150)
+  const [proParceiroPriceMonthly, setProParceiroPriceMonthly] = useState('149.00')
+  const [proParceiroPriceAnnual, setProParceiroPriceAnnual] = useState('1490.00')
+  const [proParceiroFloor, setProParceiroFloor] = useState('150')
+
   // Regra de Indicação e Validação (default: 5 serviços)
   const [minServicesReferral, setMinServicesReferral] = useState('5')
 
@@ -239,6 +244,24 @@ export default function AdminRankingConfig() {
               c.value !== null
             ) {
               setMinServicesReferral(String(c.value))
+            } else if (
+              c.key === 'pro_parceiro_price_monthly' &&
+              c.value !== undefined &&
+              c.value !== null
+            ) {
+              setProParceiroPriceMonthly(Number(c.value).toFixed(2))
+            } else if (
+              c.key === 'pro_parceiro_price_annual' &&
+              c.value !== undefined &&
+              c.value !== null
+            ) {
+              setProParceiroPriceAnnual(Number(c.value).toFixed(2))
+            } else if (
+              c.key === 'pro_parceiro_floor' &&
+              c.value !== undefined &&
+              c.value !== null
+            ) {
+              setProParceiroFloor(String(c.value))
             }
           })
         }
@@ -406,8 +429,47 @@ export default function AdminRankingConfig() {
         })
       }
 
+      // 5. Atualizar pro_parceiro_price_monthly, pro_parceiro_price_annual e pro_parceiro_floor
+      const pMonthly = parseFloat(proParceiroPriceMonthly) || 149.0
+      const pAnnual = parseFloat(proParceiroPriceAnnual) || 1490.0
+      const pFloor = parseInt(proParceiroFloor, 10) || 150
+
+      const proParceiroItems = [
+        {
+          key: 'pro_parceiro_price_monthly',
+          value: pMonthly,
+          desc: 'Mensalidade do plano PRO PARCEIRO (R$ 149/mês)',
+        },
+        {
+          key: 'pro_parceiro_price_annual',
+          value: pAnnual,
+          desc: 'Anuidade do plano PRO PARCEIRO (R$ 1.490 = 10x mensalidade)',
+        },
+        {
+          key: 'pro_parceiro_floor',
+          value: pFloor,
+          desc: 'Piso mínimo de contagem de serviços para pontuação do PRO PARCEIRO no ranking (150 atendimentos)',
+        },
+      ]
+
+      for (const item of proParceiroItems) {
+        try {
+          const rec = await pb.collection('platform_config').getFirstListItem(`key = "${item.key}"`)
+          await pb.collection('platform_config').update(rec.id, {
+            value: item.value,
+            description: item.desc,
+          })
+        } catch {
+          await pb.collection('platform_config').create({
+            key: item.key,
+            value: item.value,
+            description: item.desc,
+          })
+        }
+      }
+
       toast.success(
-        'Parâmetros de tarifas, divisão de receita, indicação e ESG atualizados com sucesso!',
+        'Parâmetros de tarifas, divisão de receita, indicação, ESG e PRO PARCEIRO atualizados com sucesso!',
       )
     } catch {
       toast.error('Erro ao salvar parâmetros na nuvem.')
@@ -437,12 +499,14 @@ export default function AdminRankingConfig() {
         basico: 1,
         pro: 2,
         premium: 3,
+        pro_parceiro: 1, // Multiplicador oficial 1x para parceiro e aluno vinculado
       }
       const tarifasMap: Record<string, number> = {
         gratis: 1.0,
         basico: 1.0,
         pro: 2.0,
         premium: 3.0,
+        pro_parceiro: 2.0,
       }
 
       const users = await pb.collection('users').getFullList({
@@ -472,8 +536,9 @@ export default function AdminRankingConfig() {
       for (const u of users) {
         const rawPlan = ((u.plan as string) || 'gratis').toLowerCase()
         const role = (u.role as string) || 'aluno'
+        const isProParceiro = rawPlan === 'pro_parceiro'
         const multiplier = planMultipliers[rawPlan] ?? 0
-        if (multiplier === 0) continue
+        if (multiplier === 0 && !isProParceiro) continue
 
         let effectiveMultiplier = multiplier
         if (
@@ -528,9 +593,14 @@ export default function AdminRankingConfig() {
         )
         const antiguidade = Math.min(diffMonths, 10)
 
+        const countedServices = isProParceiro
+          ? Math.max(svcs.length, parseInt(proParceiroFloor, 10) || 150)
+          : svcs.length
         const indicacoesFator = Math.max(refsMonth.length, 1)
         const monthlyPoints =
-          Math.round(effectiveMultiplier * svcs.length * indicacoesFator) + avaliacao + antiguidade
+          Math.round(effectiveMultiplier * countedServices * indicacoesFator) +
+          avaliacao +
+          antiguidade
 
         scored.push({
           user_id: u.id,
@@ -2016,6 +2086,67 @@ export default function AdminRankingConfig() {
                           value={tarifaPremium}
                           onChange={(e) => setTarifaPremium(e.target.value)}
                           className="pl-9 bg-[#141414] border-[#D4AF37]/50 rounded-xl text-xs text-[#D4AF37] font-mono font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Configurações Especiais: PRO PARCEIRO (R$ 149,00 / Piso 150) */}
+                  <div className="mt-6 pt-4 border-t border-[#2A2A2A] space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#00C853]/20 text-[#00C853] border border-[#00C853]/40">
+                        Configuração PRO PARCEIRO
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-300 font-semibold mb-1">
+                          Mensalidade (R$)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-mono">
+                            R$
+                          </span>
+                          <Input
+                            value={proParceiroPriceMonthly}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setProParceiroPriceMonthly(val)
+                              const n = parseFloat(val)
+                              if (!isNaN(n)) setProParceiroPriceAnnual((n * 10).toFixed(2))
+                            }}
+                            className="pl-9 bg-[#141414] border-[#00C853]/40 rounded-xl text-xs text-[#00C853] font-mono font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-300 font-semibold mb-1">
+                          Anual (10× em R$)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-mono">
+                            R$
+                          </span>
+                          <Input
+                            value={proParceiroPriceAnnual}
+                            onChange={(e) => setProParceiroPriceAnnual(e.target.value)}
+                            className="pl-9 bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white font-mono font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-300 font-semibold mb-1">
+                          Piso do Ranking (Serviços)
+                        </label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={proParceiroFloor}
+                          onChange={(e) => setProParceiroFloor(e.target.value)}
+                          className="bg-[#141414] border-[#00C853]/40 rounded-xl text-xs text-[#00C853] font-mono font-bold"
                         />
                       </div>
                     </div>

@@ -449,3 +449,67 @@ export interface CredentialVerificationRecord {
     }
   }
 }
+
+export interface AgentUsageRecord {
+  id: string
+  user: string
+  month: string
+  workouts_generated?: number
+  chat_messages?: number
+  created: string
+  updated: string
+}
+
+export interface MenstrualCycleLogRecord {
+  id: string
+  user: string
+  date: string
+  flow?: 'nenhum' | 'leve' | 'moderado' | 'intenso'
+  energy_level?: number
+  symptoms?: string[]
+  perceived_recovery?: number
+  notes?: string
+  created: string
+  updated: string
+}
+
+export interface WorkoutTemplateRecord {
+  id: string
+  code: string
+  title: string
+  target_age_group: '40-59' | '60+'
+  modality: string
+  approved_by_cref?: string
+  exercises_structure: Array<{
+    block: string
+    exercises: Array<{
+      name: string
+      sets: string
+      reps: string
+      load: string
+      rest: string
+    }>
+  }>
+  guidelines?: string
+  is_active?: boolean
+  created: string
+  updated: string
+}
+
+export interface ParqOnboardingRecord {
+  id: string
+  user: string
+  has_heart_condition?: boolean
+  has_chest_pain_activity?: boolean
+  has_chest_pain_rest?: boolean
+  has_dizziness_loss_consciousness?: boolean
+  has_bone_joint_problem?: boolean
+  has_prescription_blood_pressure_heart?: boolean
+  has_other_reason_preventing_activity?: boolean
+  passed_clean?: boolean
+  medical_clearance_required?: boolean
+  medical_clearance_notes?: string
+  completed_at: string
+  created: string
+  updated: string
+}
