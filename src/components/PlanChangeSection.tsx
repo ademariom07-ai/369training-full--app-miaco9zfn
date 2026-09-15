@@ -256,7 +256,7 @@ export function PlanChangeSection() {
           </p>
         </div>
 
-        {/* Toggle Período Mensal / Anual (10x) — visível para alunos ou quando PRO PARCEIRO for relevante */}
+        {/* Toggle Período Mensal / Anual (10x) — visível APENAS para Alunos e para PRO PARCEIRO */}
         <div className="flex items-center gap-3">
           {isAluno ? (
             <div className="flex items-center bg-[#101010] p-1 rounded-xl border border-[#2A2A2A]">
@@ -287,8 +287,10 @@ export function PlanChangeSection() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400 font-inter">Período PRO PARCEIRO:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-[11px] text-gray-400 font-inter">
+                Período PRO PARCEIRO (R$ 149/mês / R$ 1.490 anual):
+              </span>
               <div className="flex items-center bg-[#101010] p-1 rounded-xl border border-[#2A2A2A]">
                 <button
                   type="button"
@@ -525,7 +527,8 @@ export function PlanChangeSection() {
                       </>
                     ) : (
                       <>
-                        Assinar {plan.name} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                        {!isAluno && !plan.isProParceiro ? 'Escolher' : 'Assinar'} {plan.name}{' '}
+                        <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                       </>
                     )}
                   </Button>
@@ -570,14 +573,28 @@ export function PlanChangeSection() {
                     {selectedPlanToChange.name}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-xs pt-2 border-t border-[#262626]">
-                  <span className="text-gray-400 font-montserrat uppercase">
-                    Ciclo Selecionado:
-                  </span>
-                  <span className="font-mono font-bold text-white">
-                    {billingPeriod === 'annual' ? 'Anual 10× (2 meses off)' : 'Mensal Recorrente'}
-                  </span>
-                </div>
+                {/* Ciclo Selecionado: apenas para Aluno ou para PRO PARCEIRO */}
+                {(isAluno || selectedPlanToChange.isProParceiro) && (
+                  <div className="flex justify-between items-center text-xs pt-2 border-t border-[#262626]">
+                    <span className="text-gray-400 font-montserrat uppercase">
+                      Ciclo Selecionado:
+                    </span>
+                    <span className="font-mono font-bold text-white">
+                      {billingPeriod === 'annual' ? 'Anual 10× (2 meses off)' : 'Mensal Recorrente'}
+                    </span>
+                  </div>
+                )}
+                {/* Para profissionais Básico / Pro / Premium: indicar que não há mensalidade */}
+                {!isAluno && !selectedPlanToChange.isProParceiro && (
+                  <div className="flex justify-between items-center text-xs pt-2 border-t border-[#262626]">
+                    <span className="text-gray-400 font-montserrat uppercase">
+                      Cobrança Recorrente:
+                    </span>
+                    <span className="font-mono font-bold text-emerald-400">
+                      R$ 0,00 (Sem mensalidade fixa)
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-xs pt-2 border-t border-[#262626]">
                   <span className="text-gray-400 font-montserrat uppercase">Valor a Liquidar:</span>
                   <span className="font-mono font-bold text-emerald-400">
@@ -589,8 +606,8 @@ export function PlanChangeSection() {
                           : selectedPlanToChange.mensalidadeAluno
                         : selectedPlanToChange.isProParceiro
                           ? billingPeriod === 'annual'
-                            ? 'R$ 1.490,00'
-                            : 'R$ 149,00'
+                            ? 'R$ 1.490,00 / ano'
+                            : 'R$ 149,00 / mês'
                           : `R$ 0,00 (Sem mensalidade fixa — Tarifa R$ ${selectedPlanToChange.tarifaValor.toFixed(2).replace('.', ',')} por serviço)`}
                   </span>
                 </div>
@@ -624,7 +641,10 @@ export function PlanChangeSection() {
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" /> Confirmar Assinatura
+                  <CheckCircle2 className="w-4 h-4" />{' '}
+                  {!isAluno && !selectedPlanToChange.isProParceiro
+                    ? 'Confirmar Escolha de Plano'
+                    : 'Confirmar Assinatura'}
                 </>
               )}
             </Button>

@@ -25,8 +25,9 @@ export function ClinicalAreaGuard({ areaName, children }: ClinicalAreaGuardProps
 
     try {
       // Verificar se o usuário possui consentimento ativo de dados sensíveis na coleção legal_acceptances
+      // Suporta slug canônico 'lgpd-consentimentos' e legado 'consentimento-dados-sensiveis-saude'
       const res = await pb.collection('legal_acceptances').getList(1, 1, {
-        filter: `user = "${user.id}" && document_slug = "consentimento-dados-sensiveis-saude"`,
+        filter: `user = "${user.id}" && (document_slug = "lgpd-consentimentos" || document_slug = "consentimento-dados-sensiveis-saude")`,
         sort: '-created',
       })
 

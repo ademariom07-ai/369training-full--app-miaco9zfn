@@ -448,7 +448,7 @@ export default function Cadastro() {
                       name: 'GRÁTIS',
                       multiplier: '0x',
                       badge: 'Sem Ranking',
-                      desc: role === 'aluno' ? 'R$ 0 / mês' : 'Acesso básico',
+                      desc: role === 'aluno' ? 'R$ 0 / mês' : 'Sem mensalidade fixa',
                       forRole: 'aluno',
                     },
                     {
@@ -456,7 +456,8 @@ export default function Cadastro() {
                       name: 'BÁSICO',
                       multiplier: '1.0x',
                       badge: 'Pontuação 1x',
-                      desc: role === 'aluno' ? 'R$ 10 / mês' : 'Tarifa R$ 1,00/serviço',
+                      desc:
+                        role === 'aluno' ? 'R$ 10 / mês' : 'Sem mensalidade fixa • R$ 1,00/serviço',
                       forRole: 'all',
                     },
                     {
@@ -464,7 +465,8 @@ export default function Cadastro() {
                       name: 'PRO',
                       multiplier: '2.0x',
                       badge: 'Pontuação 2x',
-                      desc: role === 'aluno' ? 'R$ 20 / mês' : 'Tarifa R$ 2,00/serviço',
+                      desc:
+                        role === 'aluno' ? 'R$ 20 / mês' : 'Sem mensalidade fixa • R$ 2,00/serviço',
                       forRole: 'all',
                     },
                     {
@@ -472,7 +474,8 @@ export default function Cadastro() {
                       name: 'PREMIUM',
                       multiplier: '3.0x',
                       badge: 'Acelerador 3x',
-                      desc: role === 'aluno' ? 'R$ 30 / mês' : 'Tarifa R$ 3,00/serviço',
+                      desc:
+                        role === 'aluno' ? 'R$ 30 / mês' : 'Sem mensalidade fixa • R$ 3,00/serviço',
                       forRole: 'all',
                     },
                     {
@@ -480,7 +483,7 @@ export default function Cadastro() {
                       name: 'PRO PARCEIRO',
                       multiplier: '1.0x (Piso 150)',
                       badge: 'Parceiro PRO',
-                      desc: 'R$ 149/mês + Radar 369',
+                      desc: 'R$ 149/mês + Radar 369 (Piso 150)',
                       forRole: 'profissional',
                     },
                   ].map((p) => {

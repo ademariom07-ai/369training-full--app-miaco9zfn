@@ -41,18 +41,29 @@ export function SensitiveDataConsentModal({
 
   const loadDocInfo = async () => {
     try {
+      // Priorizar o documento canônico publicado 'lgpd-consentimentos'
       const doc = await pb
         .collection('legal_documents')
-        .getFirstListItem('slug = "consentimento-dados-sensiveis-saude"')
+        .getFirstListItem('slug = "lgpd-consentimentos"')
       setDocumentDoc({
         id: doc.id,
         version: Number(doc.version) || 1,
       })
     } catch {
-      setDocumentDoc({
-        id: 'consentimento-dados-sensiveis-saude',
-        version: 1,
-      })
+      try {
+        const fallback = await pb
+          .collection('legal_documents')
+          .getFirstListItem('slug = "consentimento-dados-sensiveis-saude"')
+        setDocumentDoc({
+          id: fallback.id,
+          version: Number(fallback.version) || 1,
+        })
+      } catch {
+        setDocumentDoc({
+          id: 'lgpd-consentimentos',
+          version: 1,
+        })
+      }
     }
   }
 
@@ -65,15 +76,15 @@ export function SensitiveDataConsentModal({
 
     setLoading(true)
     try {
-      const docId = documentDoc?.id || 'consentimento-dados-sensiveis-saude'
+      const docId = documentDoc?.id || 'lgpd-consentimentos'
       const docVer = documentDoc?.version || 1
       const nowIso = new Date().toISOString()
 
-      // Gravar na coleção legal_acceptances com consent_type destacado
+      // Gravar na coleção legal_acceptances com slug canônico
       await pb.collection('legal_acceptances').create({
         user: user.id,
         document: docId,
-        document_slug: 'consentimento-dados-sensiveis-saude',
+        document_slug: 'lgpd-consentimentos',
         version: docVer,
         accepted_at: nowIso,
         consent_type: 'dados_sensiveis_saude_art11',
