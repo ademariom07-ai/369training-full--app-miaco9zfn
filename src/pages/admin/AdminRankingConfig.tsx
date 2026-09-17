@@ -147,9 +147,12 @@ export default function AdminRankingConfig() {
     return () => clearInterval(interval)
   }, [])
 
+  const currentCycle = new Date().toISOString().slice(0, 7)
+
   const loadRankingsOnly = async () => {
     try {
       const rankList = await pb.collection('rank_entries').getList<RankItem>(1, 50, {
+        filter: `cycle = "${currentCycle}"`,
         sort: 'ranking_position',
         expand: 'user',
       })
@@ -269,9 +272,10 @@ export default function AdminRankingConfig() {
         console.warn('Aviso ao carregar platform_config:', err)
       }
 
-      // Carregar ranking atual
+      // Carregar ranking atual (filtrando somente o ciclo corrente)
       try {
         const rankList = await pb.collection('rank_entries').getList<RankItem>(1, 50, {
+          filter: `cycle = "${currentCycle}"`,
           sort: 'ranking_position',
           expand: 'user',
         })
@@ -624,47 +628,61 @@ export default function AdminRankingConfig() {
         const pos = i + 1
 
         try {
-          const existing = await pb
-            .collection('rank_entries')
-            .getFirstListItem(`user = "${item.user_id}"`)
-          await pb.collection('rank_entries').update(existing.id, {
-            cycle: currentCycle,
-            points: item.points,
-            services_count: item.services_count,
-            referrals_count: item.referrals_count,
-            referrals_this_cycle: item.referrals_this_cycle,
-            stars: item.stars,
-            ranking_position: pos,
-            tie_break_details: {
-              position: pos,
-              stars: item.stars,
-              antiguidade: item.antiguidade,
-              services_count: item.services_count,
-              cycle: currentCycle,
-              formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
-              recomputed_at: new Date().toISOString(),
-            },
+          // Buscar todas as entradas do usuário e limpar duplicadas
+          const userEntries = await pb.collection('rank_entries').getFullList({
+            filter: `user = "${item.user_id}"`,
           })
+          if (userEntries.length > 0) {
+            const primary = userEntries[0]
+            await pb.collection('rank_entries').update(primary.id, {
+              cycle: currentCycle,
+              points: item.points,
+              services_count: item.services_count,
+              referrals_count: item.referrals_count,
+              referrals_this_cycle: item.referrals_this_cycle,
+              stars: item.stars,
+              ranking_position: pos,
+              tie_break_details: {
+                position: pos,
+                stars: item.stars,
+                antiguidade: item.antiguidade,
+                services_count: item.services_count,
+                cycle: currentCycle,
+                formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
+                recomputed_at: new Date().toISOString(),
+              },
+            })
+            // Apaga entradas extras do usuário
+            for (let k = 1; k < userEntries.length; k++) {
+              try {
+                await pb.collection('rank_entries').delete(userEntries[k].id)
+              } catch {
+                /* intentionally ignored */
+              }
+            }
+          } else {
+            await pb.collection('rank_entries').create({
+              user: item.user_id,
+              cycle: currentCycle,
+              points: item.points,
+              services_count: item.services_count,
+              referrals_count: item.referrals_count,
+              referrals_this_cycle: item.referrals_this_cycle,
+              stars: item.stars,
+              ranking_position: pos,
+              tie_break_details: {
+                position: pos,
+                stars: item.stars,
+                antiguidade: item.antiguidade,
+                services_count: item.services_count,
+                cycle: currentCycle,
+                formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
+                recomputed_at: new Date().toISOString(),
+              },
+            })
+          }
         } catch {
-          await pb.collection('rank_entries').create({
-            user: item.user_id,
-            cycle: currentCycle,
-            points: item.points,
-            services_count: item.services_count,
-            referrals_count: item.referrals_count,
-            referrals_this_cycle: item.referrals_this_cycle,
-            stars: item.stars,
-            ranking_position: pos,
-            tie_break_details: {
-              position: pos,
-              stars: item.stars,
-              antiguidade: item.antiguidade,
-              services_count: item.services_count,
-              cycle: currentCycle,
-              formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
-              recomputed_at: new Date().toISOString(),
-            },
-          })
+          // fallback
         }
       }
       toast.success('Ranking recalculado conforme fórmula confirmada!')
@@ -772,7 +790,7 @@ export default function AdminRankingConfig() {
             type="button"
             onClick={handleRecalculateRanking}
             disabled={recalculating}
-            className="bg-[#0057FF] hover:bg-[#0047D4] text-white font-bold text-xs uppercase px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 self-start md:self-auto"
+            className="bg-[#6A00FF] hover:bg-[#5800d4] text-white font-bold text-xs uppercase px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 self-start md:self-auto"
           >
             {recalculating ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -784,15 +802,15 @@ export default function AdminRankingConfig() {
         </div>
 
         {/* MODELO HÍBRIDO EXPLAINER BANNER */}
-        <Card className="bg-gradient-to-r from-[#141824] via-[#10141f] to-[#141824] border border-[#0057FF]/40 p-5 rounded-2xl shadow-lg">
+        <Card className="bg-gradient-to-r from-[#181424] via-[#14101f] to-[#181424] border border-[#6A00FF]/40 p-5 rounded-2xl shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <div className="p-3 bg-[#0057FF]/20 rounded-xl border border-[#0057FF]/40 text-[#0057FF]">
+              <div className="p-3 bg-[#6A00FF] rounded-xl border border-[#6A00FF] text-white font-bold">
                 <GitFork className="w-6 h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold font-montserrat uppercase text-[#0057FF]">
+                  <span className="text-xs font-bold font-montserrat uppercase text-[#6A00FF]">
                     Arquitetura do Modelo Híbrido
                   </span>
                   <Badge
@@ -819,7 +837,7 @@ export default function AdminRankingConfig() {
                 variant="outline"
                 size="sm"
                 onClick={() => setActiveTab('simulador')}
-                className="border-[#0057FF]/50 text-[#0057FF] hover:bg-[#0057FF]/10 text-xs font-bold uppercase rounded-xl"
+                className="border-[#6A00FF] bg-[#6A00FF] text-white hover:bg-[#5800d4] text-xs font-bold uppercase rounded-xl"
               >
                 <Calculator className="w-3.5 h-3.5 mr-1.5" /> Testar Simulador 68B
               </Button>
@@ -845,7 +863,7 @@ export default function AdminRankingConfig() {
           <Card className="bg-[#181818] border border-[#2A2A2A] p-4 rounded-xl">
             <div className="flex items-center justify-between text-xs text-gray-400 font-montserrat uppercase">
               <span>Capacidade da Árvore</span>
-              <GitFork className="w-4 h-4 text-[#0057FF]" />
+              <GitFork className="w-4 h-4 text-[#6A00FF]" />
             </div>
             <div className="text-2xl font-black font-montserrat text-white mt-1">68,7 Bilhões</div>
             <span className="text-[10px] text-gray-500 font-inter">
@@ -887,7 +905,7 @@ export default function AdminRankingConfig() {
               </div>
               <div className="text-xl sm:text-2xl font-black font-mono text-white tracking-tight">
                 PONTOS = <span className="text-[#D4AF37]">(PLANO)</span> ×{' '}
-                <span className="text-[#0057FF]">(SERVIÇOS)</span> ×{' '}
+                <span className="text-[#6A00FF]">(SERVIÇOS)</span> ×{' '}
                 <span className="text-[#22C55E]">(INDICAÇÕES)</span> + AVALIAÇÃO + ANTIGUIDADE
               </div>
               <p className="text-xs text-gray-300 font-inter">
@@ -907,7 +925,7 @@ export default function AdminRankingConfig() {
               </div>
               <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-center min-w-[90px]">
                 <span className="block text-[10px] uppercase text-gray-400 font-semibold">Pro</span>
-                <span className="text-sm font-bold text-[#0057FF] font-mono">R$ {tarifaPro}</span>
+                <span className="text-sm font-bold text-[#6A00FF] font-mono">R$ {tarifaPro}</span>
               </div>
               <div className="p-3 rounded-xl bg-[#141414] border border-[#D4AF37]/50 text-center min-w-[90px]">
                 <span className="block text-[10px] uppercase text-[#D4AF37] font-semibold">
@@ -939,11 +957,11 @@ export default function AdminRankingConfig() {
             onClick={() => setActiveTab('rankingAlunos')}
             className={`px-4 py-2 text-xs font-bold font-montserrat uppercase rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'rankingAlunos'
-                ? 'bg-[#181818] text-[#0057FF] border-t-2 border-[#0057FF]'
+                ? 'bg-[#181818] text-[#6A00FF] border-t-2 border-[#6A00FF]'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Users className="w-4 h-4 text-[#0057FF]" /> Ranking Alunos/Clientes
+            <Users className="w-4 h-4 text-[#6A00FF]" /> Ranking Alunos/Clientes
           </button>
           <button
             type="button"
@@ -1159,7 +1177,7 @@ export default function AdminRankingConfig() {
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase font-montserrat ${
                                 userRole === 'aluno'
-                                  ? 'bg-[#0057FF]/15 text-[#0057FF] border border-[#0057FF]/30'
+                                  ? 'bg-[#6A00FF] text-white font-bold border border-[#6A00FF]'
                                   : 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30'
                               }`}
                             >
@@ -1172,7 +1190,7 @@ export default function AdminRankingConfig() {
                                 plan === 'premium'
                                   ? 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40 shadow-[0_0_10px_rgba(212,175,55,0.2)]'
                                   : plan === 'pro'
-                                    ? 'bg-[#0057FF]/15 text-[#0057FF] border border-[#0057FF]/40'
+                                    ? 'bg-[#6A00FF] text-white font-bold border border-[#6A00FF]'
                                     : 'bg-gray-800 text-gray-300 border border-gray-700'
                               }`}
                             >
@@ -1209,15 +1227,15 @@ export default function AdminRankingConfig() {
 
         {/* TAB 1.5: RANKING EXCLUSIVO DE ALUNOS/CLIENTES */}
         {activeTab === 'rankingAlunos' && (
-          <Card className="bg-[#181818] border border-[#0057FF]/30 p-6 rounded-2xl shadow-xl">
+          <Card className="bg-[#181818] border border-[#6A00FF]/40 p-6 rounded-2xl shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0057FF]/15 border border-[#0057FF]/30 text-xs font-bold text-[#0057FF] uppercase font-montserrat mb-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#6A00FF] border border-[#6A00FF] text-xs font-bold text-white uppercase font-montserrat mb-1">
                   <Users className="w-3.5 h-3.5" />
                   Aba Separada — Exclusivo Alunos / Clientes
                 </div>
                 <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-[#0057FF]" /> Classificação Somente de Alunos /
+                  <Trophy className="w-5 h-5 text-[#6A00FF]" /> Classificação Somente de Alunos /
                   Clientes
                 </h3>
                 <p className="text-xs text-gray-400 font-inter">
@@ -1226,7 +1244,7 @@ export default function AdminRankingConfig() {
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-[11px] font-mono text-[#0057FF] bg-[#0057FF]/10 px-3 py-1 rounded-full border border-[#0057FF]/30 font-bold">
+                <span className="text-[11px] font-mono text-white bg-[#6A00FF] px-3 py-1 rounded-full border border-[#6A00FF] font-bold">
                   Filtro: role = aluno
                 </span>
               </div>
@@ -1250,7 +1268,7 @@ export default function AdminRankingConfig() {
                   {loading ? (
                     <tr>
                       <td colSpan={8} className="py-6 text-center text-gray-400">
-                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#0057FF]" />
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#6A00FF]" />
                         Carregando dados dos alunos...
                       </td>
                     </tr>
@@ -1301,15 +1319,15 @@ export default function AdminRankingConfig() {
                             key={r.id || `aluno-${subIndex}`}
                             className="hover:bg-[#141414] transition-colors"
                           >
-                            <td className="py-3 font-bold font-mono text-[#0057FF]">
+                            <td className="py-3 font-bold font-mono text-[#6A00FF]">
                               <span
                                 className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                                   posAluno === 1
-                                    ? 'bg-[#0057FF] text-white font-extrabold shadow-[0_0_12px_rgba(0,87,255,0.4)]'
+                                    ? 'bg-[#6A00FF] text-white font-extrabold shadow-[0_0_12px_rgba(106,0,255,0.5)]'
                                     : posAluno === 2
-                                      ? 'bg-blue-300 text-black font-bold'
+                                      ? 'bg-purple-300 text-black font-bold'
                                       : posAluno === 3
-                                        ? 'bg-blue-900 text-blue-100 font-bold'
+                                        ? 'bg-purple-900 text-white font-bold'
                                         : 'bg-[#2A2A2A] text-gray-300'
                                 }`}
                               >
@@ -1317,7 +1335,7 @@ export default function AdminRankingConfig() {
                               </span>
                             </td>
                             <td className="py-3 font-semibold text-white">
-                              <span className="font-mono text-xs font-bold text-[#0057FF]">
+                              <span className="font-mono text-xs font-bold text-[#6A00FF]">
                                 {codeAndName}
                               </span>
                               <span className="text-[10px] text-gray-500 font-mono block">
@@ -1330,7 +1348,7 @@ export default function AdminRankingConfig() {
                                   plan === 'premium'
                                     ? 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40'
                                     : plan === 'pro'
-                                      ? 'bg-[#0057FF]/15 text-[#0057FF] border border-[#0057FF]/40'
+                                      ? 'bg-[#6A00FF] text-white font-bold border border-[#6A00FF]'
                                       : 'bg-gray-800 text-gray-300 border border-gray-700'
                                 }`}
                               >
@@ -1452,7 +1470,7 @@ export default function AdminRankingConfig() {
                           <td className="py-3 text-center font-mono">
                             <Badge
                               variant="outline"
-                              className="border-[#0057FF]/30 text-[#0057FF] text-[10px]"
+                              className="border-[#6A00FF]/40 text-[#6A00FF] text-[10px] font-bold"
                             >
                               Nível {lvlNum}
                             </Badge>
@@ -1463,11 +1481,11 @@ export default function AdminRankingConfig() {
                                 posNum <= 3
                                   ? 'bg-[#D4AF37]/20 text-[#D4AF37]'
                                   : posNum <= 7
-                                    ? 'bg-[#0057FF]/20 text-[#0057FF]'
+                                    ? 'bg-[#6A00FF] text-white font-bold'
                                     : posNum <= 15
                                       ? 'bg-amber-500/20 text-amber-400'
                                       : posNum <= 31
-                                        ? 'bg-blue-500/20 text-blue-300'
+                                        ? 'bg-[#6A00FF]/30 text-purple-200'
                                         : 'bg-gray-800 text-gray-300'
                               }`}
                             >
@@ -1532,7 +1550,7 @@ export default function AdminRankingConfig() {
           <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-4">
             <div>
               <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
-                <Layers className="w-5 h-5 text-[#0057FF]" /> Progressão Geométrica da Árvore
+                <Layers className="w-5 h-5 text-[#6A00FF]" /> Progressão Geométrica da Árvore
                 Binária (36 Níveis)
               </h3>
               <p className="text-xs text-gray-400 font-inter">
@@ -1582,7 +1600,7 @@ export default function AdminRankingConfig() {
                             className={`text-xs ${
                               isDbStored
                                 ? 'border-[#D4AF37]/40 text-[#D4AF37] bg-[#D4AF37]/10'
-                                : 'border-[#0057FF]/40 text-[#0057FF] bg-[#0057FF]/10'
+                                : 'border-[#6A00FF] text-white font-bold bg-[#6A00FF]'
                             }`}
                           >
                             Nível {lvlNum}
@@ -1629,7 +1647,7 @@ export default function AdminRankingConfig() {
             <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-4">
               <div>
                 <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
-                  <Calculator className="w-5 h-5 text-[#0057FF]" /> Simulador Instantâneo do Motor
+                  <Calculator className="w-5 h-5 text-[#6A00FF]" /> Simulador Instantâneo do Motor
                   Híbrido
                 </h3>
                 <p className="text-xs text-gray-400 font-inter">
@@ -1671,7 +1689,7 @@ export default function AdminRankingConfig() {
                 <button
                   type="button"
                   onClick={() => setSimulatorPosInput('512')}
-                  className="px-2.5 py-1 bg-[#141414] hover:bg-[#202020] border border-[#2A2A2A] rounded-lg text-[10px] font-mono text-[#0057FF]"
+                  className="px-2.5 py-1 bg-[#141414] hover:bg-[#202020] border border-[#2A2A2A] rounded-lg text-[10px] font-mono text-[#6A00FF] font-bold"
                 >
                   Pos #512 (1º Nível 10)
                 </button>
@@ -1693,7 +1711,7 @@ export default function AdminRankingConfig() {
 
               <div className="p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] text-xs text-gray-300 space-y-2">
                 <div className="flex items-center gap-2 font-bold text-white">
-                  <Info className="w-4 h-4 text-[#0057FF]" /> Como funciona a resolução?
+                  <Info className="w-4 h-4 text-[#6A00FF]" /> Como funciona a resolução?
                 </div>
                 <p>
                   Quando uma transação de serviço é concluída, o cashback de 38% é distribuído aos
@@ -1740,7 +1758,7 @@ export default function AdminRankingConfig() {
 
                   <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A] flex justify-between items-center">
                     <span className="text-xs text-gray-400">Nível na Árvore Binária:</span>
-                    <span className="font-mono font-bold text-[#0057FF] text-sm">
+                    <span className="font-mono font-bold text-[#6A00FF] text-sm">
                       Nível {Number(simulatedParams?.level) || 1} de 36
                     </span>
                   </div>
@@ -1832,8 +1850,8 @@ export default function AdminRankingConfig() {
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#141414] border border-[#0057FF]/30">
-                  <span className="text-[10px] font-bold text-[#0057FF] uppercase block mb-1">
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#6A00FF]/40">
+                  <span className="text-[10px] font-bold text-[#6A00FF] uppercase block mb-1">
                     Meta Econômica
                   </span>
                   <div className="text-2xl font-black font-montserrat text-white">{esgEcon}%</div>
@@ -1842,8 +1860,8 @@ export default function AdminRankingConfig() {
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#141414] border border-blue-400/30">
-                  <span className="text-[10px] font-bold text-blue-400 uppercase block mb-1">
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#6A00FF]/40">
+                  <span className="text-[10px] font-bold text-[#6A00FF] uppercase block mb-1">
                     Meta Social
                   </span>
                   <div className="text-2xl font-black font-montserrat text-white">{esgSoc}%</div>
@@ -2001,7 +2019,7 @@ export default function AdminRankingConfig() {
                   <Input
                     value={supportPct}
                     onChange={(e) => setSupportPct(e.target.value)}
-                    className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-blue-400 font-bold"
+                    className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#6A00FF] font-bold"
                   />
                 </div>
                 <div>
@@ -2069,7 +2087,7 @@ export default function AdminRankingConfig() {
                         <Input
                           value={tarifaPro}
                           onChange={(e) => setTarifaPro(e.target.value)}
-                          className="pl-9 bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#0057FF] font-mono font-bold"
+                          className="pl-9 bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#6A00FF] font-mono font-bold"
                         />
                       </div>
                     </div>
@@ -2158,14 +2176,14 @@ export default function AdminRankingConfig() {
               <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl flex flex-col justify-between space-y-4">
                 <div>
                   <h3 className="text-sm font-bold font-montserrat text-white uppercase flex items-center gap-2 mb-2">
-                    <Users className="w-4 h-4 text-[#0057FF]" /> Regra de Validação de Indicação
+                    <Users className="w-4 h-4 text-[#6A00FF]" /> Regra de Validação de Indicação
                   </h3>
                   <p className="text-xs text-gray-400 font-inter mb-3">
                     Número mínimo de serviços concluídos pelo aluno indicado para validar a
                     indicação e creditar o cashback de referral ao profissional indicador.
                   </p>
                   <div>
-                    <label className="block text-[10px] uppercase text-[#0057FF] font-semibold mb-1">
+                    <label className="block text-[10px] uppercase text-[#6A00FF] font-semibold mb-1">
                       Mínimo de Serviços para Validar Indicação (Padrão: 5)
                     </label>
                     <Input
@@ -2174,7 +2192,7 @@ export default function AdminRankingConfig() {
                       max={50}
                       value={minServicesReferral}
                       onChange={(e) => setMinServicesReferral(e.target.value)}
-                      className="bg-[#141414] border-[#0057FF]/40 rounded-xl text-xs text-white font-mono font-bold"
+                      className="bg-[#141414] border-[#6A00FF]/40 rounded-xl text-xs text-white font-mono font-bold"
                     />
                   </div>
                 </div>
@@ -2220,13 +2238,13 @@ export default function AdminRankingConfig() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] uppercase text-[#0057FF] font-semibold mb-1">
+                        <label className="block text-[10px] uppercase text-[#6A00FF] font-semibold mb-1">
                           Social (%)
                         </label>
                         <Input
                           value={esgSoc}
                           onChange={(e) => setEsgSoc(e.target.value)}
-                          className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#0057FF] font-bold"
+                          className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-[#6A00FF] font-bold"
                         />
                       </div>
                       <div>
@@ -2322,7 +2340,7 @@ export default function AdminRankingConfig() {
                         <span className="text-[10px] text-gray-400 uppercase font-semibold">
                           % por Nível
                         </span>
-                        <p className="text-lg font-bold text-[#0057FF] font-mono">
+                        <p className="text-lg font-bold text-[#6A00FF] font-mono">
                           {(Number(res.pctDoNivel) || 0).toFixed(3)}%
                         </p>
                       </div>
@@ -2366,7 +2384,7 @@ export default function AdminRankingConfig() {
                                 {lvl.pessoasNoNivel}{' '}
                                 {lvl.pessoasNoNivel === 1 ? 'pessoa' : 'pessoas'}
                               </td>
-                              <td className="py-2.5 text-center font-mono font-bold text-[#0057FF]">
+                              <td className="py-2.5 text-center font-mono font-bold text-[#6A00FF]">
                                 {(Number(lvl.corretor) || 0).toFixed(2)}
                               </td>
                               <td className="py-2.5 text-center font-mono text-gray-400">

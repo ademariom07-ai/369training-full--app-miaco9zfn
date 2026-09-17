@@ -186,9 +186,24 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
   for (let i = 0; i < scores.length; i++) {
     const s = scores[i]
     let entry
-    try {
-      entry = $app.findFirstRecordByData('rank_entries', 'user', s.user.id)
-    } catch (_) {
+
+    // Buscar todas as entradas existentes do usuário
+    const existingEntries = $app.findRecordsByFilter(
+      'rank_entries',
+      `user = '${s.user.id}'`,
+      '-created',
+      50,
+      0,
+    )
+
+    if (existingEntries && existingEntries.length > 0) {
+      entry = existingEntries[0]
+      for (let k = 1; k < existingEntries.length; k++) {
+        try {
+          $app.delete(existingEntries[k])
+        } catch (_) {}
+      }
+    } else {
       entry = new Record(rankCol)
     }
 
@@ -212,6 +227,22 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     })
     $app.save(entry)
   }
+
+  // Limpeza de segurança: remover quaisquer entradas órfãs de ciclos anteriores
+  try {
+    const oldEntries = $app.findRecordsByFilter(
+      'rank_entries',
+      `cycle != '${cycle}'`,
+      '-created',
+      1000,
+      0,
+    )
+    for (const oldRec of oldEntries) {
+      try {
+        $app.delete(oldRec)
+      } catch (_) {}
+    }
+  } catch (_) {}
 
   if (isLastDayOfMonth) {
     try {

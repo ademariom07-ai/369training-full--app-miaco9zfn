@@ -190,9 +190,26 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
   for (let i = 0; i < scores.length; i++) {
     const s = scores[i]
     let entry
-    try {
-      entry = $app.findFirstRecordByData('rank_entries', 'user', s.user.id)
-    } catch (_) {
+
+    // Buscar todas as entradas existentes do usuário
+    const existingEntries = $app.findRecordsByFilter(
+      'rank_entries',
+      `user = '${s.user.id}'`,
+      '-created',
+      50,
+      0,
+    )
+
+    if (existingEntries && existingEntries.length > 0) {
+      // Usa a primeira entrada para atualizar o ciclo atual
+      entry = existingEntries[0]
+      // Apaga qualquer entrada excedente/órfã do usuário para nunca deixar duplicidade
+      for (let k = 1; k < existingEntries.length; k++) {
+        try {
+          $app.delete(existingEntries[k])
+        } catch (_) {}
+      }
+    } else {
       entry = new Record(rankCol)
     }
 
@@ -216,6 +233,22 @@ routerAdd('POST', '/backend/v1/admin/recalculate_rank', (c) => {
     })
     $app.save(entry)
   }
+
+  // Limpeza de segurança: remover quaisquer entradas órfãs de ciclos anteriores
+  try {
+    const oldEntries = $app.findRecordsByFilter(
+      'rank_entries',
+      `cycle != '${cycle}'`,
+      '-created',
+      1000,
+      0,
+    )
+    for (const oldRec of oldEntries) {
+      try {
+        $app.delete(oldRec)
+      } catch (_) {}
+    }
+  } catch (_) {}
 
   return c.json(200, {
     status: 'ok',

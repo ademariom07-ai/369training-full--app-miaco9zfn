@@ -323,7 +323,7 @@ export function PlanilhaCashbackDistribuicao({
             <button
               type="button"
               onClick={handleLoadRealDataSimulation}
-              className="text-[10px] text-[#0057FF] hover:underline font-bold ml-1"
+              className="text-[10px] text-[#6A00FF] hover:underline font-bold ml-1"
             >
               Real ({mappedRealParticipants.length})
             </button>
@@ -360,10 +360,10 @@ export function PlanilhaCashbackDistribuicao({
       </div>
 
       {/* CARD DE VALIDAÇÃO VISÍVEL (Decisão 4 confirmada do usuário) */}
-      <div className="p-4 rounded-xl bg-gradient-to-r from-[#141824] via-[#10141f] to-[#141824] border border-[#0057FF]/40 space-y-3">
+      <div className="p-4 rounded-xl bg-gradient-to-r from-[#181424] via-[#14101f] to-[#181424] border border-[#6A00FF]/40 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-[#0057FF]/20 text-[#0057FF]">
+            <div className="p-1.5 rounded-lg bg-[#6A00FF] text-white font-bold">
               <TrendingUp className="w-4 h-4" />
             </div>
             <h4 className="text-xs font-bold font-montserrat uppercase text-white">
@@ -521,7 +521,7 @@ export function PlanilhaCashbackDistribuicao({
             }}
             className={`text-xs h-9 rounded-xl font-montserrat uppercase ${
               somenteReais
-                ? 'bg-[#0057FF]/20 border-[#0057FF] text-[#0057FF]'
+                ? 'bg-[#6A00FF] border-[#6A00FF] text-white font-bold'
                 : 'border-[#2A2A2A] text-gray-400 hover:text-white'
             }`}
           >
@@ -570,7 +570,7 @@ export function PlanilhaCashbackDistribuicao({
                   <tr
                     key={`pos-${p.position}`}
                     className={`hover:bg-[#1a1a1a] transition-colors ${
-                      p.isRealUser ? 'bg-[#0057FF]/5' : ''
+                      p.isRealUser ? 'bg-[#6A00FF]/5' : ''
                     }`}
                   >
                     {/* (1) POSIÇÃO */}
@@ -581,7 +581,7 @@ export function PlanilhaCashbackDistribuicao({
                             isTop1
                               ? 'bg-[#D4AF37] text-black shadow-[0_0_12px_rgba(212,175,55,0.4)]'
                               : isTop3
-                                ? 'bg-[#0057FF] text-white'
+                                ? 'bg-[#6A00FF] text-white font-bold'
                                 : 'bg-[#222222] text-gray-300'
                           }`}
                         >
@@ -590,7 +590,7 @@ export function PlanilhaCashbackDistribuicao({
                         {p.isRealUser && (
                           <Badge
                             variant="outline"
-                            className="text-[9px] px-1.5 py-0 border-[#0057FF]/40 text-[#0057FF] bg-[#0057FF]/10"
+                            className="text-[9px] px-1.5 py-0 border-[#6A00FF] text-white font-bold bg-[#6A00FF]"
                           >
                             Real
                           </Badge>
@@ -616,7 +616,7 @@ export function PlanilhaCashbackDistribuicao({
                           <span
                             className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-montserrat font-bold ${
                               p.role === 'aluno'
-                                ? 'bg-[#0057FF]/20 text-[#0057FF]'
+                                ? 'bg-[#6A00FF] text-white font-bold'
                                 : 'bg-[#D4AF37]/20 text-[#D4AF37]'
                             }`}
                           >
