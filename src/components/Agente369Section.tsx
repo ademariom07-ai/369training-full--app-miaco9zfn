@@ -316,28 +316,28 @@ export function Agente369Section() {
   return (
     <div className="space-y-4">
       {/* CARD PRINCIPAL DO AGENTE 369 */}
-      <Card className="bg-gradient-to-br from-[#181818] via-[#151515] to-[#121212] border-2 border-[#D4AF37]/30 hover:border-[#D4AF37]/60 transition-all rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+      <Card className="bg-gradient-to-br from-[#0057FF] via-[#0046CC] to-[#003399] border-2 border-[#D4AF37]/40 hover:border-[#D4AF37]/80 transition-all rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
         {/* Glow de fundo */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-xl">
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge className="bg-[#D4AF37] text-black font-extrabold uppercase text-[10px] tracking-wider px-3 py-1 flex items-center gap-1.5">
+              <Badge className="bg-[#D4AF37] text-black font-extrabold uppercase text-[10px] tracking-wider px-3 py-1 flex items-center gap-1.5 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 fill-black" />
                 Agente 369 Nativo
               </Badge>
               {agentStatus?.is_linked && (
                 <Badge
                   variant="outline"
-                  className="border-[#00E5FF]/40 text-[#00E5FF] bg-[#00E5FF]/10 text-[10px]"
+                  className="border-white/40 text-white bg-white/15 text-[10px]"
                 >
                   Vinculado a Profissional (Franquia Mentor)
                 </Badge>
               )}
               <Badge
                 variant="outline"
-                className="border-gray-600 text-gray-300 text-[10px] uppercase"
+                className="border-white/30 text-white/90 bg-black/20 text-[10px] uppercase"
               >
                 Plano: {agentStatus?.plan?.toUpperCase()}
               </Badge>
@@ -346,16 +346,16 @@ export function Agente369Section() {
             <h2 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-white tracking-tight flex items-center gap-3">
               Copiloto Inteligente de Saúde & Treino
             </h2>
-            <p className="text-sm text-gray-400 font-inter leading-relaxed">
+            <p className="text-sm text-white/90 font-inter leading-relaxed">
               Motor determinístico credenciado por profissionais (CREF 40+ e 60+), ajuste por sono
               (smartwatch) e progressão científica contínua.
             </p>
           </div>
 
           {/* STATUS DAS FRANQUIAS */}
-          <div className="bg-[#1F1F1F] border border-[#2D2D2D] p-4 rounded-2xl min-w-[260px] flex flex-col justify-center space-y-3">
+          <div className="bg-black/35 backdrop-blur-md border border-white/20 p-4 rounded-2xl min-w-[260px] flex flex-col justify-center space-y-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-400 font-medium flex items-center gap-1.5">
+              <span className="text-white/85 font-medium flex items-center gap-1.5">
                 <Dumbbell className="w-3.5 h-3.5 text-[#D4AF37]" /> Treinos no Mês:
               </span>
               <span className="text-white font-bold">
@@ -367,7 +367,7 @@ export function Agente369Section() {
             </div>
 
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-400 font-medium flex items-center gap-1.5">
+              <span className="text-white/85 font-medium flex items-center gap-1.5">
                 <Bot className="w-3.5 h-3.5 text-[#00E5FF]" /> Mensagens Chat:
               </span>
               <span className="text-white font-bold">
@@ -375,8 +375,8 @@ export function Agente369Section() {
               </span>
             </div>
 
-            <div className="pt-2 border-t border-[#2D2D2D] flex items-center justify-between text-[11px] text-gray-400">
-              <span>Excedente Carteira:</span>
+            <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[11px] text-white/80">
+              <span className="text-white/90 font-medium">Excedente Carteira:</span>
               <span className="text-[#00E5FF] font-semibold">
                 R$ {agentStatus?.overage_costs.workout_cost.toFixed(2)}/treino • R${' '}
                 {agentStatus?.overage_costs.message_cost.toFixed(2)}/msg
@@ -387,16 +387,16 @@ export function Agente369Section() {
 
         {/* ALERTA PAR-Q+ CASO NÃO PREENCHIDO */}
         {!agentStatus?.parq.completed && !isGratis && (
-          <div className="mt-6 bg-[#D4AF37]/10 border border-[#D4AF37]/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="mt-6 bg-black/40 border border-[#D4AF37]/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/25 flex items-center justify-center text-[#D4AF37] shrink-0">
                 <FileCheck className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-xs font-bold text-white uppercase tracking-wider font-montserrat">
                   Questionário de Prontidão PAR-Q+ Obrigatório
                 </p>
-                <p className="text-xs text-gray-300 font-inter">
+                <p className="text-xs text-white/85 font-inter">
                   Antes de gerar treinos inteligentes, responda ao questionário médico regulamentar
                   CREF.
                 </p>
@@ -412,10 +412,10 @@ export function Agente369Section() {
         )}
 
         {/* BOTÕES DE AÇÃO DO AGENTE */}
-        <div className="mt-6 pt-6 border-t border-[#262626] flex flex-wrap items-center gap-3">
+        <div className="mt-6 pt-6 border-t border-white/20 flex flex-wrap items-center gap-3">
           {isGratis ? (
-            <div className="w-full bg-[#202020] border border-[#333] p-4 rounded-xl flex items-center justify-between flex-wrap gap-3">
-              <span className="text-xs text-gray-400 font-inter">
+            <div className="w-full bg-black/40 border border-white/20 p-4 rounded-xl flex items-center justify-between flex-wrap gap-3">
+              <span className="text-xs text-white/90 font-inter">
                 O Agente 369 está disponível a partir do <strong>Plano Básico (R$ 10/mês)</strong>{' '}
                 ou vinculação a profissional parceiro.
               </span>
@@ -444,7 +444,7 @@ export function Agente369Section() {
               <Button
                 onClick={() => setChatOpen(true)}
                 variant="outline"
-                className="border-[#2D2D2D] hover:border-[#00E5FF] text-white hover:text-[#00E5FF] bg-[#1B1B1B] text-xs px-4 py-5 rounded-xl flex items-center gap-2"
+                className="border-white/30 hover:border-white text-white hover:text-white bg-black/40 hover:bg-black/60 text-xs px-4 py-5 rounded-xl flex items-center gap-2"
               >
                 <Bot className="w-4 h-4 text-[#00E5FF]" />
                 Conversar com o Agente ({agentStatus?.usage.messages_remaining} msgs restantes)
@@ -454,9 +454,9 @@ export function Agente369Section() {
                 <Button
                   onClick={() => setCycleModalOpen(true)}
                   variant="outline"
-                  className="border-[#FF3366]/40 text-[#FF3366] hover:bg-[#FF3366]/10 bg-[#1B1B1B] text-xs px-4 py-5 rounded-xl flex items-center gap-2"
+                  className="border-[#FF3366]/60 text-white hover:bg-[#FF3366]/20 bg-black/40 text-xs px-4 py-5 rounded-xl flex items-center gap-2"
                 >
-                  <Heart className="w-4 h-4" />
+                  <Heart className="w-4 h-4 text-[#FF3366]" />
                   Módulo Ciclo Menstrual (Ajuste Sintomas)
                 </Button>
               )}
@@ -465,7 +465,7 @@ export function Agente369Section() {
                 <button
                   type="button"
                   onClick={() => setParqOpen(true)}
-                  className="text-[11px] text-gray-400 hover:text-white underline ml-auto"
+                  className="text-[11px] text-white/80 hover:text-white underline ml-auto"
                 >
                   Ver Respostas PAR-Q+
                 </button>
@@ -475,8 +475,8 @@ export function Agente369Section() {
         </div>
 
         {/* DISCLAIMER FIXO CREF */}
-        <div className="mt-4 pt-3 border-t border-[#222] flex items-center gap-2 text-[11px] text-gray-500 font-inter">
-          <ShieldCheck className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        <div className="mt-4 pt-3 border-t border-white/20 flex items-center gap-2 text-[11px] text-white/85 font-inter">
+          <ShieldCheck className="w-3.5 h-3.5 text-white/80 shrink-0" />
           <span>{agentStatus?.fixed_disclaimer}</span>
         </div>
       </Card>
