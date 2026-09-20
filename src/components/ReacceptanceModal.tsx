@@ -19,7 +19,7 @@ export function ReacceptanceModal() {
   const { user } = useAuth()
   const [pendingDocs, setPendingDocs] = useState<LegalDocumentRecord[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [acceptedCheck, setAcceptedCheck] = useState(false)
+  const [acceptedMap, setAcceptedMap] = useState<Record<string, boolean>>({})
   const [submitting, setSubmitting] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
 
@@ -114,9 +114,22 @@ export function ReacceptanceModal() {
   if (!isOpen || pendingDocs.length === 0) return null
 
   const currentDoc = pendingDocs[currentIndex]
+  const currentDocKey = currentDoc
+    ? `${currentDoc.id || currentDoc.slug}_${currentDoc.version}`
+    : ''
+  const isCurrentDocAccepted = Boolean(currentDocKey && acceptedMap[currentDocKey])
+
+  const handleToggleAccept = (checked: boolean) => {
+    if (!currentDocKey) return
+    setAcceptedMap((prev) => ({
+      ...prev,
+      [currentDocKey]: checked,
+    }))
+  }
 
   const handleAcceptCurrent = async () => {
-    if (!acceptedCheck || !user || !currentDoc) {
+    // Verificar se o documento atual está marcado no estado
+    if (!isCurrentDocAccepted || !user || !currentDoc) {
       toast.error('Você precisa marcar a caixa de confirmação de leitura e aceite.')
       return
     }
@@ -142,7 +155,6 @@ export function ReacceptanceModal() {
 
       if (currentIndex + 1 < pendingDocs.length) {
         setCurrentIndex((prev) => prev + 1)
-        setAcceptedCheck(false)
       } else {
         // Revalidar imediatamente a checagem na mesma sessão sem exigir novo login
         await checkPendingAcceptances()
@@ -184,16 +196,22 @@ export function ReacceptanceModal() {
           {currentDoc.body}
         </div>
 
-        <div className="p-3 bg-[#1c1c1c] border border-[#2A2A2A] rounded-xl flex items-start gap-3 mt-2">
+        <div
+          className="p-3 bg-[#1c1c1c] border border-[#2A2A2A] rounded-xl flex items-start gap-3 mt-2 cursor-pointer hover:border-[#D4AF37]/40 transition-colors"
+          onClick={() => handleToggleAccept(!isCurrentDocAccepted)}
+        >
           <Checkbox
-            id="modal-accept-checkbox"
-            checked={acceptedCheck}
-            onCheckedChange={(checked) => setAcceptedCheck(Boolean(checked))}
+            key={`checkbox-${currentDocKey}`}
+            id={`modal-accept-${currentDocKey}`}
+            checked={isCurrentDocAccepted}
+            onCheckedChange={(checked) => handleToggleAccept(Boolean(checked))}
+            onClick={(e) => e.stopPropagation()}
             className="mt-0.5 data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black border-[#444]"
           />
           <label
-            htmlFor="modal-accept-checkbox"
-            className="text-xs text-gray-200 cursor-pointer leading-snug"
+            htmlFor={`modal-accept-${currentDocKey}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs text-gray-200 cursor-pointer leading-snug select-none flex-1"
           >
             Declaro expressamente que li, compreendi e concordo integralmente com os termos da
             versão <strong className="text-[#D4AF37]">{currentDoc.version}.0</strong> de{' '}
@@ -207,7 +225,7 @@ export function ReacceptanceModal() {
           </span>
           <Button
             onClick={handleAcceptCurrent}
-            disabled={!acceptedCheck || submitting}
+            disabled={!isCurrentDocAccepted || submitting}
             className="w-full sm:w-auto bg-[#D4AF37] text-black hover:bg-[#e0be4a] font-montserrat font-bold text-xs uppercase"
           >
             {currentIndex + 1 < pendingDocs.length ? (
