@@ -24,7 +24,8 @@ export function ReacceptanceModal() {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
-    if (!user) return
+    const hasAuth = !!user || pb.authStore.isValid
+    if (!hasAuth) return
 
     const run = async () => {
       await checkPendingAcceptances()
@@ -33,10 +34,15 @@ export function ReacceptanceModal() {
   }, [user])
 
   const checkPendingAcceptances = async () => {
-    if (!user) return
+    const activeUserId =
+      user?.id || (pb.authStore.record as any)?.id || (pb.authStore.model as any)?.id
+    const activeRole =
+      user?.role || (pb.authStore.record as any)?.role || (pb.authStore.model as any)?.role
+
+    if (!activeUserId) return
     try {
       // 1. Obter todos os documentos publicados relevantes para o papel do usuário
-      const targetAudience = user.role === 'profissional' ? 'profissional' : 'aluno'
+      const targetAudience = activeRole === 'profissional' ? 'profissional' : 'aluno'
       const filter = `status = 'publicado' && (audience = 'todos' || audience = '${targetAudience}')`
       const publishedDocs = await pb
         .collection('legal_documents')
@@ -52,7 +58,7 @@ export function ReacceptanceModal() {
       const userAcceptances = await pb
         .collection('legal_acceptances')
         .getFullList<LegalAcceptanceRecord>({
-          filter: `user = '${user.id}'`,
+          filter: `user = '${activeUserId}'`,
         })
 
       // Mapear aceites por slug e por id para o conjunto de versões já aceitas
@@ -128,9 +134,38 @@ export function ReacceptanceModal() {
   }
 
   const handleAcceptCurrent = async () => {
-    // Verificar se o documento atual está marcado no estado
-    if (!isCurrentDocAccepted || !user || !currentDoc) {
+    // 1. Validação estrita do checkbox de aceite
+    if (!isCurrentDocAccepted) {
       toast.error('Você precisa marcar a caixa de confirmação de leitura e aceite.')
+      return
+    }
+
+    // 2. Validação da existência do documento atual
+    if (!currentDoc) {
+      toast.error('Documento legal não encontrado. Recarregue a página.')
+      return
+    }
+
+    // 3. Obtenção e recuperação confiável do usuário autenticado
+    let activeUserId =
+      user?.id || (pb.authStore.record as any)?.id || (pb.authStore.model as any)?.id
+
+    if (!activeUserId) {
+      try {
+        if (pb.authStore.isValid && pb.authStore.token) {
+          const authData = await pb.collection('users').authRefresh()
+          activeUserId =
+            authData?.record?.id ||
+            (pb.authStore.record as any)?.id ||
+            (pb.authStore.model as any)?.id
+        }
+      } catch (refreshErr) {
+        console.warn('Tentativa de authRefresh falhou no modal de reaceite:', refreshErr)
+      }
+    }
+
+    if (!activeUserId) {
+      toast.error('Sua sessão expirou. Recarregue a página para continuar.')
       return
     }
 
@@ -141,7 +176,7 @@ export function ReacceptanceModal() {
 
       // Gravar na coleção legal_acceptances
       await pb.collection('legal_acceptances').create({
-        user: user.id,
+        user: activeUserId,
         document: currentDoc.id,
         document_slug: currentDoc.slug,
         version: currentDoc.version,
