@@ -30,12 +30,22 @@ routerAdd(
       }
 
       const role = authUser.getString('role') || 'aluno'
+
+      // HOTFIX 369: Se o aluno vinculado tentar trocar de plano, bloquear com 409
+      if (role === 'aluno' && !!authUser.getString('linked_professional')) {
+        return e.json(409, {
+          success: false,
+          message:
+            'Você está vinculado a um profissional e pontua no plano dele. Para escolher um plano próprio, desvincule primeiro.',
+        })
+      }
+
       const now = new Date()
       const dayOfMonth = now.getDate()
       const isFromGratis = currentPlan === 'gratis'
       const isWindowOpen = dayOfMonth >= 1 && dayOfMonth <= 3
 
-      // Alunos podem mudar a qualquer momento se vinculados ou no primeiro upgrade;
+      // Alunos podem mudar a qualquer momento no primeiro upgrade ou troca;
       // Para profissionais entre planos pagos, janela de dias 1 a 3
       if (role === 'profissional' && !isFromGratis && !isWindowOpen) {
         return e.json(403, {

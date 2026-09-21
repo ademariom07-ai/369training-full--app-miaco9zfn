@@ -22,12 +22,16 @@ import {
   QrCode,
   Loader2,
   DollarSign,
+  UserCheck,
+  UserX,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PlanChangeSection } from '@/components/PlanChangeSection'
 
 export default function AlunoPerfil() {
   const { user, refreshUser } = useAuth()
+  const [linkedProfName, setLinkedProfName] = useState<string | null>(null)
+  const [unlinkingProf, setUnlinkingProf] = useState<boolean>(false)
 
   // Wallet State
   const [balance, setBalance] = useState<number>(300.0)
@@ -43,6 +47,47 @@ export default function AlunoPerfil() {
   // Referral
   const referralCode = user?.referral_code || 'LUCAS369'
   const referralLink = `${window.location.origin}/cadastro?ref=${referralCode}`
+
+  // Carregar dados do profissional vinculado se houver
+  useEffect(() => {
+    if (!user?.linked_professional) {
+      setLinkedProfName(null)
+      return
+    }
+    pb.collection('users')
+      .getOne(user.linked_professional)
+      .then((prof) => {
+        setLinkedProfName(prof.name || 'Profissional')
+      })
+      .catch(() => {
+        setLinkedProfName('Profissional')
+      })
+  }, [user?.linked_professional])
+
+  // Desvincular profissional
+  const handleUnlink = async () => {
+    if (!window.confirm('Tem certeza que deseja se desvincular do seu profissional mentor?')) {
+      return
+    }
+    setUnlinkingProf(true)
+    try {
+      const res = await pb.send('/backend/v1/link/remove', {
+        method: 'POST',
+        body: {},
+      })
+      if (res && res.success) {
+        toast.success('Desvinculado com sucesso.')
+        await refreshUser()
+      } else {
+        throw new Error(res?.message || 'Falha ao desvincular.')
+      }
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message || 'Erro ao desvincular.'
+      toast.error(msg)
+    } finally {
+      setUnlinkingProf(false)
+    }
+  }
 
   // Load Wallet Transactions
   useEffect(() => {
@@ -154,6 +199,46 @@ export default function AlunoPerfil() {
           </div>
         </div>
       </div>
+
+      {/* CARD DE ESTADO DE VÍNCULO DO ALUNO (HOTFIX 369) */}
+      {user?.linked_professional && (
+        <Card className="bg-emerald-950/30 border border-emerald-500/50 p-5 rounded-2xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 shrink-0">
+              <UserCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-montserrat">
+                  Vínculo Ativo • Regra v2
+                </span>
+              </div>
+              <h3 className="text-base font-bold font-montserrat text-white mt-1">
+                Meu profissional: {linkedProfName || 'Carregando...'}
+              </h3>
+              <p className="text-xs text-gray-300 font-inter mt-0.5">
+                Plano do professor aplicado, mensalidade isenta (você pontua no ranking com o
+                multiplicador dele).
+              </p>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleUnlink}
+            disabled={unlinkingProf}
+            className="border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200 text-xs font-bold shrink-0 self-start sm:self-center"
+          >
+            {unlinkingProf ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+            ) : (
+              <UserX className="w-3.5 h-3.5 mr-1" />
+            )}
+            Desvincular
+          </Button>
+        </Card>
+      )}
 
       {/* CARTEIRA DIGITAL & CASHBACK BLOCK */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

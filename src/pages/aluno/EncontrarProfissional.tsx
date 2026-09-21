@@ -36,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { PresentationVideoPlayer } from '@/components/PresentationVideoPlayer'
+import { UserCheck, UserX } from 'lucide-react'
 
 // Haversine formula to compute distance in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -54,7 +55,9 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 export default function EncontrarProfissional() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
+  const [linkingProfId, setLinkingProfId] = useState<string | null>(null)
+  const [unlinking, setUnlinking] = useState<boolean>(false)
 
   // User coords (default to São Paulo)
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number }>({
@@ -264,6 +267,69 @@ export default function EncontrarProfissional() {
     if (plan === 'premium') return 3.0
     if (plan === 'pro') return 2.0
     return 1.0 // basico
+  }
+
+  // Ações de Vínculo Aluno <-> Profissional (HOTFIX 369)
+  const handleLinkProfessional = async (prof: UserProfile) => {
+    if (!user) {
+      toast.error('Você precisa estar autenticado como aluno para se vincular.')
+      return
+    }
+    if (user.role !== 'aluno') {
+      toast.error('Apenas contas do tipo aluno podem treinar vinculado a um profissional.')
+      return
+    }
+
+    setLinkingProfId(prof.id)
+    try {
+      const res = await pb.send('/backend/v1/link/create', {
+        method: 'POST',
+        body: { professional_id: prof.id },
+      })
+
+      if (res && res.success) {
+        toast.success(
+          res.message ||
+            `Agora você treina com ${prof.name}! Seus pontos contam no plano dele e você não paga mensalidade.`,
+        )
+        await refreshUser()
+      } else {
+        throw new Error(res?.message || 'Falha ao vincular profissional.')
+      }
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message || 'Erro ao vincular profissional.'
+      toast.error(msg)
+    } finally {
+      setLinkingProfId(null)
+    }
+  }
+
+  const handleUnlinkProfessional = async (profName?: string) => {
+    if (!user) return
+    const confirmed = window.confirm(
+      `Deseja realmente se desvincular ${profName ? `de ${profName}` : 'deste profissional'}? Você voltará ao plano individual.`,
+    )
+    if (!confirmed) return
+
+    setUnlinking(true)
+    try {
+      const res = await pb.send('/backend/v1/link/remove', {
+        method: 'POST',
+        body: {},
+      })
+
+      if (res && res.success) {
+        toast.success(res.message || 'Vínculo removido com sucesso.')
+        await refreshUser()
+      } else {
+        throw new Error(res?.message || 'Falha ao desvincular.')
+      }
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message || 'Erro ao desvincular.'
+      toast.error(msg)
+    } finally {
+      setUnlinking(false)
+    }
   }
 
   // Confirm booking
@@ -586,9 +652,45 @@ export default function EncontrarProfissional() {
 
                       {/* Interactive Buttons */}
                       <div
-                        className="flex items-center gap-2 w-full sm:w-auto"
+                        className="flex items-center gap-2 w-full sm:w-auto flex-wrap"
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {/* Botão de Vínculo: apenas para Aluno */}
+                        {user?.role === 'aluno' &&
+                          (user.linked_professional === prof.id ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUnlinkProfessional(prof.name)}
+                              disabled={unlinking}
+                              className="border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 font-bold text-xs flex items-center gap-1.5"
+                              title="Clique para desvincular deste profissional"
+                            >
+                              {unlinking ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                              )}
+                              <span>Vinculado</span>
+                              <span className="text-[10px] opacity-75">(Desvincular)</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleLinkProfessional(prof)}
+                              disabled={linkingProfId === prof.id}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs uppercase flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                              title="Treinar com este profissional: mensalidade isenta e pontuação no plano dele"
+                            >
+                              {linkingProfId === prof.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <UserCheck className="w-3.5 h-3.5" />
+                              )}
+                              <span>Treinar com este profissional</span>
+                            </Button>
+                          ))}
+
                         <Button
                           size="sm"
                           onClick={() => handleOpenAgenda(prof)}
@@ -746,6 +848,36 @@ export default function EncontrarProfissional() {
 
               {/* CTA Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                {user?.role === 'aluno' &&
+                  (user.linked_professional === selectedProf.id ? (
+                    <Button
+                      onClick={() => handleUnlinkProfessional(selectedProf.name)}
+                      disabled={unlinking}
+                      variant="outline"
+                      className="border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 font-bold text-xs h-11"
+                    >
+                      {unlinking ? (
+                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                      ) : (
+                        <UserCheck className="w-4 h-4 mr-1.5 text-emerald-400" />
+                      )}
+                      Vinculado a este profissional (Clique para Desvincular)
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleLinkProfessional(selectedProf)}
+                      disabled={linkingProfId === selectedProf.id}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs uppercase h-11 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                    >
+                      {linkingProfId === selectedProf.id ? (
+                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                      ) : (
+                        <UserCheck className="w-4 h-4 mr-1.5" />
+                      )}
+                      Treinar com este profissional
+                    </Button>
+                  ))}
+
                 <Button
                   onClick={() => {
                     const p = selectedProf

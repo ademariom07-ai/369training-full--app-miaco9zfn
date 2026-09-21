@@ -42,6 +42,8 @@ import {
   Sparkles,
   ChevronRight,
   UserCheck,
+  UserX,
+  Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
@@ -57,6 +59,9 @@ export default function GestaoAlunos() {
   const { user } = useAuth()
 
   const [students, setStudents] = useState<UserProfile[]>([])
+  const [linkedStudents, setLinkedStudents] = useState<UserProfile[]>([])
+  const [loadingLinked, setLoadingLinked] = useState<boolean>(true)
+  const [unlinkingStudentId, setUnlinkingStudentId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -137,8 +142,54 @@ export default function GestaoAlunos() {
     }
   }, [])
 
+  // Carregar alunos vinculados ao profissional (HOTFIX 369)
+  const fetchLinkedStudents = useCallback(async () => {
+    if (!user) return
+    setLoadingLinked(true)
+    try {
+      const res = await pb.collection('users').getList<UserProfile>(1, 100, {
+        filter: `role = "aluno" && linked_professional = "${user.id}"`,
+        sort: 'name',
+      })
+      setLinkedStudents(res.items)
+    } catch (err) {
+      console.error('Erro ao carregar alunos vinculados:', err)
+      setLinkedStudents([])
+    } finally {
+      setLoadingLinked(false)
+    }
+  }, [user])
+
+  // Desvincular aluno (iniciado pelo profissional)
+  const handleUnlinkStudent = async (student: UserProfile) => {
+    const ok = window.confirm(
+      `Deseja realmente desvincular o aluno ${student.name}? Ele deixará de pontuar no seu plano.`,
+    )
+    if (!ok) return
+
+    setUnlinkingStudentId(student.id)
+    try {
+      const res = await pb.send('/backend/v1/link/remove', {
+        method: 'POST',
+        body: { student_id: student.id },
+      })
+      if (res && res.success) {
+        toast.success(`Aluno ${student.name} desvinculado com sucesso.`)
+        await fetchLinkedStudents()
+      } else {
+        throw new Error(res?.message || 'Falha ao desvincular aluno.')
+      }
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message || 'Erro ao desvincular aluno.'
+      toast.error(msg)
+    } finally {
+      setUnlinkingStudentId(null)
+    }
+  }
+
   // Carregar alunos e métricas reais
   useEffect(() => {
+    fetchLinkedStudents()
     const fetchData = async () => {
       setLoading(true)
       try {
@@ -218,7 +269,7 @@ export default function GestaoAlunos() {
     }
 
     fetchData()
-  }, [])
+  }, [fetchLinkedStudents])
 
   // Carregar histórico completo do prontuário para a Linha do Tempo
   const loadStudentHistory = async (student: UserProfile) => {
@@ -422,6 +473,103 @@ export default function GestaoAlunos() {
             className="pl-10 bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white"
           />
         </div>
+      </div>
+
+      {/* SEÇÃO 1: MEUS ALUNOS VINCULADOS (HOTFIX 369) */}
+      <div className="p-5 rounded-2xl bg-gradient-to-br from-[#181818] via-[#151515] to-[#181818] border border-emerald-500/40 space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#2A2A2A]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black font-montserrat text-white uppercase flex items-center gap-2">
+                Meus Alunos Vinculados ({linkedStudents.length})
+              </h2>
+              <p className="text-xs text-gray-400 font-inter">
+                Alunos vinculados treinam com isenção de mensalidade e pontuam no ranking com o seu
+                plano (
+                <strong className="text-emerald-400 uppercase">{user?.plan || 'Básico'}</strong>).
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold font-mono px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 self-start sm:self-center">
+            Regra v2 Ativa
+          </span>
+        </div>
+
+        {loadingLinked ? (
+          <div className="p-6 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+            <span>Carregando alunos vinculados...</span>
+          </div>
+        ) : linkedStudents.length === 0 ? (
+          <div className="p-6 text-center rounded-xl bg-[#121212] border border-[#262626] space-y-2">
+            <Users className="w-8 h-8 text-gray-500 mx-auto" />
+            <p className="text-xs text-gray-300 font-semibold font-montserrat">
+              Nenhum aluno vinculado ainda.
+            </p>
+            <p className="text-[11px] text-gray-500 max-w-md mx-auto font-inter">
+              Peça para seus alunos se vincularem pelo botão &ldquo;Treinar com este
+              profissional&rdquo; na busca de especialistas.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {linkedStudents.map((linked) => (
+              <div
+                key={linked.id}
+                className="p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-[#202020] border border-emerald-500/40 flex items-center justify-center font-bold text-sm text-emerald-400 overflow-hidden shrink-0">
+                    {linked.avatar ? (
+                      <img
+                        src={pb.files.getURL(linked, linked.avatar)}
+                        alt={linked.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      linked.name?.[0]?.toUpperCase() || 'A'
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold font-montserrat text-white text-xs truncate">
+                      {linked.name}
+                    </h4>
+                    <p className="text-[11px] text-gray-400 truncate">{linked.email}</p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                        Pontua no meu plano
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-[#222] flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-gray-400 font-mono">
+                    Plano efetivo:{' '}
+                    <strong className="text-white uppercase">{user?.plan || 'PRO'}</strong>
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleUnlinkStudent(linked)}
+                    disabled={unlinkingStudentId === linked.id}
+                    className="border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200 text-[11px] h-7 px-2.5 font-bold"
+                  >
+                    {unlinkingStudentId === linked.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                    ) : (
+                      <UserX className="w-3 h-3 mr-1" />
+                    )}
+                    Desvincular
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Banner de Conformidade & Sigilo Clínico */}
