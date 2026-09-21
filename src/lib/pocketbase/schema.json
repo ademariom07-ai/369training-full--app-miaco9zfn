@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-21T21:25:43.657Z",
+  "generatedAt": "2026-09-21T22:09:53.748Z",
   "collections": [
     {
       "name": "users",
@@ -411,7 +411,7 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (professional = @request.auth.id || student = @request.auth.id || @request.auth.role = 'admin')",
         "view": "@request.auth.id != '' && (professional = @request.auth.id || student = @request.auth.id || @request.auth.role = 'admin')",
-        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id))",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id) || @request.body.student = @request.auth.id)",
         "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && professional = @request.auth.id))",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && professional = @request.auth.id))"
       },
@@ -419,7 +419,7 @@
         {
           "name": "professional",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "users"
         },
