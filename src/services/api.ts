@@ -580,3 +580,68 @@ export interface ParqOnboardingRecord {
   created: string
   updated: string
 }
+
+export type ClinicalCategory =
+  | 'geral'
+  | 'psicologia'
+  | 'fisioterapia'
+  | 'artes_marciais'
+  | 'educacao_fisica'
+  | 'nutricao'
+
+export interface ClinicalRecordModel extends RecordModel {
+  professional: string
+  student: string
+  category: ClinicalCategory
+  title: string
+  summary?: string
+  confidential_notes?: string
+  pain_level?: number
+  mobility_tests?: Array<{
+    name: string
+    result: string
+    passed?: boolean
+  }>
+  protocol_phase?: string
+  functional_goals?: string
+  weight_kg?: number
+  body_fat_pct?: number
+  metadata?: Record<string, unknown>
+  expand?: {
+    professional?: RecordModel
+    student?: RecordModel
+  }
+}
+
+export interface ClinicalSessionLogRecord extends RecordModel {
+  professional: string
+  student: string
+  category: string
+  public_status: string
+  session_date?: string
+  expand?: {
+    professional?: RecordModel
+    student?: RecordModel
+  }
+}
+
+export interface MartialArtsProgressRecord extends RecordModel {
+  professional: string
+  student: string
+  modality: string
+  current_belt: string
+  next_belt?: string
+  degrees?: number
+  mastered_techniques?: Array<{
+    name: string
+    date?: string
+    notes?: string
+  }>
+  performance_score?: number
+  notes?: string
+  graduation_date?: string
+  expand?: {
+    professional?: RecordModel
+    student?: RecordModel
+  }
+}

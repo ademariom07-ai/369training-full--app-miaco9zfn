@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T23:09:48.433Z",
+  "generatedAt": "2026-09-21T17:13:50.639Z",
   "collections": [
     {
       "name": "users",
@@ -253,6 +253,66 @@
         {
           "name": "subscription_expires_at",
           "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "martial_arts_belt",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "martial_arts_federation",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "martial_arts_style",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "martial_arts_experience_years",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "martial_arts_certification",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "crefito",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "physio_experience_years",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "physio_certifications",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "physio_specialty",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "physio_practice_area",
+          "type": "text",
           "required": false,
           "system": false
         }
@@ -3407,6 +3467,291 @@
         "CREATE INDEX idx_gsp_session ON group_session_participants (session)",
         "CREATE INDEX idx_gsp_student ON group_session_participants (student)",
         "CREATE INDEX idx_gsp_status ON group_session_participants (attendance_status)"
+      ]
+    },
+    {
+      "name": "clinical_records",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (((category = 'psicologia' || category = 'fisioterapia') && professional = @request.auth.id) || (category != 'psicologia' && category != 'fisioterapia' && (professional = @request.auth.id || student = @request.auth.id)))",
+        "view": "@request.auth.id != '' && (((category = 'psicologia' || category = 'fisioterapia') && professional = @request.auth.id) || (category != 'psicologia' && category != 'fisioterapia' && (professional = @request.auth.id || student = @request.auth.id)))",
+        "create": "@request.auth.id != '' && @request.auth.role = 'profissional' && @request.body.professional = @request.auth.id",
+        "update": "@request.auth.id != '' && @request.auth.role = 'profissional' && professional = @request.auth.id",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'profissional' && professional = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "student",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "category",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "geral",
+            "psicologia",
+            "fisioterapia",
+            "artes_marciais",
+            "educacao_fisica",
+            "nutricao"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "confidential_notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pain_level",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "mobility_tests",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "protocol_phase",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "functional_goals",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_kg",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "body_fat_pct",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "metadata",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_clinical_prof ON clinical_records (professional)",
+        "CREATE INDEX idx_clinical_student ON clinical_records (student)",
+        "CREATE INDEX idx_clinical_cat ON clinical_records (category)",
+        "CREATE INDEX idx_clinical_created ON clinical_records (created)"
+      ]
+    },
+    {
+      "name": "clinical_session_logs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'profissional' || student = @request.auth.id)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'profissional' || student = @request.auth.id)",
+        "create": "@request.auth.id != '' && @request.auth.role = 'profissional' && @request.body.professional = @request.auth.id",
+        "update": "@request.auth.id != '' && @request.auth.role = 'profissional' && professional = @request.auth.id",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'profissional' && professional = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "student",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "category",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "psicologia",
+            "fisioterapia",
+            "artes_marciais",
+            "educacao_fisica",
+            "nutricao"
+          ]
+        },
+        {
+          "name": "public_status",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "session_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_csl_student ON clinical_session_logs (student)",
+        "CREATE INDEX idx_csl_prof ON clinical_session_logs (professional)",
+        "CREATE INDEX idx_csl_date ON clinical_session_logs (session_date)"
+      ]
+    },
+    {
+      "name": "martial_arts_progress",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (professional = @request.auth.id || student = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (professional = @request.auth.id || student = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && professional = @request.auth.id))",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && professional = @request.auth.id))"
+      },
+      "fields": [
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "student",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "modality",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "current_belt",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "next_belt",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "degrees",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "mastered_techniques",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "performance_score",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "graduation_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_map_student ON martial_arts_progress (student)",
+        "CREATE INDEX idx_map_prof ON martial_arts_progress (professional)"
       ]
     }
   ]

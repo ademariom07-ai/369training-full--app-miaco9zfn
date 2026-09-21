@@ -32,6 +32,28 @@ export default function ProfissionalPerfil() {
   const [state, setState] = useState(user?.state || 'SP')
   const [cref, setCref] = useState(user?.cref || 'CREF 098765-G/SP')
   const [crp, setCrp] = useState(user?.crp || '')
+  // Artes Marciais: 5 campos
+  const [martialArtsBelt, setMartialArtsBelt] = useState(user?.martial_arts_belt || '')
+  const [martialArtsFederation, setMartialArtsFederation] = useState(
+    user?.martial_arts_federation || '',
+  )
+  const [martialArtsStyle, setMartialArtsStyle] = useState(user?.martial_arts_style || '')
+  const [martialArtsExpYears, setMartialArtsExpYears] = useState<string>(
+    user?.martial_arts_experience_years !== undefined
+      ? String(user.martial_arts_experience_years)
+      : '',
+  )
+  const [martialArtsCert, setMartialArtsCert] = useState(user?.martial_arts_certification || '')
+
+  // Fisioterapia
+  const [crefito, setCrefito] = useState(user?.crefito || '')
+  const [physioExpYears, setPhysioExpYears] = useState<string>(
+    user?.physio_experience_years !== undefined ? String(user.physio_experience_years) : '',
+  )
+  const [physioCerts, setPhysioCerts] = useState(user?.physio_certifications || '')
+  const [physioSpecialty, setPhysioSpecialty] = useState(user?.physio_specialty || '')
+  const [physioArea, setPhysioArea] = useState(user?.physio_practice_area || '')
+
   const [videoUrl, setVideoUrl] = useState(user?.video_url || '')
   const [videoEnabled, setVideoEnabled] = useState(user?.video_enabled ?? false)
   const [saving, setSaving] = useState(false)
@@ -90,6 +112,20 @@ export default function ProfissionalPerfil() {
       if (user.state !== undefined) setState(user.state)
       if (user.cref !== undefined) setCref(user.cref)
       if (user.crp !== undefined) setCrp(user.crp)
+      if (user.martial_arts_belt !== undefined) setMartialArtsBelt(user.martial_arts_belt)
+      if (user.martial_arts_federation !== undefined)
+        setMartialArtsFederation(user.martial_arts_federation)
+      if (user.martial_arts_style !== undefined) setMartialArtsStyle(user.martial_arts_style)
+      if (user.martial_arts_experience_years !== undefined)
+        setMartialArtsExpYears(String(user.martial_arts_experience_years))
+      if (user.martial_arts_certification !== undefined)
+        setMartialArtsCert(user.martial_arts_certification)
+      if (user.crefito !== undefined) setCrefito(user.crefito)
+      if (user.physio_experience_years !== undefined)
+        setPhysioExpYears(String(user.physio_experience_years))
+      if (user.physio_certifications !== undefined) setPhysioCerts(user.physio_certifications)
+      if (user.physio_specialty !== undefined) setPhysioSpecialty(user.physio_specialty)
+      if (user.physio_practice_area !== undefined) setPhysioArea(user.physio_practice_area)
       if (user.video_url !== undefined) setVideoUrl(user.video_url)
       if (user.video_enabled !== undefined) setVideoEnabled(user.video_enabled)
     }
@@ -107,6 +143,16 @@ export default function ProfissionalPerfil() {
         state,
         cref,
         crp,
+        martial_arts_belt: martialArtsBelt,
+        martial_arts_federation: martialArtsFederation,
+        martial_arts_style: martialArtsStyle,
+        martial_arts_experience_years: martialArtsExpYears ? Number(martialArtsExpYears) : 0,
+        martial_arts_certification: martialArtsCert,
+        crefito,
+        physio_experience_years: physioExpYears ? Number(physioExpYears) : 0,
+        physio_certifications: physioCerts,
+        physio_specialty: physioSpecialty,
+        physio_practice_area: physioArea,
         video_url: videoUrl,
         video_enabled: videoEnabled,
       })
@@ -173,7 +219,7 @@ export default function ProfissionalPerfil() {
                 <div className="text-gray-300 font-mono text-xs flex items-center gap-1">
                   <span className="text-gray-400 font-sans text-[11px]">Registro Oficial:</span>
                   <strong className="text-white bg-[#1f1f1f] px-2 py-0.5 rounded border border-[#333]">
-                    {cref || crp || '098765-G/SP'}
+                    {crp || crefito || martialArtsFederation || cref || '098765-G/SP'}
                   </strong>
                 </div>
                 <span className="text-gray-600">|</span>
@@ -270,6 +316,166 @@ export default function ProfissionalPerfil() {
                 }}
                 className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white"
               />
+            </div>
+          </div>
+
+          {/* SEÇÃO ARTES MARCIAIS — OS 5 CAMPOS OBRIGATÓRIOS DO MESTRE/PROFESSOR */}
+          <div className="p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold text-[#D4AF37] uppercase font-montserrat tracking-wide flex items-center gap-2">
+                  <Award className="w-4 h-4 text-[#D4AF37]" />
+                  Perfil do Professor de Artes Marciais (5 Campos Oficiais)
+                </h3>
+                <p className="text-[11px] text-gray-400 font-inter mt-0.5">
+                  Dados de graduação, federação e certificação oficial salvos diretamente no perfil.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  1. Graduação / Faixa Atual
+                </label>
+                <Input
+                  value={martialArtsBelt}
+                  onChange={(e) => setMartialArtsBelt(e.target.value)}
+                  placeholder="Ex: Faixa Preta 3º Dan"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  2. Federação / Confederação
+                </label>
+                <Input
+                  value={martialArtsFederation}
+                  onChange={(e) => setMartialArtsFederation(e.target.value)}
+                  placeholder="Ex: CBJJ, CBMT, FPJ"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  3. Estilo / Linhagem
+                </label>
+                <Input
+                  value={martialArtsStyle}
+                  onChange={(e) => setMartialArtsStyle(e.target.value)}
+                  placeholder="Ex: Gracie Jiu-Jitsu, Muay Thai Tradicional"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  4. Anos de Experiência
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={martialArtsExpYears}
+                  onChange={(e) => setMartialArtsExpYears(e.target.value)}
+                  placeholder="Ex: 15"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  5. Certificação / Diploma de Mestre
+                </label>
+                <Input
+                  value={martialArtsCert}
+                  onChange={(e) => setMartialArtsCert(e.target.value)}
+                  placeholder="Ex: Diploma Internacional IBJJF #88492"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SEÇÃO FISIOTERAPIA — CAMPOS CLÍNICOS E CREFITO */}
+          <div className="p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-4">
+            <div>
+              <h3 className="text-xs font-bold text-[#0057FF] uppercase font-montserrat tracking-wide flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#0057FF]" />
+                Perfil Clínico do Fisioterapeuta
+              </h3>
+              <p className="text-[11px] text-gray-400 font-inter mt-0.5">
+                Registro CREFITO, área de atuação e certificações para atendimento e reabilitação.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  CREFITO
+                </label>
+                <Input
+                  value={crefito}
+                  onChange={(e) => setCrefito(e.target.value)}
+                  placeholder="Ex: CREFITO 3/112233-F"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  Especialidade Fisioterapêutica
+                </label>
+                <Input
+                  value={physioSpecialty}
+                  onChange={(e) => setPhysioSpecialty(e.target.value)}
+                  placeholder="Ex: Traumato-Ortopédica / Esportiva"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  Anos de Experiência
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={physioExpYears}
+                  onChange={(e) => setPhysioExpYears(e.target.value)}
+                  placeholder="Ex: 8"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  Área de Atuação
+                </label>
+                <Input
+                  value={physioArea}
+                  onChange={(e) => setPhysioArea(e.target.value)}
+                  placeholder="Ex: Reabilitação Esportiva e Coluna"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-300 uppercase mb-1 font-montserrat">
+                  Certificações
+                </label>
+                <Input
+                  value={physioCerts}
+                  onChange={(e) => setPhysioCerts(e.target.value)}
+                  placeholder="Ex: Método Maitland, Dry Needling, RPG"
+                  className="bg-[#181818] border-[#2A2A2A] rounded-xl text-xs text-white"
+                />
+              </div>
             </div>
           </div>
 

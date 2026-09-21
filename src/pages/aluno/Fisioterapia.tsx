@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import pb from '@/lib/pocketbase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -13,13 +15,18 @@ import {
   MessageSquare,
   Shield,
   TrendingDown,
+  History,
+  Lock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link } from 'react-router-dom'
 
 export default function Fisioterapia() {
+  const { user } = useAuth()
   // Pain Scale State (0-10)
   const [painLevel, setPainLevel] = useState<number>(2)
+  const [savingPain, setSavingPain] = useState(false)
+  const [recentLogs, setRecentLogs] = useState<any[]>([])
 
   // Mobility Checklist
   const [mobilityTests, setMobilityTests] = useState([
@@ -29,12 +36,55 @@ export default function Fisioterapia() {
     { id: 'm4', name: 'Mobilidade Torácica em Quatro Apoios (Gato-Camelo)', done: false },
   ])
 
+  // Carregar histórico de registros públicos/resumos disponíveis
+  useEffect(() => {
+    if (!user) return
+    pb.collection('clinical_session_logs')
+      .getList(1, 10, {
+        filter: `student = "${user.id}" && category = "fisioterapia"`,
+        sort: '-created',
+      })
+      .then((res) => {
+        setRecentLogs(res.items)
+      })
+      .catch(() => {})
+  }, [user])
+
   const toggleMobility = (id: string) => {
     setMobilityTests(mobilityTests.map((t) => (t.id === id ? { ...t, done: !t.done } : t)))
   }
 
-  const handleSavePainLog = () => {
-    toast.success(`Nível de dor ${painLevel}/10 registrado no prontuário do Fisioterapeuta!`)
+  const handleSavePainLog = async () => {
+    if (!user) {
+      toast.error('Você precisa estar logado.')
+      return
+    }
+    setSavingPain(true)
+    try {
+      // Salvar protocolo de dor em protocols (já existente no schema do aluno)
+      await pb.collection('protocols').create({
+        student: user.id,
+        title: `Registro de Dor EVA (${painLevel}/10)`,
+        pain_level: painLevel,
+        mobility_tests: mobilityTests.map((m) => ({
+          test: m.name,
+          passed: m.done,
+          result: m.done ? 'Aprovado' : 'Limitado',
+        })),
+        steps: [
+          { phase: 'Autoavaliação do Aluno', pain: painLevel, date: new Date().toISOString() },
+        ],
+      })
+
+      toast.success(
+        `Nível de dor ${painLevel}/10 registrado e enviado ao prontuário do Fisioterapeuta!`,
+      )
+    } catch (err: any) {
+      console.error(err)
+      toast.error('Erro ao registrar escala de dor.')
+    } finally {
+      setSavingPain(false)
+    }
   }
 
   // Color gradient for pain level
@@ -102,12 +152,53 @@ export default function Fisioterapia() {
           <span className="text-[#EF4444]">10 - Dor Severa</span>
         </div>
 
-        <Button
-          onClick={handleSavePainLog}
-          className="w-full sm:w-auto bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase px-6"
-        >
-          Registrar Dor de Hoje
-        </Button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <Button
+            onClick={handleSavePainLog}
+            disabled={savingPain}
+            className="w-full sm:w-auto bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase px-6"
+          >
+            {savingPain ? 'Registrando...' : 'Registrar Dor de Hoje'}
+          </Button>
+
+          <span className="text-[11px] text-gray-400 flex items-center gap-1.5 font-inter">
+            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+            Dados clínicos de saúde protegidos sob sigilo (LGPD Art. 11 & CREFITO)
+          </span>
+        </div>
+      </Card>
+
+      {/* HISTÓRICO DE SESSÕES REGISTRADAS PELO FISIOTERAPEUTA (VISÃO DO ALUNO) */}
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl">
+        <h3 className="font-bold font-montserrat text-white text-base uppercase mb-4 flex items-center gap-2">
+          <History className="w-5 h-5 text-[#0057FF]" />
+          Sessões Clínicas no Seu Prontuário
+        </h3>
+
+        {recentLogs.length === 0 ? (
+          <p className="text-xs text-gray-400 font-inter">
+            Nenhuma sessão registrada recentemente pelo seu fisioterapeuta.
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            {recentLogs.map((log) => (
+              <div
+                key={log.id}
+                className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
+                  <span className="font-semibold text-white font-montserrat">
+                    {log.public_status || 'Sessão registrada'}
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-gray-400">
+                  {new Date(log.created).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* MOBILITY TESTS CHECKLIST */}

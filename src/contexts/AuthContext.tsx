@@ -27,10 +27,23 @@ export interface UserProfile extends RecordModel {
   avatar?: string
   video_url?: string
   video_enabled?: boolean
+  crp?: string
   linked_professional?: string
   linked_prof_fee_mode?: 'own_plan' | 'prof_sponsored'
   subscription_status?: 'ativa' | 'inadimplente' | 'cancelada'
   subscription_expires_at?: string
+  // Artes Marciais (5 campos do mestre/professor)
+  martial_arts_belt?: string
+  martial_arts_federation?: string
+  martial_arts_style?: string
+  martial_arts_experience_years?: number
+  martial_arts_certification?: string
+  // Fisioterapia
+  crefito?: string
+  physio_experience_years?: number
+  physio_certifications?: string
+  physio_specialty?: string
+  physio_practice_area?: string
 }
 
 interface AuthContextType {

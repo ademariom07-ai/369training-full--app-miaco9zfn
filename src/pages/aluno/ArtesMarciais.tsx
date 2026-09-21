@@ -1,4 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import pb from '@/lib/pocketbase/client'
+import { useAuth } from '@/contexts/AuthContext'
+import type { MartialArtsProgressRecord } from '@/services/api'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,12 +14,16 @@ import {
   PlayCircle,
   ShieldAlert,
   Users,
+  Clock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ArtesMarciais() {
+  const { user } = useAuth()
   const [modality, setModality] = useState('Muay Thai')
   const [checkedIn, setCheckedIn] = useState(false)
+  const [currentBeltTitle, setCurrentBeltTitle] = useState('Faixa Azul (3º Grau)')
+  const [savedProgress, setSavedProgress] = useState<MartialArtsProgressRecord[]>([])
 
   // Belt Ladder State (Branca -> Amarela -> Azul -> Vermelha -> Preta)
   const beltLevels = [
@@ -30,6 +37,26 @@ export default function ArtesMarciais() {
       earned: false,
     },
   ]
+
+  // Carregar evolução real registrada pelo mestre/professor
+  useEffect(() => {
+    if (!user) return
+    pb.collection('martial_arts_progress')
+      .getList<MartialArtsProgressRecord>(1, 10, {
+        filter: `student = "${user.id}"`,
+        sort: '-created',
+      })
+      .then((res) => {
+        setSavedProgress(res.items)
+        if (res.items.length > 0) {
+          const latest = res.items[0]
+          setCurrentBeltTitle(
+            `${latest.current_belt} ${latest.degrees ? `(${latest.degrees}º Grau)` : ''}`,
+          )
+        }
+      })
+      .catch(() => {})
+  }, [user])
 
   const handleCheckIn = () => {
     setCheckedIn(true)
@@ -86,9 +113,35 @@ export default function ArtesMarciais() {
               </h2>
             </div>
             <span className="text-xs font-mono text-[#D4AF37] font-bold px-2.5 py-1 rounded bg-[#D4AF37]/10 border border-[#D4AF37]/30">
-              Faixa Atual: Azul (3º Grau)
+              Faixa Atual: {currentBeltTitle}
             </span>
           </div>
+
+          {/* Registros de graduação conquistados registrados pelo professor */}
+          {savedProgress.length > 0 && (
+            <div className="mb-4 p-3 rounded-xl bg-[#141414] border border-[#D4AF37]/30 space-y-2">
+              <span className="text-[10px] font-bold text-[#D4AF37] uppercase font-montserrat tracking-wider block">
+                Última Graduação Conquistada no Prontuário
+              </span>
+              <div className="flex flex-wrap items-center justify-between text-xs">
+                <div>
+                  <strong className="text-white font-montserrat">
+                    {savedProgress[0].current_belt}
+                  </strong>
+                  {savedProgress[0].next_belt && (
+                    <span className="text-gray-400 font-inter ml-2">
+                      → Rumo a: <strong className="text-white">{savedProgress[0].next_belt}</strong>
+                    </span>
+                  )}
+                </div>
+                {savedProgress[0].performance_score !== undefined && (
+                  <span className="font-mono text-[#22C55E] font-bold">
+                    Nota Técnica: {savedProgress[0].performance_score} pts
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
             {beltLevels.map((belt, idx) => (
