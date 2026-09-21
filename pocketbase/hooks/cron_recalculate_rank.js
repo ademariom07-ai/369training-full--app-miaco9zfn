@@ -72,13 +72,29 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
         ? `professional = '${u.id}' && status = 'concluido' && created >= '${currentMonthStart}'`
         : `student = '${u.id}' && status = 'concluido' && created >= '${currentMonthStart}'`
 
-    const servicesThisMonth = $app.findRecordsByFilter(
+    const rawServicesThisMonth = $app.findRecordsByFilter(
       'services',
       serviceFilter,
       '-created',
       500,
       0,
     )
+
+    // Regra: treino sem o acompanhamento do profissional não pontua no ranking.
+    // Registros de serviços de treino sem professional associado (ex: treino_ia auto-concluído) não contam.
+    const servicesThisMonth = rawServicesThisMonth.filter((svc) => {
+      const p = svc.get('professional')
+      const t = (svc.get('type') || '').toLowerCase()
+      const isWorkoutType =
+        t === 'treino_ia' ||
+        t === 'treino' ||
+        t.indexOf('treino') !== -1 ||
+        t.indexOf('workout') !== -1
+      if (isWorkoutType && (!p || p === '')) {
+        return false
+      }
+      return true
+    })
 
     let servicesTarifaRS = 0
     for (const svc of servicesThisMonth) {

@@ -566,8 +566,22 @@ export default function AdminRankingConfig() {
 
         let svcs: any[] = []
         try {
-          svcs = await pb.collection('services').getFullList({
+          const rawSvcs = await pb.collection('services').getFullList({
             filter: serviceFilter,
+          })
+          // Regra: treino sem acompanhamento profissional não pontua no ranking
+          svcs = rawSvcs.filter((svc: any) => {
+            const p = svc.professional
+            const t = (svc.type || '').toLowerCase()
+            const isWorkoutType =
+              t === 'treino_ia' ||
+              t === 'treino' ||
+              t.indexOf('treino') !== -1 ||
+              t.indexOf('workout') !== -1
+            if (isWorkoutType && (!p || p === '')) {
+              return false
+            }
+            return true
           })
         } catch {
           svcs = []

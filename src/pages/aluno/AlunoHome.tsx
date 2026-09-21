@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Sparkles,
   Users,
+  History,
 } from 'lucide-react'
 import type { AchievementRecord, WorkoutRecord, NotificationRecord } from '@/services/api'
 
@@ -100,13 +101,24 @@ export default function AlunoHome() {
           </div>
         </div>
 
-        {/* Falar com Profissional Button */}
-        <Link to="/aluno/chat">
-          <Button className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold shadow-xs flex items-center gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Falar com meu Profissional
-          </Button>
-        </Link>
+        {/* Actions Button */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link to="/aluno/historico">
+            <Button
+              variant="outline"
+              className="border-[#D4AF37]/50 text-[#B8962E] hover:bg-[#D4AF37]/10 font-bold shadow-xs flex items-center gap-2"
+            >
+              <History className="w-4 h-4" />
+              Meu Histórico
+            </Button>
+          </Link>
+          <Link to="/aluno/chat">
+            <Button className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold shadow-xs flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Falar com meu Profissional
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Weekly Progress Bar (Blue to Gold with Shimmer) */}

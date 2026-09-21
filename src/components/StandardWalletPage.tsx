@@ -202,6 +202,17 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
         setServicosHistorico(sRes.items)
         sRes.items.forEach((s) => {
           if (s.created >= currentMonthStart) {
+            // Regra: treino sem profissional não pontua no ranking
+            const p = s.professional
+            const t = (s.type || '').toLowerCase()
+            const isWorkout =
+              t === 'treino_ia' ||
+              t === 'treino' ||
+              t.indexOf('treino') !== -1 ||
+              t.indexOf('workout') !== -1
+            if (isWorkout && (!p || p === '')) {
+              return
+            }
             servsThisMonthCount++
           }
         })

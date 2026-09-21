@@ -23,6 +23,7 @@ import {
   Sliders,
   ChevronDown,
   FileText,
+  History,
 } from 'lucide-react'
 import type { NotificationRecord } from '@/services/api'
 
@@ -90,6 +91,7 @@ export default function Layout({ children }: LayoutProps) {
   // Aluno Nav Items
   const alunoNav = [
     { label: 'Início', path: '/aluno', icon: Home },
+    { label: 'Meu Histórico', path: '/aluno/historico', icon: History },
     { label: 'Smartwatch', path: '/smartwatch', icon: Activity },
     { label: 'Monte Seu Treino', path: '/aluno/treino', icon: Dumbbell },
     { label: 'Encontrar Profissional', path: '/aluno/profissionais', icon: Users },

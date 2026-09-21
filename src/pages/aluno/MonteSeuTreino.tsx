@@ -231,6 +231,8 @@ export default function MonteSeuTreino() {
     setFinishingWorkout(true)
 
     try {
+      const hasProfessional = !!currentWorkout.professional
+
       // Criar registro na coleção services
       await pb.collection('services').create({
         student: user.id,
@@ -240,7 +242,7 @@ export default function MonteSeuTreino() {
         value: 0,
         status: 'concluido',
         completed_at: new Date().toISOString(),
-        notes: `Treino concluído com 100% dos exercícios finalizados via IA 369. Exercícios: ${currentWorkout.exercises?.length || 0}`,
+        notes: `Treino concluído com 100% dos exercícios finalizados via IA 369. Exercícios: ${currentWorkout.exercises?.length || 0}${hasProfessional ? ' (Com acompanhamento profissional)' : ' (Treino IA autônomo - sem pontuação de ranking)'}`,
       })
 
       // Atualizar status do treino
@@ -248,9 +250,15 @@ export default function MonteSeuTreino() {
         status: 'concluido',
       })
 
-      toast.success(
-        '🏆 Treino Finalizado com Sucesso! 1 serviço computado para sua pontuação no ranking!',
-      )
+      if (hasProfessional) {
+        toast.success(
+          '🏆 Treino Finalizado com Sucesso! 1 serviço com profissional computado para sua pontuação no ranking!',
+        )
+      } else {
+        toast.success(
+          '🏆 Treino Finalizado com Sucesso! Registrado no seu histórico (treinos sem acompanhamento profissional não pontuam no ranking).',
+        )
+      }
       setFinishModalOpen(false)
       loadWorkouts()
     } catch (err: unknown) {
@@ -405,8 +413,9 @@ export default function MonteSeuTreino() {
                   Todos os Exercícios Concluídos! 🔥
                 </h3>
                 <p className="text-xs text-gray-300 font-inter">
-                  Finalize seu treino para computar +1 serviço oficial e subir no Ranking Geral de
-                  Cashback!
+                  {currentWorkout.professional
+                    ? 'Finalize seu treino para computar +1 serviço oficial com seu profissional e subir no Ranking!'
+                    : 'Finalize seu treino para registrar a conclusão no seu histórico de evolução pessoal.'}
                 </p>
               </div>
             </div>
@@ -742,10 +751,16 @@ export default function MonteSeuTreino() {
               Ao confirmar a conclusão do treino, será registrado automaticamente um serviço do tipo{' '}
               <strong className="text-white font-mono">treino_ia</strong> na sua conta.
             </p>
-            <div className="p-2.5 rounded-lg bg-[#141414] border border-[#2A2A2A] text-[11px] text-[#22C55E] font-bold font-mono">
-              ✓ +1 Serviço para o cálculo da Pontuação e Ranking Geral (SERVIÇOS × PLANO ×
-              INDICAÇÃO)
-            </div>
+            {currentWorkout?.professional ? (
+              <div className="p-2.5 rounded-lg bg-[#141414] border border-[#22C55E]/40 text-[11px] text-[#22C55E] font-bold font-mono">
+                ✓ +1 Serviço com acompanhamento profissional para o cálculo da Pontuação e Ranking!
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-lg bg-[#141414] border border-amber-500/30 text-[11px] text-amber-300 font-medium font-inter">
+                ℹ️ Treino sem acompanhamento profissional: registrado no seu histórico, porém não
+                gera pontuação no Ranking oficial.
+              </div>
+            )}
           </div>
 
           <DialogFooter className="flex gap-2">

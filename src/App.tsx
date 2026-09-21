@@ -29,6 +29,7 @@ import Comunidade from '@/pages/aluno/Comunidade'
 import ChatScreen from '@/pages/aluno/ChatScreen'
 import AlunoPerfil from '@/pages/aluno/AlunoPerfil'
 import ConteudosEmDestaque from '@/pages/aluno/ConteudosEmDestaque'
+import MeuHistorico from '@/pages/aluno/MeuHistorico'
 
 // Profissional Pages
 import ProfissionalDashboard from '@/pages/profissional/ProfissionalDashboard'
@@ -137,6 +138,16 @@ export default function App() {
                 <RoleGuard allowedRoles={['aluno']}>
                   <Layout>
                     <AlunoHome />
+                  </Layout>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/aluno/historico"
+              element={
+                <RoleGuard allowedRoles={['aluno']}>
+                  <Layout>
+                    <MeuHistorico />
                   </Layout>
                 </RoleGuard>
               }
