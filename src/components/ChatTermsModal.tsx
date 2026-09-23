@@ -53,45 +53,45 @@ export function ChatTermsModal({ open, userId, onAccepted }: ChatTermsModalProps
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="bg-[#141414] border border-[#D4AF37]/40 text-white max-w-xl rounded-2xl p-6 sm:p-8"
+        className="bg-white border border-[#E4E2DC] text-[#1A1A1A] max-w-xl rounded-2xl p-6 sm:p-8 shadow-2xl"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat w-fit">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/40 text-xs font-bold text-[#B8962E] uppercase font-montserrat w-fit">
             <Scale className="w-3.5 h-3.5" />
             Termos de Uso & Validade Legal
           </div>
-          <DialogTitle className="text-xl font-bold font-montserrat text-white">
+          <DialogTitle className="text-xl font-bold font-montserrat text-[#1A1A1A]">
             Regras de Convivência e Validade Jurídica do Chat 369
           </DialogTitle>
-          <DialogDescription className="text-xs text-gray-400 font-inter leading-relaxed">
+          <DialogDescription className="text-xs text-[#4B5563] font-inter leading-relaxed">
             Para garantir a segurança, integridade e conformidade jurídica das orientações e
             atendimentos, leia atentamente as diretrizes abaixo.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3.5 py-3 font-inter text-xs text-gray-300 max-h-60 overflow-y-auto pr-2 border-y border-[#2A2A2A]">
-          <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
+        <div className="space-y-3.5 py-3 font-inter text-xs text-[#374151] max-h-60 overflow-y-auto pr-2 border-y border-[#E4E2DC]">
+          <div className="p-3 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-[#15803d] shrink-0 mt-0.5" />
             <div>
-              <strong className="text-white block font-montserrat uppercase text-[11px] mb-0.5">
+              <strong className="text-[#1A1A1A] block font-montserrat uppercase text-[11px] mb-0.5">
                 1. Respeito Mútuo e Ética Profissional
               </strong>
-              <span>
+              <span className="text-[#4B5563]">
                 Todas as interações devem ser conduzidas com urbanidade, respeito e cordialidade.
                 Não serão tolerados desrespeito ou assédio moral.
               </span>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div className="p-3 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
             <div>
-              <strong className="text-white block font-montserrat uppercase text-[11px] mb-0.5">
+              <strong className="text-[#1A1A1A] block font-montserrat uppercase text-[11px] mb-0.5">
                 2. Proibição de Assédio e Discriminação
               </strong>
-              <span>
+              <span className="text-[#4B5563]">
                 É estritamente proibido qualquer tipo de assédio sexual ou moral, discriminação por
                 gênero, raça, credo ou orientação sexual, bem como o compartilhamento de conteúdo
                 ilegal.
@@ -99,13 +99,13 @@ export function ChatTermsModal({ open, userId, onAccepted }: ChatTermsModalProps
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/40 flex items-start gap-2.5">
+          <div className="p-3 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/30 flex items-start gap-2.5">
             <FileCheck className="w-4 h-4 text-[#0057FF] shrink-0 mt-0.5" />
             <div>
               <strong className="text-[#0057FF] block font-montserrat uppercase text-[11px] mb-0.5">
                 3. Validade Jurídica e Probatória das Mensagens
               </strong>
-              <span className="text-gray-200">
+              <span className="text-[#374151]">
                 As mensagens trocadas neste chat constituem{' '}
                 <strong>documento válido para fins legais</strong>, conforme o{' '}
                 <strong>Art. 225 do Código de Processo Civil</strong> e a{' '}
@@ -117,14 +117,14 @@ export function ChatTermsModal({ open, userId, onAccepted }: ChatTermsModalProps
         </div>
 
         <div className="space-y-4 pt-2">
-          <label className="flex items-center gap-3 p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] cursor-pointer hover:border-[#D4AF37]/50 transition-colors">
+          <label className="flex items-center gap-3 p-3 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] cursor-pointer hover:border-[#D4AF37]/60 transition-colors">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="w-4 h-4 rounded text-[#D4AF37] focus:ring-[#D4AF37] bg-black border-[#2A2A2A]"
+              className="w-4 h-4 rounded text-[#D4AF37] focus:ring-[#D4AF37] bg-white border-[#D1D5DB]"
             />
-            <span className="text-xs text-white font-medium font-inter">
+            <span className="text-xs text-[#1A1A1A] font-medium font-inter">
               Li, compreendi e concordo integralmente com as Regras de Convivência e os Termos de
               Validade Legal do Chat.
             </span>

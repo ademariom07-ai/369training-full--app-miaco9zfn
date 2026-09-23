@@ -63,29 +63,159 @@
 }
 
 /* Compatibility mapping for legacy dark utility classes to clean off-white design */
+/* Fundos de página muito escuros -> #fafaf7 */
 .bg-\[\#0A0A0A\],
 .bg-\[\#000000\],
+.bg-\[\#020202\],
+.bg-\[\#050505\],
 .bg-\[\#070707\],
 .bg-\[\#0B0B0C\],
+.bg-\[\#0D0D0D\],
 .bg-\[\#0E0E0E\],
 .bg-\[\#0F0F0F\],
-.bg-\[\#101010\] {
+.bg-\[\#101010\],
+.bg-\[\#111111\],
+.bg-\[\#131313\],
+.bg-\[\#151515\],
+.bg-\[\#161616\],
+.bg-\[\#171717\],
+.bg-\[\#191919\],
+.bg-\[\#1B1B1B\],
+.bg-\[\#1D1D1D\],
+.bg-\[\#1E1E1E\],
+.bg-black,
+.bg-neutral-950,
+.bg-neutral-900,
+.bg-neutral-800,
+.bg-zinc-950,
+.bg-zinc-900,
+.bg-zinc-800,
+.bg-gray-950,
+.bg-gray-900,
+.bg-gray-800,
+.bg-slate-950,
+.bg-slate-900,
+.bg-slate-800,
+.bg-stone-950,
+.bg-stone-900,
+.bg-stone-800 {
   background-color: #fafaf7 !important;
 }
 
+/* Fundos de cartão / modais escuros -> #ffffff */
 .bg-\[\#181818\],
 .bg-\[\#141414\],
 .bg-\[\#121212\],
+.bg-\[\#1A1A1A\],
+.bg-\[\#1c1c1c\],
 .bg-\[\#1f1f1f\],
-.bg-\[\#202020\] {
+.bg-\[\#202020\],
+.bg-\[\#222222\],
+.bg-\[\#242424\],
+.bg-\[\#262626\],
+.bg-\[\#2A2A2A\],
+.bg-neutral-700,
+.bg-zinc-700,
+.bg-gray-700,
+.bg-slate-700 {
   background-color: #ffffff !important;
 }
 
+/* Bordas escuras -> #e5e3dc */
 .border-\[\#2A2A2A\],
 .border-\[\#222222\],
 .border-\[\#333\],
-.border-\[\#1f1f1f\] {
+.border-\[\#1f1f1f\],
+.border-\[\#1A1A1A\],
+.border-\[\#1c1c1c\],
+.border-\[\#242424\],
+.border-\[\#262626\],
+.border-black,
+.border-neutral-950,
+.border-neutral-900,
+.border-neutral-800,
+.border-neutral-700,
+.border-zinc-950,
+.border-zinc-900,
+.border-zinc-800,
+.border-zinc-700,
+.border-gray-950,
+.border-gray-900,
+.border-gray-800,
+.border-gray-700,
+.border-slate-950,
+.border-slate-900,
+.border-slate-800,
+.border-slate-700 {
   border-color: #e5e3dc !important;
+}
+
+/* Stops de gradientes escuros convertidos para off-white / branco */
+.from-\[\#0A0A0A\],
+.from-\[\#000000\],
+.from-\[\#0D0D0D\],
+.from-\[\#111111\],
+.from-\[\#121212\],
+.from-\[\#141414\],
+.from-\[\#151515\],
+.from-\[\#181818\],
+.from-\[\#1A1A1A\],
+.from-\[\#1b1914\],
+.from-\[\#1c1a14\],
+.from-\[\#1C1A14\],
+.from-\[\#181424\],
+.from-black,
+.from-neutral-950,
+.from-zinc-950,
+.from-gray-950,
+.from-slate-950 {
+  --tw-gradient-from: #fafaf7 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(250 250 247 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.to-\[\#0A0A0A\],
+.to-\[\#000000\],
+.to-\[\#0D0D0D\],
+.to-\[\#111111\],
+.to-\[\#121212\],
+.to-\[\#141414\],
+.to-\[\#151515\],
+.to-\[\#181818\],
+.to-\[\#1A1A1A\],
+.to-\[\#1b1914\],
+.to-\[\#1c1a14\],
+.to-\[\#1C1A14\],
+.to-\[\#181424\],
+.to-black,
+.to-neutral-950,
+.to-zinc-950,
+.to-gray-950,
+.to-slate-950 {
+  --tw-gradient-to: #f0efea var(--tw-gradient-to-position) !important;
+}
+
+.via-\[\#0A0A0A\],
+.via-\[\#000000\],
+.via-\[\#0D0D0D\],
+.via-\[\#111111\],
+.via-\[\#121212\],
+.via-\[\#141414\],
+.via-\[\#151515\],
+.via-\[\#151922\],
+.via-\[\#151c28\],
+.via-\[\#14101f\],
+.via-\[\#1c1a14\],
+.via-\[\#181818\],
+.via-\[\#1A1A1A\],
+.via-black,
+.via-neutral-950,
+.via-zinc-950,
+.via-gray-950,
+.via-slate-950 {
+  --tw-gradient-to: rgb(250 250 247 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops:
+    var(--tw-gradient-from), #fafaf7 var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
 }
 
 /* Ensure text contrast on light off-white surfaces */

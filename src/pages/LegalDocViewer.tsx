@@ -216,9 +216,9 @@ export function LegalDocViewer({ slugOverride }: LegalDocViewerProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#D4AF37] selection:text-black font-inter">
+    <div className="min-h-screen bg-[#FAFAF7] text-[#1A1A1A] selection:bg-[#D4AF37] selection:text-black font-inter">
       {/* Header */}
-      <header className="border-b border-[#2A2A2A] bg-[#0A0A0A]/90 backdrop-blur-md sticky top-0 z-30 px-6 py-4">
+      <header className="border-b border-[#E5E3DC] bg-white/90 backdrop-blur-md sticky top-0 z-30 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
             <CrestLogo size={40} showText subText />
@@ -277,7 +277,7 @@ export function LegalDocViewer({ slugOverride }: LegalDocViewerProps) {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 pb-20">
-        <Card className="bg-[#141414] border border-[#2A2A2A] p-6 sm:p-10 rounded-2xl text-gray-300 leading-relaxed shadow-xl">
+        <Card className="bg-white border border-[#E5E3DC] p-6 sm:p-10 rounded-2xl text-[#374151] leading-relaxed shadow-md">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center gap-3 text-gray-400">
               <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
@@ -371,7 +371,7 @@ export function LegalDocViewer({ slugOverride }: LegalDocViewerProps) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#2A2A2A] bg-[#070707] py-6 px-6 text-center text-xs text-gray-500 font-inter">
+      <footer className="border-t border-[#E5E3DC] bg-white py-6 px-6 text-center text-xs text-[#6B7280] font-inter">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© {new Date().getFullYear()} 369TRAINING LTDA. CNPJ: 00.000.000/0001-00</p>
           <div className="flex gap-4 text-xs">

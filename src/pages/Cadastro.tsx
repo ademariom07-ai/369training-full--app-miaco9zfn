@@ -258,10 +258,22 @@ export default function Cadastro() {
 
       const createdUser = await pb.collection('users').create(payload)
 
+      // HOTFIX 369: Autenticar imediatamente o usuário recém-criado ANTES de gravar os aceites legais.
+      // A regra de criação de legal_acceptances exige @request.body.user = @request.auth.id.
+      // Executado para ambos os papéis (aluno e profissional).
+      let isAuthenticated = false
+      try {
+        await pb.collection('users').authWithPassword(email.trim().toLowerCase(), password)
+        isAuthenticated = true
+      } catch (authErr) {
+        console.warn('Auto-login pós-cadastro falhou:', authErr)
+      }
+
       // Registrar aceites legais na coleção legal_acceptances para TODOS os documentos aplicáveis ao papel
       const nowIso = new Date().toISOString().replace('T', ' ').slice(0, 19)
       const userAgent = navigator.userAgent || 'web-browser'
       const clientIp = 'client-registration'
+      let failedAcceptancesCount = 0
 
       try {
         const targetAudience = role === 'profissional' ? 'profissional' : 'aluno'
@@ -269,36 +281,74 @@ export default function Cadastro() {
         const applicableDocs = await pb.collection('legal_documents').getFullList({ filter })
 
         for (const doc of applicableDocs) {
-          try {
-            await pb.collection('legal_acceptances').create({
-              user: createdUser.id,
-              document: doc.id,
-              document_slug: doc.slug,
-              version: doc.version || 1,
-              accepted_at: nowIso,
-              ip: clientIp,
-              user_agent: userAgent,
-              consent_type: doc.slug,
-            })
-          } catch (itemErr) {
-            console.warn(`Erro ao registrar aceite de ${doc.slug}:`, itemErr)
+          let recorded = false
+          // Tentativa direta com o usuário autenticado
+          if (isAuthenticated && pb.authStore.isValid) {
+            try {
+              await pb.collection('legal_acceptances').create({
+                user: createdUser.id,
+                document: doc.id,
+                document_slug: doc.slug,
+                version: doc.version || 1,
+                accepted_at: nowIso,
+                ip: clientIp,
+                user_agent: userAgent,
+                consent_type: doc.slug,
+              })
+              recorded = true
+            } catch (itemErr) {
+              console.warn(`Tentativa direta de registrar aceite de ${doc.slug} falhou:`, itemErr)
+            }
+          }
+
+          // Fallback via rota de backend /backend/v1/legal/accept se a direta falhou ou se precisou autenticar
+          if (!recorded) {
+            try {
+              // Se ainda não estiver autenticado, tentar autenticar novamente
+              if (!pb.authStore.isValid) {
+                await pb.collection('users').authWithPassword(email.trim().toLowerCase(), password)
+                isAuthenticated = true
+              }
+              await pb.send('/backend/v1/legal/accept', {
+                method: 'POST',
+                body: {
+                  document_id: doc.id,
+                  document_slug: doc.slug,
+                  version: doc.version || 1,
+                  consent_type: doc.slug,
+                },
+              })
+              recorded = true
+            } catch (fallbackErr) {
+              console.warn(
+                `Fallback de aceite via rota de backend de ${doc.slug} falhou:`,
+                fallbackErr,
+              )
+              failedAcceptancesCount++
+            }
           }
         }
       } catch (errAccept) {
-        console.warn('Registro de aceites legais pós-cadastro:', errAccept)
+        console.warn('Erro ao consultar documentos aplicáveis pós-cadastro:', errAccept)
+        failedAcceptancesCount++
+      }
+
+      if (failedAcceptancesCount > 0) {
+        toast.error(
+          'Alguns aceites legais não puderam ser gravados no momento e serão solicitados novamente no seu próximo login.',
+          { duration: 6000 },
+        )
       }
 
       // Se for profissional, registrar a verificação de credencial na coleção credential_verifications
       if (role === 'profissional' && createdUser?.id) {
         try {
-          // Autenticar imediatamente o novo profissional para garantir permissão total de escrita com arquivo
-          try {
-            await pb.collection('users').authWithPassword(email.trim().toLowerCase(), password)
-          } catch (authErr) {
-            console.warn(
-              'Auto-login pós-cadastro falhou, tentando criar credencial mesmo assim:',
-              authErr,
-            )
+          if (!pb.authStore.isValid) {
+            try {
+              await pb.collection('users').authWithPassword(email.trim().toLowerCase(), password)
+            } catch (authErr) {
+              console.warn('Tentativa de login para credencial falhou:', authErr)
+            }
           }
 
           const finalRegNumber =
@@ -367,9 +417,9 @@ export default function Cadastro() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex flex-col justify-center items-center px-4 pt-12 pb-32 relative overflow-hidden">
+    <div className="min-h-screen bg-[#FAFAF7] flex flex-col justify-center items-center px-4 pt-12 pb-32 relative overflow-hidden">
       {/* Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D4AF37]/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D4AF37]/15 rounded-full blur-[140px] pointer-events-none" />
 
       <div className="w-full max-w-xl relative z-10">
         {/* Header Branding */}
@@ -380,19 +430,19 @@ export default function Cadastro() {
           <h1 className="text-3xl font-extrabold font-montserrat uppercase gold-gradient-text tracking-wider">
             369TRAINING
           </h1>
-          <p className="text-xs text-gray-400 font-inter mt-1 tracking-wider uppercase">
+          <p className="text-xs text-[#6B7280] font-inter mt-1 tracking-wider uppercase">
             Criar Nova Conta no Ecossistema
           </p>
         </div>
 
-        <Card className="bg-[#181818] border border-[#2A2A2A] rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <Card className="bg-white border border-[#E4E2DC] rounded-2xl p-6 sm:p-8 shadow-xl">
           {createdSuccess ? (
             <div className="text-center py-8">
-              <CheckCircle2 className="w-16 h-16 text-[#22C55E] mx-auto mb-4 animate-bounce" />
-              <h3 className="text-xl font-bold font-montserrat text-white">
+              <CheckCircle2 className="w-16 h-16 text-[#15803d] mx-auto mb-4 animate-bounce" />
+              <h3 className="text-xl font-bold font-montserrat text-[#1A1A1A]">
                 Conta Criada com Sucesso!
               </h3>
-              <p className="text-sm text-gray-400 mt-2 font-inter">
+              <p className="text-sm text-[#4B5563] mt-2 font-inter">
                 {role === 'profissional'
                   ? 'Seu cadastro de profissional foi recebido e passará por análise de credenciais.'
                   : 'Sua conta de aluno está ativa. Redirecionando para o login...'}
@@ -401,7 +451,7 @@ export default function Cadastro() {
           ) : (
             <>
               {/* Segmented Control */}
-              <div className="flex bg-[#141414] p-1 rounded-xl border border-[#2A2A2A] mb-6">
+              <div className="flex bg-[#F7F5F0] p-1 rounded-xl border border-[#E4E2DC] mb-6">
                 <button
                   type="button"
                   onClick={() => {
@@ -411,7 +461,7 @@ export default function Cadastro() {
                   className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase ${
                     role === 'aluno'
                       ? 'bg-[#0057FF] text-white shadow-md'
-                      : 'text-gray-400 hover:text-white'
+                      : 'text-[#4B5563] hover:text-[#1A1A1A]'
                   }`}
                 >
                   Sou Aluno
@@ -425,7 +475,7 @@ export default function Cadastro() {
                   className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase ${
                     role === 'profissional'
                       ? 'bg-[#D4AF37] text-black shadow-md'
-                      : 'text-gray-400 hover:text-white'
+                      : 'text-[#4B5563] hover:text-[#1A1A1A]'
                   }`}
                 >
                   Sou Profissional
@@ -433,10 +483,10 @@ export default function Cadastro() {
               </div>
 
               {/* SELEÇÃO DE PLANO NO CADASTRO (GRÁTIS 0x, BÁSICO 1x, PRO 2x, PREMIUM 3x) */}
-              <div className="mb-6 p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-3">
-                <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider font-montserrat flex items-center justify-between">
+              <div className="mb-6 p-4 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] space-y-3">
+                <label className="block text-xs font-bold text-[#1A1A1A] uppercase tracking-wider font-montserrat flex items-center justify-between">
                   <span>Escolha seu Plano Inicial:</span>
-                  <span className="text-[10px] text-[#D4AF37] font-semibold">
+                  <span className="text-[10px] text-[#B8962E] font-semibold">
                     Multiplicador de Ranking
                   </span>
                 </label>
@@ -499,26 +549,26 @@ export default function Cadastro() {
                         className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all relative ${
                           isSelected
                             ? p.id === 'premium'
-                              ? 'bg-[#D4AF37]/20 border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.2)]'
+                              ? 'bg-[#D4AF37]/20 border-[#D4AF37] shadow-sm'
                               : p.id === 'pro'
-                                ? 'bg-[#0057FF]/20 border-[#0057FF] shadow-[0_0_15px_rgba(0,87,255,0.2)]'
-                                : 'bg-[#22C55E]/20 border-[#22C55E]'
-                            : 'bg-[#181818] border-[#2A2A2A] hover:border-gray-600'
+                                ? 'bg-[#0057FF]/15 border-[#0057FF] shadow-sm'
+                                : 'bg-[#22C55E]/15 border-[#22C55E]'
+                            : 'bg-white border-[#E4E2DC] hover:border-[#D4AF37]/60'
                         }`}
                       >
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs font-black font-montserrat text-white">
+                            <span className="text-xs font-black font-montserrat text-[#1A1A1A]">
                               {p.name}
                             </span>
                             {isSelected && (
                               <CheckCircle2
                                 className={`w-3.5 h-3.5 ${
                                   p.id === 'premium'
-                                    ? 'text-[#D4AF37]'
+                                    ? 'text-[#B8962E]'
                                     : p.id === 'pro'
                                       ? 'text-[#0057FF]'
-                                      : 'text-[#22C55E]'
+                                      : 'text-[#15803d]'
                                 }`}
                               />
                             )}
@@ -526,18 +576,18 @@ export default function Cadastro() {
                           <span
                             className={`text-[10px] font-mono font-bold block ${
                               p.id === 'gratis'
-                                ? 'text-gray-400'
+                                ? 'text-[#6B7280]'
                                 : p.id === 'premium'
-                                  ? 'text-[#D4AF37]'
+                                  ? 'text-[#B8962E]'
                                   : p.id === 'pro'
                                     ? 'text-[#0057FF]'
-                                    : 'text-[#22C55E]'
+                                    : 'text-[#15803d]'
                             }`}
                           >
                             Multiplicador {p.multiplier}
                           </span>
                         </div>
-                        <span className="text-[9px] text-gray-400 font-inter mt-1 block">
+                        <span className="text-[9px] text-[#6B7280] font-inter mt-1 block">
                           {p.desc}
                         </span>
                       </button>
@@ -546,7 +596,7 @@ export default function Cadastro() {
                 </div>
 
                 {selectedPlan === 'gratis' && (
-                  <p className="text-[11px] text-amber-300/90 font-inter bg-amber-950/20 p-2 rounded-lg border border-amber-500/20">
+                  <p className="text-[11px] text-amber-800 font-inter bg-amber-50 p-2 rounded-lg border border-amber-300">
                     ℹ️ <strong>Plano Grátis (0x):</strong> O aluno tem acesso às funcionalidades
                     essenciais. Caso se vincule a um profissional credenciado, passa a usufruir de
                     isenção total e pontuação no plano do mentor!
@@ -555,8 +605,8 @@ export default function Cadastro() {
               </div>
 
               {role === 'profissional' && (
-                <div className="mb-6 p-3 rounded-xl bg-amber-950/30 border border-amber-500/30 flex items-center gap-3 text-xs text-amber-200">
-                  <ShieldCheck className="w-5 h-5 text-[#D4AF37] shrink-0" />
+                <div className="mb-6 p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-center gap-3 text-xs text-amber-900">
+                  <ShieldCheck className="w-5 h-5 text-[#B8962E] shrink-0" />
                   <span>
                     <strong>Aviso de Auditoria:</strong> Seu perfil será analisado antes da oferta
                     pública de serviços para garantir a segurança dos alunos.
@@ -567,16 +617,16 @@ export default function Cadastro() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Nome */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                  <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                     Nome Completo *
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <User className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Ex: João da Silva"
-                      className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white focus-visible:ring-[#D4AF37]"
+                      className="pl-10 bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] focus-visible:ring-[#D4AF37]"
                       required
                     />
                   </div>
@@ -585,34 +635,34 @@ export default function Cadastro() {
                 {/* E-mail & Senha (2 cols) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                    <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                       E-mail *
                     </label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Mail className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <Input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="nome@email.com"
-                        className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white focus-visible:ring-[#D4AF37]"
+                        className="pl-10 bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] focus-visible:ring-[#D4AF37]"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                    <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                       Senha * (mín. 8 caracteres)
                     </label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Lock className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <Input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white focus-visible:ring-[#D4AF37]"
+                        className="pl-10 bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] focus-visible:ring-[#D4AF37]"
                         required
                       />
                     </div>
@@ -622,13 +672,13 @@ export default function Cadastro() {
                 {/* País, Telefone & Localização (RECURSO 7: SELEÇÃO DE PAÍS) */}
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-[#D4AF37] uppercase tracking-wider mb-1 font-montserrat">
+                    <label className="block text-xs font-semibold text-[#B8962E] uppercase tracking-wider mb-1 font-montserrat">
                       País *
                     </label>
                     <select
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
-                      className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#D4AF37]/40 text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                      className="w-full h-10 px-3 rounded-xl bg-white border border-[#D4AF37]/50 text-[#1A1A1A] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                     >
                       <option value="Brasil">Brasil (LGPD)</option>
                       <option value="Portugal">Portugal (GDPR)</option>
@@ -641,39 +691,39 @@ export default function Cadastro() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                    <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                       Telefone / WhatsApp *
                     </label>
                     <div className="relative">
-                      <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Phone className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <Input
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="(11) 99999-9999"
-                        className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white focus-visible:ring-[#D4AF37]"
+                        className="pl-10 bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] focus-visible:ring-[#D4AF37]"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                    <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                       Cidade *
                     </label>
                     <div className="relative">
-                      <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <MapPin className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <Input
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="São Paulo"
-                        className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white focus-visible:ring-[#D4AF37]"
+                        className="pl-10 bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] focus-visible:ring-[#D4AF37]"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                    <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                       Estado / Província *
                     </label>
                     <Input
@@ -681,21 +731,21 @@ export default function Cadastro() {
                       onChange={(e) => setState(e.target.value.toUpperCase())}
                       placeholder="SP"
                       maxLength={10}
-                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-white text-center font-bold focus-visible:ring-[#D4AF37]"
+                      className="bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] text-center font-bold focus-visible:ring-[#D4AF37]"
                       required
                     />
                   </div>
                 </div>
 
                 {/* RECURSO 1: Campo Código de Indicação */}
-                <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-1.5">
+                <div className="p-3.5 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider font-montserrat">
+                    <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider font-montserrat">
                       Código de Indicação{' '}
-                      <span className="text-gray-500 font-normal lowercase">(opcional)</span>
+                      <span className="text-[#6B7280] font-normal lowercase">(opcional)</span>
                     </label>
                     {urlRef && (
-                      <span className="text-[10px] text-[#D4AF37] font-bold uppercase font-mono">
+                      <span className="text-[10px] text-[#B8962E] font-bold uppercase font-mono">
                         Preenchido via link
                       </span>
                     )}
@@ -704,9 +754,9 @@ export default function Cadastro() {
                     value={referralCodeInput}
                     onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
                     placeholder="Ex: SILV369"
-                    className="bg-[#181818] border-[#2A2A2A] rounded-xl text-white font-mono uppercase tracking-wider text-xs focus-visible:ring-[#D4AF37]"
+                    className="bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] font-mono uppercase tracking-wider text-xs focus-visible:ring-[#D4AF37]"
                   />
-                  <p className="text-[11px] text-gray-400 font-inter">
+                  <p className="text-[11px] text-[#6B7280] font-inter">
                     Se você foi indicado por um amigo ou profissional, insira o código para vincular
                     benefícios e bônus de rede.
                   </p>
@@ -715,13 +765,13 @@ export default function Cadastro() {
                 {/* ALUNO SPECIFIC: Objetivo */}
                 {role === 'aluno' && (
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                    <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                       Objetivo Principal
                     </label>
                     <select
                       value={objective}
                       onChange={(e) => setObjective(e.target.value)}
-                      className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                      className="w-full h-10 px-3 rounded-xl bg-white border border-[#E4E2DC] text-[#1A1A1A] text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                     >
                       <option value="Aumentar força">Aumentar força</option>
                       <option value="Hipertrofia">Hipertrofia</option>
@@ -738,7 +788,7 @@ export default function Cadastro() {
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                        <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                           Tipo de Atuação
                         </label>
                         <select
@@ -746,7 +796,7 @@ export default function Cadastro() {
                           onChange={(e) =>
                             setProfessionalType(e.target.value as 'Pessoa Física' | 'MEI')
                           }
-                          className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                          className="w-full h-10 px-3 rounded-xl bg-white border border-[#E4E2DC] text-[#1A1A1A] text-xs focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                         >
                           <option value="Pessoa Física">Pessoa Física</option>
                           <option value="MEI">MEI / Pessoa Jurídica</option>
@@ -754,7 +804,7 @@ export default function Cadastro() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-[#D4AF37] uppercase tracking-wider mb-1 font-montserrat">
+                        <label className="block text-xs font-semibold text-[#B8962E] uppercase tracking-wider mb-1 font-montserrat">
                           Conselho / Entidade *
                         </label>
                         <select
@@ -764,7 +814,7 @@ export default function Cadastro() {
                               e.target.value as 'CREF' | 'CRN' | 'CREFITO' | 'CRP' | 'FEDERACAO',
                             )
                           }
-                          className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#D4AF37]/50 text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                          className="w-full h-10 px-3 rounded-xl bg-white border border-[#D4AF37]/50 text-[#1A1A1A] text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                         >
                           <option value="CREF">CREF (Educação Física)</option>
                           <option value="CRN">CRN (Nutrição)</option>
@@ -775,11 +825,11 @@ export default function Cadastro() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1 font-montserrat">
+                        <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-1 font-montserrat">
                           Número de Registro *
                         </label>
                         <div className="relative">
-                          <Award className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <Award className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-1/2 -translate-y-1/2" />
                           <Input
                             value={specialties.includes('Psicologia') && crp ? crp : cref}
                             onChange={(e) => {
@@ -789,7 +839,7 @@ export default function Cadastro() {
                               setCref(e.target.value)
                             }}
                             placeholder="Ex: 098765-G/SP"
-                            className="pl-10 bg-[#141414] border-[#2A2A2A] rounded-xl text-white text-xs focus-visible:ring-[#D4AF37]"
+                            className="pl-10 bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] text-xs focus-visible:ring-[#D4AF37]"
                             required
                           />
                         </div>
@@ -797,17 +847,17 @@ export default function Cadastro() {
                     </div>
 
                     {/* UPLOAD OBRIGATÓRIO DO DOCUMENTO (TAREFA 3) */}
-                    <div className="p-3.5 rounded-xl bg-[#141414] border border-[#D4AF37]/40 space-y-2">
+                    <div className="p-3.5 rounded-xl bg-[#F7F5F0] border border-[#D4AF37]/40 space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-white uppercase font-montserrat flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
+                        <label className="text-xs font-bold text-[#1A1A1A] uppercase font-montserrat flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-[#B8962E]" />
                           Foto do Documento Profissional / Cédula (Obrigatório) *
                         </label>
-                        <span className="text-[10px] text-[#D4AF37] font-semibold">
+                        <span className="text-[10px] text-[#B8962E] font-semibold">
                           Validação Modelo Uber/CNH
                         </span>
                       </div>
-                      <p className="text-[11px] text-gray-400">
+                      <p className="text-[11px] text-[#4B5563]">
                         {council === 'FEDERACAO'
                           ? 'Para Artes Marciais: envie o certificado de graduação emitido por federação oficial + comprovante de antecedentes.'
                           : 'Envie a foto ou arquivo (JPG, PNG ou PDF) da sua cédula de identidade profissional emitida pelo respectivo conselho regional.'}
@@ -819,11 +869,11 @@ export default function Cadastro() {
                           const file = e.target.files?.[0]
                           if (file) setDocumentFile(file)
                         }}
-                        className="w-full text-xs text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D4AF37] file:text-black hover:file:bg-[#e0be4a] cursor-pointer"
+                        className="w-full text-xs text-[#374151] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D4AF37] file:text-black hover:file:bg-[#e0be4a] cursor-pointer"
                         required
                       />
                       {documentFile && (
-                        <p className="text-[11px] text-[#22C55E] flex items-center gap-1">
+                        <p className="text-[11px] text-[#15803d] flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Arquivo selecionado:{' '}
                           {documentFile.name} ({(documentFile.size / 1024).toFixed(1)} KB)
                         </p>
@@ -832,7 +882,7 @@ export default function Cadastro() {
 
                     {/* RECURSO 5: PSICOLOGIA & SUB-ESPECIALIDADES */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2 font-montserrat">
+                      <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider mb-2 font-montserrat">
                         Especialidades (selecione uma ou mais)
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -851,12 +901,12 @@ export default function Cadastro() {
                               onClick={() => toggleSpecialty(spec)}
                               className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
                                 isSelected
-                                  ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-white'
-                                  : 'bg-[#141414] border-[#2A2A2A] text-gray-400 hover:text-white'
+                                  ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#1A1A1A]'
+                                  : 'bg-white border-[#E4E2DC] text-[#4B5563] hover:text-[#1A1A1A]'
                               }`}
                             >
                               <span>{spec}</span>
-                              {isSelected && <CheckCircle2 className="w-4 h-4 text-[#D4AF37]" />}
+                              {isSelected && <CheckCircle2 className="w-4 h-4 text-[#B8962E]" />}
                             </button>
                           )
                         })}
@@ -864,8 +914,8 @@ export default function Cadastro() {
 
                       {/* Sub-especialidades de Psicologia quando selecionado */}
                       {specialties.includes('Psicologia') && (
-                        <div className="mt-3 p-3 rounded-xl bg-[#141414] border border-[#D4AF37]/30 space-y-2">
-                          <label className="block text-[11px] font-bold text-[#D4AF37] uppercase font-montserrat">
+                        <div className="mt-3 p-3 rounded-xl bg-[#F7F5F0] border border-[#D4AF37]/30 space-y-2">
+                          <label className="block text-[11px] font-bold text-[#B8962E] uppercase font-montserrat">
                             Sub-especialidades de Psicologia:
                           </label>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -884,8 +934,8 @@ export default function Cadastro() {
                                   onClick={() => toggleSubSpecialty(sub)}
                                   className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center justify-between transition-all ${
                                     isSubSelected
-                                      ? 'bg-[#0057FF]/20 border-[#0057FF] text-[#0057FF] font-bold'
-                                      : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white'
+                                      ? 'bg-[#0057FF]/15 border-[#0057FF] text-[#0057FF] font-bold'
+                                      : 'bg-white border-[#E4E2DC] text-[#4B5563] hover:text-[#1A1A1A]'
                                   }`}
                                 >
                                   <span>{sub}</span>
@@ -904,18 +954,18 @@ export default function Cadastro() {
                     <div className="space-y-3 pt-2 relative z-10">
                       <div
                         id="consent-terms-container"
-                        className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-[#141414]/80 border ${
+                        className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-white border ${
                           missingConsentHighlight === 'terms'
-                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
-                            : 'border-[#2A2A2A] hover:border-gray-600'
+                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-50'
+                            : 'border-[#E4E2DC] hover:border-[#D4AF37]/60'
                         }`}
                       >
                         <label
                           htmlFor="terms-prof"
                           className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
                             pulseConsent === 'terms'
-                              ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
-                              : 'active:bg-white/5'
+                              ? 'ring-4 ring-emerald-500/80 bg-emerald-50'
+                              : 'active:bg-gray-100'
                           }`}
                         >
                           <Checkbox
@@ -926,19 +976,19 @@ export default function Cadastro() {
                               setConsentTerms(next)
                               if (next) triggerPulse('terms')
                             }}
-                            className="w-5 h-5 border-[#2A2A2A] transition-none data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                            className="w-5 h-5 border-[#D1D5DB] transition-none data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
                           />
                         </label>
                         <label
                           htmlFor="terms-prof"
-                          className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
+                          className="text-xs text-[#374151] cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
                         >
                           Li e concordo com o{' '}
                           <Link
                             to="/contrato-parceria"
                             target="_blank"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-[#D4AF37] underline font-semibold relative z-20 hover:text-[#E6C65C]"
+                            className="text-[#B8962E] underline font-semibold relative z-20 hover:text-[#99771C]"
                           >
                             Contrato de Parceria Comercial do Profissional
                           </Link>{' '}
@@ -949,18 +999,18 @@ export default function Cadastro() {
 
                       <div
                         id="consent-lgpd-container"
-                        className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-[#141414]/80 border ${
+                        className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-white border ${
                           missingConsentHighlight === 'lgpd'
-                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
-                            : 'border-[#2A2A2A] hover:border-gray-600'
+                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-50'
+                            : 'border-[#E4E2DC] hover:border-[#D4AF37]/60'
                         }`}
                       >
                         <label
                           htmlFor="lgpd-prof"
                           className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
                             pulseConsent === 'lgpd'
-                              ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
-                              : 'active:bg-white/5'
+                              ? 'ring-4 ring-emerald-500/80 bg-emerald-50'
+                              : 'active:bg-gray-100'
                           }`}
                         >
                           <Checkbox
@@ -971,19 +1021,19 @@ export default function Cadastro() {
                               setConsentLgpd(next)
                               if (next) triggerPulse('lgpd')
                             }}
-                            className="w-5 h-5 border-[#2A2A2A] transition-none data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                            className="w-5 h-5 border-[#D1D5DB] transition-none data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
                           />
                         </label>
                         <label
                           htmlFor="lgpd-prof"
-                          className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
+                          className="text-xs text-[#374151] cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
                         >
                           Li e concordo com a{' '}
                           <Link
                             to="/politica-de-privacidade"
                             target="_blank"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-[#D4AF37] underline font-semibold relative z-20 hover:text-[#E6C65C]"
+                            className="text-[#B8962E] underline font-semibold relative z-20 hover:text-[#99771C]"
                           >
                             Política de Privacidade
                           </Link>{' '}
@@ -992,7 +1042,7 @@ export default function Cadastro() {
                             to="/regulamento-cashback"
                             target="_blank"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-[#D4AF37] underline font-semibold relative z-20 hover:text-[#E6C65C]"
+                            className="text-[#B8962E] underline font-semibold relative z-20 hover:text-[#99771C]"
                           >
                             Regulamento de Cashback
                           </Link>
@@ -1004,7 +1054,7 @@ export default function Cadastro() {
                         id="consent-sensitive-container"
                         className={`p-2.5 rounded-xl bg-[#D4AF37]/10 border flex items-start gap-3 transition-all ${
                           missingConsentHighlight === 'sensitive'
-                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
+                            ? 'border-red-500 ring-2 ring-red-500/50 bg-red-50'
                             : 'border-[#D4AF37]/30 hover:border-[#D4AF37]/50'
                         }`}
                       >
@@ -1012,8 +1062,8 @@ export default function Cadastro() {
                           htmlFor="sensitive-health-prof"
                           className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
                             pulseConsent === 'sensitive'
-                              ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
-                              : 'active:bg-white/5'
+                              ? 'ring-4 ring-emerald-500/80 bg-emerald-50'
+                              : 'active:bg-gray-100'
                           }`}
                         >
                           <Checkbox
@@ -1029,9 +1079,9 @@ export default function Cadastro() {
                         </label>
                         <label
                           htmlFor="sensitive-health-prof"
-                          className="text-[11px] text-gray-200 cursor-pointer leading-relaxed select-none py-1 flex-1"
+                          className="text-[11px] text-[#374151] cursor-pointer leading-relaxed select-none py-1 flex-1"
                         >
-                          <strong className="text-[#D4AF37] block font-montserrat uppercase">
+                          <strong className="text-[#B8962E] block font-montserrat uppercase">
                             Consentimento para Dados Sensíveis de Saúde (Art. 11 LGPD)
                           </strong>
                           Autorizo o compartilhamento e tratamento estritamente técnico de dados
@@ -1041,7 +1091,7 @@ export default function Cadastro() {
                             to="/lgpd-consentimentos"
                             target="_blank"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-[#D4AF37] underline relative z-20 hover:text-[#E6C65C]"
+                            className="text-[#B8962E] underline relative z-20 hover:text-[#99771C]"
                           >
                             Termo de Consentimento Art. 11 LGPD
                           </Link>
@@ -1057,18 +1107,18 @@ export default function Cadastro() {
                   <div className="space-y-3 pt-2 relative z-10">
                     <div
                       id="consent-terms-container"
-                      className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-[#141414]/80 border ${
+                      className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-white border ${
                         missingConsentHighlight === 'terms'
-                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
-                          : 'border-[#2A2A2A] hover:border-gray-600'
+                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-50'
+                          : 'border-[#E4E2DC] hover:border-[#0057FF]/50'
                       }`}
                     >
                       <label
                         htmlFor="terms-aluno"
                         className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
                           pulseConsent === 'terms'
-                            ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
-                            : 'active:bg-white/5'
+                            ? 'ring-4 ring-emerald-500/80 bg-emerald-50'
+                            : 'active:bg-gray-100'
                         }`}
                       >
                         <Checkbox
@@ -1079,12 +1129,12 @@ export default function Cadastro() {
                             setConsentTerms(next)
                             if (next) triggerPulse('terms')
                           }}
-                          className="w-5 h-5 border-[#2A2A2A] transition-none data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                          className="w-5 h-5 border-[#D1D5DB] transition-none data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
                         />
                       </label>
                       <label
                         htmlFor="terms-aluno"
-                        className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
+                        className="text-xs text-[#374151] cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
                       >
                         Li e concordo com os{' '}
                         <Link
@@ -1102,18 +1152,18 @@ export default function Cadastro() {
 
                     <div
                       id="consent-lgpd-container"
-                      className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-[#141414]/80 border ${
+                      className={`rounded-xl p-2.5 transition-all flex items-start gap-3 bg-white border ${
                         missingConsentHighlight === 'lgpd'
-                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
-                          : 'border-[#2A2A2A] hover:border-gray-600'
+                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-50'
+                          : 'border-[#E4E2DC] hover:border-[#0057FF]/50'
                       }`}
                     >
                       <label
                         htmlFor="lgpd-aluno"
                         className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
                           pulseConsent === 'lgpd'
-                            ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
-                            : 'active:bg-white/5'
+                            ? 'ring-4 ring-emerald-500/80 bg-emerald-50'
+                            : 'active:bg-gray-100'
                         }`}
                       >
                         <Checkbox
@@ -1124,12 +1174,12 @@ export default function Cadastro() {
                             setConsentLgpd(next)
                             if (next) triggerPulse('lgpd')
                           }}
-                          className="w-5 h-5 border-[#2A2A2A] transition-none data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
+                          className="w-5 h-5 border-[#D1D5DB] transition-none data-[state=checked]:bg-[#0057FF] data-[state=checked]:text-white"
                         />
                       </label>
                       <label
                         htmlFor="lgpd-aluno"
-                        className="text-xs text-gray-300 cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
+                        className="text-xs text-[#374151] cursor-pointer font-inter select-none py-1 flex-1 leading-relaxed"
                       >
                         Li e concordo com a{' '}
                         <Link
@@ -1157,7 +1207,7 @@ export default function Cadastro() {
                       id="consent-sensitive-container"
                       className={`p-2.5 rounded-xl bg-[#0057FF]/10 border flex items-start gap-3 transition-all ${
                         missingConsentHighlight === 'sensitive'
-                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-500/10'
+                          ? 'border-red-500 ring-2 ring-red-500/50 bg-red-50'
                           : 'border-[#0057FF]/30 hover:border-[#0057FF]/50'
                       }`}
                     >
@@ -1165,8 +1215,8 @@ export default function Cadastro() {
                         htmlFor="sensitive-health-aluno"
                         className={`min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 -m-2 cursor-pointer rounded-xl transition-all ${
                           pulseConsent === 'sensitive'
-                            ? 'ring-4 ring-emerald-500/80 bg-emerald-500/20'
-                            : 'active:bg-white/5'
+                            ? 'ring-4 ring-emerald-500/80 bg-emerald-50'
+                            : 'active:bg-gray-100'
                         }`}
                       >
                         <Checkbox
@@ -1182,7 +1232,7 @@ export default function Cadastro() {
                       </label>
                       <label
                         htmlFor="sensitive-health-aluno"
-                        className="text-[11px] text-gray-200 cursor-pointer leading-relaxed select-none py-1 flex-1"
+                        className="text-[11px] text-[#374151] cursor-pointer leading-relaxed select-none py-1 flex-1"
                       >
                         <strong className="text-[#0057FF] block font-montserrat uppercase">
                           Consentimento Específico para Dados Sensíveis de Saúde (Art. 11 LGPD)
@@ -1228,9 +1278,9 @@ export default function Cadastro() {
         </Card>
 
         {/* Login Link */}
-        <p className="text-center text-xs text-gray-400 mt-6 font-inter">
+        <p className="text-center text-xs text-[#6B7280] mt-6 font-inter">
           Já possui cadastro?{' '}
-          <Link to="/login" className="text-[#D4AF37] font-semibold hover:underline">
+          <Link to="/login" className="text-[#B8962E] font-semibold hover:underline">
             Fazer login
           </Link>
         </p>
