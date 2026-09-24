@@ -29,8 +29,21 @@ import {
   Search,
   CheckCircle2,
   HelpCircle,
+  History,
+  Download,
+  AlertTriangle,
+  Calendar,
+  Lock,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import type { BinaryTreeParamRecord } from '@/services/api'
 import {
   TOTAL_POSITIONS_STR,
@@ -117,6 +130,7 @@ export default function AdminRankingConfig() {
   const [activeTab, setActiveTab] = useState<
     | 'ranking'
     | 'rankingAlunos'
+    | 'historicoCiclos'
     | 'planilhaCashback'
     | 'tree'
     | 'levels'
@@ -125,6 +139,18 @@ export default function AdminRankingConfig() {
     | 'simulador'
     | 'caminhoC'
   >('ranking')
+
+  // Fechamento de Ciclo (Opção A) e Histórico de Snapshots
+  const [closeModalOpen, setCloseModalOpen] = useState(false)
+  const [closingCycle, setClosingCycle] = useState(false)
+  const [closureSummary, setClosureSummary] = useState<any>(null)
+  const [closureSummaryModalOpen, setClosureSummaryModalOpen] = useState(false)
+
+  // Histórico de Ciclos
+  const [availableCycles, setAvailableCycles] = useState<string[]>([])
+  const [selectedCycle, setSelectedCycle] = useState<string>('')
+  const [cycleSnapshots, setCycleSnapshots] = useState<any[]>([])
+  const [loadingCycleSnapshots, setLoadingCycleSnapshots] = useState(false)
   const [caminhoCEntrada, setCaminhoCEntrada] = useState(1000)
   const [caminhoCNiveis, setCaminhoCNiveis] = useState(9)
   const [searchPos, setSearchPos] = useState('')
@@ -164,9 +190,291 @@ export default function AdminRankingConfig() {
     }
   }
 
+  // Carregar histórico de ciclos disponíveis a partir de monthly_rank_snapshots
+  const loadAvailableCycles = async () => {
+    try {
+      const snaps = await pb.collection('monthly_rank_snapshots').getFullList({
+        fields: 'cycle',
+        sort: '-cycle',
+      })
+      const cycleSet = new Set<string>()
+      // Sempre incluir o ciclo atual como opção
+      cycleSet.add(currentCycle)
+      snaps.forEach((s: any) => {
+        if (s.cycle) cycleSet.add(s.cycle)
+      })
+      const list = Array.from(cycleSet).sort().reverse()
+      setAvailableCycles(list)
+      if (!selectedCycle || !list.includes(selectedCycle)) {
+        setSelectedCycle(list[0] || currentCycle)
+      }
+    } catch (err) {
+      console.warn('Aviso ao carregar ciclos disponíveis:', err)
+      setAvailableCycles([currentCycle])
+      if (!selectedCycle) setSelectedCycle(currentCycle)
+    }
+  }
+
+  // Carregar snapshots do ciclo selecionado
+  const loadCycleSnapshots = async (cycleToLoad: string) => {
+    if (!cycleToLoad) return
+    try {
+      setLoadingCycleSnapshots(true)
+      const list = await pb.collection('monthly_rank_snapshots').getFullList({
+        filter: `cycle = "${cycleToLoad}"`,
+        sort: 'ranking_position',
+        expand: 'user',
+      })
+      setCycleSnapshots(list || [])
+    } catch (err) {
+      console.warn('Aviso ao carregar snapshots do ciclo:', err)
+      setCycleSnapshots([])
+    } finally {
+      setLoadingCycleSnapshots(false)
+    }
+  }
+
+  useEffect(() => {
+    if (selectedCycle) {
+      loadCycleSnapshots(selectedCycle)
+    }
+  }, [selectedCycle])
+
+  // Executar Fechamento de Ciclo (Opção A)
+  const handleExecuteCloseCycle = async () => {
+    setClosingCycle(true)
+    try {
+      const res: any = await pb.send('/backend/v1/admin/close_cycle', {
+        method: 'POST',
+      })
+      setClosureSummary(res)
+      setCloseModalOpen(false)
+      setClosureSummaryModalOpen(true)
+      toast.success(res?.message || `Ciclo ${res?.cycle || currentCycle} fechado com sucesso!`)
+      // Recarregar ranking atual e lista de ciclos
+      await loadData()
+      await loadAvailableCycles()
+      if (res?.cycle) {
+        setSelectedCycle(res.cycle)
+        await loadCycleSnapshots(res.cycle)
+      }
+    } catch (err: any) {
+      const errorMsg =
+        err?.data?.message ||
+        err?.message ||
+        (err?.data?.code === 'SEM_LASTRO' ? 'sem lastro para distribuição' : 'Erro ao fechar ciclo')
+      toast.error(errorMsg)
+    } finally {
+      setClosingCycle(false)
+    }
+  }
+
+  // Helpers para Exportação CSV
+  const exportCsv = (filename: string, rows: Array<Record<string, any>>, headers: string[]) => {
+    if (!rows || rows.length === 0) {
+      toast.error('Nenhum dado disponível para exportação CSV.')
+      return
+    }
+
+    const escapeField = (val: any) => {
+      if (val === null || val === undefined) return '""'
+      const str = String(val).replace(/"/g, '""')
+      return `"${str}"`
+    }
+
+    const headerLine = headers.map((h) => `"${h}"`).join(';')
+    const dataLines = rows.map((row) => headers.map((h) => escapeField(row[h])).join(';'))
+    const csvContent = '\uFEFF' + [headerLine, ...dataLines].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `${filename}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    toast.success(`Exportação CSV concluída: ${filename}.csv`)
+  }
+
+  // 1. Exportar CSV do Ranking Atual
+  const handleExportRankingAtualCsv = () => {
+    if (!rankings || rankings.length === 0) {
+      toast.error('O ranking atual não possui dados para exportar.')
+      return
+    }
+    const rows = rankings.map((r, idx) => {
+      const u = r.expand?.user
+      const pos = Number(r.ranking_position) || idx + 1
+      const servicesQtd =
+        r.tie_break_details?.services_count !== undefined &&
+        r.tie_break_details?.services_count !== null
+          ? Number(r.tie_break_details.services_count) || 0
+          : Number(r.services_count) || 0
+      const indicacoesCiclo =
+        r.referrals_this_cycle !== undefined && r.referrals_this_cycle !== null
+          ? Number(r.referrals_this_cycle) || 0
+          : Number(r.referrals_count) || 0
+
+      return {
+        Posição: pos,
+        ID_Usuário: r.user,
+        Nome: u?.name || 'Participante',
+        Email: u?.email || '',
+        Papel: u?.role || 'profissional',
+        Plano: u?.plan || 'basico',
+        Multiplicador:
+          (r.tie_break_details as any)?.plan_multiplier ??
+          (u?.plan === 'premium' ? 3 : u?.plan === 'pro' ? 2 : 1),
+        Serviços_Ciclo: servicesQtd,
+        Indicações_Ciclo: indicacoesCiclo,
+        Indicações_Total: Number(r.referrals_count) || 0,
+        Pontos_Totais: Number(r.points) || 0,
+        Avaliação_Estrelas: Number(r.stars) || 5,
+        Antiguidade_Meses: Number(r.tie_break_details?.antiguidade) || 1,
+        Ciclo: currentCycle,
+      }
+    })
+    exportCsv(`ranking_atual_369_${currentCycle}`, rows, [
+      'Posição',
+      'ID_Usuário',
+      'Nome',
+      'Email',
+      'Papel',
+      'Plano',
+      'Multiplicador',
+      'Serviços_Ciclo',
+      'Indicações_Ciclo',
+      'Indicações_Total',
+      'Pontos_Totais',
+      'Avaliação_Estrelas',
+      'Antiguidade_Meses',
+      'Ciclo',
+    ])
+  }
+
+  // 2. Exportar CSV do Ciclo Fechado Selecionado
+  const handleExportCicloSelecionadoCsv = async () => {
+    const cycleTarget = selectedCycle || currentCycle
+    let sourceData = cycleSnapshots
+    if (!sourceData || sourceData.length === 0) {
+      try {
+        sourceData = await pb.collection('monthly_rank_snapshots').getFullList({
+          filter: `cycle = "${cycleTarget}"`,
+          sort: 'ranking_position',
+          expand: 'user',
+        })
+      } catch {
+        sourceData = []
+      }
+    }
+
+    if (!sourceData || sourceData.length === 0) {
+      toast.error(`Nenhum snapshot gravado para o ciclo ${cycleTarget}.`)
+      return
+    }
+
+    const rows = sourceData.map((s: any, idx: number) => {
+      const u = s.expand?.user
+      const pos = Number(s.ranking_position) || idx + 1
+      const details = s.details || {}
+      return {
+        Posição: pos,
+        ID_Usuário: s.user,
+        Nome: u?.name || details.user_name || 'Participante',
+        Email: u?.email || '',
+        Papel: u?.role || details.user_role || 'profissional',
+        Plano: s.plan || 'basico',
+        Multiplicador: details.multiplier ?? 1,
+        Serviços: Number(s.services_count) || 0,
+        Indicações: Number(s.referrals_count) || 0,
+        Pontos_Ciclo: Number(s.points) || 0,
+        Pontos_Totais_Acumulados: details.total_cumulative_points ?? (Number(s.points) || 0),
+        Cashback_Recebido_RS: Number(s.cashback_earned || 0).toFixed(2),
+        Avaliação: Number(s.stars) || 5,
+        Antiguidade: Number(s.antiguidade) || 1,
+        Data_Fechamento: s.closed_at || s.created || '',
+        Ciclo: s.cycle || cycleTarget,
+      }
+    })
+
+    exportCsv(`ciclo_fechado_${cycleTarget}`, rows, [
+      'Posição',
+      'ID_Usuário',
+      'Nome',
+      'Email',
+      'Papel',
+      'Plano',
+      'Multiplicador',
+      'Serviços',
+      'Indicações',
+      'Pontos_Ciclo',
+      'Pontos_Totais_Acumulados',
+      'Cashback_Recebido_RS',
+      'Avaliação',
+      'Antiguidade',
+      'Data_Fechamento',
+      'Ciclo',
+    ])
+  }
+
+  // 3. Exportar CSV de Cashback Distribuído (cashback_distributions)
+  const handleExportCashbackDistribuidoCsv = async () => {
+    try {
+      const cbRecords = await pb.collection('cashback_distributions').getFullList({
+        sort: '-created',
+        expand: 'user,service_id',
+      })
+
+      if (!cbRecords || cbRecords.length === 0) {
+        toast.error('Nenhum registro de distribuição de cashback encontrado.')
+        return
+      }
+
+      const rows = cbRecords.map((cb: any) => {
+        const u = cb.expand?.user
+        const metas = cb.metas || {}
+        return {
+          ID_Distribuição: cb.id,
+          ID_Usuário: cb.user,
+          Nome_Usuário: u?.name || '',
+          Email_Usuário: u?.email || '',
+          Nível_Rede: cb.level,
+          Valor_Cashback_RS: Number(cb.amount || 0).toFixed(2),
+          Pool_Total_RS: Number(cb.pool_share || 0).toFixed(2),
+          Corretor_Nível: cb.modifier || cb.variable_pct || '',
+          Pessoas_No_Nível: cb.divisor || '',
+          Ciclo: metas.cycle || '',
+          Fechamento_Mensal: metas.fechamento_mensal ? 'Sim' : 'Não',
+          Fechamento_Manual: metas.fechamento_manual ? 'Sim' : 'Não',
+          Data_Distribuição: cb.created,
+        }
+      })
+
+      exportCsv(`cashback_distribuido_369_${new Date().toISOString().slice(0, 10)}`, rows, [
+        'ID_Distribuição',
+        'ID_Usuário',
+        'Nome_Usuário',
+        'Email_Usuário',
+        'Nível_Rede',
+        'Valor_Cashback_RS',
+        'Pool_Total_RS',
+        'Corretor_Nível',
+        'Pessoas_No_Nível',
+        'Ciclo',
+        'Fechamento_Mensal',
+        'Fechamento_Manual',
+        'Data_Distribuição',
+      ])
+    } catch (err: any) {
+      toast.error('Erro ao buscar cashback_distributions para exportação.')
+    }
+  }
+
   const loadData = async () => {
     try {
       setLoading(true)
+      await loadAvailableCycles()
       // Carregar configurações da plataforma
       try {
         const configs = await pb.collection('platform_config').getFullList()
@@ -800,19 +1108,35 @@ export default function AdminRankingConfig() {
             </p>
           </div>
 
-          <Button
-            type="button"
-            onClick={handleRecalculateRanking}
-            disabled={recalculating}
-            className="bg-[#6A00FF] hover:bg-[#5800d4] text-white font-bold text-xs uppercase px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 self-start md:self-auto"
-          >
-            {recalculating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RotateCw className="w-4 h-4" />
-            )}
-            {recalculating ? 'Recalculando...' : 'Recalcular Ranking Agora'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+            <Button
+              type="button"
+              onClick={handleRecalculateRanking}
+              disabled={recalculating || closingCycle}
+              className="bg-[#2A2A2A] hover:bg-[#333333] text-white font-bold text-xs uppercase px-4 py-3 rounded-xl shadow border border-[#3A3A3A] flex items-center gap-2"
+            >
+              {recalculating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RotateCw className="w-4 h-4" />
+              )}
+              {recalculating ? 'Recalculando...' : 'Recalcular Ranking'}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={() => setCloseModalOpen(true)}
+              disabled={closingCycle || recalculating}
+              className="bg-gradient-to-r from-[#D4AF37] to-[#E5C158] hover:from-[#b8952b] hover:to-[#D4AF37] text-black font-extrabold text-xs uppercase px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 border border-[#F2D06B]"
+            >
+              {closingCycle ? (
+                <Loader2 className="w-4 h-4 animate-spin text-black" />
+              ) : (
+                <Lock className="w-4 h-4 text-black" />
+              )}
+              {closingCycle ? 'Fechando Ciclo...' : 'Fechar Ciclo e Abrir Novo'}
+            </Button>
+          </div>
         </div>
 
         {/* MODELO HÍBRIDO EXPLAINER BANNER */}
@@ -979,6 +1303,17 @@ export default function AdminRankingConfig() {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('historicoCiclos')}
+            className={`px-4 py-2 text-xs font-bold font-montserrat uppercase rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'historicoCiclos'
+                ? 'bg-[#181818] text-[#D4AF37] border-t-2 border-[#D4AF37]'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <History className="w-4 h-4 text-[#D4AF37]" /> Histórico de Ciclos
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('planilhaCashback')}
             className={`px-4 py-2 text-xs font-bold font-montserrat uppercase rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'planilhaCashback'
@@ -1072,13 +1407,22 @@ export default function AdminRankingConfig() {
                   </code>
                 </p>
               </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
                 <span className="text-[11px] font-mono text-[#22C55E] bg-[#22C55E]/10 px-3 py-1 rounded-full border border-[#22C55E]/30">
                   Rede Única Global
                 </span>
                 <span className="text-[11px] font-mono text-[#D4AF37] bg-[#D4AF37]/10 px-3 py-1 rounded-full border border-[#D4AF37]/30">
-                  Ciclo {new Date().toISOString().slice(0, 7)}
+                  Ciclo {currentCycle}
                 </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportRankingAtualCsv}
+                  className="border-[#D4AF37]/40 bg-[#1c180e] hover:bg-[#D4AF37]/20 text-[#D4AF37] text-xs font-bold rounded-xl flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" /> Exportar CSV Ranking Atual
+                </Button>
               </div>
             </div>
 
@@ -2429,14 +2773,438 @@ export default function AdminRankingConfig() {
           </Card>
         )}
 
+        {/* TAB HISTÓRICO DE CICLOS (Opção A) */}
+        {activeTab === 'historicoCiclos' && (
+          <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#2A2A2A]">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat mb-1">
+                  <History className="w-3.5 h-3.5" />
+                  Histórico de Snapshots Congelados (Opção A)
+                </div>
+                <h3 className="font-bold font-montserrat text-white text-lg uppercase flex items-center gap-2">
+                  Histórico de Ciclos Fechados
+                </h3>
+                <p className="text-xs text-gray-400 font-inter max-w-2xl mt-1">
+                  Consulte os snapshots imutáveis gravados nos fechamentos anteriores. As posições,
+                  pontuações e cashback de cada ciclo estão arquivados para auditoria completa.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 bg-[#141414] border border-[#333333] px-3 py-2 rounded-xl">
+                  <Calendar className="w-4 h-4 text-[#D4AF37]" />
+                  <label
+                    htmlFor="select-cycle-history"
+                    className="text-xs text-gray-400 font-medium"
+                  >
+                    Ciclo:
+                  </label>
+                  <select
+                    id="select-cycle-history"
+                    value={selectedCycle}
+                    onChange={(e) => setSelectedCycle(e.target.value)}
+                    className="bg-transparent text-white text-xs font-bold font-mono focus:outline-none cursor-pointer"
+                  >
+                    {availableCycles.length === 0 ? (
+                      <option value={currentCycle} className="bg-[#181818] text-white">
+                        {currentCycle} (Sem snapshots)
+                      </option>
+                    ) : (
+                      availableCycles.map((c) => (
+                        <option key={c} value={c} className="bg-[#181818] text-white">
+                          Ciclo {c}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCicloSelecionadoCsv}
+                  disabled={cycleSnapshots.length === 0}
+                  className="border-[#D4AF37]/40 bg-[#1c180e] hover:bg-[#D4AF37]/20 text-[#D4AF37] text-xs font-bold rounded-xl flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" /> Exportar CSV do Ciclo
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCashbackDistribuidoCsv}
+                  className="border-[#22C55E]/40 bg-[#0e1c12] hover:bg-[#22C55E]/20 text-[#22C55E] text-xs font-bold rounded-xl flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" /> Exportar CSV Cashback Distribuído
+                </Button>
+              </div>
+            </div>
+
+            {/* Banner com estatísticas do ciclo selecionado */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                <span className="text-[10px] text-gray-400 uppercase font-semibold block">
+                  Ciclo Selecionado
+                </span>
+                <span className="text-base font-black font-mono text-[#D4AF37]">
+                  {selectedCycle || currentCycle}
+                </span>
+              </div>
+              <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                <span className="text-[10px] text-gray-400 uppercase font-semibold block">
+                  Snapshots Arquivados
+                </span>
+                <span className="text-base font-black font-mono text-white">
+                  {cycleSnapshots.length} usuários
+                </span>
+              </div>
+              <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                <span className="text-[10px] text-gray-400 uppercase font-semibold block">
+                  Total de Cashback Registrado
+                </span>
+                <span className="text-base font-black font-mono text-[#22C55E]">
+                  R${' '}
+                  {cycleSnapshots
+                    .reduce((acc, s) => acc + (Number(s.cashback_earned) || 0), 0)
+                    .toFixed(2)}
+                </span>
+              </div>
+              <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+                <span className="text-[10px] text-gray-400 uppercase font-semibold block">
+                  Regra de Acúmulo
+                </span>
+                <span className="text-xs font-bold font-montserrat text-[#6A00FF]">
+                  Opção A (Para Sempre)
+                </span>
+              </div>
+            </div>
+
+            {/* Tabela do ciclo selecionado */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-inter">
+                <thead>
+                  <tr className="border-b border-[#2A2A2A] text-gray-400 font-montserrat uppercase text-[10px]">
+                    <th className="pb-3">Posição</th>
+                    <th className="pb-3">Participante</th>
+                    <th className="pb-3 text-center">Plano</th>
+                    <th className="pb-3 text-center">Multiplicador</th>
+                    <th className="pb-3 text-center">Serviços Fechados</th>
+                    <th className="pb-3 text-center">Indicações Fechadas</th>
+                    <th className="pb-3 text-center">Pontos do Ciclo</th>
+                    <th className="pb-3 text-center">Cashback (R$)</th>
+                    <th className="pb-3 text-right">Fechado em</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2A2A2A]">
+                  {loadingCycleSnapshots ? (
+                    <tr>
+                      <td colSpan={9} className="py-6 text-center text-gray-400">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#D4AF37]" />
+                        Carregando snapshots do ciclo {selectedCycle}...
+                      </td>
+                    </tr>
+                  ) : cycleSnapshots.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-gray-400">
+                        <History className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                        <p className="font-semibold text-gray-300">
+                          Nenhum snapshot arquivado para o ciclo {selectedCycle}.
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Use o botão &ldquo;Fechar Ciclo e Abrir Novo&rdquo; no topo para congelar
+                          os snapshots do ciclo atual.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    cycleSnapshots.map((snap, idx) => {
+                      const u = snap.expand?.user
+                      const details = snap.details || {}
+                      const pos = Number(snap.ranking_position) || idx + 1
+                      const userName = u?.name || details.user_name || 'Participante'
+                      const userPlan = (snap.plan || 'basico').toLowerCase()
+                      const mult =
+                        details.multiplier ??
+                        (userPlan === 'premium' ? 3 : userPlan === 'pro' ? 2 : 1)
+                      const pts = Number(snap.points) || 0
+                      const svcs = Number(snap.services_count) || 0
+                      const refs = Number(snap.referrals_count) || 0
+                      const cb = Number(snap.cashback_earned) || 0
+                      const closedDate = snap.closed_at
+                        ? new Date(snap.closed_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '—'
+
+                      return (
+                        <tr
+                          key={snap.id || `snap-${idx}`}
+                          className="hover:bg-[#141414] transition-colors"
+                        >
+                          <td className="py-3 font-bold font-mono text-[#D4AF37]">
+                            <span
+                              className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                                pos === 1
+                                  ? 'bg-[#D4AF37] text-black font-extrabold shadow-[0_0_12px_rgba(212,175,55,0.4)]'
+                                  : pos === 2
+                                    ? 'bg-gray-300 text-black font-bold'
+                                    : pos === 3
+                                      ? 'bg-amber-700 text-white font-bold'
+                                      : 'bg-[#2A2A2A] text-gray-300'
+                              }`}
+                            >
+                              #{pos}
+                            </span>
+                          </td>
+                          <td className="py-3 font-semibold text-white">
+                            <span className="font-mono text-xs font-bold text-white block">
+                              {userName}
+                            </span>
+                            <span className="text-[10px] text-gray-500 font-mono">
+                              {u?.email || snap.user || '—'}
+                            </span>
+                          </td>
+                          <td className="py-3 text-center">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-montserrat ${
+                                userPlan === 'premium'
+                                  ? 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40'
+                                  : userPlan === 'pro'
+                                    ? 'bg-[#6A00FF] text-white font-bold border border-[#6A00FF]'
+                                    : 'bg-gray-800 text-gray-300 border border-gray-700'
+                              }`}
+                            >
+                              {userPlan}
+                            </span>
+                          </td>
+                          <td className="py-3 text-center font-mono font-bold text-gray-300">
+                            {mult}x
+                          </td>
+                          <td className="py-3 text-center font-mono font-bold text-white">
+                            {svcs}
+                          </td>
+                          <td className="py-3 text-center font-mono font-bold text-[#22C55E]">
+                            {refs}
+                          </td>
+                          <td className="py-3 text-center font-mono font-black text-[#D4AF37] text-sm">
+                            {pts.toLocaleString('pt-BR')} pts
+                          </td>
+                          <td className="py-3 text-center font-mono font-bold text-[#22C55E]">
+                            {cb > 0 ? `R$ ${cb.toFixed(2)}` : 'R$ 0,00'}
+                          </td>
+                          <td className="py-3 text-right font-mono text-[11px] text-gray-400">
+                            {closedDate}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
         {/* TAB 8: PLANILHA DE DISTRIBUIÇÃO DE CASHBACK (v0.065) */}
         {activeTab === 'planilhaCashback' && (
-          <PlanilhaCashbackDistribuicao
-            realRankings={rankings}
-            defaultBaseTarifas={1000000}
-            defaultPositionsCount={1023}
-          />
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleExportCashbackDistribuidoCsv}
+                className="border-[#22C55E]/40 bg-[#0e1c12] hover:bg-[#22C55E]/20 text-[#22C55E] text-xs font-bold rounded-xl flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" /> Exportar CSV Cashback Distribuído
+              </Button>
+            </div>
+            <PlanilhaCashbackDistribuicao
+              realRankings={rankings}
+              defaultBaseTarifas={1000000}
+              defaultPositionsCount={1023}
+            />
+          </div>
         )}
+
+        {/* MODAL 1: CONFIRMAÇÃO DE FECHAMENTO DE CICLO (Opção A) */}
+        <Dialog open={closeModalOpen} onOpenChange={setCloseModalOpen}>
+          <DialogContent className="bg-[#181818] border border-[#2A2A2A] text-white max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-[#D4AF37]/15 rounded-xl border border-[#D4AF37]/30 text-[#D4AF37]">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-bold font-montserrat text-white">
+                    Fechar Ciclo {currentCycle} e Abrir Novo Ciclo
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-gray-400 font-inter mt-1">
+                    Confirmação do procedimento de fechamento mensal 369 (Opção A).
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2 text-xs font-inter text-gray-300">
+              <div className="p-3.5 rounded-xl bg-[#141414] border border-[#333333] space-y-2">
+                <p className="font-semibold text-[#D4AF37] flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Regras da Opção A confirmadas pelo usuário:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-gray-300 text-[11px]">
+                  <li>
+                    <strong>Pontos acumulados para sempre:</strong> a base fechada permanece somada
+                    no novo ciclo. Posição no novo ciclo = pontos históricos + pontos do novo mês.
+                  </li>
+                  <li>
+                    <strong>Virada de ciclo:</strong> zera APENAS os contadores mensais (serviços e
+                    indicações do ciclo atual).
+                  </li>
+                  <li>
+                    <strong>Snapshot imutável:</strong> salva a posição e pontuação exatas de cada
+                    usuário em <code>monthly_rank_snapshots</code>.
+                  </li>
+                  <li>
+                    <strong>Pool 38%:</strong> rateia tarifas e mensalidades elegíveis entre os
+                    níveis habitados (Caminho C) com crédito na carteira. Se não houver lastro, a
+                    operação é interrompida com aviso sem distribuir nada.
+                  </li>
+                  <li>
+                    <strong>Ambiente mockado:</strong> nenhuma transação financeira real ou
+                    movimentação bancária externa.
+                  </li>
+                </ul>
+              </div>
+
+              <p className="text-[11px] text-gray-400">
+                Tem certeza de que deseja executar o fechamento do ciclo{' '}
+                <strong>{currentCycle}</strong> agora?
+              </p>
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setCloseModalOpen(false)}
+                disabled={closingCycle}
+                className="text-gray-400 hover:text-white"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleExecuteCloseCycle}
+                disabled={closingCycle}
+                className="bg-gradient-to-r from-[#D4AF37] to-[#E5C158] hover:from-[#b8952b] hover:to-[#D4AF37] text-black font-extrabold text-xs uppercase px-4 py-2 rounded-xl"
+              >
+                {closingCycle ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                )}
+                {closingCycle ? 'Fechando Ciclo...' : 'Confirmar Fechamento'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* MODAL 2: RESUMO DO FECHAMENTO EXECUTADO */}
+        <Dialog open={closureSummaryModalOpen} onOpenChange={setClosureSummaryModalOpen}>
+          <DialogContent className="bg-[#181818] border border-[#22C55E]/40 text-white max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-[#22C55E]/15 rounded-xl border border-[#22C55E]/30 text-[#22C55E]">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-bold font-montserrat text-white">
+                    Ciclo {closureSummary?.cycle || currentCycle} Fechado com Sucesso!
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-gray-400 font-inter mt-1">
+                    Resumo do processamento e abertura do novo ciclo (Opção A).
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2 text-xs font-inter text-gray-300">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 bg-[#141414] rounded-lg border border-[#2A2A2A]">
+                  <span className="text-[10px] text-gray-400 block uppercase">
+                    Snapshots Gravados
+                  </span>
+                  <span className="text-base font-bold font-mono text-white">
+                    {closureSummary?.snapshots_created ?? 0} usuários
+                  </span>
+                </div>
+                <div className="p-2.5 bg-[#141414] rounded-lg border border-[#2A2A2A]">
+                  <span className="text-[10px] text-gray-400 block uppercase">
+                    Pool 38% Distribuído
+                  </span>
+                  <span className="text-base font-bold font-mono text-[#22C55E]">
+                    R$ {Number(closureSummary?.partner_pool_38_pct || 0).toFixed(2)}
+                  </span>
+                </div>
+                <div className="p-2.5 bg-[#141414] rounded-lg border border-[#2A2A2A]">
+                  <span className="text-[10px] text-gray-400 block uppercase">
+                    Níveis Habitados
+                  </span>
+                  <span className="text-base font-bold font-mono text-[#D4AF37]">
+                    {closureSummary?.niveis_habitados ?? 1} níveis
+                  </span>
+                </div>
+                <div className="p-2.5 bg-[#141414] rounded-lg border border-[#2A2A2A]">
+                  <span className="text-[10px] text-gray-400 block uppercase">
+                    Usuários Beneficiados
+                  </span>
+                  <span className="text-base font-bold font-mono text-white">
+                    {closureSummary?.usuarios_beneficiados ?? 0}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#141414] rounded-xl border border-[#22C55E]/20 text-[11px] text-gray-300 space-y-1">
+                <p className="font-semibold text-[#22C55E]">Estado Atual do Sistema:</p>
+                <p>✓ Contadores mensais de serviços e indicações foram zerados.</p>
+                <p>✓ Pontos totais continuam acumulados para a classificação contínua.</p>
+                <p>
+                  ✓ Histórico de snapshots arquivado e disponível para consulta e exportação CSV.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="flex justify-between items-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setClosureSummaryModalOpen(false)
+                  setActiveTab('historicoCiclos')
+                }}
+                className="border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs rounded-xl"
+              >
+                Ver Histórico de Ciclos
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setClosureSummaryModalOpen(false)}
+                className="bg-[#22C55E] hover:bg-[#1ea34d] text-black font-extrabold text-xs uppercase px-5 py-2 rounded-xl"
+              >
+                Concluir
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ErrorBoundary>
   )
