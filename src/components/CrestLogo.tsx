@@ -8,6 +8,8 @@ export interface CrestLogoProps {
   showText?: boolean
   subText?: boolean
   alt?: string
+  loading?: 'eager' | 'lazy'
+  decoding?: 'async' | 'sync' | 'auto'
 }
 
 export const CrestLogo: React.FC<CrestLogoProps> = ({
@@ -17,10 +19,16 @@ export const CrestLogo: React.FC<CrestLogoProps> = ({
   showText = false,
   subText = false,
   alt = '369 TRAINING - Foco • Legado • Estratégia',
+  loading,
+  decoding,
 }) => {
   const baseSize = typeof size === 'number' ? size : parseInt(size as string, 10) || 70
   // Scale factor to increase default size by ~25%
   const scaledSize = Math.round(baseSize * 1.25)
+
+  // Loading strategy: 'eager' for header / top bar / small logos, 'lazy' / decoding="async" for large or below-fold logos unless explicitly overridden
+  const effectiveLoading = loading ?? (baseSize <= 48 ? 'eager' : 'lazy')
+  const effectiveDecoding = decoding ?? (effectiveLoading === 'eager' ? 'auto' : 'async')
 
   return (
     <div className={`inline-flex items-center gap-3 ${className}`}>
@@ -33,7 +41,8 @@ export const CrestLogo: React.FC<CrestLogoProps> = ({
           src="/visual-edits/logo-do-projeto01-02fbc174.png"
           alt={alt}
           className="w-full h-full object-contain bg-transparent border-0 outline-none ring-0 shadow-none filter drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)] transition-transform duration-300 hover:scale-105 text-[0.04px]"
-          loading="eager"
+          loading={effectiveLoading}
+          decoding={effectiveDecoding}
         />
 
         {/* When an avatar is provided (e.g., student/coach profile badge mode), overlay it in the shield center */}

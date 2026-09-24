@@ -145,7 +145,7 @@ export default function Layout({ children }: LayoutProps) {
           }
           className="flex items-center gap-3 group"
         >
-          <CrestLogo size={42} showText subText />
+          <CrestLogo size={42} showText subText loading="eager" decoding="auto" />
         </Link>
 
         {/* Desktop Role-Specific Primary Nav */}

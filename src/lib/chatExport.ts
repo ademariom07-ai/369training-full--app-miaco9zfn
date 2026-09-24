@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf'
-
 // Compute SHA-256 hash using web crypto API
 export async function sha256(text: string): Promise<string> {
   const encoder = new TextEncoder()
@@ -41,7 +39,8 @@ export async function exportChatToPdf(params: {
     second: '2-digit',
   })
 
-  // 2. Generate PDF using jsPDF
+  // 2. Generate PDF using dynamically loaded jsPDF (chunk splitting / vendor isolation)
+  const { default: jsPDF } = await import('jspdf')
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

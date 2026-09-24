@@ -28,7 +28,7 @@ export default function Index() {
 
       {/* Top Bar for Landing */}
       <header className="relative z-10 border-b border-[#E5E3DC] backdrop-blur-md bg-white/90 sticky top-0 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto shadow-xs">
-        <CrestLogo size={42} showText subText />
+        <CrestLogo size={42} showText subText loading="eager" decoding="auto" />
         <div className="flex items-center gap-3">
           <Link to="/login">
             <Button
@@ -50,7 +50,7 @@ export default function Index() {
       <section className="relative z-10 pt-16 pb-24 px-6 max-w-5xl mx-auto text-center flex flex-col items-center opacity-[1] bg-transparent rounded-[0px]">
         {/* Crest Medallion with Pulse Glow */}
         <div className="mb-8 relative drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]">
-          <CrestLogo size={210} />
+          <CrestLogo size={210} loading="lazy" decoding="async" />
         </div>
 
         {/* Brand Headline */}
@@ -331,7 +331,7 @@ export default function Index() {
       <footer className="border-t border-[#E5E3DC] bg-[#F7F5F0] py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <CrestLogo size={48} showText subText />
+            <CrestLogo size={48} showText subText loading="lazy" decoding="async" />
             <p className="text-xs text-gray-600 mt-3 font-inter max-w-sm">
               Plataforma de alta performance para profissionais e alunos de Educação Física,
               Nutrição, Fisioterapia e Artes Marciais.
