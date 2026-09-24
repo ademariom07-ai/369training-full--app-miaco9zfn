@@ -207,43 +207,61 @@ routerAdd(
         const amountUser = Number(lvlInfo.valorPorPessoa.toFixed(2))
         if (amountUser <= 0) continue
 
-        // Salvar em cashback_distributions
-        const cb = new Record(cbCol)
-        cb.set('user', u.id)
-        cb.set('level', userLevel)
-        cb.set('pool_share', partnerPool)
-        cb.set('variable_pct', lvlInfo.corretor)
-        cb.set('divisor', lvlInfo.pessoasNoNivel)
-        cb.set('modifier', lvlInfo.corretor)
-        cb.set('amount', amountUser)
-        cb.set('metas', {
-          cycle: closingCycle,
-          niveis_habitados: niveisHabitados,
-          corretor: lvlInfo.corretor,
-          valor_equalizado_nivel: lvlInfo.valorEqualizado,
-          fechamento_mensal: true,
-          fechamento_manual: true,
-          pool_components: {
-            total_tarifas: totalTarifasEntrada,
-            mensalidades_alunos: totalMensalidadesAlunos,
-            mensalidades_pro_parceiro: totalMensalidadesProParceiro,
-          },
-        })
-        $app.save(cb)
+        // Idempotência: verificar se já foi concedido cashback deste ciclo para este usuário
+        let alreadyCredited = false
+        try {
+          const existingTxs = $app.findRecordsByFilter(
+            'wallet_transactions',
+            `user = '${u.id}' && type = 'cashback' && reference_id = '${closingCycle}'`,
+            '-created',
+            1,
+            0,
+          )
+          if (existingTxs && existingTxs.length > 0) {
+            alreadyCredited = true
+          }
+        } catch (_) {}
 
-        // Creditar na carteira (wallet_transactions)
-        const w = new Record(walletCol)
-        w.set('user', u.id)
-        w.set('type', 'cashback')
-        w.set('amount', amountUser)
-        w.set('status', 'concluido')
-        w.set('reference_type', 'fechamento_mensal')
-        w.set('reference_id', closingCycle)
-        w.set(
-          'description',
-          `Cashback Fechamento de Ciclo (${closingCycle}) - Nível ${userLevel} (Rede Única 369)`,
-        )
-        $app.save(w)
+        if (!alreadyCredited) {
+          // Salvar em cashback_distributions
+          const cb = new Record(cbCol)
+          cb.set('user', u.id)
+          cb.set('service_id', null)
+          cb.set('level', userLevel)
+          cb.set('pool_share', partnerPool)
+          cb.set('variable_pct', lvlInfo.corretor)
+          cb.set('divisor', lvlInfo.pessoasNoNivel)
+          cb.set('modifier', lvlInfo.corretor)
+          cb.set('amount', amountUser)
+          cb.set('metas', {
+            cycle: closingCycle,
+            niveis_habitados: niveisHabitados,
+            corretor: lvlInfo.corretor,
+            valor_equalizado_nivel: lvlInfo.valorEqualizado,
+            fechamento_mensal: true,
+            fechamento_manual: true,
+            pool_components: {
+              total_tarifas: totalTarifasEntrada,
+              mensalidades_alunos: totalMensalidadesAlunos,
+              mensalidades_pro_parceiro: totalMensalidadesProParceiro,
+            },
+          })
+          $app.save(cb)
+
+          // Creditar na carteira (wallet_transactions)
+          const w = new Record(walletCol)
+          w.set('user', u.id)
+          w.set('type', 'cashback')
+          w.set('amount', amountUser)
+          w.set('status', 'concluido')
+          w.set('reference_type', 'fechamento_mensal')
+          w.set('reference_id', closingCycle)
+          w.set(
+            'description',
+            `Cashback Fechamento de Ciclo (${closingCycle}) - Nível ${userLevel} (Rede Única 369)`,
+          )
+          $app.save(w)
+        }
 
         countDistribuicoes++
         userCashbackMap[u.id] = (userCashbackMap[u.id] || 0) + amountUser
