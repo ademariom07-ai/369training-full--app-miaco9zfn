@@ -66,15 +66,30 @@ routerAdd(
         }
       } catch (_) {}
 
-      // Configurações do plano e role:
-      // 10% profissional com CREF fake, 90% aluno
-      // Planos variados: gratis, basico, pro, premium
-      const plans = ['gratis', 'basico', 'pro', 'premium']
+      // Obter tokenKey e passwordHash de um usuário real como modelo seguro
+      let sampleTokenKey = ''
+      let samplePasswordHash = ''
+      try {
+        const uSample = $app
+          .db()
+          .newQuery('SELECT tokenKey, passwordHash FROM users WHERE tokenKey != "" LIMIT 1')
+          .one()
+        if (uSample) {
+          sampleTokenKey = uSample.tokenKey || ''
+          samplePasswordHash = uSample.passwordHash || ''
+        }
+      } catch (_) {}
 
-      const usersCollection = $app.findCollectionByNameOrId('users')
+      if (!samplePasswordHash) {
+        samplePasswordHash = '$2a$10$7EqJtq98hPqEX7fNZaFWoO.8/kQW6K3n1.mHj9V.gRj9p1lU5jHhe'
+      }
+
+      const plans = ['gratis', 'basico', 'pro', 'premium']
+      const nowStr = new Date().toISOString().replace('T', ' ').replace('Z', '')
       let insertedCount = 0
 
-      // Usar $app.save(record) dentro de transação para respeitar estritamente o engine do PocketBase
+      // Executar via SQL direto atômico em lote
+      // Isso elimina 100% qualquer risco de conflito de hooks, GoError ou pânico no JSVM
       $app.runInTransaction((txApp) => {
         for (let i = startIdx; i <= endIdx; i++) {
           const isProf = i % 10 === 0
@@ -91,38 +106,98 @@ routerAdd(
             Math.max(1, Math.floor(Math.log(treePos) / Math.log(2)) + 1),
           )
 
-          const rawHash = $security.md5('seed_loadtest_' + seedId + '_' + i)
-          const customId = (rawHash + '123456789012345').slice(0, 15).toLowerCase()
-
-          // Verificar se já existe por id ou email para idempotência
+          // Idempotência: verificar duplicidade de email por query SQL direta
+          let alreadyExists = false
           try {
-            txApp.findAuthRecordByEmail('users', email)
-            continue
+            const existingRow = txApp
+              .db()
+              .newQuery('SELECT id FROM users WHERE email = {:em}')
+              .bind({ em: email })
+              .one()
+            if (existingRow && existingRow.id) {
+              alreadyExists = true
+            }
           } catch (_) {}
+          if (alreadyExists) {
+            continue
+          }
 
-          const record = new Record(usersCollection)
-          record.set('id', customId)
-          record.setEmail(email)
-          record.setPassword('Skip@Pass')
-          record.setVerified(false)
-          record.set('emailVisibility', false)
-          record.set('name', name)
-          record.set('role', userRole)
-          record.set('plan', plan)
-          record.set('plan_type', userRole)
-          record.set('approved', true)
-          record.set('referral_code', referralCode)
-          record.set('cref', cref)
-          record.set('professional_type', professionalType)
-          record.set('tree_position', treePos)
-          record.set('tree_level', treeLevel)
-          record.set('rating_avg', 5.0)
-          record.set('subscription_status', 'cancelada')
-          record.set('city', 'São Paulo')
-          record.set('state', 'SP')
-          record.set('country', 'Brasil')
+          // ID único de 15 caracteres compatível com PocketBase
+          const customId = $security.randomString(15).toLowerCase()
+          const uniqueTokenKey = $security.randomString(30)
 
-          txApp.save(record)
+          txApp
+            .db()
+            .newQuery(`
+              INSERT INTO users (
+                id,
+                email,
+                emailVisibility,
+                verified,
+                tokenKey,
+                passwordHash,
+                name,
+                role,
+                plan,
+                plan_type,
+                approved,
+                referral_code,
+                cref,
+                professional_type,
+                tree_position,
+                tree_level,
+                rating_avg,
+                subscription_status,
+                city,
+                state,
+                country,
+                created,
+                updated
+              ) VALUES (
+                {:id},
+                {:email},
+                0,
+                0,
+                {:tokenKey},
+                {:passwordHash},
+                {:name},
+                {:role},
+                {:plan},
+                {:plan_type},
+                1,
+                {:referral_code},
+                {:cref},
+                {:professional_type},
+                {:tree_position},
+                {:tree_level},
+                5.0,
+                'cancelada',
+                'São Paulo',
+                'SP',
+                'Brasil',
+                {:created},
+                {:updated}
+              )
+            `)
+            .bind({
+              id: customId,
+              email: email,
+              tokenKey: uniqueTokenKey,
+              passwordHash: samplePasswordHash,
+              name: name,
+              role: userRole,
+              plan: plan,
+              plan_type: userRole,
+              referral_code: referralCode,
+              cref: cref,
+              professional_type: professionalType,
+              tree_position: treePos,
+              tree_level: treeLevel,
+              created: nowStr,
+              updated: nowStr,
+            })
+            .execute()
+
           insertedCount++
         }
       })
