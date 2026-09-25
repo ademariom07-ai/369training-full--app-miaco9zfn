@@ -22,6 +22,13 @@ import {
   Eye,
   Check,
   X,
+  Database,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  Play,
+  RotateCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { UserProfile } from '@/contexts/AuthContext'
@@ -35,20 +42,78 @@ export default function GestaoUsuarios() {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null)
   const [updatingVideo, setUpdatingVideo] = useState(false)
 
-  const loadUsers = async () => {
+  // Paginação no servidor para suportar 10k+ usuários
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(50)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+
+  // Contagem de usuários de teste existentes
+  const [loadtestCount, setLoadtestCount] = useState<number | null>(null)
+
+  // Modais de confirmação dupla para carga e limpeza
+  const [seedModalOpen, setSeedModalOpen] = useState(false)
+  const [seedStep, setSeedStep] = useState<1 | 2>(1)
+  const [seedRunning, setSeedRunning] = useState(false)
+  const [seedProgress, setSeedProgress] = useState(0)
+  const [seedTarget, setSeedTarget] = useState(10000)
+  const [seedBatchSize, setSeedBatchSize] = useState(1000)
+  const [seedStatusText, setSeedStatusText] = useState('')
+
+  const [cleanupModalOpen, setCleanupModalOpen] = useState(false)
+  const [cleanupStep, setCleanupStep] = useState<1 | 2>(1)
+  const [cleanupRunning, setCleanupRunning] = useState(false)
+
+  const checkLoadtestCount = async () => {
     try {
-      const res = await pb.collection('users').getList<UserProfile>(1, 100, {
+      const res = await pb.collection('users').getList(1, 1, {
+        filter: 'name ~ "TESTE CARGA" || email ~ "carga."',
+      })
+      setLoadtestCount(res.totalItems)
+    } catch {
+      setLoadtestCount(null)
+    }
+  }
+
+  const loadUsers = async (targetPage = page, targetRole = roleFilter, targetSearch = search) => {
+    try {
+      setLoading(true)
+      const filterConditions: string[] = []
+      if (targetRole !== 'todos') {
+        filterConditions.push(`role = '${targetRole}'`)
+      }
+      if (targetSearch.trim()) {
+        const clean = targetSearch.trim().replace(/["'\\]/g, '')
+        filterConditions.push(`(name ~ "${clean}" || email ~ "${clean}")`)
+      }
+
+      const res = await pb.collection('users').getList<UserProfile>(targetPage, perPage, {
         sort: '-created',
+        filter: filterConditions.length > 0 ? filterConditions.join(' && ') : undefined,
       })
       setUsersList(res.items)
+      setTotalItems(res.totalItems)
+      setTotalPages(Math.max(1, res.totalPages))
     } catch {
       /* intentionally ignored */
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadUsers().finally(() => setLoading(false))
-  }, [])
+    loadUsers(page, roleFilter, search)
+    checkLoadtestCount()
+  }, [page, roleFilter, perPage])
+
+  // Busca com debounce de 350ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1)
+      loadUsers(1, roleFilter, search)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [search])
 
   const handleToggleApproval = async (user: UserProfile) => {
     try {
@@ -97,7 +162,7 @@ export default function GestaoUsuarios() {
       toast.success(
         `Vídeo de ${user.name} foi ${newVideoState ? 'liberado/ativado' : 'suspenso/desativado'} com sucesso!`,
       )
-      loadUsers()
+      loadUsers(page, roleFilter, search)
       if (selectedUser?.id === user.id) {
         setSelectedUser({ ...selectedUser, video_enabled: newVideoState })
       }
@@ -109,17 +174,83 @@ export default function GestaoUsuarios() {
     }
   }
 
-  const filtered = usersList.filter((u) => {
-    if (roleFilter !== 'todos' && u.role !== roleFilter) return false
-    if (
-      search &&
-      !u.name?.toLowerCase().includes(search.toLowerCase()) &&
-      !u.email?.toLowerCase().includes(search.toLowerCase())
-    ) {
-      return false
+  // Execução do Teste de Carga (10.000 usuários em lotes via cursor)
+  const handleRunLoadtest = async () => {
+    setSeedRunning(true)
+    setSeedProgress(0)
+    setSeedStatusText('Iniciando teste de carga...')
+    const seedId = 'LT' + Date.now().toString().slice(-4)
+    let cursor = 0
+    const total = seedTarget
+    const batch = seedBatchSize
+
+    try {
+      while (cursor < total) {
+        setSeedStatusText(`Processando lote a partir de ${cursor + 1} de ${total}...`)
+        const res: any = await pb.send('/backend/v1/admin/seed_loadtest', {
+          method: 'POST',
+          body: {
+            count: total,
+            batch: batch,
+            cursor: cursor,
+            seed_id: seedId,
+          },
+        })
+
+        if (!res || res.status !== 'ok') {
+          throw new Error(res?.message || 'Falha ao processar lote')
+        }
+
+        const newCursor = res.cursor || cursor + batch
+        cursor = newCursor
+        const currentDone = Math.min(total, cursor)
+        setSeedProgress(Math.round((currentDone / total) * 100))
+        setSeedStatusText(
+          `${currentDone.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} usuários gerados...`,
+        )
+
+        if (!res.has_more || cursor >= total) {
+          break
+        }
+      }
+
+      toast.success(`Teste de carga concluído! ${total.toLocaleString('pt-BR')} usuários gerados.`)
+      setSeedModalOpen(false)
+      setSeedStep(1)
+      await checkLoadtestCount()
+      await loadUsers(1, roleFilter, search)
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro durante geração do teste de carga.')
+    } finally {
+      setSeedRunning(false)
     }
-    return true
-  })
+  }
+
+  // Execução da Remoção de Usuários de Teste
+  const handleRunCleanup = async () => {
+    setCleanupRunning(true)
+    try {
+      const res: any = await pb.send('/backend/v1/admin/seed_loadtest_cleanup', {
+        method: 'POST',
+      })
+      if (res && res.status === 'ok') {
+        toast.success(res.message || 'Limpeza realizada com sucesso!')
+      } else {
+        throw new Error(res?.message || 'Erro na limpeza.')
+      }
+      setCleanupModalOpen(false)
+      setCleanupStep(1)
+      await checkLoadtestCount()
+      await loadUsers(1, roleFilter, search)
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao remover usuários de teste.')
+    } finally {
+      setCleanupRunning(false)
+    }
+  }
+
+  // O filtro agora é feito no backend (paginado), usersList já contém a página
+  const filtered = usersList
 
   return (
     <div className="space-y-8 pb-12">
@@ -128,21 +259,54 @@ export default function GestaoUsuarios() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0057FF]/10 border border-[#0057FF]/30 text-xs font-bold text-[#0057FF] uppercase font-montserrat mb-2">
             <Users className="w-3.5 h-3.5" />
-            Governança de Contas
+            Governança de Contas • {totalItems.toLocaleString('pt-BR')} Registros
           </div>
           <h1 className="text-3xl font-extrabold font-montserrat text-white uppercase">
             Gestão de Usuários
           </h1>
           <p className="text-sm text-gray-400 font-inter mt-1">
-            Consultar, ativar, inativar, bloquear contas e auditar acessos com registro imutável
-            LGPD.
+            Consultar, ativar, inativar, bloquear contas e executar testes de carga de até 10.000
+            usuários.
           </p>
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* BOTÕES DE TESTE DE CARGA */}
+          <Button
+            type="button"
+            onClick={() => {
+              setSeedStep(1)
+              setSeedModalOpen(true)
+            }}
+            disabled={seedRunning || cleanupRunning}
+            className="bg-[#D4AF37] hover:bg-[#e6c154] text-black font-extrabold text-xs uppercase px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow"
+          >
+            <Database className="w-3.5 h-3.5" />
+            Gerar usuários de teste (10k)
+          </Button>
+
+          {loadtestCount !== null && loadtestCount > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCleanupStep(1)
+                setCleanupModalOpen(true)
+              }}
+              disabled={cleanupRunning || seedRunning}
+              className="border-red-500/40 bg-red-950/20 hover:bg-red-900/40 text-red-400 font-bold text-xs uppercase px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Remover usuários de teste ({loadtestCount.toLocaleString('pt-BR')})
+            </Button>
+          )}
+
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => {
+              setRoleFilter(e.target.value)
+              setPage(1)
+            }}
             className="h-10 px-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white text-xs font-semibold focus:outline-none"
           >
             <option value="todos">Todos os Perfis</option>
@@ -290,7 +454,304 @@ export default function GestaoUsuarios() {
             </tbody>
           </table>
         </div>
+
+        {/* CONTROLES DE PAGINAÇÃO */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 mt-2 border-t border-[#2A2A2A] text-xs text-gray-400">
+          <div className="flex items-center gap-2">
+            <span>
+              Exibindo {(page - 1) * perPage + 1} a {Math.min(page * perPage, totalItems)} de{' '}
+              {totalItems.toLocaleString('pt-BR')} usuários
+            </span>
+            <span className="text-gray-600">|</span>
+            <span className="flex items-center gap-1.5">
+              Por página:
+              <select
+                value={perPage}
+                onChange={(e) => {
+                  setPerPage(Number(e.target.value))
+                  setPage(1)
+                }}
+                className="bg-[#101010] border border-[#2A2A2A] rounded px-2 py-0.5 text-white"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="h-8 px-3 border-[#2A2A2A] text-gray-300 hover:text-white hover:bg-[#202020]"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Anterior
+            </Button>
+            <span className="text-xs text-white font-mono px-2">
+              Página {page} de {totalPages}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= totalPages || loading}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="h-8 px-3 border-[#2A2A2A] text-gray-300 hover:text-white hover:bg-[#202020]"
+            >
+              Próxima
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
       </Card>
+
+      {/* MODAL DUPLA CONFIRMAÇÃO — TESTE DE CARGA (10.000 USUÁRIOS) */}
+      <Dialog
+        open={seedModalOpen}
+        onOpenChange={(open) => {
+          if (!seedRunning) {
+            setSeedModalOpen(open)
+            if (!open) setSeedStep(1)
+          }
+        }}
+      >
+        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-lg rounded-2xl p-6">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37]">
+                <Database className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold font-montserrat text-white">
+                  {seedStep === 1
+                    ? 'Gerador de Usuários de Teste (Carga)'
+                    : 'Confirmação Final — Teste de Carga'}
+                </DialogTitle>
+                <p className="text-xs text-gray-400 font-inter mt-0.5">
+                  Inserção em lote de até 10.000 usuários mockados para stress test.
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {seedStep === 1 && (
+            <div className="space-y-4 pt-3 text-xs text-gray-300 font-inter">
+              <div className="p-3.5 rounded-xl bg-[#1c1c1c] border border-[#2a2a2a] space-y-2">
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
+                  Especificações da Carga:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-400 pl-1">
+                  <li>
+                    Quantidade: <strong className="text-white">10.000 usuários</strong> de teste
+                  </li>
+                  <li>
+                    Prefixo visual: <code className="text-[#D4AF37] font-mono">TESTE CARGA #i</code>
+                  </li>
+                  <li>
+                    E-mails: <code className="text-blue-400 font-mono">carga.i@exemplo.com</code>{' '}
+                    (sem envio real)
+                  </li>
+                  <li>Proporção: 90% Alunos, 10% Profissionais com CREF mockado</li>
+                  <li>Planos variados (grátis, básico, pro, premium) e status inativa</li>
+                  <li>Lotes de 1.000 inserções em sequência com cursor até concluir</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setSeedModalOpen(false)}
+                  className="border-[#2A2A2A] text-gray-400 hover:text-white"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => setSeedStep(2)}
+                  className="bg-[#D4AF37] hover:bg-[#c49f2f] text-black font-bold"
+                >
+                  Avançar para Confirmação
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {seedStep === 2 && (
+            <div className="space-y-4 pt-3 text-xs text-gray-300 font-inter">
+              <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/40 text-amber-200 space-y-2">
+                <p className="font-bold flex items-center gap-1.5 text-amber-300">
+                  <AlertTriangle className="w-4 h-4" />
+                  Confirmação Dupla Obrigatória
+                </p>
+                <p>
+                  Você está prestes a povoar o banco de dados com 10.000 usuários de teste. O
+                  processo roda em segundo plano através do endpoint oficial e pode ser totalmente
+                  revertido a qualquer momento pelo botão &quot;Remover usuários de teste&quot;.
+                </p>
+              </div>
+
+              {seedRunning && (
+                <div className="space-y-2 p-4 bg-[#181818] rounded-xl border border-[#2a2a2a]">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-white flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#D4AF37]" />
+                      {seedStatusText}
+                    </span>
+                    <span className="font-mono text-[#D4AF37]">{seedProgress}%</span>
+                  </div>
+                  <div className="w-full bg-[#101010] h-2.5 rounded-full overflow-hidden border border-[#2a2a2a]">
+                    <div
+                      className="bg-gradient-to-r from-[#D4AF37] to-[#e6c154] h-full transition-all duration-300"
+                      style={{ width: `${seedProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  disabled={seedRunning}
+                  onClick={() => setSeedStep(1)}
+                  className="border-[#2A2A2A] text-gray-400 hover:text-white"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  disabled={seedRunning}
+                  onClick={handleRunLoadtest}
+                  className="bg-[#D4AF37] hover:bg-[#c49f2f] text-black font-extrabold uppercase flex items-center gap-1.5"
+                >
+                  {seedRunning ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Inserindo...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" />
+                      Confirmar e Iniciar Carga (10k)
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DUPLA CONFIRMAÇÃO — LIMPEZA DOS USUÁRIOS DE TESTE */}
+      <Dialog
+        open={cleanupModalOpen}
+        onOpenChange={(open) => {
+          if (!cleanupRunning) {
+            setCleanupModalOpen(open)
+            if (!open) setCleanupStep(1)
+          }
+        }}
+      >
+        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-lg rounded-2xl p-6">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-950/40 border border-red-500/50 flex items-center justify-center text-red-400">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold font-montserrat text-white">
+                  {cleanupStep === 1
+                    ? 'Limpeza de Carga de Teste'
+                    : 'Confirmação Definitiva de Remoção'}
+                </DialogTitle>
+                <p className="text-xs text-gray-400 font-inter mt-0.5">
+                  Remover todos os usuários mockados e seus registros derivados.
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {cleanupStep === 1 && (
+            <div className="space-y-4 pt-3 text-xs text-gray-300 font-inter">
+              <div className="p-3.5 rounded-xl bg-[#1c1c1c] border border-[#2a2a2a] space-y-2">
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-red-400" />
+                  Escopo da Remoção:
+                </p>
+                <p>
+                  Esta operação excluirá todos os usuários identificados com a marca de teste (
+                  <code className="text-red-400 font-mono">TESTE CARGA #...</code> ou e-mail{' '}
+                  <code className="text-red-400 font-mono">carga.*@exemplo.com</code>) e seus dados
+                  vinculados em cascata (pontuações, rankings, snapshots e transações simuladas).
+                </p>
+                <p className="text-gray-400 text-[11px]">
+                  Os usuários reais e suas configurações permanecerão 100% intactos.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCleanupModalOpen(false)}
+                  className="border-[#2A2A2A] text-gray-400 hover:text-white"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => setCleanupStep(2)}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                >
+                  Continuar para Remoção
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {cleanupStep === 2 && (
+            <div className="space-y-4 pt-3 text-xs text-gray-300 font-inter">
+              <div className="p-3.5 rounded-xl bg-red-950/30 border border-red-500/50 text-red-200 space-y-2">
+                <p className="font-bold flex items-center gap-1.5 text-red-400">
+                  <AlertTriangle className="w-4 h-4" />
+                  Atenção: Ação Irreversível para Usuários Mockados
+                </p>
+                <p>
+                  Clique no botão abaixo para disparar o endpoint oficial de expurgo de dados de
+                  teste. O banco voltará imediatamente ao seu estado prévio.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  disabled={cleanupRunning}
+                  onClick={() => setCleanupStep(1)}
+                  className="border-[#2A2A2A] text-gray-400 hover:text-white"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  disabled={cleanupRunning}
+                  onClick={handleRunCleanup}
+                  className="bg-red-600 hover:bg-red-700 text-white font-extrabold uppercase flex items-center gap-1.5"
+                >
+                  {cleanupRunning ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Removendo...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Confirmar Limpeza Total
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* MODAL AUDITORIA DE PERFIL DO USUÁRIO & VÍDEO DO PROFISSIONAL */}
       <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>

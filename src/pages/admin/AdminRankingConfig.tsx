@@ -140,6 +140,12 @@ export default function AdminRankingConfig() {
     | 'caminhoC'
   >('ranking')
 
+  // Paginação da tabela de ranking para suportar 10.000+ participantes
+  const [rankPage, setRankPage] = useState(1)
+  const [rankPerPage, setRankPerPage] = useState(50)
+  const [rankTotalItems, setRankTotalItems] = useState(0)
+  const [rankTotalPages, setRankTotalPages] = useState(1)
+
   // Fechamento de Ciclo (Opção A) e Histórico de Snapshots
   const [closeModalOpen, setCloseModalOpen] = useState(false)
   const [closingCycle, setClosingCycle] = useState(false)
@@ -175,20 +181,28 @@ export default function AdminRankingConfig() {
 
   const currentCycle = new Date().toISOString().slice(0, 7)
 
-  const loadRankingsOnly = async () => {
+  const loadRankingsOnly = async (pageToLoad = rankPage, perPageToLoad = rankPerPage) => {
     try {
-      const rankList = await pb.collection('rank_entries').getList<RankItem>(1, 50, {
-        filter: `cycle = "${currentCycle}"`,
-        sort: 'ranking_position',
-        expand: 'user',
-      })
+      const rankList = await pb
+        .collection('rank_entries')
+        .getList<RankItem>(pageToLoad, perPageToLoad, {
+          filter: `cycle = "${currentCycle}"`,
+          sort: 'ranking_position',
+          expand: 'user',
+        })
       if (Array.isArray(rankList?.items)) {
         setRankings(rankList.items)
+        setRankTotalItems(rankList.totalItems)
+        setRankTotalPages(Math.max(1, rankList.totalPages))
       }
     } catch {
       // Falha silenciosa no polling periódico
     }
   }
+
+  useEffect(() => {
+    loadRankingsOnly(rankPage, rankPerPage)
+  }, [rankPage, rankPerPage])
 
   // Carregar histórico de ciclos disponíveis a partir de monthly_rank_snapshots
   const loadAvailableCycles = async () => {
@@ -297,60 +311,86 @@ export default function AdminRankingConfig() {
     toast.success(`Exportação CSV concluída: ${filename}.csv`)
   }
 
-  // 1. Exportar CSV do Ranking Atual
-  const handleExportRankingAtualCsv = () => {
-    if (!rankings || rankings.length === 0) {
-      toast.error('O ranking atual não possui dados para exportar.')
-      return
-    }
-    const rows = rankings.map((r, idx) => {
-      const u = r.expand?.user
-      const pos = Number(r.ranking_position) || idx + 1
-      const servicesQtd =
-        r.tie_break_details?.services_count !== undefined &&
-        r.tie_break_details?.services_count !== null
-          ? Number(r.tie_break_details.services_count) || 0
-          : Number(r.services_count) || 0
-      const indicacoesCiclo =
-        r.referrals_this_cycle !== undefined && r.referrals_this_cycle !== null
-          ? Number(r.referrals_this_cycle) || 0
-          : Number(r.referrals_count) || 0
+  // 1. Exportar CSV do Ranking Atual (Busca TODOS os registros do ciclo em lotes para suportar 10k+)
+  const [exportingRankingCsv, setExportingRankingCsv] = useState(false)
 
-      return {
-        Posição: pos,
-        ID_Usuário: r.user,
-        Nome: u?.name || 'Participante',
-        Email: u?.email || '',
-        Papel: u?.role || 'profissional',
-        Plano: u?.plan || 'basico',
-        Multiplicador:
-          (r.tie_break_details as any)?.plan_multiplier ??
-          (u?.plan === 'premium' ? 3 : u?.plan === 'pro' ? 2 : 1),
-        Serviços_Ciclo: servicesQtd,
-        Indicações_Ciclo: indicacoesCiclo,
-        Indicações_Total: Number(r.referrals_count) || 0,
-        Pontos_Totais: Number(r.points) || 0,
-        Avaliação_Estrelas: Number(r.stars) || 5,
-        Antiguidade_Meses: Number(r.tie_break_details?.antiguidade) || 1,
-        Ciclo: currentCycle,
+  const handleExportRankingAtualCsv = async () => {
+    setExportingRankingCsv(true)
+    toast.info('Coletando todos os registros do ranking para exportação CSV...')
+    try {
+      // Buscar todos os registros do ranking no ciclo atual usando getFullList
+      let allRankRecords: any[] = []
+      try {
+        allRankRecords = await pb.collection('rank_entries').getFullList({
+          filter: `cycle = "${currentCycle}"`,
+          sort: 'ranking_position',
+          expand: 'user',
+          batch: 2000,
+        })
+      } catch (fetchErr) {
+        console.warn('Fallback para ranking carregado em tela:', fetchErr)
+        allRankRecords = rankings
       }
-    })
-    exportCsv(`ranking_atual_369_${currentCycle}`, rows, [
-      'Posição',
-      'ID_Usuário',
-      'Nome',
-      'Email',
-      'Papel',
-      'Plano',
-      'Multiplicador',
-      'Serviços_Ciclo',
-      'Indicações_Ciclo',
-      'Indicações_Total',
-      'Pontos_Totais',
-      'Avaliação_Estrelas',
-      'Antiguidade_Meses',
-      'Ciclo',
-    ])
+
+      if (!allRankRecords || allRankRecords.length === 0) {
+        toast.error('O ranking atual não possui dados para exportar.')
+        return
+      }
+
+      const rows = allRankRecords.map((r, idx) => {
+        const u = r.expand?.user
+        const pos = Number(r.ranking_position) || idx + 1
+        const servicesQtd =
+          r.tie_break_details?.services_count !== undefined &&
+          r.tie_break_details?.services_count !== null
+            ? Number(r.tie_break_details.services_count) || 0
+            : Number(r.services_count) || 0
+        const indicacoesCiclo =
+          r.referrals_this_cycle !== undefined && r.referrals_this_cycle !== null
+            ? Number(r.referrals_this_cycle) || 0
+            : Number(r.referrals_count) || 0
+
+        return {
+          Posição: pos,
+          ID_Usuário: r.user,
+          Nome: u?.name || 'Participante',
+          Email: u?.email || '',
+          Papel: u?.role || 'profissional',
+          Plano: u?.plan || 'basico',
+          Multiplicador:
+            (r.tie_break_details as any)?.plan_multiplier ??
+            (u?.plan === 'premium' ? 3 : u?.plan === 'pro' ? 2 : 1),
+          Serviços_Ciclo: servicesQtd,
+          Indicações_Ciclo: indicacoesCiclo,
+          Indicações_Total: Number(r.referrals_count) || 0,
+          Pontos_Totais: Number(r.points) || 0,
+          Avaliação_Estrelas: Number(r.stars) || 5,
+          Antiguidade_Meses: Number(r.tie_break_details?.antiguidade) || 1,
+          Ciclo: currentCycle,
+        }
+      })
+
+      exportCsv(`ranking_completo_369_${currentCycle}_total_${rows.length}`, rows, [
+        'Posição',
+        'ID_Usuário',
+        'Nome',
+        'Email',
+        'Papel',
+        'Plano',
+        'Multiplicador',
+        'Serviços_Ciclo',
+        'Indicações_Ciclo',
+        'Indicações_Total',
+        'Pontos_Totais',
+        'Avaliação_Estrelas',
+        'Antiguidade_Meses',
+        'Ciclo',
+      ])
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao exportar CSV do ranking.')
+    } finally {
+      setExportingRankingCsv(false)
+    }
   }
 
   // 2. Exportar CSV do Ciclo Fechado Selecionado
@@ -580,15 +620,19 @@ export default function AdminRankingConfig() {
         console.warn('Aviso ao carregar platform_config:', err)
       }
 
-      // Carregar ranking atual (filtrando somente o ciclo corrente)
+      // Carregar ranking atual (filtrando somente o ciclo corrente com paginação)
       try {
-        const rankList = await pb.collection('rank_entries').getList<RankItem>(1, 50, {
-          filter: `cycle = "${currentCycle}"`,
-          sort: 'ranking_position',
-          expand: 'user',
-        })
+        const rankList = await pb
+          .collection('rank_entries')
+          .getList<RankItem>(rankPage, rankPerPage, {
+            filter: `cycle = "${currentCycle}"`,
+            sort: 'ranking_position',
+            expand: 'user',
+          })
         if (Array.isArray(rankList?.items)) {
           setRankings(rankList.items)
+          setRankTotalItems(rankList.totalItems)
+          setRankTotalPages(Math.max(1, rankList.totalPages))
         }
       } catch (err) {
         console.warn('Aviso ao carregar rank_entries:', err)
@@ -1418,10 +1462,19 @@ export default function AdminRankingConfig() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={exportingRankingCsv}
                   onClick={handleExportRankingAtualCsv}
                   className="border-[#D4AF37]/40 bg-[#1c180e] hover:bg-[#D4AF37]/20 text-[#D4AF37] text-xs font-bold rounded-xl flex items-center gap-1.5"
                 >
-                  <Download className="w-3.5 h-3.5" /> Exportar CSV Ranking Atual
+                  {exportingRankingCsv ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Coletando CSV...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" /> Exportar CSV Ranking Completo
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -1579,6 +1632,59 @@ export default function AdminRankingConfig() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* CONTROLES DE PAGINAÇÃO DO RANKING */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 mt-2 border-t border-[#2A2A2A] text-xs text-gray-400">
+              <div className="flex items-center gap-2">
+                <span>
+                  Exibindo {(rankPage - 1) * rankPerPage + 1} a{' '}
+                  {Math.min(rankPage * rankPerPage, rankTotalItems)} de{' '}
+                  {rankTotalItems.toLocaleString('pt-BR')} classificados
+                </span>
+                <span className="text-gray-600">|</span>
+                <span className="flex items-center gap-1.5">
+                  Por página:
+                  <select
+                    value={rankPerPage}
+                    onChange={(e) => {
+                      setRankPerPage(Number(e.target.value))
+                      setRankPage(1)
+                    }}
+                    className="bg-[#101010] border border-[#2A2A2A] rounded px-2 py-0.5 text-white"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={rankPage <= 1 || loading}
+                  onClick={() => setRankPage((p) => Math.max(1, p - 1))}
+                  className="h-8 px-3 border-[#2A2A2A] text-gray-300 hover:text-white hover:bg-[#202020]"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Anterior
+                </Button>
+                <span className="text-xs text-white font-mono px-2">
+                  Página {rankPage} de {rankTotalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={rankPage >= rankTotalPages || loading}
+                  onClick={() => setRankPage((p) => Math.min(rankTotalPages, p + 1))}
+                  className="h-8 px-3 border-[#2A2A2A] text-gray-300 hover:text-white hover:bg-[#202020]"
+                >
+                  Próxima
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
           </Card>
         )}
