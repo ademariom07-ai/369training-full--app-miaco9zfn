@@ -71,12 +71,10 @@ routerAdd(
       // Planos variados: gratis, basico, pro, premium
       const plans = ['gratis', 'basico', 'pro', 'premium']
 
-      const now = new Date()
-      const nowIso = now.toISOString().replace('T', ' ').slice(0, 19)
-
-      // Usar transação do banco para alta velocidade
+      const usersCollection = $app.findCollectionByNameOrId('users')
       let insertedCount = 0
 
+      // Usar $app.save(record) dentro de transação para respeitar estritamente o engine do PocketBase
       $app.runInTransaction((txApp) => {
         for (let i = startIdx; i <= endIdx; i++) {
           const isProf = i % 10 === 0
@@ -84,60 +82,47 @@ routerAdd(
           const plan = plans[i % plans.length]
           const name = 'TESTE CARGA #' + i
           const email = 'carga.' + i + '@exemplo.com'
-          const username = 'carga_' + i + '_' + seedId.toLowerCase()
           const referralCode = 'CRG' + i.toString().padStart(5, '0')
           const cref = isProf ? 'CREF-TEST-' + i.toString().padStart(5, '0') : ''
           const professionalType = isProf ? 'Pessoa Física' : ''
           const treePos = currentMaxTreePos + i
-          // Level aproximado na árvore binária: floor(log2(treePos)) + 1
           const treeLevel = Math.min(
             36,
             Math.max(1, Math.floor(Math.log(treePos) / Math.log(2)) + 1),
           )
 
-          // Gerar ID padrão PocketBase de 15 caracteres alfanuméricos seguros
-          // Prefixado ou hash para reprodutibilidade
           const rawHash = $security.md5('seed_loadtest_' + seedId + '_' + i)
-          const id = (rawHash + '123456789012345').slice(0, 15).toLowerCase()
-          const tokenKey = $security.randomString(30)
+          const customId = (rawHash + '123456789012345').slice(0, 15).toLowerCase()
 
-          // Password hash padrão Bcrypt para "Skip@Pass"
-          // $2a$12$e8jU6eL.Bf2m4p... ou podemos usar uma string segura
-          const dummyHash = '$2a$10$wN9i/wT9rRj.4iKq08m2sew6K95kQ862e3d7Fk9.4yq945a89q.6m'
+          // Verificar se já existe por id ou email para idempotência
+          try {
+            txApp.findAuthRecordByEmail('users', email)
+            continue
+          } catch (_) {}
 
-          // Insert or Ignore no SQLite com colunas do PocketBase v0.23+
-          txApp
-            .db()
-            .newQuery(`
-            INSERT OR IGNORE INTO users (
-              id, created, updated, email, emailVisibility, verified, tokenKey, password,
-              name, role, plan, plan_type, approved, referral_code, cref, professional_type,
-              rating_avg, tree_position, tree_level, subscription_status, city, state, country
-            ) VALUES (
-              {:id}, {:created}, {:updated}, {:email}, 0, 0, {:tokenKey}, {:password},
-              {:name}, {:role}, {:plan}, {:plan_type}, 1, {:referral_code}, {:cref}, {:professional_type},
-              5.0, {:tree_position}, {:tree_level}, 'cancelada', 'São Paulo', 'SP', 'Brasil'
-            )
-          `)
-            .bind({
-              id: id,
-              created: nowIso,
-              updated: nowIso,
-              email: email,
-              tokenKey: tokenKey,
-              password: dummyHash,
-              name: name,
-              role: userRole,
-              plan: plan,
-              plan_type: userRole,
-              referral_code: referralCode,
-              cref: cref,
-              professional_type: professionalType,
-              tree_position: treePos,
-              tree_level: treeLevel,
-            })
-            .execute()
+          const record = new Record(usersCollection)
+          record.set('id', customId)
+          record.setEmail(email)
+          record.setPassword('Skip@Pass')
+          record.setVerified(false)
+          record.set('emailVisibility', false)
+          record.set('name', name)
+          record.set('role', userRole)
+          record.set('plan', plan)
+          record.set('plan_type', userRole)
+          record.set('approved', true)
+          record.set('referral_code', referralCode)
+          record.set('cref', cref)
+          record.set('professional_type', professionalType)
+          record.set('tree_position', treePos)
+          record.set('tree_level', treeLevel)
+          record.set('rating_avg', 5.0)
+          record.set('subscription_status', 'cancelada')
+          record.set('city', 'São Paulo')
+          record.set('state', 'SP')
+          record.set('country', 'Brasil')
 
+          txApp.save(record)
           insertedCount++
         }
       })
