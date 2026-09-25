@@ -56,40 +56,13 @@ routerAdd(
         })
       }
 
-      // Obter max tree_position atual do banco para distribuir sequencialmente
-      let currentMaxTreePos = 50
-      try {
-        const row = $app.db().newQuery('SELECT MAX(tree_position) as max_pos FROM users').one()
-        if (row && row.max_pos) {
-          const p = parseInt(row.max_pos, 10)
-          if (!isNaN(p) && p > 0) currentMaxTreePos = p
-        }
-      } catch (_) {}
-
-      // Obter tokenKey e passwordHash de um usuário real como modelo seguro
-      let sampleTokenKey = ''
-      let samplePasswordHash = ''
-      try {
-        const uSample = $app
-          .db()
-          .newQuery('SELECT tokenKey, passwordHash FROM users WHERE tokenKey != "" LIMIT 1')
-          .one()
-        if (uSample) {
-          sampleTokenKey = uSample.tokenKey || ''
-          samplePasswordHash = uSample.passwordHash || ''
-        }
-      } catch (_) {}
-
-      if (!samplePasswordHash) {
-        samplePasswordHash = '$2a$10$7EqJtq98hPqEX7fNZaFWoO.8/kQW6K3n1.mHj9V.gRj9p1lU5jHhe'
-      }
-
       const plans = ['gratis', 'basico', 'pro', 'premium']
-      const nowStr = new Date().toISOString().replace('T', ' ').replace('Z', '')
+      const fixedBcryptHash = '$2a$10$7EqJtq98hPqEX7fNZaFWoO.8/kQW6K3n1.mHj9V.gRj9p1lU5jHhe'
       let insertedCount = 0
 
-      // Executar via SQL direto atômico em lote
-      // Isso elimina 100% qualquer risco de conflito de hooks, GoError ou pânico no JSVM
+      // Executar via transação com INSERT OR IGNORE
+      // Utiliza a coluna física real `password` (e NÃO passwordHash inexistente)
+      // Autodate triggers geram `created` e `updated` automaticamente
       $app.runInTransaction((txApp) => {
         for (let i = startIdx; i <= endIdx; i++) {
           const isProf = i % 10 === 0
@@ -100,42 +73,25 @@ routerAdd(
           const referralCode = 'CRG' + i.toString().padStart(5, '0')
           const cref = isProf ? 'CREF-TEST-' + i.toString().padStart(5, '0') : ''
           const professionalType = isProf ? 'Pessoa Física' : ''
-          const treePos = currentMaxTreePos + i
+          const treePos = 100000 + i
           const treeLevel = Math.min(
             36,
             Math.max(1, Math.floor(Math.log(treePos) / Math.log(2)) + 1),
           )
 
-          // Idempotência: verificar duplicidade de email por query SQL direta
-          let alreadyExists = false
-          try {
-            const existingRow = txApp
-              .db()
-              .newQuery('SELECT id FROM users WHERE email = {:em}')
-              .bind({ em: email })
-              .one()
-            if (existingRow && existingRow.id) {
-              alreadyExists = true
-            }
-          } catch (_) {}
-          if (alreadyExists) {
-            continue
-          }
-
-          // ID único de 15 caracteres compatível com PocketBase
           const customId = $security.randomString(15).toLowerCase()
           const uniqueTokenKey = $security.randomString(30)
 
-          txApp
+          const res = txApp
             .db()
             .newQuery(`
-              INSERT INTO users (
+              INSERT OR IGNORE INTO users (
                 id,
                 email,
                 emailVisibility,
                 verified,
                 tokenKey,
-                passwordHash,
+                password,
                 name,
                 role,
                 plan,
@@ -150,16 +106,14 @@ routerAdd(
                 subscription_status,
                 city,
                 state,
-                country,
-                created,
-                updated
+                country
               ) VALUES (
                 {:id},
                 {:email},
                 0,
                 0,
                 {:tokenKey},
-                {:passwordHash},
+                {:password},
                 {:name},
                 {:role},
                 {:plan},
@@ -174,16 +128,14 @@ routerAdd(
                 'cancelada',
                 'São Paulo',
                 'SP',
-                'Brasil',
-                {:created},
-                {:updated}
+                'Brasil'
               )
             `)
             .bind({
               id: customId,
               email: email,
               tokenKey: uniqueTokenKey,
-              passwordHash: samplePasswordHash,
+              password: fixedBcryptHash,
               name: name,
               role: userRole,
               plan: plan,
@@ -193,12 +145,15 @@ routerAdd(
               professional_type: professionalType,
               tree_position: treePos,
               tree_level: treeLevel,
-              created: nowStr,
-              updated: nowStr,
             })
             .execute()
 
-          insertedCount++
+          // Incrementar contagem de inseridos caso a linha tenha sido inserida
+          if (res && typeof res.rowsAffected === 'function') {
+            if (res.rowsAffected() > 0) insertedCount++
+          } else {
+            insertedCount++
+          }
         }
       })
 

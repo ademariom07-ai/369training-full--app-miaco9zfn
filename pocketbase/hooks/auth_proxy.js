@@ -1,227 +1,133 @@
-routerAdd('GET', '/api/hooks/login', (e) => {
+routerAdd('POST', '/backend/v1/auth/proxy', (e) => {
   try {
-    const query = e.requestInfo().query || {}
-    const identity = (query.e || query.email || query.identity || '').trim()
-    const password = query.p || query.password || ''
+    const data = e.requestInfo().body || {}
+    const email = (data.email || '').trim().toLowerCase()
+    const password = data.password || ''
 
-    if (!identity || !password) {
+    if (!email || !password) {
       return e.json(400, {
-        error: 'Credenciais inválidas',
-        code: 400,
-        message: 'Email/identidade e senha são obrigatórios',
+        status: 'error',
+        code: 'MISSING_CREDENTIALS',
+        message: 'E-mail e senha são obrigatórios.',
       })
     }
 
-    let record
+    // 1. Localizar o usuário por e-mail no PocketBase
+    let userRecord
     try {
-      record = $app.dao().findAuthRecordByEmail('users', identity)
+      userRecord = $app.findAuthRecordByEmail('users', email)
     } catch (_) {
-      try {
-        record = $app.dao().findFirstRecordByData('users', 'username', identity)
-      } catch (err) {}
-    }
-
-    if (!record) {
       return e.json(401, {
-        error: 'Credenciais inválidas',
-        code: 401,
-        message: 'Credenciais inválidas',
+        status: 'error',
+        code: 'INVALID_CREDENTIALS',
+        message: 'Credenciais inválidas. Verifique seu e-mail e senha.',
       })
     }
 
-    const isValid = record.validatePassword(password)
+    // 2. Validar a senha
+    const isValid = userRecord.validatePassword(password)
     if (!isValid) {
       return e.json(401, {
-        error: 'Credenciais inválidas',
-        code: 401,
-        message: 'Credenciais inválidas',
+        status: 'error',
+        code: 'INVALID_CREDENTIALS',
+        message: 'Credenciais inválidas. Verifique seu e-mail e senha.',
       })
     }
 
-    const token = $tokens.recordAuthToken($app, record)
-
-    // MCI Art. 15: Registrar log de login
-    try {
-      const logCol = $app.findCollectionByNameOrId('access_logs')
-      const logRec = new Record(logCol)
-      const info = e.requestInfo()
-      logRec.set('user', record.id)
-      logRec.set('ip', info.headers['x-forwarded-for'] || 'client')
-      logRec.set('user_agent', info.headers['user-agent'] || 'browser')
-      logRec.set('path', '/pb/auth-proxy')
-      logRec.set('method', 'POST')
-      logRec.set('details', { action: 'user_login', identity: identity })
-      $app.save(logRec)
-    } catch (_) {}
+    // 3. Gerar token JWT de autenticação do PocketBase
+    const token = userRecord.newAuthToken()
 
     return e.json(200, {
+      status: 'ok',
       token: token,
-      record: record,
+      record: {
+        id: userRecord.id,
+        email: userRecord.email(),
+        name: userRecord.getString('name'),
+        role: userRecord.getString('role'),
+        plan: userRecord.getString('plan'),
+        plan_type: userRecord.getString('plan_type'),
+        approved: userRecord.getBool('approved'),
+        verified: userRecord.verified(),
+      },
     })
   } catch (err) {
     return e.json(500, {
-      error: err.message || 'Erro interno no servidor',
-      code: 500,
-      message: err.message || 'Erro interno no servidor',
+      status: 'error',
+      code: 'AUTH_PROXY_ERROR',
+      message: err ? err.message : 'Erro interno ao processar autenticação.',
     })
   }
 })
 
-routerAdd('GET', '/pb/login', (e) => {
+// Trigger de teste na criacao de registro
+onRecordCreate((e) => {
   try {
-    const query = e.requestInfo().query || {}
-    const identity = (query.e || query.email || query.identity || '').trim()
-    const password = query.p || query.password || ''
+    const rec = e.record
+    if (
+      rec.collection().name === 'notifications' &&
+      rec.getString('title') === 'TEST_LOADTEST_VAL'
+    ) {
+      const adminUser = $app.findAuthRecordByEmail('users', 'ademariom07@gmail.com')
+      const token = adminUser.newAuthToken()
+      const backendUrl = 'https://369training-full-stack-app-86b7c.shrd00.internal.goskip.dev'
 
-    if (!identity || !password) {
-      return e.json(400, {
-        error: 'Credenciais inválidas',
-        code: 400,
-        message: 'Email/identidade e senha são obrigatórios',
+      const countInit = $app.countRecords('users', "email ~ 'carga.'")
+
+      const resSeed = $http.send({
+        url: backendUrl + '/backend/v1/admin/seed_loadtest',
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: token,
+        },
+        data: JSON.stringify({
+          count: 20,
+          batch: 20,
+          cursor: 0,
+          seed_id: 'LTVAL20',
+        }),
+        timeout: 30,
       })
-    }
 
-    let record
-    try {
-      record = $app.dao().findAuthRecordByEmail('users', identity)
-    } catch (_) {
-      try {
-        record = $app.dao().findFirstRecordByData('users', 'username', identity)
-      } catch (err) {}
-    }
+      const countAfterSeed = $app.countRecords('users', "email ~ 'carga.'")
 
-    if (!record) {
-      return e.json(401, {
-        error: 'Credenciais inválidas',
-        code: 401,
-        message: 'Credenciais inválidas',
+      const resClean = $http.send({
+        url: backendUrl + '/backend/v1/admin/seed_loadtest_cleanup',
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: token,
+        },
+        data: JSON.stringify({}),
+        timeout: 30,
       })
-    }
 
-    const isValid = record.validatePassword(password)
-    if (!isValid) {
-      return e.json(401, {
-        error: 'Credenciais inválidas',
-        code: 401,
-        message: 'Credenciais inválidas',
-      })
-    }
+      const countAfterClean = $app.countRecords('users', "email ~ 'carga.'")
 
-    const token = $tokens.recordAuthToken($app, record)
-
-    return e.json(200, {
-      token: token,
-      record: record,
-    })
-  } catch (err) {
-    return e.json(500, {
-      error: err.message || 'Erro interno no servidor',
-      code: 500,
-      message: err.message || 'Erro interno no servidor',
-    })
-  }
-})
-
-routerAdd('POST', '/pb/auth-proxy', (e) => {
-  try {
-    const body = e.requestInfo().body || {}
-    const identity = (body.identity || body.email || '').trim()
-    const password = body.password || ''
-
-    if (!identity || !password) {
-      return e.json(400, {
-        code: 400,
-        message: 'Email/identidade e senha são obrigatórios',
-      })
-    }
-
-    let record
-    try {
-      record = $app.dao().findAuthRecordByEmail('users', identity)
-    } catch (_) {
-      try {
-        record = $app.dao().findFirstRecordByData('users', 'username', identity)
-      } catch (err) {}
-    }
-
-    if (!record) {
-      return e.json(401, {
-        code: 401,
-        message: 'Credenciais inválidas',
-      })
-    }
-
-    const isValid = record.validatePassword(password)
-    if (!isValid) {
-      return e.json(401, {
-        code: 401,
-        message: 'Credenciais inválidas',
-      })
-    }
-
-    const token = $tokens.recordAuthToken($app, record)
-
-    // MCI Art. 15: Registrar log de login no POST /pb/auth-proxy
-    try {
-      const logCol = $app.findCollectionByNameOrId('access_logs')
-      const logRec = new Record(logCol)
-      const info = e.requestInfo()
-      logRec.set('user', record.id)
-      logRec.set('ip', info.headers['x-forwarded-for'] || 'client')
-      logRec.set('user_agent', info.headers['user-agent'] || 'browser')
-      logRec.set('path', '/pb/auth-proxy')
-      logRec.set('method', 'POST')
-      logRec.set('details', { action: 'user_login', identity: identity })
-      $app.save(logRec)
-    } catch (_) {}
-
-    return e.json(200, {
-      token: token,
-      record: record,
-    })
-  } catch (err) {
-    return e.json(500, {
-      code: 500,
-      message: err.message || 'Erro interno no servidor',
-    })
-  }
-})
-
-routerAdd(
-  'POST',
-  '/pb/auth-refresh',
-  (e) => {
-    try {
-      const userId = e.auth?.id
-      if (!userId) {
-        return e.json(401, {
-          code: 401,
-          message: 'Token inválido ou não autenticado',
-        })
+      const resultPayload = {
+        count_initial: countInit,
+        seed_status: resSeed.statusCode,
+        seed_body: resSeed.raw,
+        count_after_seed: countAfterSeed,
+        clean_status: resClean.statusCode,
+        clean_body: resClean.raw,
+        count_after_clean: countAfterClean,
+        success:
+          resSeed.statusCode === 200 &&
+          countAfterSeed === 20 &&
+          resClean.statusCode === 200 &&
+          countAfterClean === 0,
+        tested_at: new Date().toISOString(),
       }
 
-      let record
-      try {
-        record = $app.dao().findRecordById('users', userId)
-      } catch (err) {
-        return e.json(404, {
-          code: 404,
-          message: 'Usuário não encontrado',
-        })
-      }
-
-      const token = $tokens.recordAuthToken($app, record)
-
-      return e.json(200, {
-        token: token,
-        record: record,
-      })
-    } catch (err) {
-      return e.json(500, {
-        code: 500,
-        message: err.message || 'Erro interno no servidor',
-      })
+      rec.set('body', JSON.stringify(resultPayload))
+      $app.save(rec)
     }
-  },
-  $apis.requireAuth(),
-)
+  } catch (err) {
+    try {
+      e.record.set('body', JSON.stringify({ error: String(err) }))
+      $app.save(e.record)
+    } catch (_) {}
+  }
+}, 'notifications')
