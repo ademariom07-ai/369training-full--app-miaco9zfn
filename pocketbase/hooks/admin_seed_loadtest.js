@@ -105,16 +105,16 @@ routerAdd(
           // $2a$12$e8jU6eL.Bf2m4p... ou podemos usar uma string segura
           const dummyHash = '$2a$10$wN9i/wT9rRj.4iKq08m2sew6K95kQ862e3d7Fk9.4yq945a89q.6m'
 
-          // Insert or Replace no SQLite
+          // Insert or Ignore no SQLite com colunas do PocketBase v0.23+
           txApp
             .db()
             .newQuery(`
-            INSERT OR REPLACE INTO users (
-              id, created, updated, email, emailVisibility, verified, tokenKey, passwordHash,
+            INSERT OR IGNORE INTO users (
+              id, created, updated, email, emailVisibility, verified, tokenKey, password,
               name, role, plan, plan_type, approved, referral_code, cref, professional_type,
               rating_avg, tree_position, tree_level, subscription_status, city, state, country
             ) VALUES (
-              {:id}, {:created}, {:updated}, {:email}, 0, 1, {:tokenKey}, {:passwordHash},
+              {:id}, {:created}, {:updated}, {:email}, 0, 0, {:tokenKey}, {:password},
               {:name}, {:role}, {:plan}, {:plan_type}, 1, {:referral_code}, {:cref}, {:professional_type},
               5.0, {:tree_position}, {:tree_level}, 'cancelada', 'São Paulo', 'SP', 'Brasil'
             )
@@ -125,7 +125,7 @@ routerAdd(
               updated: nowIso,
               email: email,
               tokenKey: tokenKey,
-              passwordHash: dummyHash,
+              password: dummyHash,
               name: name,
               role: userRole,
               plan: plan,
@@ -147,11 +147,13 @@ routerAdd(
 
       return c.json(200, {
         status: 'ok',
+        completed: endIdx,
+        total_target: totalCount,
+        cursor: endIdx,
+        inserted_in_batch: insertedCount,
+        next_cursor: nextCursor,
         seed_id: seedId,
         batch_inserted: insertedCount,
-        cursor: endIdx,
-        total_target: totalCount,
-        next_cursor: nextCursor,
         has_more: hasMore,
         message:
           'Lote de usuários de teste inserido com sucesso (' + endIdx + '/' + totalCount + ').',
@@ -161,7 +163,8 @@ routerAdd(
       return c.json(500, {
         status: 'error',
         code: 'SEED_LOADTEST_ERROR',
-        message: err ? err.message : 'Erro interno ao gerar usuários de teste.',
+        message:
+          err && err.message ? err.message : 'Erro interno ao executar seed do teste de carga.',
       })
     }
   },
