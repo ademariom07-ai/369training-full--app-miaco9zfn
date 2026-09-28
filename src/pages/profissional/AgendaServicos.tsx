@@ -194,29 +194,27 @@ export default function AgendaServicos() {
       const daySchedules = schedules.filter((s) => s.data === dateStr)
 
       if (daySchedules.length === 0) {
-        // Criar todos os 19 horários como disponíveis e definir dia_liberado
-        await Promise.all(
-          FIXED_TIME_SLOTS.map((slot) =>
-            pb.collection('weekly_schedules').create({
-              profissional: user.id,
-              dia_da_semana: dayName,
-              data: dateStr,
-              hora_inicio: slot.hora_inicio,
-              hora_fim: slot.hora_fim,
-              disponivel: true,
-              dia_liberado: nextLiberadoState,
-            }),
-          ),
-        )
+        // Criar todos os 19 horários de forma serial com pequeno atraso para evitar HTTP 429 (Too Many Requests)
+        for (const slot of FIXED_TIME_SLOTS) {
+          await pb.collection('weekly_schedules').create({
+            profissional: user.id,
+            dia_da_semana: dayName,
+            data: dateStr,
+            hora_inicio: slot.hora_inicio,
+            hora_fim: slot.hora_fim,
+            disponivel: true,
+            dia_liberado: nextLiberadoState,
+          })
+          await new Promise((resolve) => setTimeout(resolve, 150))
+        }
       } else {
-        // Atualizar todos os registros existentes deste dia
-        await Promise.all(
-          daySchedules.map((s) =>
-            pb.collection('weekly_schedules').update(s.id, {
-              dia_liberado: nextLiberadoState,
-            }),
-          ),
-        )
+        // Atualizar registros existentes deste dia de forma serial para evitar estouro de rate limit
+        for (const s of daySchedules) {
+          await pb.collection('weekly_schedules').update(s.id, {
+            dia_liberado: nextLiberadoState,
+          })
+          await new Promise((resolve) => setTimeout(resolve, 150))
+        }
       }
 
       toast.success(
@@ -226,8 +224,14 @@ export default function AgendaServicos() {
       )
       await loadData()
     } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Erro ao alterar liberação do dia.')
+      const error = err as { status?: number; message?: string }
+      if (error?.status === 429) {
+        toast.error('Muitas requisições, tente novamente em instantes.')
+      } else {
+        toast.error(error?.message || 'Erro ao alterar liberação do dia.')
+      }
+      // Mesmo em erro parcial, recarrega o que foi gravado até o momento
+      await loadData().catch(() => {})
     } finally {
       setActionLoading(null)
     }
