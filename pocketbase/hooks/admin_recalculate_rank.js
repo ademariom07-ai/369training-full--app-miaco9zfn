@@ -264,18 +264,22 @@ routerAdd(
         return new Date(a.created).getTime() - new Date(b.created).getTime()
       })
 
-      // Gravar entradas do ranking no ciclo atual de forma ultrarrápida com SQL em transação
-      $app.runInTransaction((txApp) => {
+      // Gravar entradas do ranking no ciclo atual com SQL direto (.all()/.execute() sem transação)
+      try {
         // 1. Limpar entradas de ciclos passados em rank_entries
-        txApp
+        $app
           .db()
           .newQuery('DELETE FROM rank_entries WHERE cycle != {:cycle}')
           .bind({ cycle: cycle })
           .execute()
+      } catch (delErr) {
+        console.warn('Aviso ao limpar rank_entries de ciclos passados:', delErr)
+      }
 
-        // 2. Mapear IDs de rank_entries já existentes para este ciclo
-        const existingEntries = {}
-        const rows = txApp
+      // 2. Mapear IDs de rank_entries já existentes para este ciclo
+      const existingEntries = {}
+      try {
+        const rows = $app
           .db()
           .newQuery('SELECT id, user FROM rank_entries WHERE cycle = {:cycle}')
           .bind({ cycle: cycle })
@@ -285,34 +289,38 @@ routerAdd(
             existingEntries[r.user] = r.id
           }
         }
+      } catch (fetchErr) {
+        console.warn('Aviso ao consultar rank_entries existentes:', fetchErr)
+      }
 
-        // 3. Atualizar ou inserir em lotes
-        for (let i = 0; i < scores.length; i++) {
-          const s = scores[i]
-          const pos = i + 1
-          const existingId = existingEntries[s.user_id]
-          const id =
-            existingId ||
-            ($security.md5('rank_' + cycle + '_' + s.user_id) + '123456789012345')
-              .slice(0, 15)
-              .toLowerCase()
+      // 3. Atualizar ou inserir em lotes
+      for (let i = 0; i < scores.length; i++) {
+        const s = scores[i]
+        const pos = i + 1
+        const existingId = existingEntries[s.user_id]
+        const id =
+          existingId ||
+          ($security.md5('rank_' + cycle + '_' + s.user_id) + '123456789012345')
+            .slice(0, 15)
+            .toLowerCase()
 
-          const tieBreakObj = {
-            stars: s.stars,
-            antiguidade: s.antiguidade,
-            plan_multiplier: s.multiplier,
-            monthly_points: s.monthly_points,
-            closed_past_points: s.closed_past_points,
-            services_count: s.services_count,
-            services_real_count: s.services_real_count,
-            formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
-          }
-          if (s.role === 'profissional' && s.plan === 'gratis') {
-            tieBreakObj.plan_effective = 'basico_gratis'
-          }
-          const tieBreak = JSON.stringify(tieBreakObj)
+        const tieBreakObj = {
+          stars: s.stars,
+          antiguidade: s.antiguidade,
+          plan_multiplier: s.multiplier,
+          monthly_points: s.monthly_points,
+          closed_past_points: s.closed_past_points,
+          services_count: s.services_count,
+          services_real_count: s.services_real_count,
+          formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
+        }
+        if (s.role === 'profissional' && s.plan === 'gratis') {
+          tieBreakObj.plan_effective = 'basico_gratis'
+        }
+        const tieBreak = JSON.stringify(tieBreakObj)
 
-          txApp
+        try {
+          $app
             .db()
             .newQuery(`
             INSERT OR REPLACE INTO rank_entries (
@@ -338,8 +346,10 @@ routerAdd(
               tie_break_details: tieBreak,
             })
             .execute()
+        } catch (insertErr) {
+          console.warn(`Erro ao salvar rank_entry do usuário ${s.user_id}:`, insertErr)
         }
-      })
+      }
 
       return c.json(200, {
         status: 'ok',
