@@ -498,7 +498,10 @@ export default function Cadastro() {
                       name: 'GRÁTIS',
                       multiplier: role === 'profissional' ? '1.0x' : '0.0x',
                       badge: role === 'profissional' ? 'Pontua 1x' : 'Sem Ranking',
-                      desc: role === 'aluno' ? 'R$ 0 / mês' : 'R$ 0 / mês • Pontua como Básico (sem cashback)',
+                      desc:
+                        role === 'aluno'
+                          ? 'R$ 0 / mês'
+                          : 'R$ 0 / mês • Pontua como Básico (sem cashback)',
                       forRole: 'all',
                     },
                     {

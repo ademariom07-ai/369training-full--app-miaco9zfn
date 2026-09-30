@@ -18,54 +18,61 @@ onRecordAfterUpdateSuccess((e) => {
   const profId = service.get('professional')
   const studentId = service.get('student')
 
-  // 1. DÉBITO DA TARIFA DE SERVIÇO (com anti-duplicidade e isenção do PRO PARCEIRO)
-  try {
-    if (profId) {
-      // Anti-duplicidade: verificar se já existe transação de tarifa para este serviço
+  // Função interna de débito de tarifa com verificação anti-duplicidade e isenção do PRO PARCEIRO
+  const debitServiceFee = (svc, professionalId) => {
+    if (!professionalId) return
+    try {
       const existingTxs = $app
         .db()
         .newQuery(
           "SELECT id FROM wallet_transactions WHERE reference_id = {:svcId} AND type = 'tarifa' LIMIT 1",
         )
-        .bind({ svcId: service.id })
+        .bind({ svcId: svc.id })
         .all()
 
-      if (!existingTxs || existingTxs.length === 0) {
-        const profRows = $app
-          .db()
-          .newQuery('SELECT id, plan FROM users WHERE id = {:id} LIMIT 1')
-          .bind({ id: profId })
-          .all()
-
-        const prof = profRows && profRows.length > 0 ? profRows[0] : null
-        const profPlan = prof && prof.plan ? prof.plan.toLowerCase() : 'basico'
-
-        // PRO PARCEIRO paga apenas o fixo de R$ 149/mês — SEM tarifa por serviço
-        if (profPlan !== 'pro_parceiro') {
-          let rate = 1.0
-          if (profPlan === 'pro') rate = 2.0
-          if (profPlan === 'premium') rate = 3.0
-          if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
-
-          const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
-          const feeTx = new Record(walletCol)
-          feeTx.set('user', profId)
-          feeTx.set('type', 'tarifa')
-          feeTx.set('amount', -rate)
-          feeTx.set('status', 'concluido')
-          feeTx.set('reference_type', 'service')
-          feeTx.set('reference_id', service.id)
-          feeTx.set(
-            'description',
-            `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${service.id.slice(0, 6)}`,
-          )
-          $app.save(feeTx)
-        }
+      if (existingTxs && existingTxs.length > 0) {
+        return // Já debitado previamente (anti-duplicidade)
       }
+
+      const profRows = $app
+        .db()
+        .newQuery('SELECT id, plan FROM users WHERE id = {:id} LIMIT 1')
+        .bind({ id: professionalId })
+        .all()
+
+      const prof = profRows && profRows.length > 0 ? profRows[0] : null
+      const profPlan = prof && prof.plan ? prof.plan.toLowerCase() : 'basico'
+
+      // PRO PARCEIRO paga apenas o fixo de R$ 149/mês — SEM tarifa por serviço
+      if (profPlan === 'pro_parceiro') {
+        return
+      }
+
+      let rate = 1.0
+      if (profPlan === 'pro') rate = 2.0
+      if (profPlan === 'premium') rate = 3.0
+      if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
+
+      const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
+      const feeTx = new Record(walletCol)
+      feeTx.set('user', professionalId)
+      feeTx.set('type', 'tarifa')
+      feeTx.set('amount', -rate)
+      feeTx.set('status', 'concluido')
+      feeTx.set('reference_type', 'service')
+      feeTx.set('reference_id', svc.id)
+      feeTx.set(
+        'description',
+        `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${svc.id.slice(0, 6)}`,
+      )
+      $app.save(feeTx)
+    } catch (err) {
+      console.error('Erro ao debitar tarifa de serviço:', err)
     }
-  } catch (err) {
-    console.error('Erro ao debitar tarifa de serviço (update):', err)
   }
+
+  // 1. DÉBITO DA TARIFA DE SERVIÇO
+  debitServiceFee(service, profId)
 
   // 2. VALIDAÇÃO DE INDICAÇÃO E BÔNUS DE REFERRAL
   try {
@@ -401,53 +408,58 @@ onRecordAfterCreateSuccess((e) => {
     return
   }
 
-  try {
-    // Anti-duplicidade
-    const existingTxs = $app
-      .db()
-      .newQuery(
-        "SELECT id FROM wallet_transactions WHERE reference_id = {:svcId} AND type = 'tarifa' LIMIT 1",
+  // Função interna de débito de tarifa com verificação anti-duplicidade e isenção do PRO PARCEIRO
+  const debitServiceFee = (svc, professionalId) => {
+    if (!professionalId) return
+    try {
+      const existingTxs = $app
+        .db()
+        .newQuery(
+          "SELECT id FROM wallet_transactions WHERE reference_id = {:svcId} AND type = 'tarifa' LIMIT 1",
+        )
+        .bind({ svcId: svc.id })
+        .all()
+
+      if (existingTxs && existingTxs.length > 0) {
+        return // Já debitado previamente (anti-duplicidade)
+      }
+
+      const profRows = $app
+        .db()
+        .newQuery('SELECT id, plan FROM users WHERE id = {:id} LIMIT 1')
+        .bind({ id: professionalId })
+        .all()
+
+      const prof = profRows && profRows.length > 0 ? profRows[0] : null
+      const profPlan = prof && prof.plan ? prof.plan.toLowerCase() : 'basico'
+
+      // PRO PARCEIRO paga apenas o fixo de R$ 149/mês — SEM tarifa por serviço
+      if (profPlan === 'pro_parceiro') {
+        return
+      }
+
+      let rate = 1.0
+      if (profPlan === 'pro') rate = 2.0
+      if (profPlan === 'premium') rate = 3.0
+      if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
+
+      const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
+      const feeTx = new Record(walletCol)
+      feeTx.set('user', professionalId)
+      feeTx.set('type', 'tarifa')
+      feeTx.set('amount', -rate)
+      feeTx.set('status', 'concluido')
+      feeTx.set('reference_type', 'service')
+      feeTx.set('reference_id', svc.id)
+      feeTx.set(
+        'description',
+        `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${svc.id.slice(0, 6)}`,
       )
-      .bind({ svcId: service.id })
-      .all()
-
-    if (existingTxs && existingTxs.length > 0) {
-      return
+      $app.save(feeTx)
+    } catch (err) {
+      console.error('Erro ao debitar tarifa de serviço:', err)
     }
-
-    const profRows = $app
-      .db()
-      .newQuery('SELECT id, plan FROM users WHERE id = {:id} LIMIT 1')
-      .bind({ id: profId })
-      .all()
-
-    const prof = profRows && profRows.length > 0 ? profRows[0] : null
-    const profPlan = prof && prof.plan ? prof.plan.toLowerCase() : 'basico'
-
-    // PRO PARCEIRO: R$ 0 de tarifa
-    if (profPlan === 'pro_parceiro') {
-      return
-    }
-
-    let rate = 1.0
-    if (profPlan === 'pro') rate = 2.0
-    if (profPlan === 'premium') rate = 3.0
-    if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
-
-    const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
-    const feeTx = new Record(walletCol)
-    feeTx.set('user', profId)
-    feeTx.set('type', 'tarifa')
-    feeTx.set('amount', -rate)
-    feeTx.set('status', 'concluido')
-    feeTx.set('reference_type', 'service')
-    feeTx.set('reference_id', service.id)
-    feeTx.set(
-      'description',
-      `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${service.id.slice(0, 6)}`,
-    )
-    $app.save(feeTx)
-  } catch (err) {
-    console.error('Erro ao debitar tarifa de serviço (create):', err)
   }
+
+  debitServiceFee(service, profId)
 }, 'services')

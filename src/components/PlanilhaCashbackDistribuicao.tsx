@@ -40,6 +40,8 @@ interface PlanilhaCashbackProps {
         role?: string
         plan?: string
         referral_code?: string
+        subscription_status?: string
+        linked_professional?: string
       }
     }
   }>
@@ -84,16 +86,20 @@ export function PlanilhaCashbackDistribuicao({
         role: u?.role || 'profissional',
         plan: typeof u?.plan === 'string' ? u.plan : 'basico',
         points: Number(r.points) || 0,
+        subscription_status:
+          typeof u?.subscription_status === 'string' ? u.subscription_status : 'ativa',
+        linked_professional: u?.linked_professional || '',
       }
     })
   }, [realRankings])
 
-  // Rodar o motor de cálculo da distribuição
+  // Rodar o motor de cálculo da distribuição (com redistribuição ativa)
   const distributionResult = useMemo(() => {
     return calculateCashbackDistribution(
       Number(baseTarifas) || 0,
       Math.max(1, Math.min(68719476735, Number(posicoesOcupadas) || 1023)),
       mappedRealParticipants,
+      0, // Taxa adicional de excluídos
     )
   }, [baseTarifas, posicoesOcupadas, mappedRealParticipants])
 
@@ -156,7 +162,16 @@ export function PlanilhaCashbackDistribuicao({
   // Exportar CSV
   const handleExportCSV = () => {
     const rows = [
-      ['Posicao', 'Codigo_Participante', 'Nome', 'Nivel', 'Fator', 'Pontos', 'Cashback_Mes_RS'],
+      [
+        'Posicao',
+        'Codigo_Participante',
+        'Nome',
+        'Nivel',
+        'Fator',
+        'Pontos',
+        'Status_Elegibilidade',
+        'Cashback_Mes_RS',
+      ],
       ...filteredParticipants.map((p) => [
         p.position,
         `"${p.userCode.replace(/"/g, '""')}"`,
@@ -164,6 +179,7 @@ export function PlanilhaCashbackDistribuicao({
         p.level,
         p.factor.toFixed(4),
         p.points,
+        p.isExcluded ? `"${p.exclusionReason || 'Excluído (redistribuído)'}"` : '"Elegível"',
         p.cashbackMonth.toFixed(2),
       ]),
     ]
@@ -355,7 +371,77 @@ export function PlanilhaCashbackDistribuicao({
                 })}
               </span>
             </div>
+            {distributionResult.totalRedistributed > 0 && (
+              <div className="flex items-center justify-between text-xs font-mono pt-1 border-t border-[#2A2A2A]">
+                <span className="text-[#00C853]">Total Redistribuído:</span>
+                <span className="text-[#00C853] font-bold">
+                  R${' '}
+                  {distributionResult.totalRedistributed.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Resumo por Nível com Divisor Teórico vs Divisor Real e Redistribuição */}
+      <div className="p-4 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-[#D4AF37]" />
+            <h4 className="text-xs font-bold font-montserrat uppercase text-white">
+              Estrutura de Níveis: Divisor Real & Redistribuição por Nível
+            </h4>
+          </div>
+          <span className="text-[11px] font-mono text-gray-400">
+            {distributionResult.levelsSummary.length} níveis ativos
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-mono">
+            <thead>
+              <tr className="border-b border-[#2A2A2A] text-gray-400 text-[10px] uppercase font-montserrat">
+                <th className="py-2 px-3">Nível</th>
+                <th className="py-2 px-3 text-center">Corretor</th>
+                <th className="py-2 px-3 text-right">Valor Equalizado</th>
+                <th className="py-2 px-3 text-center">Divisor Teórico</th>
+                <th className="py-2 px-3 text-center">Divisor Real (Elegíveis)</th>
+                <th className="py-2 px-3 text-center">Excluídos</th>
+                <th className="py-2 px-3 text-right text-[#00C853]">Redistribuído</th>
+                <th className="py-2 px-3 text-right text-[#22C55E]">Total Nível</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#222]">
+              {distributionResult.levelsSummary.map((lvl) => (
+                <tr key={lvl.level} className="hover:bg-[#181818]">
+                  <td className="py-2 px-3 font-bold text-white">Nível {lvl.level}</td>
+                  <td className="py-2 px-3 text-center text-gray-300">
+                    {lvl.corretor.toFixed(4)}x
+                  </td>
+                  <td className="py-2 px-3 text-right text-[#D4AF37]">
+                    R$ {lvl.valorEqualizado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="py-2 px-3 text-center text-gray-400">{lvl.divisorTeorico}</td>
+                  <td className="py-2 px-3 text-center font-bold text-white">{lvl.divisorReal}</td>
+                  <td className="py-2 px-3 text-center text-amber-400 font-semibold">
+                    {lvl.excluidosCount}
+                  </td>
+                  <td className="py-2 px-3 text-right text-[#00C853] font-bold">
+                    R${' '}
+                    {lvl.valorRedistribuido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="py-2 px-3 text-right font-black text-[#22C55E]">
+                    R${' '}
+                    {lvl.totalDistribuidoNivel.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -549,6 +635,7 @@ export function PlanilhaCashbackDistribuicao({
               <th className="py-3.5 px-4 font-bold">(2) CÓDIGO DO PARTICIPANTE</th>
               <th className="py-3.5 px-4 font-bold">(3) NOME</th>
               <th className="py-3.5 px-4 text-center font-bold">NÍVEL & FATOR</th>
+              <th className="py-3.5 px-4 text-center font-bold">PLANO / ELEGIBILIDADE</th>
               <th className="py-3.5 px-4 text-center font-bold">(4) PONTOS</th>
               <th className="py-3.5 px-4 text-right font-bold text-[#22C55E]">
                 (5) VALOR DO CASHBACK DO MÊS
@@ -558,7 +645,7 @@ export function PlanilhaCashbackDistribuicao({
           <tbody className="divide-y divide-[#2A2A2A]">
             {paginatedParticipants.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-gray-400 font-inter">
+                <td colSpan={7} className="py-8 text-center text-gray-400 font-inter">
                   Nenhum registro encontrado para os filtros aplicados.
                 </td>
               </tr>
@@ -570,7 +657,11 @@ export function PlanilhaCashbackDistribuicao({
                   <tr
                     key={`pos-${p.position}`}
                     className={`hover:bg-[#1a1a1a] transition-colors ${
-                      p.isRealUser ? 'bg-[#6A00FF]/5' : ''
+                      p.isExcluded
+                        ? 'opacity-60 bg-red-950/10'
+                        : p.isRealUser
+                          ? 'bg-[#6A00FF]/5'
+                          : ''
                     }`}
                   >
                     {/* (1) POSIÇÃO */}
@@ -638,14 +729,44 @@ export function PlanilhaCashbackDistribuicao({
                       </div>
                     </td>
 
+                    {/* PLANO / ELEGIBILIDADE */}
+                    <td className="py-3 px-4 text-center">
+                      {p.isExcluded ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Badge
+                            variant="outline"
+                            className="border-red-500/40 text-red-400 bg-red-950/20 text-[10px] font-bold"
+                          >
+                            {p.plan ? p.plan.toUpperCase() : 'GRÁTIS'}
+                          </Badge>
+                          <span className="text-[9px] text-red-300 font-inter">
+                            {p.exclusionReason || 'Redistribuído'}
+                          </span>
+                        </div>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="border-emerald-500/40 text-emerald-400 bg-emerald-950/20 text-[10px] font-bold uppercase"
+                        >
+                          {p.plan || 'ELEGÍVEL'}
+                        </Badge>
+                      )}
+                    </td>
+
                     {/* (4) PONTOS */}
                     <td className="py-3 px-4 text-center font-mono font-bold text-[#D4AF37] text-xs">
                       {p.points.toLocaleString('pt-BR')} pts
                     </td>
 
                     {/* (5) VALOR DO CASHBACK DO MÊS */}
-                    <td className="py-3 px-4 text-right font-mono font-black text-sm text-[#22C55E]">
-                      R$ {p.cashbackMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <td className="py-3 px-4 text-right font-mono font-black text-sm">
+                      {p.isExcluded ? (
+                        <span className="text-gray-500 font-normal">R$ 0,00</span>
+                      ) : (
+                        <span className="text-[#22C55E]">
+                          R$ {p.cashbackMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 )

@@ -190,7 +190,9 @@ export function PlanChangeSection() {
     const isGoingToGratis = plan.id === 'gratis'
     // Alunos podem mudar a qualquer momento; vindo de grátis ou indo para grátis é livre; transição entre pagos requer janela 1 a 3
     if (!isAluno && !isFromGratis && !isGoingToGratis && !isWindowOpen) {
-      toast.error('A troca de plano entre planos pagos está disponível apenas do dia 1 ao dia 3 de cada mês.')
+      toast.error(
+        'A troca de plano entre planos pagos está disponível apenas do dia 1 ao dia 3 de cada mês.',
+      )
       return
     }
     if (plan.id === currentPlan) {
@@ -205,7 +207,9 @@ export function PlanChangeSection() {
     if (!user || !selectedPlanToChange) return
     const isGoingToGratis = selectedPlanToChange.id === 'gratis'
     if (!isAluno && !isFromGratis && !isGoingToGratis && !isPlanChangeWindowOpen()) {
-      toast.error('A troca de plano entre planos pagos está disponível apenas do dia 1 ao dia 3 de cada mês.')
+      toast.error(
+        'A troca de plano entre planos pagos está disponível apenas do dia 1 ao dia 3 de cada mês.',
+      )
       setConfirmModalOpen(false)
       return
     }

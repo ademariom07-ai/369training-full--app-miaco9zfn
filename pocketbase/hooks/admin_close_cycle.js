@@ -244,7 +244,11 @@ routerAdd(
 
           lvlInfo.valorPorElegivel = Number((lvlInfo.valorEqualizado / elegiveisNoNivel).toFixed(4))
           lvlInfo.valorRedistribuido = Number(
-            Math.max(0, lvlInfo.valorEqualizado - (lvlInfo.valorEqualizado / lvlInfo.pessoasNoNivel) * elegiveisNoNivel).toFixed(2),
+            Math.max(
+              0,
+              lvlInfo.valorEqualizado -
+                (lvlInfo.valorEqualizado / lvlInfo.pessoasNoNivel) * elegiveisNoNivel,
+            ).toFixed(2),
           )
 
           for (let idx = 0; idx < elegiveisNoNivel; idx++) {
