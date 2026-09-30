@@ -50,6 +50,10 @@ interface AgentStatusData {
     workouts_generated: number
     chat_messages: number
     workouts_remaining: number | string
+    free_remaining?: number | string
+    quota_limit?: number
+    used_this_month?: number
+    is_unlimited?: boolean
     messages_remaining: number
   }
   overage_costs: {
@@ -209,10 +213,12 @@ export function Agente369Section() {
         })
         setWorkoutModalOpen(false)
         setParqOpen(true)
-      } else if (respData.error === 'WALLET_BALANCE_INSUFFICIENT') {
+      } else if (respData.error === 'WALLET_BALANCE_INSUFFICIENT' || err.status === 402) {
         toast({
-          title: 'Saldo Insuficiente na Carteira',
-          description: respData.message,
+          title: 'Cota de Treinos Excedida',
+          description:
+            respData.message ||
+            'Você atingiu o limite de gerações do seu plano neste mês. Recarregue a carteira (R$ 0,25 por treino adicional) ou faça upgrade do plano.',
           variant: 'destructive',
         })
       } else {
@@ -256,10 +262,12 @@ export function Agente369Section() {
       loadStatus()
     } catch (err: any) {
       const respData = err.data || {}
-      if (respData.error === 'WALLET_BALANCE_INSUFFICIENT') {
+      if (respData.error === 'WALLET_BALANCE_INSUFFICIENT' || err.status === 402) {
         toast({
-          title: 'Saldo Insuficiente na Carteira',
-          description: respData.message,
+          title: 'Cota de Chat Excedida',
+          description:
+            respData.message ||
+            'Saldo insuficiente na carteira para mensagens excedentes. Recarregue a carteira ou faça upgrade do plano.',
           variant: 'destructive',
         })
       } else {
@@ -312,6 +320,8 @@ export function Agente369Section() {
   const isBasico = agentStatus?.plan === 'basico'
   const isPro = agentStatus?.plan === 'pro'
   const isPremium = agentStatus?.plan === 'premium'
+  const isProOrPremium =
+    isPro || isPremium || (agentStatus?.limits?.workouts_per_month ?? 0) >= 9000
 
   return (
     <div className="space-y-4">
@@ -356,13 +366,12 @@ export function Agente369Section() {
           <div className="bg-black/35 backdrop-blur-md border border-white/20 p-4 rounded-2xl min-w-[260px] flex flex-col justify-center space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="text-white/85 font-medium flex items-center gap-1.5">
-                <Dumbbell className="w-3.5 h-3.5 text-[#D4AF37]" /> Treinos no Mês:
+                <Dumbbell className="w-3.5 h-3.5 text-[#D4AF37]" /> Cota de Treinos (Mês):
               </span>
               <span className="text-white font-bold">
-                {agentStatus?.usage.workouts_generated} /{' '}
-                {agentStatus?.limits.workouts_per_month >= 9000
-                  ? 'Ilimitado'
-                  : agentStatus?.limits.workouts_per_month}
+                {isProOrPremium
+                  ? 'Ilimitado no plano Pro'
+                  : `${agentStatus?.usage.workouts_generated ?? 0} de ${agentStatus?.limits.workouts_per_month ?? 5} usadas`}
               </span>
             </div>
 
@@ -386,7 +395,7 @@ export function Agente369Section() {
         </div>
 
         {/* ALERTA PAR-Q+ CASO NÃO PREENCHIDO */}
-        {!agentStatus?.parq.completed && !isGratis && (
+        {!agentStatus?.parq.completed && (
           <div className="mt-6 bg-black/40 border border-[#D4AF37]/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/25 flex items-center justify-center text-[#D4AF37] shrink-0">
@@ -413,64 +422,57 @@ export function Agente369Section() {
 
         {/* BOTÕES DE AÇÃO DO AGENTE */}
         <div className="mt-6 pt-6 border-t border-white/20 flex flex-wrap items-center gap-3">
-          {isGratis ? (
-            <div className="w-full bg-black/40 border border-white/20 p-4 rounded-xl flex items-center justify-between flex-wrap gap-3">
-              <span className="text-xs text-white/90 font-inter">
-                O Agente 369 está disponível a partir do <strong>Plano Básico (R$ 10/mês)</strong>{' '}
-                ou vinculação a profissional parceiro.
-              </span>
-              <Link to="/aluno/carteira">
-                <Button className="bg-[#D4AF37] hover:bg-[#B8972E] text-black font-bold text-xs">
-                  Fazer Upgrade do Plano
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <>
-              <Button
-                onClick={() => {
-                  if (!agentStatus?.parq.completed) {
-                    setParqOpen(true)
-                  } else {
-                    setWorkoutModalOpen(true)
-                  }
-                }}
-                className="bg-[#D4AF37] hover:bg-[#B8972E] text-black font-extrabold text-xs px-5 py-5 rounded-xl shadow-md flex items-center gap-2"
-              >
-                <Dumbbell className="w-4 h-4" />
-                Gerar Treino Determinístico (40+ / 60+)
-              </Button>
+          <div className="flex flex-col gap-1.5">
+            <Button
+              onClick={() => {
+                if (!agentStatus?.parq.completed) {
+                  setParqOpen(true)
+                } else {
+                  setWorkoutModalOpen(true)
+                }
+              }}
+              className="bg-[#D4AF37] hover:bg-[#B8972E] text-black font-extrabold text-xs px-5 py-5 rounded-xl shadow-md flex items-center gap-2"
+            >
+              <Dumbbell className="w-4 h-4" />
+              Gerar Treino Determinístico (40+ / 60+)
+            </Button>
+            {/* Status discreto da cota abaixo do botão */}
+            <span className="text-[11px] text-white/80 font-medium px-1 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#D4AF37]" />
+              {isProOrPremium
+                ? 'Ilimitado no plano Pro'
+                : `${agentStatus?.usage.workouts_generated ?? 0} de ${agentStatus?.limits.workouts_per_month ?? 5} gerações grátis usadas este mês`}
+            </span>
+          </div>
 
-              <Button
-                onClick={() => setChatOpen(true)}
-                variant="outline"
-                className="border-white/30 hover:border-white text-white hover:text-white bg-black/40 hover:bg-black/60 text-xs px-4 py-5 rounded-xl flex items-center gap-2"
-              >
-                <Bot className="w-4 h-4 text-[#00E5FF]" />
-                Conversar com o Agente ({agentStatus?.usage.messages_remaining} msgs restantes)
-              </Button>
+          <Button
+            onClick={() => setChatOpen(true)}
+            variant="outline"
+            className="border-white/30 hover:border-white text-white hover:text-white bg-black/40 hover:bg-black/60 text-xs px-4 py-5 rounded-xl flex items-center gap-2"
+          >
+            <Bot className="w-4 h-4 text-[#00E5FF]" />
+            Conversar com o Agente ({agentStatus?.usage.messages_remaining} msgs restantes)
+          </Button>
 
-              {agentStatus?.limits.menstrual_cycle_module && (
-                <Button
-                  onClick={() => setCycleModalOpen(true)}
-                  variant="outline"
-                  className="border-[#FF3366]/60 text-white hover:bg-[#FF3366]/20 bg-black/40 text-xs px-4 py-5 rounded-xl flex items-center gap-2"
-                >
-                  <Heart className="w-4 h-4 text-[#FF3366]" />
-                  Módulo Ciclo Menstrual (Ajuste Sintomas)
-                </Button>
-              )}
+          {agentStatus?.limits.menstrual_cycle_module && (
+            <Button
+              onClick={() => setCycleModalOpen(true)}
+              variant="outline"
+              className="border-[#FF3366]/60 text-white hover:bg-[#FF3366]/20 bg-black/40 text-xs px-4 py-5 rounded-xl flex items-center gap-2"
+            >
+              <Heart className="w-4 h-4 text-[#FF3366]" />
+              Módulo Ciclo Menstrual (Ajuste Sintomas)
+            </Button>
+          )}
 
-              {agentStatus?.parq.completed && (
-                <button
-                  type="button"
-                  onClick={() => setParqOpen(true)}
-                  className="text-[11px] text-white/80 hover:text-white underline ml-auto"
-                >
-                  Ver Respostas PAR-Q+
-                </button>
-              )}
-            </>
+          {agentStatus?.parq.completed && (
+            <button
+              type="button"
+              onClick={() => setParqOpen(true)}
+              className="text-[11px] text-white/80 hover:text-white underline ml-auto"
+            >
+              Ver Respostas PAR-Q+
+            </button>
           )}
         </div>
 

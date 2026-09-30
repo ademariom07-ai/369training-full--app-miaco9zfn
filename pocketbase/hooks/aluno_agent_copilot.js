@@ -41,19 +41,19 @@ routerAdd(
 
     let studentAiLimits = {
       gratis: {
-        workouts_per_month: 0,
+        workouts_per_month: 5,
         messages_per_month: 0,
         smartwatch_sleep_adjustment: false,
         menstrual_cycle_module: false,
       },
       basico: {
-        workouts_per_month: 4,
+        workouts_per_month: 30,
         messages_per_month: 0,
         smartwatch_sleep_adjustment: false,
         menstrual_cycle_module: false,
       },
       pro: {
-        workouts_per_month: 12,
+        workouts_per_month: 9999,
         messages_per_month: 10,
         smartwatch_sleep_adjustment: true,
         menstrual_cycle_module: false,
@@ -159,8 +159,41 @@ routerAdd(
     } catch (_) {}
 
     const limits = studentAiLimits[rawPlan] || studentAiLimits.gratis
-    const workoutsRemaining = Math.max(0, limits.workouts_per_month - workoutsGenerated)
+    const isUnlimited = limits.workouts_per_month >= 9000
+    const workoutsRemaining = isUnlimited
+      ? 9999
+      : Math.max(0, limits.workouts_per_month - workoutsGenerated)
     const messagesRemaining = Math.max(0, limits.messages_per_month - chatMessages)
+
+    // Calcular saldo real da carteira a partir das transações concluídas
+    let realBalance = 0.0
+    try {
+      const userTxs = $app.findRecordsByFilter(
+        'wallet_transactions',
+        `user = '${userId}' && (status = 'concluido' || status = 'aprovado')`,
+        '-created',
+        5000,
+        0,
+      )
+      for (const t of userTxs) {
+        const amt = Number(t.get('amount')) || 0.0
+        const txType = (t.get('type') || '').toLowerCase()
+        if (txType === 'deposito' || txType === 'cashback' || txType === 'bonus_indicacao') {
+          realBalance += amt
+        } else if (
+          txType === 'saque' ||
+          txType === 'tarifa' ||
+          txType === 'pagamento' ||
+          txType === 'servico' ||
+          txType === 'mensalidade'
+        ) {
+          realBalance += amt
+        }
+      }
+      if (realBalance < 0) realBalance = 0
+    } catch (_) {
+      realBalance = 0
+    }
 
     return e.json(200, {
       plan: rawPlan,
@@ -170,11 +203,16 @@ routerAdd(
       usage: {
         workouts_generated: workoutsGenerated,
         chat_messages: chatMessages,
-        workouts_remaining: limits.workouts_per_month >= 9000 ? 'Ilimitado' : workoutsRemaining,
+        workouts_limit: limits.workouts_per_month,
+        free_remaining: isUnlimited ? 'Ilimitado' : workoutsRemaining,
+        workouts_remaining: isUnlimited ? 'Ilimitado' : workoutsRemaining,
+        quota_limit: limits.workouts_per_month,
+        used_this_month: workoutsGenerated,
+        is_unlimited: isUnlimited,
         messages_remaining: messagesRemaining,
       },
       overage_costs: overageCosts,
-      wallet_balance: Number(authUser.get('wallet_balance') || 0),
+      wallet_balance: realBalance,
       parq: {
         completed: parqCompleted,
         passed_clean: parqClean,
@@ -288,12 +326,8 @@ routerAdd(
       } catch (_) {}
     }
 
-    if (rawPlan === 'gratis' && !isLinked) {
-      return e.json(403, {
-        error:
-          'O Agente 369 está disponível a partir do Plano Básico (R$ 10/mês). Faça upgrade do seu plano para liberar treinos inteligentes.',
-      })
-    }
+    // Nota: O plano Grátis agora possui 5 gerações grátis por mês inclusas.
+    // O acesso não é mais bloqueado no plano grátis; ele usufrui de suas cotas mensais.
 
     // Verificar PAR-Q+
     let parqCompleted = false
@@ -355,19 +389,19 @@ routerAdd(
     // Configurações de limites e excedente
     let studentAiLimits = {
       gratis: {
-        workouts_per_month: 0,
+        workouts_per_month: 5,
         messages_per_month: 0,
         smartwatch_sleep_adjustment: false,
         menstrual_cycle_module: false,
       },
       basico: {
-        workouts_per_month: 4,
+        workouts_per_month: 30,
         messages_per_month: 0,
         smartwatch_sleep_adjustment: false,
         menstrual_cycle_module: false,
       },
       pro: {
-        workouts_per_month: 12,
+        workouts_per_month: 9999,
         messages_per_month: 10,
         smartwatch_sleep_adjustment: true,
         menstrual_cycle_module: false,
@@ -415,23 +449,57 @@ routerAdd(
     let workoutsGenerated = usageRec ? Number(usageRec.get('workouts_generated') || 0) : 0
 
     // VERIFICAR FRANQUIA E EXCEDENTE
-    const isExceeded = workoutsGenerated >= limits.workouts_per_month
+    // Planos Pro e Premium têm treinos ilimitados (>= 9000)
+    const isPlanUnlimited = limits.workouts_per_month >= 9000
+    const isExceeded = !isPlanUnlimited && workoutsGenerated >= limits.workouts_per_month
     let chargedAmount = 0
+    let userRealBalance = 0.0
+
+    // Calcular saldo real da carteira a partir das transações concluídas
+    try {
+      const userTxs = $app.findRecordsByFilter(
+        'wallet_transactions',
+        `user = '${userId}' && (status = 'concluido' || status = 'aprovado')`,
+        '-created',
+        5000,
+        0,
+      )
+      for (const t of userTxs) {
+        const amt = Number(t.get('amount')) || 0.0
+        const txType = (t.get('type') || '').toLowerCase()
+        if (txType === 'deposito' || txType === 'cashback' || txType === 'bonus_indicacao') {
+          userRealBalance += amt
+        } else if (
+          txType === 'saque' ||
+          txType === 'tarifa' ||
+          txType === 'pagamento' ||
+          txType === 'servico' ||
+          txType === 'mensalidade'
+        ) {
+          userRealBalance += amt
+        }
+      }
+      if (userRealBalance < 0) userRealBalance = 0
+    } catch (_) {
+      userRealBalance = 0
+    }
+
     if (isExceeded) {
       chargedAmount = overageCosts.workout_cost
-      const currentBalance = Number(user.get('wallet_balance') || 0)
-      if (currentBalance < chargedAmount) {
+      if (userRealBalance < chargedAmount) {
+        const planNameFormatted =
+          rawPlan === 'basico' ? 'Básico' : rawPlan === 'gratis' ? 'Grátis' : rawPlan
         return e.json(402, {
           error: 'WALLET_BALANCE_INSUFFICIENT',
-          message: `Saldo insuficiente na carteira (R$ ${currentBalance.toFixed(2)}). Recarregue ao menos R$ ${chargedAmount.toFixed(2)} para usar o excedente.`,
+          message: `Você usou suas ${limits.workouts_per_month} gerações grátis deste mês (Plano ${planNameFormatted}). Recarregue a carteira (R$ ${chargedAmount.toFixed(2).replace('.', ',')} por geração adicional) ou faça upgrade do plano.`,
           required_balance: chargedAmount,
+          current_balance: userRealBalance,
+          used_this_month: workoutsGenerated,
+          quota_limit: limits.workouts_per_month,
         })
       }
 
-      // Debitar carteira
-      user.set('wallet_balance', currentBalance - chargedAmount)
-      $app.save(user)
-
+      // Debitar carteira via transação atômica concluída
       const txCol = $app.findCollectionByNameOrId('wallet_transactions')
       const tx = new Record(txCol)
       tx.set('user', user.id)
@@ -445,6 +513,7 @@ routerAdd(
         `Excedente Agente 369: Treino inteligente adicional (R$ ${chargedAmount.toFixed(2)})`,
       )
       $app.save(tx)
+      userRealBalance -= chargedAmount
     }
 
     // SELECIONAR TEMPLATE DETERMINÍSTICO APROVADO
@@ -567,6 +636,11 @@ routerAdd(
     }
     $app.save(usageRec)
 
+    const finalWorkoutsCount = workoutsGenerated + 1
+    const finalFreeRemaining = isPlanUnlimited
+      ? 'Ilimitado'
+      : Math.max(0, limits.workouts_per_month - finalWorkoutsCount)
+
     return e.json(200, {
       success: true,
       workout: {
@@ -581,10 +655,15 @@ routerAdd(
         menstrual_adjustment: menstrualAdjustmentApplied,
       },
       usage: {
-        workouts_generated: workoutsGenerated + 1,
+        workouts_generated: finalWorkoutsCount,
         workouts_limit: limits.workouts_per_month,
+        quota_limit: limits.workouts_per_month,
+        used_this_month: finalWorkoutsCount,
+        free_remaining: finalFreeRemaining,
+        workouts_remaining: finalFreeRemaining,
+        is_unlimited: isPlanUnlimited,
         charged_amount: chargedAmount,
-        wallet_balance: Number(user.get('wallet_balance') || 0),
+        wallet_balance: userRealBalance,
       },
       fixed_disclaimer:
         '[Aviso: O Agente 369 é um copiloto de apoio técnico e não substitui avaliação presencial de Educação Física ou Medicina. Pratique com segurança. Treinos gerados por IA não geram pontos no Ranking.]',
@@ -623,19 +702,19 @@ routerAdd(
 
     let studentAiLimits = {
       gratis: {
-        workouts_per_month: 0,
+        workouts_per_month: 5,
         messages_per_month: 0,
         smartwatch_sleep_adjustment: false,
         menstrual_cycle_module: false,
       },
       basico: {
-        workouts_per_month: 4,
+        workouts_per_month: 30,
         messages_per_month: 0,
         smartwatch_sleep_adjustment: false,
         menstrual_cycle_module: false,
       },
       pro: {
-        workouts_per_month: 12,
+        workouts_per_month: 9999,
         messages_per_month: 10,
         smartwatch_sleep_adjustment: true,
         menstrual_cycle_module: false,
@@ -725,19 +804,45 @@ routerAdd(
     // VERIFICAR FRANQUIA E EXCEDENTE
     const isExceeded = chatMessages >= limits.messages_per_month
     let chargedAmount = 0
+    let chatRealBalance = 0.0
+
+    try {
+      const userTxs = $app.findRecordsByFilter(
+        'wallet_transactions',
+        `user = '${userId}' && (status = 'concluido' || status = 'aprovado')`,
+        '-created',
+        5000,
+        0,
+      )
+      for (const t of userTxs) {
+        const amt = Number(t.get('amount')) || 0.0
+        const txType = (t.get('type') || '').toLowerCase()
+        if (txType === 'deposito' || txType === 'cashback' || txType === 'bonus_indicacao') {
+          chatRealBalance += amt
+        } else if (
+          txType === 'saque' ||
+          txType === 'tarifa' ||
+          txType === 'pagamento' ||
+          txType === 'servico' ||
+          txType === 'mensalidade'
+        ) {
+          chatRealBalance += amt
+        }
+      }
+      if (chatRealBalance < 0) chatRealBalance = 0
+    } catch (_) {
+      chatRealBalance = 0
+    }
+
     if (isExceeded) {
       chargedAmount = overageCosts.message_cost
-      const currentBalance = Number(user.get('wallet_balance') || 0)
-      if (currentBalance < chargedAmount) {
+      if (chatRealBalance < chargedAmount) {
         return e.json(402, {
           error: 'WALLET_BALANCE_INSUFFICIENT',
-          message: `Saldo insuficiente na carteira (R$ ${currentBalance.toFixed(2)}). Recarregue ao menos R$ ${chargedAmount.toFixed(2)} para enviar mensagens excedentes.`,
+          message: `Saldo insuficiente na carteira (R$ ${chatRealBalance.toFixed(2)}). Recarregue ao menos R$ ${chargedAmount.toFixed(2)} para enviar mensagens excedentes ou faça upgrade do plano.`,
           required_balance: chargedAmount,
         })
       }
-
-      user.set('wallet_balance', currentBalance - chargedAmount)
-      $app.save(user)
 
       const txCol = $app.findCollectionByNameOrId('wallet_transactions')
       const tx = new Record(txCol)
@@ -752,6 +857,7 @@ routerAdd(
         `Excedente Agente 369: Mensagem de chat adicional (R$ ${chargedAmount.toFixed(2)})`,
       )
       $app.save(tx)
+      chatRealBalance -= chargedAmount
     }
 
     // CHAMADA AO AGENTE NATIVO OU SKIP AI GATEWAY
@@ -834,7 +940,7 @@ Finalize sempre com o disclaimer obrigatório.`,
         chat_messages: chatMessages + 1,
         messages_limit: limits.messages_per_month,
         charged_amount: chargedAmount,
-        wallet_balance: Number(user.get('wallet_balance') || 0),
+        wallet_balance: chatRealBalance,
       },
       fixed_disclaimer:
         '[Aviso: O Agente 369 é um copiloto de apoio técnico e não substitui avaliação presencial de Educação Física ou Medicina. Pratique com segurança.]',
