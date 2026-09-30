@@ -49,17 +49,17 @@ export const ALL_PLANS: PlanConfig[] = [
   {
     id: 'gratis',
     name: 'Grátis',
-    tarifa: 'Sem tarifa',
-    tarifaValor: 0.0,
+    tarifa: 'R$ 1,00 / serviço',
+    tarifaValor: 1.0,
     mensalidadeAluno: 'R$ 0 / mês',
     anualAluno: '—',
-    multiplicador: '0x',
-    description: 'Acesso às rotinas essenciais sem pontuação ou participação no ranking.',
+    multiplicador: '1x (Parceiro) / 0x (Aluno)',
+    description: 'Parceiro pontua como Básico (1x) sem cashback. Aluno tem acesso essencial.',
     benefits: [
-      'Multiplicador 0x no ranking (sem pontuação)',
-      'Sem cashback no fechamento de ciclos',
-      'Monte seu treino manual e cronômetro de hidratação',
-      'Evolução para planos pagos permitida a qualquer momento',
+      'Parceiro pontua como Básico (1x no ranking)',
+      'Aluno pontua no plano do mentor se vinculado',
+      'NÃO recebe cashback no fechamento de ciclos (redistribuído)',
+      'Sem mensalidade fixa (troca para outros planos a qualquer momento)',
     ],
     color: 'text-gray-400',
     borderColor: 'border-gray-800 hover:border-gray-600',
@@ -133,21 +133,22 @@ export const ALL_PLANS: PlanConfig[] = [
   {
     id: 'pro_parceiro',
     name: 'PRO Parceiro',
-    tarifa: 'R$ 2,00 / serviço + R$ 149/mês',
-    tarifaValor: 2.0,
+    tarifa: 'SEM tarifa por serviço + R$ 149/mês',
+    tarifaValor: 0.0,
     mensalidadeProf: 'R$ 149 / mês',
     anualProf: 'R$ 1.490 / ano (10×)',
-    multiplicador: '1x (Piso 150)',
+    multiplicador: '1x (Teto 150)',
     description:
-      'Plano fixo do profissional com piso de 150 serviços, alunos ilimitados e Radar 369.',
+      'Plano fixo do profissional: R$ 149/mês, SEM tarifa por serviço, teto de 150 serviços para pontuação, alunos ilimitados e Radar 369.',
     benefits: [
       'Alunos ILIMITADOS na carteira do parceiro PRO',
       'Multiplicador 1x oficial para parceiro e alunos vinculados',
-      'Pontuação com piso fixo garantido: max(serviços reais, 150)',
+      'SEM tarifa por serviço (paga apenas o fixo mensal de R$ 149)',
+      'Pontuação com TETO máximo de 150 serviços/mês (min(reais, 150))',
       'Selo público "Parceiro PRO" em destaque nas buscas e perfil',
       'Acesso exclusivo ao Radar 369 semanal com evidências científicas',
       'Painel de carteira com IA e alertas preditivos de aderência de alunos',
-      'Tarifa por serviço concluído: R$ 2,00 (alimenta diretamente o Pool 38%)',
+      'Participa normalmente do cashback da Rede Única',
     ],
     isProParceiro: true,
     color: 'text-[#00C853]',
@@ -158,7 +159,7 @@ export const ALL_PLANS: PlanConfig[] = [
 ]
 
 export const ALUNO_PLANS: PlanConfig[] = ALL_PLANS.filter((p) => p.id !== 'pro_parceiro')
-export const PROFISSIONAL_PLANS: PlanConfig[] = ALL_PLANS.filter((p) => p.id !== 'gratis')
+export const PROFISSIONAL_PLANS: PlanConfig[] = ALL_PLANS // Inclui 'gratis', 'basico', 'pro', 'premium', 'pro_parceiro'
 
 /**
  * Retorna se a data atual (ou informada) está na janela permitida (dias 1 a 3 do mês)
@@ -186,9 +187,10 @@ export function PlanChangeSection() {
   const plansList = isAluno ? ALUNO_PLANS : PROFISSIONAL_PLANS
 
   const handleOpenConfirm = (plan: PlanConfig) => {
-    // Alunos podem mudar a qualquer momento; para profissionais entre pagos, janela 1 a 3
-    if (!isAluno && !isFromGratis && !isWindowOpen) {
-      toast.error('A troca de plano está disponível apenas do dia 1 ao dia 3 de cada mês.')
+    const isGoingToGratis = plan.id === 'gratis'
+    // Alunos podem mudar a qualquer momento; vindo de grátis ou indo para grátis é livre; transição entre pagos requer janela 1 a 3
+    if (!isAluno && !isFromGratis && !isGoingToGratis && !isWindowOpen) {
+      toast.error('A troca de plano entre planos pagos está disponível apenas do dia 1 ao dia 3 de cada mês.')
       return
     }
     if (plan.id === currentPlan) {
@@ -201,8 +203,9 @@ export function PlanChangeSection() {
 
   const handleConfirmChange = async () => {
     if (!user || !selectedPlanToChange) return
-    if (!isAluno && !isFromGratis && !isPlanChangeWindowOpen()) {
-      toast.error('A troca de plano está disponível apenas do dia 1 ao dia 3 de cada mês.')
+    const isGoingToGratis = selectedPlanToChange.id === 'gratis'
+    if (!isAluno && !isFromGratis && !isGoingToGratis && !isPlanChangeWindowOpen()) {
+      toast.error('A troca de plano entre planos pagos está disponível apenas do dia 1 ao dia 3 de cada mês.')
       setConfirmModalOpen(false)
       return
     }
@@ -373,7 +376,8 @@ export function PlanChangeSection() {
         {plansList.map((plan) => {
           const isCurrent = currentPlan === plan.id
           const Icon = plan.icon
-          const canChange = isAluno || isFromGratis || isWindowOpen
+          const isGoingToGratis = plan.id === 'gratis'
+          const canChange = isAluno || isFromGratis || isGoingToGratis || isWindowOpen
 
           let displayPrice = plan.tarifa
           let periodLabel = ''
@@ -390,7 +394,10 @@ export function PlanChangeSection() {
             }
           } else if (plan.isProParceiro) {
             displayPrice = billingPeriod === 'annual' ? 'R$ 1.490 / ano' : 'R$ 149 / mês'
-            periodLabel = 'Tarifa R$ 2,00/serviço + Mensalidade'
+            periodLabel = 'SEM tarifa por serviço + Fixo R$ 149/mês'
+          } else if (plan.id === 'gratis') {
+            displayPrice = 'R$ 0 / mês'
+            periodLabel = 'Pontua como Básico (1x) • Sem cashback'
           } else {
             // Planos do profissional (Básico R$ 1, Pro R$ 2, Premium R$ 3) SEM MENSALIDADE FIXA
             displayPrice = `Tarifa R$ ${plan.tarifaValor.toFixed(2).replace('.', ',')} / serviço`

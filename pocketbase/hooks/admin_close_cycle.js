@@ -186,28 +186,113 @@ routerAdd(
         })
       }
 
-      // 6. Distribuir Cashback aos usuários elegíveis
+      // 6. Distribuir Cashback aos usuários elegíveis COM REDISTRIBUIÇÃO
+      // HOTFIX 369 v2:
+      // - Grátis (aluno ou parceiro) não recebe.
+      // - Inadimplente/cancelada sem vínculo não recebe.
+      // - Aluno vinculado a parceiro PAGO recebe; vinculado a parceiro GRÁTIS não recebe.
+      // - Redistribuição exata por nível: o valor do nível é dividido entre os elegíveis (divisor real).
+      // - Ajuste fino de centavos garante soma = partnerPool exato.
       const cbCol = $app.findCollectionByNameOrId('cashback_distributions')
       const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
-      let countDistribuicoes = 0
       const userCashbackMap = {} // userId -> amount
 
+      // Mapear elegíveis por nível
+      const eligibleUsersByLevel = {}
+      for (let lvl = 1; lvl <= niveisHabitados; lvl++) {
+        eligibleUsersByLevel[lvl] = []
+      }
+
       for (const u of allUsersWithPos) {
-        const plan = (u.get('plan') || 'gratis').toLowerCase()
+        const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
+        const userRole = u.get('role') || 'aluno'
         const subStatus = (u.get('subscription_status') || 'ativa').toLowerCase()
         const linkedProf = u.get('linked_professional')
 
-        if (plan === 'gratis') continue
+        let effectivePlanForCashback = rawPlan
+        if (userRole === 'aluno' && linkedProf) {
+          try {
+            const profUser = $app.findRecordById('users', linkedProf)
+            effectivePlanForCashback = (profUser.get('plan') || 'basico').toLowerCase()
+          } catch (_) {
+            effectivePlanForCashback = 'basico'
+          }
+        }
+
+        if (effectivePlanForCashback === 'gratis') continue
         if ((subStatus === 'inadimplente' || subStatus === 'cancelada') && !linkedProf) continue
 
         const userLevel = Math.min(niveisHabitados, Math.max(1, Number(u.get('tree_level')) || 1))
-        const lvlInfo = levelDetails[userLevel - 1]
-        if (!lvlInfo) continue
+        eligibleUsersByLevel[userLevel].push(u)
+      }
 
-        const amountUser = Number(lvlInfo.valorPorPessoa.toFixed(2))
+      let totalDistributedCashbackCents = 0
+      const distributionQueue = []
+
+      for (let lvl = 1; lvl <= niveisHabitados; lvl++) {
+        const lvlInfo = levelDetails[lvl - 1]
+        const elegiveis = eligibleUsersByLevel[lvl] || []
+        const elegiveisNoNivel = elegiveis.length
+        lvlInfo.elegiveisNoNivel = elegiveisNoNivel
+        lvlInfo.divisorReal = elegiveisNoNivel
+        lvlInfo.divisorTeorico = lvlInfo.pessoasNoNivel
+
+        if (elegiveisNoNivel > 0) {
+          const levelTotalCents = Math.round(lvlInfo.valorEqualizado * 100)
+          const basePerEligibleCents = Math.floor(levelTotalCents / elegiveisNoNivel)
+          let remainderCents = levelTotalCents - basePerEligibleCents * elegiveisNoNivel
+
+          lvlInfo.valorPorElegivel = Number((lvlInfo.valorEqualizado / elegiveisNoNivel).toFixed(4))
+          lvlInfo.valorRedistribuido = Number(
+            Math.max(0, lvlInfo.valorEqualizado - (lvlInfo.valorEqualizado / lvlInfo.pessoasNoNivel) * elegiveisNoNivel).toFixed(2),
+          )
+
+          for (let idx = 0; idx < elegiveisNoNivel; idx++) {
+            const u = elegiveis[idx]
+            let personCents = basePerEligibleCents
+            if (remainderCents > 0) {
+              personCents += 1
+              remainderCents--
+            }
+            const amountUser = personCents / 100
+            totalDistributedCashbackCents += personCents
+
+            distributionQueue.push({
+              user: u,
+              level: lvl,
+              amount: amountUser,
+              amountCents: personCents,
+              divisorReal: elegiveisNoNivel,
+              divisorTeorico: lvlInfo.pessoasNoNivel,
+              valorEqualizado: lvlInfo.valorEqualizado,
+              corretor: lvlInfo.corretor,
+            })
+          }
+        } else {
+          lvlInfo.valorPorElegivel = 0
+          lvlInfo.valorRedistribuido = 0
+        }
+      }
+
+      // Ajuste fino global de centavos
+      const targetPoolCents = Math.round(partnerPool * 100)
+      const diffCents = targetPoolCents - totalDistributedCashbackCents
+
+      if (diffCents !== 0 && distributionQueue.length > 0) {
+        const lastItem = distributionQueue[distributionQueue.length - 1]
+        lastItem.amountCents += diffCents
+        lastItem.amount = Number((lastItem.amountCents / 100).toFixed(2))
+        totalDistributedCashbackCents += diffCents
+      }
+
+      let countDistribuicoes = 0
+      for (const item of distributionQueue) {
+        const u = item.user
+        const userLevel = item.level
+        const amountUser = item.amount
+
         if (amountUser <= 0) continue
 
-        // Idempotência: verificar se já foi concedido cashback deste ciclo para este usuário
         let alreadyCredited = false
         try {
           const existingTxs = $app.findRecordsByFilter(
@@ -223,21 +308,23 @@ routerAdd(
         } catch (_) {}
 
         if (!alreadyCredited) {
-          // Salvar em cashback_distributions
           const cb = new Record(cbCol)
           cb.set('user', u.id)
           cb.set('service_id', null)
           cb.set('level', userLevel)
           cb.set('pool_share', partnerPool)
-          cb.set('variable_pct', lvlInfo.corretor)
-          cb.set('divisor', lvlInfo.pessoasNoNivel)
-          cb.set('modifier', lvlInfo.corretor)
+          cb.set('variable_pct', item.corretor)
+          cb.set('divisor', item.divisorReal)
+          cb.set('modifier', item.corretor)
           cb.set('amount', amountUser)
           cb.set('metas', {
             cycle: closingCycle,
             niveis_habitados: niveisHabitados,
-            corretor: lvlInfo.corretor,
-            valor_equalizado_nivel: lvlInfo.valorEqualizado,
+            corretor: item.corretor,
+            valor_equalizado_nivel: item.valorEqualizado,
+            divisor_real: item.divisorReal,
+            divisor_teorico: item.divisorTeorico,
+            redistribuicao_ativa: true,
             fechamento_mensal: true,
             fechamento_manual: true,
             pool_components: {
@@ -248,7 +335,6 @@ routerAdd(
           })
           $app.save(cb)
 
-          // Creditar na carteira (wallet_transactions)
           const w = new Record(walletCol)
           w.set('user', u.id)
           w.set('type', 'cashback')
@@ -415,7 +501,7 @@ routerAdd(
         valor_base_por_nivel: valorDoNivel,
         total_distribuido_equalizado: totalDistribuidoEqualizado,
         usuarios_beneficiados: countDistribuicoes,
-        message: `Ciclo ${closingCycle} fechado com sucesso! Snapshots congelados, Pool 38% (R$ ${partnerPool.toFixed(2)}) distribuído para ${countDistribuicoes} usuários e contadores mensais zerados mantendo a pontuação acumulada (Opção A).`,
+        message: `Ciclo ${closingCycle} fechado com sucesso! Snapshots congelados, Pool 38% (R$ ${partnerPool.toFixed(2)}) distribuído para ${countDistribuicoes} usuários com redistribuição entre elegíveis (divisor real) e contadores mensais zerados mantendo a pontuação acumulada (Opção A).`,
       })
     } catch (err) {
       console.error('Erro geral no fechamento de ciclo:', err)

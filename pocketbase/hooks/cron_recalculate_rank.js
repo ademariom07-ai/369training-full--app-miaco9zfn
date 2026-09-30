@@ -25,7 +25,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     basico: 1.0,
     pro: 2.0,
     premium: 3.0,
-    pro_parceiro: 2.0,
+    pro_parceiro: 0.0, // R$ 0 tarifa por serviço
   }
 
   let proParceiroFloor = 150
@@ -43,8 +43,12 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
     const role = u.get('role') || 'aluno'
     const isProParceiro = rawPlan === 'pro_parceiro'
+    const isPartnerGratis = role === 'profissional' && rawPlan === 'gratis'
 
     let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
+    if (isPartnerGratis) {
+      effectiveMultiplier = planMultipliers['basico'] ?? 1 // 1x — parceiro grátis pontua como Básico
+    }
     const linkedProfId = u.get('linked_professional')
     if (role === 'aluno' && linkedProfId) {
       try {
@@ -133,7 +137,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     const realServicesCount = servicesThisMonth.length
     let effectiveServicesCount = realServicesCount
     if (isProParceiro) {
-      effectiveServicesCount = Math.max(realServicesCount, proParceiroFloor)
+      effectiveServicesCount = Math.min(realServicesCount, proParceiroFloor)
     }
 
     const indicacoesCount = referralsThisMonth.length
@@ -231,7 +235,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     entry.set('referrals_this_cycle', s.referrals_this_cycle)
     entry.set('stars', s.stars)
     entry.set('ranking_position', i + 1)
-    entry.set('tie_break_details', {
+    const tieBreakDetails = {
       stars: s.stars,
       antiguidade: s.antiguidade,
       plan_multiplier: s.multiplier,
@@ -240,7 +244,11 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       services_count: s.services_count,
       services_real_count: s.services_real_count,
       formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
-    })
+    }
+    if (s.role === 'profissional' && s.plan === 'gratis') {
+      tieBreakDetails.plan_effective = 'basico_gratis'
+    }
+    entry.set('tie_break_details', tieBreakDetails)
     $app.save(entry)
   }
 

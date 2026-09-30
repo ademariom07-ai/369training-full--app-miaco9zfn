@@ -2,7 +2,8 @@
 // Formula: PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
 // - Aluno vinculado pontua no plano do profissional
 // - Aluno inadimplente sem vínculo sofre downgrade temporário para 0x
-// - PRO PARCEIRO: piso de contagem max(serviços reais, pro_parceiro_floor)
+// - PRO PARCEIRO: teto de contagem min(serviços reais, pro_parceiro_floor = 150)
+// - Parceiro Grátis: pontua como Básico (1x), tie_break plan_effective = 'basico_gratis'
 // Otimizado para suportar até 10k+ usuários com agregação SQL direta e execução rápida em lotes!
 
 routerAdd(
@@ -180,8 +181,12 @@ routerAdd(
         const rawPlan = (u.plan || 'gratis').toLowerCase()
         const role = u.role || 'aluno'
         const isProParceiro = rawPlan === 'pro_parceiro'
+        const isPartnerGratis = role === 'profissional' && rawPlan === 'gratis'
 
         let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
+        if (isPartnerGratis) {
+          effectiveMultiplier = planMultipliers['basico'] ?? 1 // 1x — pontua como Básico
+        }
         const linkedProfId = u.linked_professional
 
         if (role === 'aluno' && linkedProfId && profPlans[linkedProfId]) {
@@ -206,7 +211,7 @@ routerAdd(
         const realServicesCount = serviceCounts[u.id] || 0
         let effectiveServicesCount = realServicesCount
         if (isProParceiro) {
-          effectiveServicesCount = Math.max(realServicesCount, proParceiroFloor)
+          effectiveServicesCount = Math.min(realServicesCount, proParceiroFloor)
         }
 
         const indicacoesCount = monthRefCounts[u.id] || 0
@@ -292,7 +297,7 @@ routerAdd(
               .slice(0, 15)
               .toLowerCase()
 
-          const tieBreak = JSON.stringify({
+          const tieBreakObj = {
             stars: s.stars,
             antiguidade: s.antiguidade,
             plan_multiplier: s.multiplier,
@@ -301,7 +306,11 @@ routerAdd(
             services_count: s.services_count,
             services_real_count: s.services_real_count,
             formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
-          })
+          }
+          if (s.role === 'profissional' && s.plan === 'gratis') {
+            tieBreakObj.plan_effective = 'basico_gratis'
+          }
+          const tieBreak = JSON.stringify(tieBreakObj)
 
           txApp
             .db()

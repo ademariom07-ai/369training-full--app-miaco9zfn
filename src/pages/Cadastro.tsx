@@ -496,10 +496,10 @@ export default function Cadastro() {
                     {
                       id: 'gratis' as const,
                       name: 'GRÁTIS',
-                      multiplier: '0x',
-                      badge: 'Sem Ranking',
-                      desc: role === 'aluno' ? 'R$ 0 / mês' : 'Sem mensalidade fixa',
-                      forRole: 'aluno',
+                      multiplier: role === 'profissional' ? '1.0x' : '0.0x',
+                      badge: role === 'profissional' ? 'Pontua 1x' : 'Sem Ranking',
+                      desc: role === 'aluno' ? 'R$ 0 / mês' : 'R$ 0 / mês • Pontua como Básico (sem cashback)',
+                      forRole: 'all',
                     },
                     {
                       id: 'basico' as const,
@@ -531,16 +531,14 @@ export default function Cadastro() {
                     {
                       id: 'pro_parceiro' as const,
                       name: 'PRO PARCEIRO',
-                      multiplier: '1.0x (Piso 150)',
+                      multiplier: '1.0x (Teto 150)',
                       badge: 'Parceiro PRO',
-                      desc: 'R$ 149/mês + Radar 369 (Piso 150)',
+                      desc: 'R$ 149/mês • Teto 150 (SEM tarifa por serviço)',
                       forRole: 'profissional',
                     },
                   ].map((p) => {
                     const isSelected = selectedPlan === p.id
-                    if (role === 'profissional' && p.id === 'gratis') return null
                     if (role === 'aluno' && p.id === 'pro_parceiro') return null
-
                     return (
                       <button
                         type="button"

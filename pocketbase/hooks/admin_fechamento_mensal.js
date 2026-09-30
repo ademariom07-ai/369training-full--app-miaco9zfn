@@ -169,26 +169,115 @@ routerAdd('POST', '/backend/v1/admin/fechamento_mensal', (c) => {
     })
   }
 
-  // 8. Distribuir Cashback aos Usuários Ativos da Rede Única com plano pago adimplente
+  // 8. Distribuir Cashback aos Usuários Ativos da Rede Única com REDISTRIBUIÇÃO
+  // HOTFIX 369 v2:
+  // - Grátis (aluno ou parceiro) não recebe cashback.
+  // - Inadimplente/cancelada sem vínculo não recebe.
+  // - Aluno vinculado a parceiro PAGO recebe (effectivePlanForCashback é do parceiro).
+  // - Aluno vinculado a parceiro GRÁTIS não recebe (effectivePlanForCashback === 'gratis').
+  // - O valor que os excluídos receberiam é redistribuído entre os elegíveis do mesmo nível (divisor real).
+  // - Se não houver elegíveis em um nível, o valor fica retido no pool para ajuste final no último beneficiário.
   const cbCol = $app.findCollectionByNameOrId('cashback_distributions')
   const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
-  let countDistribuicoes = 0
+
+  // Mapear elegíveis por nível
+  const eligibleUsersByLevel = {}
+  for (let lvl = 1; lvl <= niveisHabitados; lvl++) {
+    eligibleUsersByLevel[lvl] = []
+  }
 
   for (const u of allUsersWithPos) {
-    const plan = (u.get('plan') || 'gratis').toLowerCase()
+    const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
+    const role = u.get('role') || 'aluno'
     const subStatus = (u.get('subscription_status') || 'ativa').toLowerCase()
     const linkedProf = u.get('linked_professional')
 
-    // Plano Grátis = multiplicador 0x → não recebe cashback de rede
-    if (plan === 'gratis') continue
-    // Inadimplente sem vínculo ativo → suspenso temporariamente
+    // Determinar plano efetivo para cashback
+    let effectivePlanForCashback = rawPlan
+    if (role === 'aluno' && linkedProf) {
+      try {
+        const profUser = $app.findRecordById('users', linkedProf)
+        effectivePlanForCashback = (profUser.get('plan') || 'basico').toLowerCase()
+      } catch (_) {
+        effectivePlanForCashback = 'basico'
+      }
+    }
+
+    // Filtro 4A: quem NÃO recebe
+    if (effectivePlanForCashback === 'gratis') continue
     if ((subStatus === 'inadimplente' || subStatus === 'cancelada') && !linkedProf) continue
 
     const userLevel = Math.min(niveisHabitados, Math.max(1, Number(u.get('tree_level')) || 1))
-    const lvlInfo = levelDetails[userLevel - 1]
-    if (!lvlInfo) continue
+    eligibleUsersByLevel[userLevel].push(u)
+  }
 
-    const amountUser = Number(lvlInfo.valorPorPessoa.toFixed(2))
+  // Atualizar levelDetails com elegíveis e divisor real
+  let totalDistributedCashbackCents = 0
+  const distributionQueue = [] // { u, level, amount, divisorReal, divisorTeorico, valorEqualizado }
+
+  for (let lvl = 1; lvl <= niveisHabitados; lvl++) {
+    const lvlInfo = levelDetails[lvl - 1]
+    const elegiveis = eligibleUsersByLevel[lvl] || []
+    const elegiveisNoNivel = elegiveis.length
+    lvlInfo.elegiveisNoNivel = elegiveisNoNivel
+    lvlInfo.divisorReal = elegiveisNoNivel
+    lvlInfo.divisorTeorico = lvlInfo.pessoasNoNivel
+
+    if (elegiveisNoNivel > 0) {
+      // Redistribuição: os elegíveis dividem o valor TOTAL equalizado do nível
+      const levelTotalCents = Math.round(lvlInfo.valorEqualizado * 100)
+      const basePerEligibleCents = Math.floor(levelTotalCents / elegiveisNoNivel)
+      let remainderCents = levelTotalCents - basePerEligibleCents * elegiveisNoNivel
+
+      lvlInfo.valorPorElegivel = Number((lvlInfo.valorEqualizado / elegiveisNoNivel).toFixed(4))
+      lvlInfo.valorRedistribuido = Number(
+        Math.max(0, lvlInfo.valorEqualizado - (lvlInfo.valorEqualizado / lvlInfo.pessoasNoNivel) * elegiveisNoNivel).toFixed(2),
+      )
+
+      for (let idx = 0; idx < elegiveisNoNivel; idx++) {
+        const u = elegiveis[idx]
+        let personCents = basePerEligibleCents
+        if (remainderCents > 0) {
+          personCents += 1
+          remainderCents--
+        }
+        const amountUser = personCents / 100
+        totalDistributedCashbackCents += personCents
+
+        distributionQueue.push({
+          user: u,
+          level: lvl,
+          amount: amountUser,
+          amountCents: personCents,
+          divisorReal: elegiveisNoNivel,
+          divisorTeorico: lvlInfo.pessoasNoNivel,
+          valorEqualizado: lvlInfo.valorEqualizado,
+          corretor: lvlInfo.corretor,
+        })
+      }
+    } else {
+      lvlInfo.valorPorElegivel = 0
+      lvlInfo.valorRedistribuido = 0
+    }
+  }
+
+  // Ajuste fino global de centavos: garantir que a soma feche EXATA com partnerPool
+  const targetPoolCents = Math.round(partnerPool * 100)
+  const diffCents = targetPoolCents - totalDistributedCashbackCents
+
+  if (diffCents !== 0 && distributionQueue.length > 0) {
+    const lastItem = distributionQueue[distributionQueue.length - 1]
+    lastItem.amountCents += diffCents
+    lastItem.amount = Number((lastItem.amountCents / 100).toFixed(2))
+    totalDistributedCashbackCents += diffCents
+  }
+
+  let countDistribuicoes = 0
+  for (const item of distributionQueue) {
+    const u = item.user
+    const userLevel = item.level
+    const amountUser = item.amount
+
     if (amountUser <= 0) continue
 
     // Idempotência: verificar se já foi creditado cashback deste ciclo para este usuário
@@ -213,15 +302,18 @@ routerAdd('POST', '/backend/v1/admin/fechamento_mensal', (c) => {
       cb.set('service_id', null)
       cb.set('level', userLevel)
       cb.set('pool_share', partnerPool)
-      cb.set('variable_pct', lvlInfo.corretor)
-      cb.set('divisor', lvlInfo.pessoasNoNivel)
-      cb.set('modifier', lvlInfo.corretor)
+      cb.set('variable_pct', item.corretor)
+      cb.set('divisor', item.divisorReal)
+      cb.set('modifier', item.corretor)
       cb.set('amount', amountUser)
       cb.set('metas', {
         cycle,
         niveis_habitados: niveisHabitados,
-        corretor: lvlInfo.corretor,
-        valor_equalizado_nivel: lvlInfo.valorEqualizado,
+        corretor: item.corretor,
+        valor_equalizado_nivel: item.valorEqualizado,
+        divisor_real: item.divisorReal,
+        divisor_teorico: item.divisorTeorico,
+        redistribuicao_ativa: true,
         fechamento_mensal: true,
         pool_components: {
           total_tarifas: totalTarifasEntrada,
@@ -249,6 +341,8 @@ routerAdd('POST', '/backend/v1/admin/fechamento_mensal', (c) => {
     countDistribuicoes++
   }
 
+  const finalDistributedTotal = totalDistributedCashbackCents / 100
+
   return c.json(200, {
     status: 'ok',
     cycle,
@@ -259,9 +353,9 @@ routerAdd('POST', '/backend/v1/admin/fechamento_mensal', (c) => {
     partner_pool_38_pct: partnerPool,
     niveis_habitados: niveisHabitados,
     valor_base_por_nivel: valorDoNivel,
-    total_distribuido_equalizado: totalDistribuidoEqualizado,
+    total_distribuido_equalizado: finalDistributedTotal,
     usuarios_beneficiados: countDistribuicoes,
     tabela_equalizada: levelDetails,
-    message: `Fechamento do ciclo ${cycle} executado com sucesso (Pool 38% com mensalidades + tarifas e equalização da Rede Única).`,
+    message: `Fechamento do ciclo ${cycle} executado com sucesso (Pool 38% R$ ${partnerPool.toFixed(2)}, redistribuição ativa entre elegíveis com divisor real).`,
   })
 })

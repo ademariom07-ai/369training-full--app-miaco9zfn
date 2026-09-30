@@ -1,7 +1,11 @@
-// Hook triggered whenever a service status changes to 'concluido'
-// 1. Debitar tarifa do serviço SEMPRE DO PROFISSIONAL (v2: R$ 1/2/3 por serviço ou R$ 2 no pro_parceiro)
-// 2. Validar indicação se o aluno atingiu o mínimo de serviços
-// 3. RECÁLCULO INSTANTÂNEO DO RANKING (com suporte a pro_parceiro floor e planos v2)
+// Hook triggered whenever a service status changes to 'concluido' or is created already 'concluido'
+// HOTFIX 369 v2:
+// 1. Débito de tarifa: PRO PARCEIRO paga R$ 0 de tarifa por serviço (apenas o fixo de R$ 149/mês).
+//    Planos: basico R$ 1, pro R$ 2, premium R$ 3, pro_parceiro R$ 0, gratis R$ 1.
+// 2. Anti-duplicidade na tarifa: wallet_transactions já com reference_id = service.id && type = 'tarifa'.
+// 3. Teto do PRO PARCEIRO: Math.min(realServicesCount, proParceiroFloor) (teto de 150).
+// 4. Parceiro Grátis: pontua como Básico (1x), sem cashback, tie_break com plan_effective = 'basico_gratis'.
+
 onRecordAfterUpdateSuccess((e) => {
   const service = e.record
   const oldStatus = e.oldRecord ? e.oldRecord.get('status') : ''
@@ -14,33 +18,53 @@ onRecordAfterUpdateSuccess((e) => {
   const profId = service.get('professional')
   const studentId = service.get('student')
 
-  // 1. DÉBITO DA TARIFA DE SERVIÇO: SEMPRE debitar do profissional (removido modo own_plan do aluno)
+  // 1. DÉBITO DA TARIFA DE SERVIÇO (com anti-duplicidade e isenção do PRO PARCEIRO)
   try {
-    const prof = $app.findRecordById('users', profId)
-    const profPlan = (prof.get('plan') || 'basico').toLowerCase()
+    if (profId) {
+      // Anti-duplicidade: verificar se já existe transação de tarifa para este serviço
+      const existingTxs = $app
+        .db()
+        .newQuery(
+          "SELECT id FROM wallet_transactions WHERE reference_id = {:svcId} AND type = 'tarifa' LIMIT 1",
+        )
+        .bind({ svcId: service.id })
+        .all()
 
-    let rate = 1.0
-    if (profPlan === 'pro') rate = 2.0
-    if (profPlan === 'premium') rate = 3.0
-    if (profPlan === 'pro_parceiro') rate = 2.0 // Tarifa por serviço continua R$ 2,00 no pro_parceiro
+      if (!existingTxs || existingTxs.length === 0) {
+        const profRows = $app
+          .db()
+          .newQuery('SELECT id, plan FROM users WHERE id = {:id} LIMIT 1')
+          .bind({ id: profId })
+          .all()
 
-    const payerUserId = profId // Tarifa SEMPRE debitada do profissional
+        const prof = profRows && profRows.length > 0 ? profRows[0] : null
+        const profPlan = prof && prof.plan ? prof.plan.toLowerCase() : 'basico'
 
-    const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
-    const feeTx = new Record(walletCol)
-    feeTx.set('user', payerUserId)
-    feeTx.set('type', 'tarifa')
-    feeTx.set('amount', -rate)
-    feeTx.set('status', 'concluido')
-    feeTx.set('reference_type', 'service')
-    feeTx.set('reference_id', service.id)
-    feeTx.set(
-      'description',
-      `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${service.id.slice(0, 6)}`,
-    )
-    $app.save(feeTx)
+        // PRO PARCEIRO paga apenas o fixo de R$ 149/mês — SEM tarifa por serviço
+        if (profPlan !== 'pro_parceiro') {
+          let rate = 1.0
+          if (profPlan === 'pro') rate = 2.0
+          if (profPlan === 'premium') rate = 3.0
+          if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
+
+          const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
+          const feeTx = new Record(walletCol)
+          feeTx.set('user', profId)
+          feeTx.set('type', 'tarifa')
+          feeTx.set('amount', -rate)
+          feeTx.set('status', 'concluido')
+          feeTx.set('reference_type', 'service')
+          feeTx.set('reference_id', service.id)
+          feeTx.set(
+            'description',
+            `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${service.id.slice(0, 6)}`,
+          )
+          $app.save(feeTx)
+        }
+      }
+    }
   } catch (err) {
-    console.error('Erro ao debitar tarifa de serviço:', err)
+    console.error('Erro ao debitar tarifa de serviço (update):', err)
   }
 
   // 2. VALIDAÇÃO DE INDICAÇÃO E BÔNUS DE REFERRAL
@@ -117,7 +141,7 @@ onRecordAfterUpdateSuccess((e) => {
       basico: 1.0,
       pro: 2.0,
       premium: 3.0,
-      pro_parceiro: 2.0,
+      pro_parceiro: 0.0,
     }
 
     let proParceiroFloor = 150
@@ -136,9 +160,13 @@ onRecordAfterUpdateSuccess((e) => {
       const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
       const role = u.get('role') || 'aluno'
       const isProParceiro = rawPlan === 'pro_parceiro'
+      const isPartnerGratis = role === 'profissional' && rawPlan === 'gratis'
 
       // Aluno com vínculo ativo pontua no plano do profissional
       let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
+      if (isPartnerGratis) {
+        effectiveMultiplier = planMultipliers['basico'] ?? 1 // 1x — parceiro grátis pontua como Básico
+      }
       const linkedProf = u.get('linked_professional')
 
       if (role === 'aluno' && linkedProf) {
@@ -225,10 +253,10 @@ onRecordAfterUpdateSuccess((e) => {
       )
 
       let realServicesCount = servicesThisMonth.length
-      // Para PRO PARCEIRO: piso de pontuação max(servicos_reais, piso_fixo)
+      // TETO de serviços do PRO PARCEIRO: Math.min(servicos_reais, 150)
       let effectiveServicesCount = realServicesCount
       if (isProParceiro) {
-        effectiveServicesCount = Math.max(realServicesCount, proParceiroFloor)
+        effectiveServicesCount = Math.min(realServicesCount, proParceiroFloor)
       }
 
       const indicacoesCount = referralsThisMonth.length
@@ -299,7 +327,7 @@ onRecordAfterUpdateSuccess((e) => {
         'rank_entries',
         `user = '${s.user.id}'`,
         '-created',
-        50,
+        500,
         0,
       )
 
@@ -314,15 +342,7 @@ onRecordAfterUpdateSuccess((e) => {
         entry = new Record(rankCol)
       }
 
-      entry.set('user', s.user.id)
-      entry.set('cycle', cycle)
-      entry.set('points', s.total_points)
-      entry.set('services_count', s.services_count)
-      entry.set('referrals_count', s.referrals_count)
-      entry.set('referrals_this_cycle', s.referrals_this_cycle)
-      entry.set('stars', s.stars)
-      entry.set('ranking_position', i + 1)
-      entry.set('tie_break_details', {
+      const tieBreakDetails = {
         stars: s.stars,
         antiguidade: s.antiguidade,
         plan_multiplier: s.multiplier,
@@ -331,7 +351,20 @@ onRecordAfterUpdateSuccess((e) => {
         services_count: s.services_count,
         services_real_count: s.services_real_count,
         formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
-      })
+      }
+      if (s.role === 'profissional' && s.plan === 'gratis') {
+        tieBreakDetails.plan_effective = 'basico_gratis'
+      }
+
+      entry.set('user', s.user.id)
+      entry.set('cycle', cycle)
+      entry.set('points', s.total_points)
+      entry.set('services_count', s.services_count)
+      entry.set('referrals_count', s.referrals_count)
+      entry.set('referrals_this_cycle', s.referrals_this_cycle)
+      entry.set('stars', s.stars)
+      entry.set('ranking_position', i + 1)
+      entry.set('tie_break_details', tieBreakDetails)
       $app.save(entry)
     }
 
@@ -352,5 +385,69 @@ onRecordAfterUpdateSuccess((e) => {
     } catch (_) {}
   } catch (err) {
     console.error('Erro no recálculo instantâneo do ranking:', err)
+  }
+}, 'services')
+
+// Blindagem: também processar débito/validação quando serviço for criado já com status 'concluido'
+onRecordAfterCreateSuccess((e) => {
+  const service = e.record
+  const status = service.get('status')
+  if (status !== 'concluido') {
+    return
+  }
+
+  const profId = service.get('professional')
+  if (!profId) {
+    return
+  }
+
+  try {
+    // Anti-duplicidade
+    const existingTxs = $app
+      .db()
+      .newQuery(
+        "SELECT id FROM wallet_transactions WHERE reference_id = {:svcId} AND type = 'tarifa' LIMIT 1",
+      )
+      .bind({ svcId: service.id })
+      .all()
+
+    if (existingTxs && existingTxs.length > 0) {
+      return
+    }
+
+    const profRows = $app
+      .db()
+      .newQuery('SELECT id, plan FROM users WHERE id = {:id} LIMIT 1')
+      .bind({ id: profId })
+      .all()
+
+    const prof = profRows && profRows.length > 0 ? profRows[0] : null
+    const profPlan = prof && prof.plan ? prof.plan.toLowerCase() : 'basico'
+
+    // PRO PARCEIRO: R$ 0 de tarifa
+    if (profPlan === 'pro_parceiro') {
+      return
+    }
+
+    let rate = 1.0
+    if (profPlan === 'pro') rate = 2.0
+    if (profPlan === 'premium') rate = 3.0
+    if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
+
+    const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
+    const feeTx = new Record(walletCol)
+    feeTx.set('user', profId)
+    feeTx.set('type', 'tarifa')
+    feeTx.set('amount', -rate)
+    feeTx.set('status', 'concluido')
+    feeTx.set('reference_type', 'service')
+    feeTx.set('reference_id', service.id)
+    feeTx.set(
+      'description',
+      `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${service.id.slice(0, 6)}`,
+    )
+    $app.save(feeTx)
+  } catch (err) {
+    console.error('Erro ao debitar tarifa de serviço (create):', err)
   }
 }, 'services')

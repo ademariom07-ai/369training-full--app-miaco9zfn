@@ -43,11 +43,14 @@ routerAdd(
       const now = new Date()
       const dayOfMonth = now.getDate()
       const isFromGratis = currentPlan === 'gratis'
+      const isGoingToGratis = targetPlan === 'gratis'
       const isWindowOpen = dayOfMonth >= 1 && dayOfMonth <= 3
 
       // Alunos podem mudar a qualquer momento no primeiro upgrade ou troca;
-      // Para profissionais entre planos pagos, janela de dias 1 a 3
-      if (role === 'profissional' && !isFromGratis && !isWindowOpen) {
+      // Vindo de pago para grátis é permitido a qualquer momento;
+      // Vindo de grátis para qualquer plano é permitido a qualquer momento;
+      // Apenas transição ENTRE planos pagos para profissionais requer janela de dias 1 a 3
+      if (role === 'profissional' && !isFromGratis && !isGoingToGratis && !isWindowOpen) {
         return e.json(403, {
           success: false,
           message:
