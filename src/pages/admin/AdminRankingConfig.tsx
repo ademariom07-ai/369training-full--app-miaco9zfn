@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   Calendar,
   Lock,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -203,6 +204,53 @@ export default function AdminRankingConfig() {
   useEffect(() => {
     loadRankingsOnly(rankPage, rankPerPage)
   }, [rankPage, rankPerPage])
+
+  // Resumo financeiro do ciclo para alimentar a planilha de cashback e simuladores com valores reais
+  const [financialSummary, setFinancialSummary] = useState<any>(null)
+  const [allCycleRankParticipants, setAllCycleRankParticipants] = useState<any[]>([])
+  const [loadingCashbackParticipants, setLoadingCashbackParticipants] = useState(false)
+
+  const loadFinancialSummary = async () => {
+    try {
+      const res: any = await pb.send('/backend/v1/admin/financial_summary', {
+        method: 'GET',
+      })
+      if (res && res.entradas) {
+        setFinancialSummary(res)
+      }
+    } catch (err) {
+      console.warn('Aviso ao carregar financial_summary em AdminRankingConfig:', err)
+    }
+  }
+
+  // Carregar todos os participantes do ranking para a planilha de cashback (todas as páginas)
+  const loadAllCycleRankParticipants = async () => {
+    try {
+      setLoadingCashbackParticipants(true)
+      const list = await pb.collection('rank_entries').getFullList({
+        filter: `cycle = "${currentCycle}"`,
+        sort: 'ranking_position',
+        expand: 'user',
+        batch: 2000,
+      })
+      setAllCycleRankParticipants(list || [])
+    } catch (err) {
+      console.warn('Aviso ao carregar allCycleRankParticipants:', err)
+    } finally {
+      setLoadingCashbackParticipants(false)
+    }
+  }
+
+  useEffect(() => {
+    loadFinancialSummary()
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'planilhaCashback') {
+      loadAllCycleRankParticipants()
+      loadFinancialSummary()
+    }
+  }, [activeTab])
 
   // Carregar histórico de ciclos disponíveis a partir de monthly_rank_snapshots
   const loadAvailableCycles = async () => {
@@ -3121,21 +3169,84 @@ export default function AdminRankingConfig() {
         {/* TAB 8: PLANILHA DE DISTRIBUIÇÃO DE CASHBACK (v0.065) */}
         {activeTab === 'planilhaCashback' && (
           <div className="space-y-4">
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleExportCashbackDistribuidoCsv}
-                className="border-[#22C55E]/40 bg-[#0e1c12] hover:bg-[#22C55E]/20 text-[#22C55E] text-xs font-bold rounded-xl flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" /> Exportar CSV Cashback Distribuído
-              </Button>
+            {/* Banner de informações reais do ciclo */}
+            <div className="p-4 rounded-xl bg-white border border-[#E4E2DC] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[11px] font-bold text-[#9A7B1C] uppercase font-montserrat">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Valores Oficiais do Ciclo {financialSummary?.cycle || currentCycle}
+                </div>
+                <h3 className="text-base font-extrabold font-montserrat text-[#1A1A1A]">
+                  Planilha Alimentada com Dados Reais Calculados
+                </h3>
+                <p className="text-xs text-gray-500 font-inter">
+                  Base de Entradas do Pool:{' '}
+                  <strong className="text-[#1A1A1A] font-mono">
+                    R${' '}
+                    {Number(
+                      financialSummary?.pool?.base_total_entradas ??
+                        financialSummary?.entradas?.total_entradas_reais ??
+                        0,
+                    ).toFixed(2)}
+                  </strong>{' '}
+                  (Tarifas: R$ {Number(financialSummary?.pool?.base_tarifas || 0).toFixed(2)} +
+                  Mensalidades Alunos: R${' '}
+                  {Number(financialSummary?.pool?.base_alunos || 0).toFixed(2)} + PRO: R${' '}
+                  {Number(financialSummary?.pool?.base_pro_parceiro || 0).toFixed(2)}) • Pool 38%:{' '}
+                  <strong className="text-[#9A7B1C] font-mono">
+                    R$ {Number(financialSummary?.pool?.partner_pool_38 || 0).toFixed(2)}
+                  </strong>{' '}
+                  • {financialSummary?.rede?.niveis_habitados ?? 1} níveis habitados •{' '}
+                  {allCycleRankParticipants.length > 0
+                    ? `${allCycleRankParticipants.length} participantes reais carregados`
+                    : loadingCashbackParticipants
+                      ? 'Carregando todos os participantes...'
+                      : `${rankings.length} participantes`}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    loadAllCycleRankParticipants()
+                    loadFinancialSummary()
+                  }}
+                  disabled={loadingCashbackParticipants}
+                  className="border-[#E4E2DC] text-[#1A1A1A] hover:bg-[#F7F5F0] text-xs font-bold rounded-xl flex items-center gap-1.5"
+                >
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 ${loadingCashbackParticipants ? 'animate-spin' : ''}`}
+                  />
+                  Recarregar Participantes
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCashbackDistribuidoCsv}
+                  className="border-[#22C55E]/40 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" /> Exportar CSV Cashback Distribuído
+                </Button>
+              </div>
             </div>
+
             <PlanilhaCashbackDistribuicao
-              realRankings={rankings}
-              defaultBaseTarifas={1000000}
-              defaultPositionsCount={1023}
+              realRankings={
+                allCycleRankParticipants.length > 0 ? allCycleRankParticipants : rankings
+              }
+              defaultBaseTarifas={
+                financialSummary?.pool?.base_total_entradas !== undefined
+                  ? Number(financialSummary.pool.base_total_entradas)
+                  : 0
+              }
+              defaultPositionsCount={Math.max(
+                1,
+                allCycleRankParticipants.length || rankings.length || 1,
+              )}
             />
           </div>
         )}

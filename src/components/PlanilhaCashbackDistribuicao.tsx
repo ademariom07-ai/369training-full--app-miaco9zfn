@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,12 +51,25 @@ interface PlanilhaCashbackProps {
 
 export function PlanilhaCashbackDistribuicao({
   realRankings = [],
-  defaultBaseTarifas = 1000000,
+  defaultBaseTarifas = 0,
   defaultPositionsCount = 1023,
 }: PlanilhaCashbackProps) {
   // Entradas da simulação
   const [baseTarifas, setBaseTarifas] = useState<number>(defaultBaseTarifas)
   const [posicoesOcupadas, setPosicoesOcupadas] = useState<number>(defaultPositionsCount)
+
+  // Sincronizar quando defaultBaseTarifas ou defaultPositionsCount forem atualizados externamente pelo resumo real
+  useEffect(() => {
+    if (defaultBaseTarifas !== undefined) {
+      setBaseTarifas(defaultBaseTarifas)
+    }
+  }, [defaultBaseTarifas])
+
+  useEffect(() => {
+    if (defaultPositionsCount !== undefined) {
+      setPosicoesOcupadas(defaultPositionsCount)
+    }
+  }, [defaultPositionsCount])
   const [filtroNivel, setFiltroNivel] = useState<string>('todos')
   const [termoBusca, setTermoBusca] = useState<string>('')
   const [somenteReais, setSomenteReais] = useState<boolean>(false)
