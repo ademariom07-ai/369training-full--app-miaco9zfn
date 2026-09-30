@@ -30,9 +30,47 @@ routerAdd(
 
       // Parâmetro cycle opcional (default = mês corrente UTC)
       const now = new Date()
-      let cycle = c.queryParam('cycle')
-      if (!cycle || !/^\d{4}-\d{2}$/.test(cycle)) {
-        cycle = now.toISOString().slice(0, 7)
+      const defaultCycle = now.toISOString().slice(0, 7)
+      let rawCycle = ''
+
+      // Tentativa 1: via c.requestInfo().query se disponível no PocketBase
+      try {
+        if (typeof c.requestInfo === 'function') {
+          const reqInfo = c.requestInfo()
+          if (reqInfo && reqInfo.query && reqInfo.query.cycle) {
+            rawCycle = String(reqInfo.query.cycle).trim()
+          }
+        }
+      } catch (_) {}
+
+      // Tentativa 2: parsing manual seguro da URL da requisição se rawCycle ainda estiver vazio
+      if (!rawCycle) {
+        try {
+          const rawUrl =
+            (c.request &&
+              (c.request.url || (typeof c.request.uri === 'function' ? c.request.uri() : ''))) ||
+            (typeof c.url === 'function' ? c.url() : c.url) ||
+            ''
+          if (typeof rawUrl === 'string' && rawUrl) {
+            const m = rawUrl.match(/[?&]cycle=([0-9]{4}-[0-9]{2})/)
+            if (m && m[1]) {
+              rawCycle = m[1]
+            }
+          }
+        } catch (_) {}
+      }
+
+      let cycle = defaultCycle
+      if (rawCycle) {
+        if (/^\d{4}-\d{2}$/.test(rawCycle)) {
+          cycle = rawCycle
+        } else {
+          return c.json(400, {
+            status: 'error',
+            code: 'INVALID_CYCLE',
+            message: 'O parâmetro cycle deve estar no formato YYYY-MM (ex: 2026-09).',
+          })
+        }
       }
 
       const [yearStr, monthStr] = cycle.split('-')
