@@ -24,6 +24,7 @@ import {
   DollarSign,
   UserCheck,
   UserX,
+  Target,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PlanChangeSection } from '@/components/PlanChangeSection'
@@ -88,6 +89,39 @@ export default function AlunoPerfil() {
       setUnlinkingProf(false)
     }
   }
+
+  // Estado do Questionário de Objetivos do Aluno
+  const [studentSurvey, setStudentSurvey] = useState<{
+    main_goal: string
+    training_frequency: string
+    experience_level: string
+    health_limitations: string
+    created: string
+  } | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    pb.collection('student_onboarding_surveys')
+      .getList(1, 1, {
+        filter: `user = "${user.id}"`,
+        sort: '-created',
+      })
+      .then((res) => {
+        if (res.items.length > 0) {
+          const item = res.items[0]
+          setStudentSurvey({
+            main_goal: (item.main_goal as string) || '',
+            training_frequency: (item.training_frequency as string) || '',
+            experience_level: (item.experience_level as string) || '',
+            health_limitations: (item.health_limitations as string) || '',
+            created: item.created,
+          })
+        }
+      })
+      .catch((err) => {
+        console.warn('Aviso ao carregar questionário de objetivos:', err)
+      })
+  }, [user])
 
   // Load Wallet Transactions
   useEffect(() => {
@@ -394,6 +428,68 @@ export default function AlunoPerfil() {
           )}
         </Card>
       </div>
+
+      {/* SEÇÃO QUESTIONÁRIO DE OBJETIVOS DO ALUNO */}
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#2A2A2A]">
+          <div className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-[#0057FF]" />
+            <h3 className="font-bold font-montserrat text-white text-base uppercase">
+              Seu Questionário de Objetivos
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono text-[#0057FF] bg-[#0057FF]/10 px-2 py-0.5 rounded border border-[#0057FF]/30">
+            {studentSurvey ? 'Preenchido' : 'Pendente'}
+          </span>
+        </div>
+
+        {studentSurvey ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-3 bg-[#121212] rounded-xl border border-[#2A2A2A]">
+              <span className="text-[10px] uppercase font-bold text-gray-400 font-montserrat block">
+                Objetivo Principal
+              </span>
+              <p className="text-sm font-bold text-white mt-1">
+                {studentSurvey.main_goal || 'Não informado'}
+              </p>
+            </div>
+
+            <div className="p-3 bg-[#121212] rounded-xl border border-[#2A2A2A]">
+              <span className="text-[10px] uppercase font-bold text-gray-400 font-montserrat block">
+                Frequência de Treino
+              </span>
+              <p className="text-sm font-bold text-white mt-1">
+                {studentSurvey.training_frequency || 'Não informado'}
+              </p>
+            </div>
+
+            <div className="p-3 bg-[#121212] rounded-xl border border-[#2A2A2A]">
+              <span className="text-[10px] uppercase font-bold text-gray-400 font-montserrat block">
+                Nível de Experiência
+              </span>
+              <p className="text-sm font-bold text-white mt-1">
+                {studentSurvey.experience_level || 'Não informado'}
+              </p>
+            </div>
+
+            <div className="p-3 bg-[#121212] rounded-xl border border-[#2A2A2A]">
+              <span className="text-[10px] uppercase font-bold text-gray-400 font-montserrat block">
+                Limitações / Saúde
+              </span>
+              <p className="text-sm text-gray-300 mt-1 line-clamp-2">
+                {studentSurvey.health_limitations || 'Nenhuma limitação informada'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-[#121212] border border-[#2A2A2A] text-center">
+            <p className="text-xs text-gray-400 font-inter">
+              Nenhum questionário de objetivos registrado no cadastro inicial. Seus dados de treino
+              são baseados nas metas padrão.
+            </p>
+          </div>
+        )}
+      </Card>
 
       {/* SEÇÃO DE PLANOS & MENSALIDADE v2 */}
       <div>

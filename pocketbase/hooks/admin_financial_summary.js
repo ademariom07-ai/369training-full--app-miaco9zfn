@@ -84,19 +84,54 @@ routerAdd(
       const cycleEnd = nextMonthDate.toISOString().replace('T', ' ').slice(0, 19)
 
       // 1. Carregar regras de pool_feed_config de platform_config
-      let poolFeedConfig = {
+      // Objeto JS puro garantido (campos primitivos copiados um a um, nunca objeto nativo do PocketBase)
+      const poolFeedConfig = {
         partner_pool_pct: 0.38,
         student_monthly_pct: 1.0,
         pro_parceiro_monthly_pct: 0.38,
         service_tarifa_pct: 1.0,
+        pro_parceiro_floor: 150,
       }
       try {
         const pfcRec = $app.findFirstRecordByData('platform_config', 'key', 'pool_feed_config')
         if (pfcRec) {
-          const v = pfcRec.get('value')
-          if (typeof v === 'object' && v !== null) {
-            poolFeedConfig = Object.assign(poolFeedConfig, v)
+          let rawVal = pfcRec.get('value')
+          // Se for string JSON ou objeto nativo, normalizar
+          if (typeof rawVal === 'string') {
+            try {
+              rawVal = JSON.parse(rawVal)
+            } catch (_) {}
           }
+          if (rawVal && typeof rawVal === 'object') {
+            if (rawVal.partner_pool_pct !== undefined) {
+              poolFeedConfig.partner_pool_pct = Number(rawVal.partner_pool_pct) || 0.38
+            }
+            if (rawVal.student_monthly_pct !== undefined) {
+              poolFeedConfig.student_monthly_pct = Number(rawVal.student_monthly_pct) || 1.0
+            }
+            if (rawVal.pro_parceiro_monthly_pct !== undefined) {
+              poolFeedConfig.pro_parceiro_monthly_pct =
+                Number(rawVal.pro_parceiro_monthly_pct) || 0.38
+            }
+            if (rawVal.service_tarifa_pct !== undefined) {
+              poolFeedConfig.service_tarifa_pct = Number(rawVal.service_tarifa_pct) || 1.0
+            }
+            if (rawVal.pro_parceiro_floor !== undefined) {
+              poolFeedConfig.pro_parceiro_floor = Number(rawVal.pro_parceiro_floor) || 150
+            }
+          }
+        }
+      } catch (errPfc) {
+        console.warn('Aviso ao carregar pool_feed_config:', errPfc)
+      }
+
+      try {
+        const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
+        if (floorRec) {
+          const v = floorRec.get('value')
+          if (typeof v === 'number') poolFeedConfig.pro_parceiro_floor = v
+          else if (typeof v === 'string' && !isNaN(Number(v)))
+            poolFeedConfig.pro_parceiro_floor = Number(v)
         }
       } catch (_) {}
 

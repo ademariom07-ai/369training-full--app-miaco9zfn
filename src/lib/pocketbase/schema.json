@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T20:17:03.997Z",
+  "generatedAt": "2026-10-01T22:04:58.766Z",
   "collections": [
     {
       "name": "users",
@@ -3753,6 +3753,68 @@
       "indexes": [
         "CREATE INDEX idx_map_student ON martial_arts_progress (student)",
         "CREATE INDEX idx_map_prof ON martial_arts_progress (professional)"
+      ]
+    },
+    {
+      "name": "student_onboarding_surveys",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "delete": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "main_goal",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "training_frequency",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "experience_level",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "health_limitations",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_student_survey_user ON student_onboarding_surveys (user)",
+        "CREATE INDEX idx_student_survey_created ON student_onboarding_surveys (created)"
       ]
     }
   ]

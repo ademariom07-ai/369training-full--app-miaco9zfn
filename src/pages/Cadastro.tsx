@@ -53,6 +53,44 @@ export default function Cadastro() {
   // Aluno specific
   const [objective, setObjective] = useState('Hipertrofia')
 
+  // Novo Questionário de Objetivos do Aluno
+  const [showStudentSurveyModal, setShowStudentSurveyModal] = useState(false)
+  const [registeredStudentUser, setRegisteredStudentUser] = useState<any>(null)
+  const [surveyMainGoal, setSurveyMainGoal] = useState('Ganho de massa muscular')
+  const [surveyFrequency, setSurveyFrequency] = useState('4-5x na semana')
+  const [surveyExperience, setSurveyExperience] = useState('Iniciante')
+  const [surveyHealthLimitations, setSurveyHealthLimitations] = useState('')
+  const [savingSurvey, setSavingSurvey] = useState(false)
+
+  const handleSaveStudentSurvey = async (skip: boolean = false) => {
+    if (!registeredStudentUser?.id) {
+      navigate('/login')
+      return
+    }
+
+    if (!skip) {
+      setSavingSurvey(true)
+      try {
+        await pb.collection('student_onboarding_surveys').create({
+          user: registeredStudentUser.id,
+          main_goal: surveyMainGoal,
+          training_frequency: surveyFrequency,
+          experience_level: surveyExperience,
+          health_limitations: surveyHealthLimitations.trim(),
+        })
+        toast.success('Objetivos salvos com sucesso!')
+      } catch (errSurvey) {
+        console.warn('Aviso: erro ao salvar respostas do questionário:', errSurvey)
+        toast.info('Cadastro concluído! Você poderá atualizar seus objetivos no perfil.')
+      } finally {
+        setSavingSurvey(false)
+      }
+    }
+
+    setShowStudentSurveyModal(false)
+    navigate('/login')
+  }
+
   // Profissional specific
   const [professionalType, setProfessionalType] = useState<'Pessoa Física' | 'MEI'>('Pessoa Física')
   const [specialties, setSpecialties] = useState<string[]>(['Educação Física'])
@@ -403,6 +441,14 @@ export default function Cadastro() {
 
       setCreatedSuccess(true)
       toast.success('Cadastro realizado com sucesso!')
+
+      // Se for aluno, abrir questionário referente ao seu objetivo
+      if (role === 'aluno' && createdUser?.id) {
+        setRegisteredStudentUser(createdUser)
+        setShowStudentSurveyModal(true)
+        setLoading(false)
+        return
+      }
 
       setTimeout(() => {
         navigate('/login')
@@ -1286,6 +1332,146 @@ export default function Cadastro() {
           </Link>
         </p>
       </div>
+
+      {/* MODAL DO QUESTIONÁRIO DE OBJETIVOS NA INSCRIÇÃO DO ALUNO */}
+      {showStudentSurveyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white border border-[#E4E2DC] rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center mb-6">
+              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-[#0057FF]/10 text-[#0057FF] mb-2 font-montserrat">
+                Personalização do seu Treino
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black font-montserrat text-[#1A1A1A]">
+                Conte-nos sobre seu Objetivo
+              </h2>
+              <p className="text-xs text-[#6B7280] font-inter mt-1.5">
+                Responda este breve questionário para que os profissionais e assistentes da
+                369TRAINING adaptem seus treinos desde o primeiro dia.
+              </p>
+            </div>
+
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Pergunta 1: Objetivo principal */}
+              <div>
+                <label className="block text-xs font-bold text-[#1A1A1A] uppercase tracking-wider mb-1.5 font-montserrat">
+                  1. Qual é o seu principal objetivo? *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    'Perda de peso',
+                    'Ganho de massa muscular',
+                    'Condicionamento físico',
+                    'Saúde geral e bem-estar',
+                    'Performance esportiva',
+                  ].map((goal) => (
+                    <button
+                      type="button"
+                      key={goal}
+                      onClick={() => setSurveyMainGoal(goal)}
+                      className={`text-left p-3 rounded-xl border text-xs font-semibold transition-all ${
+                        surveyMainGoal === goal
+                          ? 'bg-[#0057FF] text-white border-[#0057FF] shadow-sm'
+                          : 'bg-[#F7F5F0] text-[#374151] border-[#E4E2DC] hover:border-[#0057FF]/40'
+                      }`}
+                    >
+                      {goal}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pergunta 2: Frequência */}
+              <div>
+                <label className="block text-xs font-bold text-[#1A1A1A] uppercase tracking-wider mb-1.5 font-montserrat">
+                  2. Com que frequência você pretende treinar? *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['2-3x na semana', '4-5x na semana', '6x ou mais', 'Ainda não sei'].map(
+                    (freq) => (
+                      <button
+                        type="button"
+                        key={freq}
+                        onClick={() => setSurveyFrequency(freq)}
+                        className={`text-left p-3 rounded-xl border text-xs font-semibold transition-all ${
+                          surveyFrequency === freq
+                            ? 'bg-[#0057FF] text-white border-[#0057FF] shadow-sm'
+                            : 'bg-[#F7F5F0] text-[#374151] border-[#E4E2DC] hover:border-[#0057FF]/40'
+                        }`}
+                      >
+                        {freq}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              {/* Pergunta 3: Experiência */}
+              <div>
+                <label className="block text-xs font-bold text-[#1A1A1A] uppercase tracking-wider mb-1.5 font-montserrat">
+                  3. Qual é o seu nível de experiência? *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['Iniciante', 'Intermediário', 'Avançado'].map((lvl) => (
+                    <button
+                      type="button"
+                      key={lvl}
+                      onClick={() => setSurveyExperience(lvl)}
+                      className={`text-center p-3 rounded-xl border text-xs font-semibold transition-all ${
+                        surveyExperience === lvl
+                          ? 'bg-[#0057FF] text-white border-[#0057FF] shadow-sm'
+                          : 'bg-[#F7F5F0] text-[#374151] border-[#E4E2DC] hover:border-[#0057FF]/40'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pergunta 4: Limitações físicas / saúde */}
+              <div>
+                <label className="block text-xs font-bold text-[#1A1A1A] uppercase tracking-wider mb-1.5 font-montserrat flex items-center justify-between">
+                  <span>4. Possui alguma limitação física ou de saúde?</span>
+                  <span className="text-[10px] text-[#6B7280] font-normal lowercase">
+                    (opcional)
+                  </span>
+                </label>
+                <textarea
+                  value={surveyHealthLimitations}
+                  onChange={(e) => setSurveyHealthLimitations(e.target.value)}
+                  placeholder="Ex: Dor na lombar, cirurgia no joelho direito, hipertensão..."
+                  rows={2}
+                  className="w-full p-3 rounded-xl bg-white border border-[#E4E2DC] text-xs text-[#1A1A1A] focus:outline-none focus:ring-2 focus:ring-[#0057FF]"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleSaveStudentSurvey(true)}
+                disabled={savingSurvey}
+                className="w-full sm:w-1/3 text-xs border-[#E4E2DC] text-[#6B7280] hover:text-[#1A1A1A]"
+              >
+                Pular por enquanto
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleSaveStudentSurvey(false)}
+                disabled={savingSurvey}
+                className="w-full sm:w-2/3 bg-[#0057FF] text-white hover:bg-[#1F6CFF] text-xs font-bold py-5 rounded-xl shadow-md"
+              >
+                {savingSurvey ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Salvar Respostas e Continuar'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
