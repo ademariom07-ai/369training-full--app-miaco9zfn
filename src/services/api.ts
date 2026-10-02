@@ -22,10 +22,15 @@ export interface AppointmentRecord extends RecordModel {
   status: 'pendente' | 'confirmado' | 'concluído' | 'cancelado'
   valor: number
   taxa_extra?: number
+  requires_advance?: boolean
+  advance_amount?: number
+  advance_paid?: boolean
+  service_record?: string
   expand?: {
     profissional?: RecordModel
     aluno?: RecordModel
     schedule?: WeeklyScheduleRecord
+    service_record?: ServiceRecord
   }
 }
 
@@ -39,9 +44,25 @@ export interface ServiceRecord extends RecordModel {
   scheduled_at?: string
   completed_at?: string
   notes?: string
+  validated?: boolean
+  validation_status?: 'pendente' | 'validada' | 'totalmente_validada'
+  validated_at?: string
   expand?: {
     professional?: RecordModel
     student?: RecordModel
+  }
+}
+
+export interface ServiceReviewRecord extends RecordModel {
+  service: string
+  reviewer: string
+  reviewee: string
+  rating: number
+  message?: string
+  expand?: {
+    service?: ServiceRecord
+    reviewer?: RecordModel
+    reviewee?: RecordModel
   }
 }
 

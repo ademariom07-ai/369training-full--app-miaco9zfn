@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T13:18:51.556Z",
+  "generatedAt": "2026-10-02T13:48:23.086Z",
   "collections": [
     {
       "name": "users",
@@ -486,6 +486,25 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "validated",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "validation_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["pendente", "validada", "totalmente_validada"]
+        },
+        {
+          "name": "validated_at",
+          "type": "date",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1809,6 +1828,13 @@
           "type": "bool",
           "required": false,
           "system": false
+        },
+        {
+          "name": "service_record",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "services"
         }
       ],
       "indexes": [
@@ -3815,6 +3841,71 @@
       "indexes": [
         "CREATE INDEX idx_student_survey_user ON student_onboarding_surveys (user)",
         "CREATE INDEX idx_student_survey_created ON student_onboarding_surveys (created)"
+      ]
+    },
+    {
+      "name": "service_reviews",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (reviewer = @request.auth.id || reviewee = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (reviewer = @request.auth.id || reviewee = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && @request.body.reviewer = @request.auth.id",
+        "update": "@request.auth.id != '' && (reviewer = @request.auth.id || @request.auth.role = 'admin')",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "service",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "services"
+        },
+        {
+          "name": "reviewer",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "reviewee",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "rating",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_review_service_reviewer ON service_reviews (service, reviewer)",
+        "CREATE INDEX idx_review_service ON service_reviews (service)",
+        "CREATE INDEX idx_review_reviewee ON service_reviews (reviewee)"
       ]
     }
   ]

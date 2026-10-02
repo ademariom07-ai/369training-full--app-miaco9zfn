@@ -38,16 +38,19 @@ import {
   RefreshCw,
   Activity,
   Award,
+  Star,
 } from 'lucide-react'
 import type {
   WorkoutRecord,
   ServiceRecord,
+  ServiceReviewRecord,
   ClinicalRecordModel,
   ClinicalSessionLogRecord,
   MartialArtsProgressRecord,
   ProtocolRecord,
 } from '@/services/api'
 import type { ContentItem } from '@/pages/profissional/ProfissionalConteudos'
+import ReviewModal from '@/components/ReviewModal'
 
 interface ContentPurchaseWithExpand {
   id: string
@@ -117,6 +120,17 @@ export default function MeuHistorico() {
   const [selectedSessionLog, setSelectedSessionLog] = useState<ClinicalSessionLogRecord | null>(
     null,
   )
+
+  // Avaliação mútua pelo aluno
+  const [myStudentReviews, setMyStudentReviews] = useState<Record<string, ServiceReviewRecord>>({})
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [selectedReviewTarget, setSelectedReviewTarget] = useState<{
+    serviceId: string
+    revieweeId: string
+    revieweeName: string
+    serviceTitle: string
+    existingReview?: ServiceReviewRecord | null
+  } | null>(null)
 
   const loadAllHistoryData = async () => {
     if (!user) return
@@ -230,6 +244,20 @@ export default function MeuHistorico() {
       setMartialArtsProgress(resMartialArts)
       setProtocols(resProtocols)
       setPurchases(resPurchases)
+
+      // Carregar avaliações feitas por este aluno
+      try {
+        const revs = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 200, {
+          filter: `reviewer = "${user.id}"`,
+        })
+        const revMap: Record<string, ServiceReviewRecord> = {}
+        for (const r of revs.items) {
+          revMap[r.service] = r
+        }
+        setMyStudentReviews(revMap)
+      } catch {
+        /* intentionally ignored */
+      }
     } catch (err) {
       console.error('Erro ao carregar Meu Histórico do aluno:', err)
     } finally {
@@ -825,47 +853,99 @@ export default function MeuHistorico() {
                             Serviços Concluídos (Pontuam no Ranking)
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {group.services.map((svc) => (
-                              <div
-                                key={svc.id}
-                                className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] flex flex-col justify-between gap-2"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <p className="text-xs font-bold text-white font-montserrat">
-                                      {svc.title || 'Atendimento de Treino'}
-                                    </p>
-                                    <p className="text-[11px] text-gray-400 font-inter mt-0.5">
-                                      Tipo:{' '}
-                                      <strong className="text-gray-300 font-mono">
-                                        {svc.type}
-                                      </strong>
-                                    </p>
+                            {group.services.map((svc) => {
+                              const hasReviewed = Boolean(myStudentReviews[svc.id])
+                              const isValidated = Boolean(svc.validated)
+                              const profName =
+                                svc.expand?.professional?.name || group.profName || 'Profissional'
+
+                              return (
+                                <div
+                                  key={svc.id}
+                                  className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] flex flex-col justify-between gap-2.5"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                      <p className="text-xs font-bold text-white font-montserrat">
+                                        {svc.title || 'Atendimento de Treino'}
+                                      </p>
+                                      <p className="text-[11px] text-gray-400 font-inter mt-0.5">
+                                        Tipo:{' '}
+                                        <strong className="text-gray-300 font-mono capitalize">
+                                          {svc.type}
+                                        </strong>
+                                      </p>
+                                    </div>
+
+                                    {isValidated ? (
+                                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 shrink-0 flex items-center gap-1">
+                                        <CheckCircle2 className="w-2.5 h-2.5" /> Validada ✓
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0 flex items-center gap-1">
+                                        <Clock className="w-2.5 h-2.5" /> Aguardando Validação
+                                      </span>
+                                    )}
                                   </div>
-                                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 shrink-0">
-                                    Concluído ✓
-                                  </span>
-                                </div>
 
-                                {svc.notes && (
-                                  <p className="text-[11px] text-gray-400 font-inter italic line-clamp-1">
-                                    &ldquo;{svc.notes}&rdquo;
-                                  </p>
-                                )}
+                                  {svc.notes && (
+                                    <p className="text-[11px] text-gray-400 font-inter italic line-clamp-1">
+                                      &ldquo;{svc.notes}&rdquo;
+                                    </p>
+                                  )}
 
-                                <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t border-[#222]">
-                                  <span>
-                                    Realizado em:{' '}
-                                    {svc.completed_at
-                                      ? new Date(svc.completed_at).toLocaleDateString('pt-BR')
-                                      : new Date(svc.created).toLocaleDateString('pt-BR')}
-                                  </span>
-                                  <span className="text-[#22C55E] font-bold">
-                                    +1 Serviço Ranking
-                                  </span>
+                                  <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t border-[#222]">
+                                    <span>
+                                      Realizado em:{' '}
+                                      {svc.completed_at
+                                        ? new Date(svc.completed_at).toLocaleDateString('pt-BR')
+                                        : new Date(svc.created).toLocaleDateString('pt-BR')}
+                                    </span>
+                                    <span
+                                      className={
+                                        isValidated
+                                          ? 'text-[#22C55E] font-bold'
+                                          : 'text-amber-400 font-semibold'
+                                      }
+                                    >
+                                      {isValidated ? '+1 Serviço no Ranking' : 'Valide p/ pontuar'}
+                                    </span>
+                                  </div>
+
+                                  {/* Botão de Avaliação Mútua pelo Aluno */}
+                                  <div className="pt-2 border-t border-[#222] flex items-center justify-between gap-2">
+                                    <span className="text-[10px] text-gray-400 font-inter">
+                                      {hasReviewed
+                                        ? 'Sua nota foi enviada'
+                                        : 'Avalie para validar no ranking'}
+                                    </span>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedReviewTarget({
+                                          serviceId: svc.id,
+                                          revieweeId: svc.professional,
+                                          revieweeName: profName,
+                                          serviceTitle: svc.title || `Aula de ${svc.type}`,
+                                          existingReview: myStudentReviews[svc.id] || null,
+                                        })
+                                        setReviewModalOpen(true)
+                                      }}
+                                      className={`text-xs uppercase font-bold rounded-xl h-7 px-3 flex items-center gap-1.5 ${
+                                        hasReviewed
+                                          ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 hover:bg-[#D4AF37]/30'
+                                          : 'bg-[#D4AF37] text-black hover:bg-[#c49f2e] shadow-sm'
+                                      }`}
+                                    >
+                                      <Star
+                                        className={`w-3 h-3 ${hasReviewed ? 'fill-[#D4AF37]' : 'fill-black'}`}
+                                      />
+                                      {hasReviewed ? 'Avaliado ✓' : 'Avaliar Profissional'}
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         </div>
                       )}
@@ -1303,6 +1383,29 @@ export default function MeuHistorico() {
       {/* ==============================================================
           MODAIS DE DETALHE DE FICHAS & TREINOS
          ============================================================== */}
+
+      {/* MODAL AVALIAÇÃO MÚTUA PÓS-AULA (LADO ALUNO) */}
+      {selectedReviewTarget && (
+        <ReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false)
+            setSelectedReviewTarget(null)
+          }}
+          serviceId={selectedReviewTarget.serviceId}
+          revieweeId={selectedReviewTarget.revieweeId}
+          revieweeName={selectedReviewTarget.revieweeName}
+          serviceTitle={selectedReviewTarget.serviceTitle}
+          existingReview={selectedReviewTarget.existingReview}
+          onSuccess={(savedReview) => {
+            setMyStudentReviews((prev) => ({
+              ...prev,
+              [savedReview.service]: savedReview,
+            }))
+            loadAllHistoryData()
+          }}
+        />
+      )}
 
       {/* Modal 1: Detalhe do Treino (IA ou Profissional) */}
       <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>

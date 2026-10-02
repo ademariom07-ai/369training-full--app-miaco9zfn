@@ -23,9 +23,19 @@ onRecordAfterUpdateSuccess((e) => {
     svc.set('title', `Atendimento: ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`)
     svc.set('value', valor)
     svc.set('status', 'concluido')
+    svc.set('validation_status', 'pendente')
+    svc.set('validated', false)
     svc.set('completed_at', new Date().toISOString().replace('T', ' '))
     svc.set('notes', `Gerado automaticamente pelo agendamento #${appointment.id}`)
     $app.save(svc)
+
+    // Atualizar appointment com a referência do service_record criado
+    try {
+      appointment.set('service_record', svc.id)
+      $app.save(appointment)
+    } catch (saveApptErr) {
+      console.warn('Aviso ao vincular service_record no appointment:', saveApptErr)
+    }
   } catch (err) {
     console.error('Erro ao sincronizar appointment concluído com services:', err)
   }

@@ -30,10 +30,18 @@ import {
   EyeOff,
   Sparkles,
   Users,
+  Star,
+  Award,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { WeeklyScheduleRecord, AppointmentRecord } from '@/services/api'
+import type {
+  WeeklyScheduleRecord,
+  AppointmentRecord,
+  ServiceRecord,
+  ServiceReviewRecord,
+} from '@/services/api'
 import { GestaoSessoesColetivas } from '@/components/GestaoSessoesColetivas'
+import ReviewModal from '@/components/ReviewModal'
 
 // Grade fixa de 19 faixas horárias de 1 em 1 hora (05:00 às 00:00)
 export const FIXED_TIME_SLOTS = [
@@ -129,6 +137,20 @@ export default function AgendaServicos() {
   const [activeTab, setActiveTab] = useState<'grid' | 'appointments' | 'coletivo'>('grid')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
 
+  // Mapas de serviços e reviews para vincular aos agendamentos concluídos
+  const [servicesMap, setServicesMap] = useState<Record<string, ServiceRecord>>({})
+  const [myReviewsMap, setMyReviewsMap] = useState<Record<string, ServiceReviewRecord>>({})
+
+  // Modal de avaliação
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [selectedReviewTarget, setSelectedReviewTarget] = useState<{
+    serviceId: string
+    revieweeId: string
+    revieweeName: string
+    serviceTitle: string
+    existingReview?: ServiceReviewRecord | null
+  } | null>(null)
+
   // Load Data
   const loadData = useCallback(async () => {
     if (!user) return
@@ -151,9 +173,30 @@ export default function AgendaServicos() {
       const appRes = await pb.collection('appointments').getList<AppointmentRecord>(1, 150, {
         filter: `profissional = "${user.id}"`,
         sort: '-created',
-        expand: 'aluno,schedule',
+        expand: 'aluno,schedule,service_record',
       })
       setAppointments(appRes.items)
+
+      // 3. Carregar serviços concluídos do profissional para mapeamento
+      const svcRes = await pb.collection('services').getList<ServiceRecord>(1, 200, {
+        filter: `professional = "${user.id}"`,
+        sort: '-created',
+      })
+      const sMap: Record<string, ServiceRecord> = {}
+      for (const s of svcRes.items) {
+        sMap[s.id] = s
+      }
+      setServicesMap(sMap)
+
+      // 4. Carregar reviews feitas pelo profissional
+      const revRes = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 200, {
+        filter: `reviewer = "${user.id}"`,
+      })
+      const rMap: Record<string, ServiceReviewRecord> = {}
+      for (const r of revRes.items) {
+        rMap[r.service] = r
+      }
+      setMyReviewsMap(rMap)
     } catch (err) {
       console.error('Error loading agenda data:', err)
     } finally {
@@ -287,6 +330,81 @@ export default function AgendaServicos() {
     }
   }
 
+  // Localizar ou obter o ServiceRecord vinculado a um appointment
+  const resolveServiceForAppointment = async (
+    app: AppointmentRecord,
+  ): Promise<ServiceRecord | null> => {
+    if (!user) return null
+    // Se já tem service_record expandido
+    if (app.expand?.service_record) return app.expand.service_record
+    // Se o appointment tem id de service_record
+    if (app.service_record && servicesMap[app.service_record]) {
+      return servicesMap[app.service_record]
+    }
+    // Tentar buscar por nota ou buscar service existente
+    try {
+      const existing = await pb
+        .collection('services')
+        .getFirstListItem<ServiceRecord>(
+          `professional = "${user.id}" && student = "${app.aluno}" && notes ~ "${app.id}"`,
+        )
+      return existing
+    } catch (_) {
+      // Se ainda não existe serviço registrado (ex: agendamento legado concluído antes do hook), cria sob demanda
+      try {
+        const createdSvc = await pb.collection('services').create<ServiceRecord>({
+          professional: user.id,
+          student: app.aluno,
+          type: app.servico_tipo || 'treino',
+          title: `Atendimento: ${(app.servico_tipo || 'treino').toUpperCase()}`,
+          value: app.valor || 150,
+          status: 'concluido',
+          validation_status: 'pendente',
+          validated: false,
+          notes: `Gerado para agendamento #${app.id}`,
+        })
+        try {
+          await pb.collection('appointments').update(app.id, { service_record: createdSvc.id })
+        } catch {
+          /* intentionally ignored */
+        }
+        return createdSvc
+      } catch (err) {
+        console.error('Erro ao resolver serviço do agendamento:', err)
+        return null
+      }
+    }
+  }
+
+  // Abrir modal de avaliação para um agendamento
+  const handleOpenReview = async (app: AppointmentRecord) => {
+    setActionLoading(`rev-${app.id}`)
+    try {
+      const svc = await resolveServiceForAppointment(app)
+      if (!svc) {
+        toast.error('Não foi possível carregar o serviço deste atendimento.')
+        return
+      }
+
+      const existingReview = myReviewsMap[svc.id] || null
+      const studentName = app.expand?.aluno?.name || 'Aluno'
+
+      setSelectedReviewTarget({
+        serviceId: svc.id,
+        revieweeId: app.aluno,
+        revieweeName: studentName,
+        serviceTitle: `Aula de ${app.servico_tipo || 'Treino'} • ${app.expand?.schedule?.data || ''}`,
+        existingReview,
+      })
+      setReviewModalOpen(true)
+    } catch (err: unknown) {
+      const error = err as Error
+      toast.error(error.message || 'Erro ao abrir avaliação.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   // Complete Appointment (TRIGGERS RANKING ENGINE AND CASHBACK VIA ON_APPOINTMENT_COMPLETED HOOK)
   const handleCompleteAppointment = async (appointmentId: string) => {
     setActionLoading(`comp-${appointmentId}`)
@@ -295,7 +413,9 @@ export default function AgendaServicos() {
         status: 'concluído',
       })
 
-      toast.success('Atendimento concluído com sucesso! Motor de Ranking e Cashback 369 acionado.')
+      toast.success(
+        'Atendimento concluído! Tarifa debitada. A aula aguarda avaliação para validar a pontuação.',
+      )
       loadData()
     } catch (err: unknown) {
       const error = err as Error
@@ -826,7 +946,7 @@ export default function AgendaServicos() {
                                     {(slotApp.valor + (slotApp.taxa_extra || 0)).toFixed(2)}
                                   </p>
 
-                                  {slotApp.status !== 'concluído' && (
+                                  {slotApp.status !== 'concluído' ? (
                                     <Button
                                       size="sm"
                                       onClick={() => handleCompleteAppointment(slotApp.id)}
@@ -835,6 +955,50 @@ export default function AgendaServicos() {
                                     >
                                       <Zap className="w-2.5 h-2.5 fill-black" /> Concluir
                                     </Button>
+                                  ) : (
+                                    (() => {
+                                      const svc = slotApp.service_record
+                                        ? servicesMap[slotApp.service_record]
+                                        : null
+                                      const hasReviewed = svc
+                                        ? Boolean(myReviewsMap[svc.id])
+                                        : false
+                                      const isValidated = svc?.validated
+
+                                      return (
+                                        <div className="mt-1 pt-1 border-t border-white/5 space-y-1">
+                                          <div className="flex items-center justify-between text-[8px]">
+                                            <span className="font-semibold text-gray-400">
+                                              Validação:
+                                            </span>
+                                            {isValidated ? (
+                                              <span className="text-[#22C55E] font-bold flex items-center gap-0.5">
+                                                <CheckCircle2 className="w-2 h-2" /> Validada
+                                              </span>
+                                            ) : (
+                                              <span className="text-amber-400 font-bold">
+                                                Aguardando
+                                              </span>
+                                            )}
+                                          </div>
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleOpenReview(slotApp)}
+                                            disabled={actionLoading === `rev-${slotApp.id}`}
+                                            className={`w-full h-5 text-[8px] uppercase font-bold rounded-md flex items-center justify-center gap-1 ${
+                                              hasReviewed
+                                                ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 hover:bg-[#D4AF37]/30'
+                                                : 'bg-[#D4AF37] text-black hover:bg-[#c49f2e]'
+                                            }`}
+                                          >
+                                            <Star
+                                              className={`w-2 h-2 ${hasReviewed ? 'fill-[#D4AF37]' : 'fill-black'}`}
+                                            />
+                                            {hasReviewed ? 'Avaliado ✓' : 'Avaliar Aluno'}
+                                          </Button>
+                                        </div>
+                                      )
+                                    })()
                                   )}
                                 </div>
                               ) : isAvailable ? (
@@ -1037,11 +1201,44 @@ export default function AgendaServicos() {
                         </Button>
                       )}
 
-                      {app.status === 'concluído' && (
-                        <span className="text-xs font-mono font-bold text-[#22C55E] flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4" /> Pontuado no Ranking & Cashback Pago
-                        </span>
-                      )}
+                      {app.status === 'concluído' &&
+                        (() => {
+                          const svc = app.service_record ? servicesMap[app.service_record] : null
+                          const hasReviewed = svc ? Boolean(myReviewsMap[svc.id]) : false
+                          const isValidated = svc?.validated
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              {isValidated ? (
+                                <span className="text-xs font-mono font-bold text-[#22C55E] flex items-center gap-1.5 bg-[#22C55E]/10 border border-[#22C55E]/30 px-2.5 py-1 rounded-lg">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Aula Validada • Pontuada
+                                  no Ranking
+                                </span>
+                              ) : (
+                                <span className="text-xs font-mono font-bold text-amber-400 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
+                                  <Clock className="w-3.5 h-3.5" /> Concluído — Aguardando
+                                  Avaliação/Validação
+                                </span>
+                              )}
+
+                              <Button
+                                size="sm"
+                                onClick={() => handleOpenReview(app)}
+                                disabled={actionLoading === `rev-${app.id}`}
+                                className={`text-xs uppercase font-bold rounded-xl h-8 px-3.5 flex items-center gap-1.5 ${
+                                  hasReviewed
+                                    ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 hover:bg-[#D4AF37]/30'
+                                    : 'bg-[#D4AF37] text-black hover:bg-[#c49f2e] shadow-sm'
+                                }`}
+                              >
+                                <Star
+                                  className={`w-3.5 h-3.5 ${hasReviewed ? 'fill-[#D4AF37]' : 'fill-black'}`}
+                                />
+                                {hasReviewed ? 'Avaliado ✓' : 'Avaliar Aluno'}
+                              </Button>
+                            </div>
+                          )
+                        })()}
 
                       {app.status !== 'cancelado' && app.status !== 'concluído' && (
                         <Button
@@ -1061,6 +1258,29 @@ export default function AgendaServicos() {
             </div>
           )}
         </div>
+      )}
+
+      {/* MODAL: AVALIAÇÃO MÚTUA PÓS-AULA */}
+      {selectedReviewTarget && (
+        <ReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false)
+            setSelectedReviewTarget(null)
+          }}
+          serviceId={selectedReviewTarget.serviceId}
+          revieweeId={selectedReviewTarget.revieweeId}
+          revieweeName={selectedReviewTarget.revieweeName}
+          serviceTitle={selectedReviewTarget.serviceTitle}
+          existingReview={selectedReviewTarget.existingReview}
+          onSuccess={(savedReview) => {
+            setMyReviewsMap((prev) => ({
+              ...prev,
+              [savedReview.service]: savedReview,
+            }))
+            loadData()
+          }}
+        />
       )}
 
       {/* MODAL: NOVO AGENDAMENTO PELO PROFISSIONAL */}
