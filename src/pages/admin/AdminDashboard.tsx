@@ -87,6 +87,7 @@ export default function AdminDashboard() {
   const [summary, setSummary] = useState<FinancialSummaryData | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState(true)
   const [fechandoCiclo, setFechandoCiclo] = useState(false)
+  const [backfillingTarifas, setBackfillingTarifas] = useState(false)
 
   const loadAdminMetrics = async () => {
     setLoadingMetrics(true)
@@ -158,6 +159,25 @@ export default function AdminDashboard() {
   const splitSuporte = splitBase * 0.04 // 4%
   const splitFilantropia = splitBase * 0.1 // 10%
   const splitImposto = splitBase * 0.1 // 10%
+
+  const handleTriggerBackfillTarifas = async () => {
+    setBackfillingTarifas(true)
+    try {
+      const res: any = await pb.send('/backend/v1/admin/backfill_tarifas', {
+        method: 'POST',
+      })
+      toast.success(
+        `Backfill concluído: ${res?.tarifas_criadas ?? 0} criadas, ${res?.tarifas_ja_existentes ?? 0} já existentes.`,
+      )
+      await loadAdminMetrics()
+    } catch (err: any) {
+      console.error('Erro ao executar backfill de tarifas:', err)
+      toast.error(err?.data?.message || err?.message || 'Erro ao recalcular tarifas pendentes.')
+      await loadAdminMetrics()
+    } finally {
+      setBackfillingTarifas(false)
+    }
+  }
 
   const handleTriggerFechamento = async () => {
     setFechandoCiclo(true)
@@ -271,16 +291,30 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
-            <div className="p-3.5 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC]">
-              <span className="text-[10px] text-gray-500 font-montserrat uppercase font-semibold block">
-                Total Tarifas
-              </span>
-              <p className="text-base font-bold text-[#1A1A1A] font-montserrat">
-                R$ {totalTarifas.toFixed(2)}
-              </p>
-              <span className="text-[9px] text-[#0057FF] font-semibold">
-                {summary?.entradas?.quantidade_tarifas || 0} lançamentos
-              </span>
+            <div className="p-3.5 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] text-gray-500 font-montserrat uppercase font-semibold block">
+                  Total Tarifas
+                </span>
+                <p className="text-base font-bold text-[#1A1A1A] font-montserrat">
+                  R$ {totalTarifas.toFixed(2)}
+                </p>
+                <span className="text-[9px] text-[#0057FF] font-semibold block">
+                  {summary?.entradas?.quantidade_tarifas || 0} lançamentos
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleTriggerBackfillTarifas}
+                disabled={backfillingTarifas || loadingMetrics}
+                className="mt-2 h-6 px-1.5 py-0 text-[10px] font-bold text-[#9A7B1C] hover:text-black hover:bg-[#D4AF37]/20 border border-[#D4AF37]/40 rounded-lg flex items-center gap-1 w-full justify-center"
+                title="Recalcular tarifas de serviços concluídos sem lançamento"
+              >
+                <RefreshCw className={`w-2.5 h-2.5 ${backfillingTarifas ? 'animate-spin' : ''}`} />
+                {backfillingTarifas ? 'Recalculando...' : 'Recalcular pendentes'}
+              </Button>
             </div>
 
             <div className="p-3.5 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC]">
