@@ -2,9 +2,9 @@
 
 ## Estado desta entrega
 
-Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foi aplicada a primeira migration, `identity_profiles_foundation` (versão remota `20261005211816`), criando `public.profiles` com RLS e privilégios por coluna. Veja `docs/database-status-0-15.md`.
+Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. A migration inicial está aplicada. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As duas migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -57,3 +57,7 @@ https://supabase.com/docs/guides/getting-started/tutorials/with-react
 ## Validação da primeira migration
 
 14 verificações SQL passaram no Supabase real e previamente em PostgreSQL WASM local (com funções Auth simuladas no teste local). As fixtures foram revertidas, deixando zero usuários e zero perfis persistentes. A API de dados recusou leitura anônima com 42501. Oito testes locais do adaptador passaram; TypeScript, build e lint do diretório Supabase aprovados. Nenhum login real, JWT forjado, fluxo de cadastro, email ou navegador foi testado. A sessão PocketBase continua separada. O advisor de segurança não retornou alertas após revogar EXECUTE de clientes da função de event trigger rls_auto_enable, mantendo o evento ativo. Isso não certifica todo o aplicativo.
+
+## Validação de vínculos
+
+27 verificações SQL de vínculo passaram no banco real, com BEGIN/ROLLBACK explícitos e zero fixtures persistentes. Oito novos testes locais do adaptador passaram (16 de perfis/vínculos no total), TypeScript/build/lint aprovados. Advisor de segurança sem alertas. Nenhuma tela foi redirecionada; main e aplicativo publicado preservados. Veja o status detalhado por pacote e limites em database-status-0-15.md.

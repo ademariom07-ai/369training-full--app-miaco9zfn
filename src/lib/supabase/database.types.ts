@@ -38,12 +38,110 @@ export type Database = {
         }
         Relationships: []
       }
+      student_professional_links: {
+        Row: {
+          accepted_at: string | null
+          professional_id: string
+          requested_at: string
+          revoked_at: string | null
+          state: string
+          student_id: string
+          version: number
+        }
+        Insert: {
+          accepted_at?: string | null
+          professional_id: string
+          requested_at?: string
+          revoked_at?: string | null
+          state: string
+          student_id: string
+          version?: number
+        }
+        Update: {
+          accepted_at?: string | null
+          professional_id?: string
+          requested_at?: string
+          revoked_at?: string | null
+          state?: string
+          student_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_professional_links_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_professional_links_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_student_link: {
+        Args: { p_expected_version: number; p_student_id: string }
+        Returns: {
+          accepted_at: string | null
+          professional_id: string
+          requested_at: string
+          revoked_at: string | null
+          state: string
+          student_id: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "student_professional_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      request_student_link: {
+        Args: { p_professional_id: string }
+        Returns: {
+          accepted_at: string | null
+          professional_id: string
+          requested_at: string
+          revoked_at: string | null
+          state: string
+          student_id: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "student_professional_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      revoke_student_link: {
+        Args: { p_expected_version: number; p_student_id: string }
+        Returns: {
+          accepted_at: string | null
+          professional_id: string
+          requested_at: string
+          revoked_at: string | null
+          state: string
+          student_id: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "student_professional_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never
