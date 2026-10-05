@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
+import { acceptStudentLink, revokeStudentLink, type StudentLink } from './links'
 import { readOwnProfile, createOwnProfile, renameOwnProfile, type OwnProfile } from './profiles'
 export type AccountState = { phase:'checking'|'signed_out'|'profile_missing'|'ready'|'error'; profile:OwnProfile|null; busy:boolean; error:string }
 type Client=SupabaseClient<Database>
@@ -41,5 +42,14 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   return operation(async()=>{const result=await client.auth.signInWithPassword({email:email.trim(),password});if(result.error||!result.data.session)throw Error('Login indisponível.')})
  }
  async function logout(){return operation(async()=>{const result=await client.auth.signOut({scope:'local'});if(result.error)throw Error('Saída indisponível.')})}
- return {start,refresh,login,logout,createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ function linkAction(row:StudentLink,action:'accept'|'revoke'){
+  const profile=state.profile
+  if(state.phase!=='ready'||!profile||busy||disposed)throw Error('Atualize sua conta antes de continuar.')
+  const participant=profile.role==='aluno'&&row.student_id===profile.id||profile.role==='profissional'&&row.professional_id===profile.id
+  if(!participant||row.state==='revoked'||action==='accept'&&(profile.role!=='profissional'||!profile.approved||row.state!=='pending'))throw Error('Ação indisponível.')
+  // Copy before awaiting: a stale UI object cannot change the RPC target/version.
+  const studentId=row.student_id,version=row.version
+  return operation(async()=>{if(action==='accept')await acceptStudentLink(studentId,version,client);else await revokeStudentLink(studentId,version,client)})
+ }
+ return {start,refresh,login,logout,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }
