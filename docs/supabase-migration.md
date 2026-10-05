@@ -61,3 +61,7 @@ https://supabase.com/docs/guides/getting-started/tutorials/with-react
 ## Validação de vínculos
 
 27 verificações SQL de vínculo passaram no banco real, com BEGIN/ROLLBACK explícitos e zero fixtures persistentes. Oito novos testes locais do adaptador passaram (16 de perfis/vínculos no total), TypeScript/build/lint aprovados. Advisor de segurança sem alertas. Nenhuma tela foi redirecionada; main e aplicativo publicado preservados. Veja o status detalhado por pacote e limites em database-status-0-15.md.
+
+## Rota de conta preparada
+
+A branch inclui /conta-supabase fora do contexto PocketBase, com login/restauração, verificação de identidade/perfil, criação e edição do próprio nome, leitura de vínculos e saída local. Nenhum módulo legado foi migrado ou publicado. Onze testes novos locais (27 Supabase no total) passaram; build, TypeScript e lint aprovados. Login real, cadastro Auth, recuperação de senha e navegador ainda pendentes. A prévia demonstrativa não foi atualizada. Consulte database-status-0-15.md para os limites e status por pacote.

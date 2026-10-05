@@ -19,7 +19,7 @@ A função existente public.rls_auto_enable teve EXECUTE revogado de PUBLIC/anon
 - Oito testes locais com SDK simulado das funções readOwnProfile/createOwnProfile/renameOwnProfile: identidade verificada, payload restrito, ID próprio, nome limitado, resposta de outra conta, mudança de token e erro sem confirmação otimista. Sem login HTTP ou navegador.
 - Tipos gerados do banco real; cliente tipado; build, TypeScript, lint do diretório Supabase e diff check aprovados. Sem mudança de dependências nesta etapa.
 
-As funções de perfil estão disponíveis na branch, mas ainda não são consumidas pelas telas. Não houve troca de autenticação, migração de dados, importação de arquivos ou execução das migrations PocketBase 0056–0059. A prévia estática continua independente. Não somar estes testes aos 318 testes da reconstrução de outro checkout como se fossem a mesma suíte.
+As funções de perfil passaram a ser consumidas apenas pela rota isolada /conta-supabase descrita na etapa de acesso abaixo; os módulos existentes continuam com PocketBase. Não houve troca de autenticação, migração de dados, importação de arquivos ou execução das migrations PocketBase 0056–0059. A prévia estática continua independente. Não somar estes testes aos 318 testes da reconstrução de outro checkout como se fossem a mesma suíte.
 
 ## Status por pacote
 
@@ -31,7 +31,7 @@ As funções de perfil estão disponíveis na branch, mas ainda não são consum
 | 3 | Usuários, ranking, rede, agenda | Parcial: agenda, rede e ranking pendentes |
 | 4 | Conclusão de serviços e fechamento | Parcial: transações/idempotência pendentes |
 | 5 | Repetição de arquivos anteriores | Parcial: depende dos módulos anteriores |
-| 6 | Login e autenticação | Parcial: schema inicial; login Supabase nas telas pendente |
+| 6 | Login e autenticação | Parcial: login e conta Supabase em rota isolada; homologação e migração geral pendentes |
 | 7 | Layout e acesso | Parcial: sem troca dos guards ou homologação no navegador |
 | 8 | Telas e histórico do aluno | Parcial: persistência Supabase pendente |
 | 9 | Telas profissionais | Parcial: vínculo no banco; telas, treino/dieta e avisos Supabase pendentes |
@@ -40,7 +40,7 @@ As funções de perfil estão disponíveis na branch, mas ainda não são consum
 | 12 | Ranking periódico | Parcial: fórmula e agendamento pendentes |
 | 13 | Turmas e resumo financeiro | Parcial: concorrência e pagamentos pendentes |
 | 14 | Revisão de migrations | Parcial: tradução/revisão de módulos pendente |
-| 15 | Inicialização frontend | Parcial: cliente/tipos preparados; integração das telas pendente |
+| 15 | Inicialização frontend | Parcial: cliente/tipos e rota de conta preparados; demais módulos pendentes |
 
 Totalmente aplicados: **0**. Uma migration concluída não significa um pacote completo.
 
@@ -67,3 +67,19 @@ As três funções públicas são SECURITY INVOKER; os núcleos SECURITY DEFINER
 Tipos regenerados do banco real; adaptador links.ts preparado para solicitar, aceitar, encerrar e ler o vínculo próprio ou lista profissional paginada (20 registros). Identidade verificada e respostas de sessão trocada descartadas; payloads não aceitam papel, aprovação, estado ou ator forjado. Oito testes novos com SDK simulado passaram, total de 16 testes locais de perfis/vínculos. TypeScript, build, lint do diretório e diff check aprovados.
 
 Limites: não houve login HTTP, assinatura JWT forjada, eventos de navegador ou teste com sessões concorrentes reais. Locks e PK estão implementados, mas concorrência precisa ser homologada. Não há histórico permanente de versões, trilha de auditoria ou notificação de pedido; a linha atual é reutilizada depois de revogada. Mudança de aprovação bloqueia leitura/aceite do profissional, mas não altera automaticamente o estado do vínculo. Dados clínicos futuros precisarão validar aprovação e vínculo no próprio acesso. Ainda sem catálogo público, importação PocketBase, mudança nas telas ou deploy. Todos os pacotes seguem parciais, zero completos.
+
+## Etapa de acesso — conta Supabase na branch
+
+Nova rota /conta-supabase, com formulário de email/senha usando signInWithPassword, restauração de sessão, verificação por getUser e perfil consultado do banco. A rota está fora de AuthProvider, RoleGuard, Layout e ReacceptanceModal do PocketBase. Os papéis são os do registro profiles; user_metadata, seleção visual de perfil ou retorno não verificado do login não autorizam acesso. Nenhuma sessão Supabase foi convertida em sessão PocketBase e não há redirecionamento para os dashboards antigos após esse login.
+
+A conta autenticada sem perfil pode criar somente o próprio nome/id (role aluno e approved=false no banco). A conta com perfil pode alterar somente o nome e consultar seu vínculo; profissional aprovado consulta os próprios vínculos em páginas de 20. Estado de carregamento/erro/vazio, atualização manual e saída local do dispositivo implementados. A interface ainda não solicita, aceita ou encerra vínculos; esses serviços seguem disponíveis no adaptador para a próxima etapa. Não há cadastro Auth, recuperação de senha ou solicitação de papel profissional nesta rodada; requer conta já cadastrada no Supabase.
+
+O controlador accountSession usa contador de geração para descartar restaurações antigas, limpa perfil durante mudança de sessão, agenda chamadas SDK para fora do callback síncrono onAuthStateChange (evitando deadlock) e remove listener/tarefa pendente ao desmontar. Operações de login/saída/criação/edição não podem concorrer na mesma instância; a interface desabilita os botões durante operação. Saída falha não é anunciada como sucesso. Senha não é gravada pelo aplicativo e é limpa do formulário ao término; persistência de sessão fica a cargo do SDK. Login simultâneo em outras abas ou mudanças de sessão durante gravação exigem homologação adicional; este bloqueio local não é idempotência de servidor.
+
+Atalhos de login com credenciais fixas foram removidos de src/pages/Login.tsx na branch. Isso não altera credenciais de contas existentes nem apaga histórico Git/ZIPs. O fluxo manual PocketBase permanece no aplicativo legado.
+
+11 testes novos do controlador e ligação estática da rota passaram, total de 27 testes locais Supabase (8 perfis + 8 vínculos + 11 sessão/ligação). Cobrem sessão vazia, restauração/login com papel de banco, perfil ausente, callback sem chamadas SDK imediatas, erro na saída, saída confirmada, envio repetido/saída concorrente bloqueados, descarte após desmontagem/logout, input inválido/papel inesperado e ausência dos atalhos. Os testes usam SDK simulado e conferência estática; não montam React nem executam login real. TypeScript, build, lint do diretório Supabase/nova página e diff check aprovados.
+
+Nenhuma migration, conta, email, senha de usuário ou dado do banco foi alterado nesta rodada. Duas migrations anteriores continuam aplicadas. Sem merge na main, publicação ou atualização da prévia. A versão demonstrativa existente não contém a nova rota. Próximas prioridades: homologar login/cadastro com contas de teste e navegador; conectar pedido/aceite/encerramento de vínculo às telas; catálogo profissional com projeção mínima; depois treino/dieta/avisos. Todos os pacotes seguem parciais, zero completos.
+
+Referência oficial: https://supabase.com/docs/guides/troubleshooting/why-is-my-supabase-api-call-not-returning-PGzXw0

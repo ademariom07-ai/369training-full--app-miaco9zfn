@@ -13,6 +13,7 @@ import RouteFallback from '@/components/RouteFallback'
 // Public Pages (Lazy)
 const Index = lazy(() => import('@/pages/Index'))
 const Login = lazy(() => import('@/pages/Login'))
+const SupabaseAccount = lazy(() => import('@/pages/SupabaseAccount'))
 const Cadastro = lazy(() => import('@/pages/Cadastro'))
 const TermosDeUso = lazy(() => import('@/pages/TermosDeUso'))
 const PoliticaDePrivacidade = lazy(() => import('@/pages/PoliticaDePrivacidade'))
@@ -55,11 +56,10 @@ const AdminRankingConfig = lazy(() => import('@/pages/admin/AdminRankingConfig')
 const AdminAuditoria = lazy(() => import('@/pages/admin/AdminAuditoria'))
 const AdminDocumentosLegais = lazy(() => import('@/pages/admin/AdminDocumentosLegais'))
 
-export default function App() {
+function LegacyApp() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               {/* Public Landing & Auth & Legal */}
@@ -469,8 +469,21 @@ export default function App() {
           <CookieConsentBanner />
           <ReacceptanceModal />
           <Toaster richColors position="top-right" />
-        </Router>
       </AuthProvider>
     </ErrorBoundary>
+  )
+}
+
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/conta-supabase" element={
+          <ErrorBoundary><Suspense fallback={<RouteFallback />}><SupabaseAccount /></Suspense></ErrorBoundary>
+        } />
+        <Route path="*" element={<LegacyApp />} />
+      </Routes>
+    </Router>
   )
 }
