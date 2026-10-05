@@ -1,9 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from './database.types'
 
-let client: SupabaseClient | undefined
+let client: SupabaseClient<Database> | undefined
 
 /** Optional client during migration. PocketBase remains the application's backend. */
-export function getSupabaseClient(): SupabaseClient {
+export function getSupabaseClient(): SupabaseClient<Database> {
   if (client) return client
 
   const url = import.meta.env.VITE_SUPABASE_URL?.trim()
@@ -19,7 +20,7 @@ export function getSupabaseClient(): SupabaseClient {
     throw new Error('Use apenas uma chave publicável do Supabase no frontend.')
   }
 
-  client = createClient(url, key, {
+  client = createClient<Database>(url, key, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,

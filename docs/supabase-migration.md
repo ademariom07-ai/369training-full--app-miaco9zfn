@@ -2,9 +2,9 @@
 
 ## Estado desta entrega
 
-Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Consulta em 05/10/2026: projeto ativo, sem tabelas public e sem migrações registradas.
+Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foi aplicada a primeira migration, `identity_profiles_foundation` (versão remota `20261005211816`), criando `public.profiles` com RLS e privilégios por coluna. Veja `docs/database-status-0-15.md`.
 
-Esta branch adiciona o SDK e um cliente opcional para React/Vite. Nenhuma tela, autenticação, operação financeira ou chamada PocketBase foi redirecionada. Não há migração aplicada, importação de dados ou deploy nesta entrega.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. A migration inicial está aplicada. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -40,7 +40,7 @@ O cliente é criado sob demanda: a ausência de configuração não impede as te
 - Arquivos do PocketBase → Storage com buckets e políticas separados por sensibilidade.
 - Hooks e crons → funções transacionais, Edge Functions e agendamentos; não copiar JavaScript PocketBase como SQL.
 
-Não usar o exemplo `todos`: ele não corresponde ao domínio do produto. Não ativar o Supabase como backend principal enquanto a estrutura estiver vazia.
+Não usar o exemplo `todos`: ele não corresponde ao domínio do produto. Não ativar o Supabase como backend principal enquanto identidade, vínculos e os módulos usados nas telas não estiverem homologados. A tabela profiles não representa os demais módulos.
 
 ## Verificações desta preparação
 
@@ -53,3 +53,7 @@ Não usar o exemplo `todos`: ele não corresponde ao domínio do produto. Não a
 ## Referência oficial
 
 https://supabase.com/docs/guides/getting-started/tutorials/with-react
+
+## Validação da primeira migration
+
+14 verificações SQL passaram no Supabase real e previamente em PostgreSQL WASM local (com funções Auth simuladas no teste local). As fixtures foram revertidas, deixando zero usuários e zero perfis persistentes. A API de dados recusou leitura anônima com 42501. Oito testes locais do adaptador passaram; TypeScript, build e lint do diretório Supabase aprovados. Nenhum login real, JWT forjado, fluxo de cadastro, email ou navegador foi testado. A sessão PocketBase continua separada. O advisor de segurança não retornou alertas após revogar EXECUTE de clientes da função de event trigger rls_auto_enable, mantendo o evento ativo. Isso não certifica todo o aplicativo.
