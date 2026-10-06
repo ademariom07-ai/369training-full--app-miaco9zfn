@@ -91,3 +91,7 @@ Sexta migration protected_training_plans (20261006131737) aplicada. Criação hu
 A sétima migration (`20261006133715_training_completion_records.sql`) acrescenta uma conclusão única por treino publicado, independente do aviso lido. O aluno registra por RPC protegida; profissional vinculado lê com as regras atuais do plano. Revogação e nova versão do vínculo impedem leitura de registros antigos. Sem pontos de ranking, sessões repetidas ou prova externa.
 
 Serviços, controlador e confirmação visual preparados em /conta-supabase. 16 verificações SQL reais revertidas, sete suítes SQL locais e 102 testes SDK simulados passaram; TypeScript/lint/build aprovados e advisor sem alertas. Zero usuários reais; Auth/navegador não homologados. Branch somente, prévia demonstrativa inalterada.
+
+## Preparação do ranking e cashback
+
+Simulador legado corrigido em centavos e cálculo local de pontos preparado com política/versionamento explícitos. Carteira aguarda fechamento confirmado. Exportação CSV protege contra fórmulas em texto. 120 testes locais (102 SDK +18 cálculo/exportação), sem novas migrations financeiras. Não há crédito, reserva de saque ou fechamento Supabase nesta etapa. Base do pool, redistribuição e piso/teto150 permanecem decisões pendentes; próximo backend deve usar ledger transacional e chaves de idempotência, sem copiar hooks PocketBase.

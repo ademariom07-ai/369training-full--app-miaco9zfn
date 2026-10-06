@@ -5,7 +5,7 @@ Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
 ## Estado consolidado atual
 
-Sete migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional , treino protegido com aviso e conclusão informada pelo aluno. Na branch, /conta-supabase contém login/cadastro/recuperação preparados, edição do próprio nome, vínculo, fila administrativa de candidaturas e treino textual com aviso de leitura e confirmação de conclusão. 102 testes locais com SDK simulado aprovados; TypeScript/build/lint aprovados. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
+Sete migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso e conclusão informada pelo aluno. Na branch, /conta-supabase contém login/cadastro/recuperação preparados, edição do próprio nome, vínculo, fila administrativa de candidaturas e treino textual com aviso de leitura e confirmação de conclusão. 120 testes locais aprovados: 102 do módulo Supabase com SDK simulado e 18 de ranking/cashback/CSV. TypeScript/build aprovados; lint dos módulos novos e simulador sem avisos, carteira legada com avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
 
 ## Etapa inicial aplicada
 
@@ -31,8 +31,8 @@ As funções de perfil passaram a ser consumidas apenas pela rota isolada /conta
 | --- | --- | --- |
 | 0 | Base, carteira, chat, administrativo | Parcial: identidade e análise de acesso profissional preparadas; carteira/chat/admin geral pendentes |
 | 1 | IA e wearable | Parcial: integrações, consentimento e backend pendentes |
-| 2 | Segurança, vínculo, cashback | Parcial: perfis isolados e pedido/aceite/encerramento ligados à conta; cashback/homologação pendentes |
-| 3 | Usuários, ranking, rede, agenda | Parcial: agenda, rede e ranking pendentes |
+| 2 | Segurança, vínculo, cashback | Parcial: perfis isolados e pedido/aceite/encerramento ligados à conta; simulador cashback corrigido; fechamento financeiro/Supabase e homologação pendentes |
+| 3 | Usuários, ranking, rede, agenda | Parcial: cálculo de ranking versionado preparado; agenda, rede e integração do ranking pendentes |
 | 4 | Conclusão de serviços e fechamento | Parcial: transações/idempotência pendentes |
 | 5 | Repetição de arquivos anteriores | Parcial: depende dos módulos anteriores |
 | 6 | Login e autenticação | Parcial: cadastro/login/recuperação preparados; emails/contas reais e migração geral pendentes |
@@ -41,7 +41,7 @@ As funções de perfil passaram a ser consumidas apenas pela rota isolada /conta
 | 9 | Telas profissionais | Parcial: conta/vínculo/aprovação e treino textual/aviso e leitura da conclusão do aluno preparados; dieta/revisões/dashboard pendentes |
 | 10 | Wearable, documentos e usuários | Parcial: documentos/consentimentos/Storage pendentes |
 | 11 | Consentimentos e financeiro | Parcial: schemas e validação pendentes |
-| 12 | Ranking periódico | Parcial: fórmula e agendamento pendentes |
+| 12 | Ranking periódico | Parcial: fórmulas explícitas preparadas para comparação; regra ativa e agendamento pendentes |
 | 13 | Turmas e resumo financeiro | Parcial: concorrência e pagamentos pendentes |
 | 14 | Revisão de migrations | Parcial: tradução/revisão de módulos pendente |
 | 15 | Inicialização frontend | Parcial: cliente/tipos e rota de conta preparados; demais módulos pendentes |
@@ -187,3 +187,19 @@ Na branch, aluno confirma a conclusão antes do envio; profissional visualiza �
 Validação: 16 verificações SQL aprovadas no banco real com BEGIN/ROLLBACK e subtransação; sete suítes SQL locais aprovadas; zero usuários/perfis/conclusões persistidos. Advisor de segurança sem alertas. Oito novos testes com SDK simulado, total 102 locais; TypeScript, lint, build e diff check aprovados. Testes não montam a interface React nem homologam Auth/navegador.
 
 Limites: conclusão única por publicação, sem comprovação externa, repetição de sessões, execução por exercício, edição/retirada da declaração ou progressão calculada. Consentimento clínico, retenção, dieta, revisão e demais módulos continuam pendentes. Nenhum pacote 0–15 completo. Alterações somente na branch, sem merge/main ou publicação. Prévia demonstrativa: https://wellness-369-demo.ademariom07.chatgpt.site .
+
+## Ranking e cashback — correção do simulador (06/10/2026)
+
+Código de ranking/cashback confirmado nos pacotes originais 0–15 (PocketBase). Esta etapa corrige o simulador presente na branch; não ativa hooks legados de fechamento/saque nem migra créditos ao Supabase. As sete migrations existentes permanecem as mesmas.
+
+`cashbackDistribution.ts` usa BigInt para pool e rateio em centavos, maiores resíduos com desempate por posição e níveis com peso racional exato do Caminho C. Totais individuais e por nível conciliam. Exclusões explícitas são respeitadas; dados reais sem plano/status confirmado ou plano do profissional vinculado não recebem estimativa. Lista real incompleta não vira participante fictício elegível. Níveis sem elegíveis mantêm valor reservado; não deslocam o valor ao último participante. Redistribuição entre níveis está pendente de regra aprovada.
+
+Simulação mantém fatores por posição dos arquivos e exclusão/redistribuição dentro do nível; não define regras oficiais do financeiro. A precisão de pesos foi corrigida: pequenos valores individuais podem diferir do simulador antigo que arredondava o corretor antecipadamente. Todas as 369.371 posições são calculadas e retornadas, sem truncamento silencioso. Limite de simulação: 500.000 posições.
+
+Planilha identifica simulação sem crédito, diferencia participantes fictícios/carregados, mostra erro de entrada e distribuição parcial quando existe reserva; exemplo oficial seleciona dados fictícios explicitamente. A carteira deixou de exibir previsão arbitrária por serviços × 2,5 + indicações × 5; mostra “Aguardando fechamento”. CSV informa simulação e neutraliza nomes/códigos/razões que poderiam ser interpretados como fórmulas de planilha; exportação com dados inválidos bloqueada.
+
+`rankingRules.ts` prepara cálculo e ordenação local determinística, com versão obrigatória e escolhas explícitas para indicação (max(n,1), 1+n, legado /18), PRO PARCEIRO (serviços reais, piso150 ou teto150) e avaliação arredondada/exata. Recebe contagens já qualificadas; não verifica serviços no banco nem ativa política por padrão. Não foi integrado aos hooks PocketBase ou a RPCs Supabase. Zero avaliações não são substituídas por cinco estrelas.
+
+Validação: 18 novos testes relevantes de cálculo/CSV e 102 existentes do módulo Supabase, total120; valores pequenos, níveis parciais, exclusões totais/parciais, plano vinculado desconhecido, posições duplicadas, montantes inválidos, estabilidade e população369.371. O caso de exclusão da posição1 em três posições agora distribui R$240,67 e reserva R$139,33, com resumo conciliado. TypeScript/build aprovados; módulos novos/simulador lint sem avisos. Carteira legada ainda possui avisos de imports não usados e dependência de effect anteriores à etapa. Sem montagem React, login real, teste concorrente, pagamento ou produção.
+
+Próximas prioridades: P0 conciliar base/percentual do pool e regra de redistribuição; P0 ledger transacional com reserva de saque e idempotência por restrição única; P1 escolher piso/teto150 e fórmula de indicação; P1 validar contagem aluno/profissional, elegibilidade e origem financeira; P1 homologar navegador e concorrência. Todos os pacotes continuam parciais, zero concluídos. Alterações somente na branch prep/supabase-vite, sem merge/main ou publicação.

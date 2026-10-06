@@ -1,15 +1,14 @@
+import {cashbackPreviewCsv} from '@/lib/cashbackCsv'
 import React, { useState, useMemo, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
-  Table,
   CheckCircle2,
   Sparkles,
   Download,
   Search,
-  Filter,
   DollarSign,
   TrendingUp,
   Award,
@@ -17,14 +16,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
-  RefreshCw,
   Info,
 } from 'lucide-react'
 import {
   calculateCashbackDistribution,
-  CashbackParticipant,
-  getLevelForPosition,
-  getPositionFactor,
 } from '@/lib/cashbackDistribution'
 import { toast } from 'sonner'
 
@@ -74,13 +69,14 @@ export function PlanilhaCashbackDistribuicao({
   const [termoBusca, setTermoBusca] = useState<string>('')
   const [somenteReais, setSomenteReais] = useState<boolean>(false)
   const [currentPage, setCurrentPage] = useState<number>(1)
+  const [useRealParticipants,setUseRealParticipants]=useState(true)
   const ITEMS_PER_PAGE = 25
 
   // Preparar lista de participantes reais a partir de realRankings
   const mappedRealParticipants = useMemo(() => {
-    return (realRankings || []).map((r, idx) => {
+    return (realRankings || []).map((r) => {
       const u = r.expand?.user
-      const pos = Number(r.ranking_position) || idx + 1
+      const pos = Number(r.ranking_position)
       const fallbackCode =
         typeof r.user === 'string' && r.user ? r.user.slice(0, 7).toUpperCase() : `369-P${pos}`
       const userCode = u?.referral_code || fallbackCode
@@ -96,25 +92,26 @@ export function PlanilhaCashbackDistribuicao({
         userCode: `${userCode} — ${firstName}`,
         name: rawName,
         email: u?.email || '',
-        role: u?.role || 'profissional',
-        plan: typeof u?.plan === 'string' ? u.plan : 'basico',
+        role: u?.role || '',
+        plan: typeof u?.plan === 'string' ? u.plan : '',
         points: Number(r.points) || 0,
         subscription_status:
-          typeof u?.subscription_status === 'string' ? u.subscription_status : 'ativa',
+          typeof u?.subscription_status === 'string' ? u.subscription_status : '',
         linked_professional: u?.linked_professional || '',
       }
     })
   }, [realRankings])
 
   // Rodar o motor de cálculo da distribuição (com redistribuição ativa)
-  const distributionResult = useMemo(() => {
-    return calculateCashbackDistribution(
-      Number(baseTarifas) || 0,
-      Math.max(1, Math.min(68719476735, Number(posicoesOcupadas) || 1023)),
-      mappedRealParticipants,
+  const calculation = useMemo(() => {
+    try { return {result:calculateCashbackDistribution(
+      baseTarifas,
+      posicoesOcupadas,
+      useRealParticipants?mappedRealParticipants:[],
       0, // Taxa adicional de excluídos
-    )
-  }, [baseTarifas, posicoesOcupadas, mappedRealParticipants])
+    ),error:''} } catch { return {result:calculateCashbackDistribution(0,1),error:'Confira a base (até duas casas decimais), as posições (1 a 500.000) e os participantes antes de simular.'} }
+  }, [baseTarifas, posicoesOcupadas, mappedRealParticipants,useRealParticipants])
+  const distributionResult=calculation.result
 
   // Filtragem da tabela
   const filteredParticipants = useMemo(() => {
@@ -153,6 +150,7 @@ export function PlanilhaCashbackDistribuicao({
 
   // Carregar Teste Oficial R$ 1.000.000 / 1.023 posições
   const handleLoadOfficialTest = () => {
+    setUseRealParticipants(false)
     setBaseTarifas(1000000)
     setPosicoesOcupadas(1023)
     setFiltroNivel('todos')
@@ -164,7 +162,8 @@ export function PlanilhaCashbackDistribuicao({
 
   // Carregar Simulação Baseada no Ranking Real
   const handleLoadRealDataSimulation = () => {
-    const realCount = Math.max(1, mappedRealParticipants.length)
+    setUseRealParticipants(true)
+    const realCount = Math.max(1, ...mappedRealParticipants.map(p=>p.ranking_position))
     setPosicoesOcupadas(realCount)
     setFiltroNivel('todos')
     setTermoBusca('')
@@ -174,30 +173,9 @@ export function PlanilhaCashbackDistribuicao({
 
   // Exportar CSV
   const handleExportCSV = () => {
-    const rows = [
-      [
-        'Posicao',
-        'Codigo_Participante',
-        'Nome',
-        'Nivel',
-        'Fator',
-        'Pontos',
-        'Status_Elegibilidade',
-        'Cashback_Mes_RS',
-      ],
-      ...filteredParticipants.map((p) => [
-        p.position,
-        `"${p.userCode.replace(/"/g, '""')}"`,
-        `"${p.name.replace(/"/g, '""')}"`,
-        p.level,
-        p.factor.toFixed(4),
-        p.points,
-        p.isExcluded ? `"${p.exclusionReason || 'Excluído (redistribuído)'}"` : '"Elegível"',
-        p.cashbackMonth.toFixed(2),
-      ]),
-    ]
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.join(';')).join('\n')
-    const encodedUri = encodeURI(csvContent)
+    if(calculation.error)return
+    const csvContent=cashbackPreviewCsv(filteredParticipants)
+    const encodedUri=URL.createObjectURL(new Blob(['\uFEFF',csvContent],{type:'text/csv;charset=utf-8'}))
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
     link.setAttribute(
@@ -207,6 +185,7 @@ export function PlanilhaCashbackDistribuicao({
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    setTimeout(()=>URL.revokeObjectURL(encodedUri),1000)
     toast.success('Planilha exportada em formato CSV!')
   }
 
@@ -217,10 +196,13 @@ export function PlanilhaCashbackDistribuicao({
   const pos512 = distributionResult.participants.find((p) => p.position === 512)
   const pos1023 = distributionResult.participants.find((p) => p.position === 1023)
 
-  const isExactPool = Math.abs(distributionResult.differenceToPool) < 0.05
+  const isExactPool = !calculation.error && distributionResult.differenceToPool === 0
 
   return (
     <Card className="bg-[#181818] border border-[#D4AF37]/40 p-6 rounded-2xl space-y-6 shadow-2xl">
+      <p role="status">{useRealParticipants&&mappedRealParticipants.length?'Participantes carregados.':'Participantes fictícios.'} Simulação de cashback. Não gera saldo ou crédito. Valores de níveis sem elegíveis permanecem reservados até definição da redistribuição entre níveis.</p>
+      {calculation.error&&<p role="alert">{calculation.error}</p>}
+
       {/* Top Banner / Título */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#2A2A2A]">
         <div>
@@ -252,7 +234,7 @@ export function PlanilhaCashbackDistribuicao({
           <Button
             type="button"
             variant="outline"
-            onClick={handleExportCSV}
+            onClick={handleExportCSV} disabled={!!calculation.error}
             className="border-[#D4AF37]/50 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs font-bold uppercase rounded-xl flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
@@ -292,16 +274,16 @@ export function PlanilhaCashbackDistribuicao({
           <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat flex items-center justify-between">
             <span>Posições Ocupadas na Rede</span>
             <span className="text-[10px] text-[#22C55E] font-mono">
-              Nível máx: {distributionResult.maxHabitedLevel} / 36
+              Níveis nesta simulação: {distributionResult.maxHabitedLevel}
             </span>
           </label>
           <Input
             type="number"
             min="1"
-            max="68719476735"
+            max="500000"
             value={posicoesOcupadas}
             onChange={(e) => {
-              setPosicoesOcupadas(Math.max(1, Math.min(68719476735, Number(e.target.value) || 1)))
+              setPosicoesOcupadas(Math.max(1, Math.min(500000, Number(e.target.value) || 1)))
               setCurrentPage(1)
             }}
             className="bg-[#181818] border-[#2A2A2A] text-white font-mono"
@@ -341,13 +323,13 @@ export function PlanilhaCashbackDistribuicao({
             <button
               type="button"
               onClick={() => {
-                setPosicoesOcupadas(68719476735)
+                setPosicoesOcupadas(369371)
                 setCurrentPage(1)
-                toast.success('Simulação até o Nível 36 (68.719.476.735 posições)!')
+                toast.success('Simulação de 369.371 posições; sem créditos financeiros.')
               }}
               className="text-[10px] bg-[#22C55E]/15 hover:bg-[#22C55E]/25 text-[#22C55E] font-bold px-2 py-0.5 rounded border border-[#22C55E]/40"
             >
-              Rodar até o Nível 36
+              Simular 369.371 posições
             </button>
             <button
               type="button"
@@ -362,10 +344,10 @@ export function PlanilhaCashbackDistribuicao({
         <div className="flex flex-col justify-between p-3 rounded-xl bg-[#181818] border border-[#2A2A2A]">
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400 uppercase font-semibold font-montserrat">
-              Status da Auditoria
+              Resultado da simulação
             </span>
             <Badge variant="outline" className="border-[#22C55E]/40 text-[#22C55E] bg-[#22C55E]/10">
-              <ShieldCheck className="w-3 h-3 mr-1" />✓ Fecha exato no pool
+              <ShieldCheck className="w-3 h-3 mr-1" />{isExactPool?'Pool integralmente simulado':'Distribuição parcial'}
             </Badge>
           </div>
           <div className="mt-2 space-y-1">
@@ -537,7 +519,7 @@ export function PlanilhaCashbackDistribuicao({
               })}
             </p>
             <span className="text-[10px] text-[#22C55E] font-inter font-semibold">
-              ✓ Fecha exato no pool (100% dos 38%)
+              {isExactPool?'Pool integralmente simulado':'Há valor reservado sem distribuição'}
             </span>
           </div>
         </div>

@@ -58,7 +58,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
   const [posicaoRanking, setPosicaoRanking] = useState<number>(1)
   const [pontuacaoTotal, setPontuacaoTotal] = useState<number>(0)
   // 4. Cashback do Mês (previsão conforme ranking e rede, disponível no fechamento)
-  const [cashbackPrevisaoMes, setCashbackPrevisaoMes] = useState<number>(0)
+  const [cashbackPrevisaoMes, setCashbackPrevisaoMes] = useState<number|null>(null)
   // 5. Resgatar Cashback (saldo de cashback disponível para resgate ESG)
   const [cashbackDisponivel, setCashbackDisponivel] = useState<number>(0)
   // 6. Saque e Depósito (saldo líquido disponível e movimentação PIX)
@@ -287,14 +287,8 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
         }
       }
 
-      // 7. Cashback do Mês (Bloco 4: Previsão do Fechamento)
-      if (isGratis) {
-        setCashbackPrevisaoMes(0)
-      } else {
-        // Estimativa baseada no pool 38% e na posição / nível
-        const estimativaPoolShare = servsThisMonthCount * (planMultiplier || 1) * 2.5 + valCount * 5
-        setCashbackPrevisaoMes(Number(estimativaPoolShare.toFixed(2)))
-      }
+      // No confirmed settlement estimate is supplied by the backend.
+      setCashbackPrevisaoMes(null)
     } catch (err) {
       console.error('Erro ao carregar carteira padronizada:', err)
     } finally {
@@ -571,10 +565,10 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
             <Percent className="w-4 h-4 text-[#FF7A00]" />
           </div>
           <p className="text-2xl sm:text-3xl font-black text-[#FF7A00] font-montserrat tracking-tight">
-            R$ {cashbackPrevisaoMes.toFixed(2)}
+            {cashbackPrevisaoMes===null?'Aguardando fechamento':`R$ ${cashbackPrevisaoMes.toFixed(2)}`}
           </p>
           <span className="text-[10px] text-amber-400 font-inter mt-1 block flex items-center gap-1">
-            <Clock className="w-3 h-3" /> Calculado no último dia do mês
+            <Clock className="w-3 h-3" /> Valor disponível após fechamento confirmado
           </span>
         </Card>
 
