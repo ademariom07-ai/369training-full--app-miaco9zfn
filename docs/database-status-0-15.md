@@ -5,7 +5,7 @@ Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
 ## Estado consolidado atual
 
-Seis migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional e treino protegido com aviso. Na branch, /conta-supabase contém login/cadastro/recuperação preparados, edição do próprio nome, vínculo, fila administrativa de candidaturas e treino textual com aviso de leitura. 94 testes locais com SDK simulado aprovados; TypeScript/build/lint aprovados. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
+Sete migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional , treino protegido com aviso e conclusão informada pelo aluno. Na branch, /conta-supabase contém login/cadastro/recuperação preparados, edição do próprio nome, vínculo, fila administrativa de candidaturas e treino textual com aviso de leitura e confirmação de conclusão. 102 testes locais com SDK simulado aprovados; TypeScript/build/lint aprovados. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
 
 ## Etapa inicial aplicada
 
@@ -37,8 +37,8 @@ As funções de perfil passaram a ser consumidas apenas pela rota isolada /conta
 | 5 | Repetição de arquivos anteriores | Parcial: depende dos módulos anteriores |
 | 6 | Login e autenticação | Parcial: cadastro/login/recuperação preparados; emails/contas reais e migração geral pendentes |
 | 7 | Layout e acesso | Parcial: sem troca dos guards ou homologação no navegador |
-| 8 | Telas e histórico do aluno | Parcial: leitura de treino e aviso na conta; execução/progresso e histórico geral pendentes |
-| 9 | Telas profissionais | Parcial: conta/vínculo/aprovação e treino textual com aviso preparados; dieta/revisões/dashboard pendentes |
+| 8 | Telas e histórico do aluno | Parcial: leitura de treino/aviso e conclusão única informada pelo aluno; sessões repetidas, progresso detalhado e histórico geral pendentes |
+| 9 | Telas profissionais | Parcial: conta/vínculo/aprovação e treino textual/aviso e leitura da conclusão do aluno preparados; dieta/revisões/dashboard pendentes |
 | 10 | Wearable, documentos e usuários | Parcial: documentos/consentimentos/Storage pendentes |
 | 11 | Consentimentos e financeiro | Parcial: schemas e validação pendentes |
 | 12 | Ranking periódico | Parcial: fórmula e agendamento pendentes |
@@ -175,3 +175,15 @@ Controlador conserva em memória a chave para nova tentativa do mesmo envio apó
 Doze testes novos com SDK simulado, total atual 94: payload/key/versão mínimos, entrada inválida, troca de autor/sessão, resposta divergente, escopo/paginação, aviso próprio, marcação validada, servidor recusando, controlador por papel/estado/vínculo, mesma chave após falha, snapshot/bloqueio e erro sem sucesso otimista. TypeScript, build, lint e diff check aprovados. Não montam React nem exercitam login HTTP/navegador; não foram criados treinos reais ou emails.
 
 Sem publicação, merge na main ou migração PocketBase. Todos os pacotes 0–15 seguem parciais; nenhum completo. Conteúdo/consentimento clínico específico, retenção/LGPD, revisão/cancelamento de plano, exercícios estruturados, execução/progresso, dieta e notificações gerais seguem pendentes. Treinos só foram preparados nesta área isolada, sem trocar os dashboards legados. Próximas prioridades: homologar Auth e estes fluxos com contas de teste, integrar termos/consentimentos; depois dieta/revisão e histórico, agenda/pagamento e ranking.
+
+## Registro de conclusão — pacotes 8 e 9 (06/10/2026)
+
+Migration `20261006133715_training_completion_records.sql` aplicada e versão conferida no histórico remoto. `training_completions` registra uma conclusão informada pelo próprio aluno por publicação, com data do servidor e chave composta que mantém o aluno do treino. RPC deriva aluno da identidade autenticada, exige vínculo ativo na versão do plano e aprovação atual do profissional de Educação Física. Reenvio preserva o registro e a data. Não marca aviso como lido nem atribui pontos de ranking.
+
+RLS permite leitura aos participantes atualmente autorizados pelo plano. Admin, terceiros, anônimos e vínculos encerrados não leem; reabrir vínculo não restaura planos da versão antiga. Clientes não inserem, alteram nem excluem diretamente. Locks de perfis seguem a ordem dos fluxos de vínculo; concorrência com sessões reais ainda não homologada.
+
+Na branch, aluno confirma a conclusão antes do envio; profissional visualiza “Concluído (informado pelo aluno)”. Serviços vinculam conta/planos, rejeitam respostas divergentes e troca de sessão; controlador bloqueia envio simultâneo. O estado só é carregado após resposta do servidor.
+
+Validação: 16 verificações SQL aprovadas no banco real com BEGIN/ROLLBACK e subtransação; sete suítes SQL locais aprovadas; zero usuários/perfis/conclusões persistidos. Advisor de segurança sem alertas. Oito novos testes com SDK simulado, total 102 locais; TypeScript, lint, build e diff check aprovados. Testes não montam a interface React nem homologam Auth/navegador.
+
+Limites: conclusão única por publicação, sem comprovação externa, repetição de sessões, execução por exercício, edição/retirada da declaração ou progressão calculada. Consentimento clínico, retenção, dieta, revisão e demais módulos continuam pendentes. Nenhum pacote 0–15 completo. Alterações somente na branch, sem merge/main ou publicação. Prévia demonstrativa: https://wellness-369-demo.ademariom07.chatgpt.site .

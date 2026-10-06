@@ -178,6 +178,32 @@ export type Database = {
           },
         ]
       }
+      training_completions: {
+        Row: {
+          completed_at: string
+          plan_id: string
+          student_id: string
+        }
+        Insert: {
+          completed_at?: string
+          plan_id: string
+          student_id: string
+        }
+        Update: {
+          completed_at?: string
+          plan_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_completions_plan_id_student_id_fkey"
+            columns: ["plan_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id", "student_id"]
+          },
+        ]
+      }
       training_plan_notifications: {
         Row: {
           created_at: string
@@ -281,6 +307,20 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "student_professional_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      complete_training_plan: {
+        Args: { p_plan_id: string }
+        Returns: {
+          completed_at: string
+          plan_id: string
+          student_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "training_completions"
           isOneToOne: false
           isSetofReturn: true
         }

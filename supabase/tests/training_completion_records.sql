@@ -1,0 +1,44 @@
+begin;
+do $test$
+declare a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); p uuid:=gen_random_uuid(); z uuid:=gen_random_uuid(); plan public.training_plans; completion public.training_completions; stamp timestamptz; checks integer:=0;
+begin
+ begin
+  insert into auth.users(id) values(a),(b),(p),(z);
+  insert into public.profiles(id,display_name,role,approved) values(a,'Student','aluno',false),(b,'Other student','aluno',false),(p,'Professional','profissional',true),(z,'Admin','admin',false);
+  insert into public.professional_applications(applicant_id,applicant_name,specialty,credential,status,reviewed_at,review_reason) values(p,'Professional','educacao_fisica','Fixture','approved',now(),'Fixture checked');
+  set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);perform public.request_student_link(p);
+  perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);perform public.accept_student_link(a,1);
+  select * into plan from public.create_training_plan(a,1,gen_random_uuid(),'Fixture title','Fixture text');
+  begin perform public.complete_training_plan(plan.id);raise exception 'professional completes for pupil';exception when insufficient_privilege then checks:=checks+1;end;
+  perform set_config('request.jwt.claims',json_build_object('sub',b,'is_anonymous',false,'user_metadata',json_build_object('role','admin'))::text,true);
+  begin perform public.complete_training_plan(plan.id);raise exception 'other pupil completes';exception when insufficient_privilege then checks:=checks+1;end;
+  perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);
+  select * into completion from public.complete_training_plan(plan.id);stamp:=completion.completed_at;
+  if completion.student_id<>a or completion.plan_id<>plan.id or stamp is null then raise exception 'completion wrong';end if;checks:=checks+1;
+  select * into completion from public.complete_training_plan(plan.id);if completion.completed_at<>stamp or (select count(*) from public.training_completions)<>1 then raise exception 'repeat duplicated or changed timestamp';end if;checks:=checks+1;
+  if exists(select 1 from public.training_plan_notifications where read_at is not null) then raise exception 'completion implies notice read';end if;checks:=checks+1;
+  begin insert into public.training_completions(plan_id,student_id) values(plan.id,b);raise exception 'direct insert';exception when insufficient_privilege then checks:=checks+1;end;
+  begin update public.training_completions set completed_at=now() where plan_id=plan.id;raise exception 'direct update';exception when insufficient_privilege then checks:=checks+1;end;
+  begin delete from public.training_completions where plan_id=plan.id;raise exception 'direct delete';exception when insufficient_privilege then checks:=checks+1;end;
+  perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);
+  if not exists(select 1 from public.training_completions where plan_id=plan.id and student_id=a) then raise exception 'professional cannot read record';end if;checks:=checks+1;
+  perform set_config('request.jwt.claims',json_build_object('sub',z,'is_anonymous',false)::text,true);
+  if exists(select 1 from public.training_completions) then raise exception 'admin blanket access';end if;checks:=checks+1;
+  perform set_config('request.jwt.claims',json_build_object('sub',b,'is_anonymous',false)::text,true);
+  if exists(select 1 from public.training_completions) then raise exception 'third party reads';end if;checks:=checks+1;
+  perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);perform public.revoke_student_link(a,1);
+  if exists(select 1 from public.training_completions) then raise exception 'revoked read';end if;checks:=checks+1;
+  begin perform public.complete_training_plan(plan.id);raise exception 'revoked completes';exception when insufficient_privilege then checks:=checks+1;end;
+  perform public.request_student_link(p);
+  perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);perform public.accept_student_link(a,2);
+  if exists(select 1 from public.training_completions) then raise exception 'reopen restores prior records';end if;checks:=checks+1;
+  perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',true)::text,true);
+  begin perform public.complete_training_plan(plan.id);raise exception 'anonymous Auth completes';exception when insufficient_privilege then checks:=checks+1;end;
+  set local role anon;
+  begin perform public.complete_training_plan(plan.id);raise exception 'anon executes';exception when insufficient_privilege then checks:=checks+1;end;
+  reset role;if checks<>16 then raise exception 'unexpected checks %',checks;end if;
+  raise sqlstate 'W3691' using message='16 completion checks passed; rollback fixtures';
+ exception when sqlstate 'W3691' then null;
+ end;
+end $test$;
+rollback;

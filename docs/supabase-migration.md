@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As seis migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As sete migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -85,3 +85,9 @@ Quinta migration professional_applications (20261006122253) aplicada. Solicitaç
 ## Treino textual protegido com aviso
 
 Sexta migration protected_training_plans (20261006131737) aplicada. Criação humana de treino requer Educação Física aprovada e versão exata de vínculo ativo; publicação e aviso do aluno são atômicos e idempotentes por chave. RLS nega terceiros/admin, revogação/perda de aprovação e reabertura do vínculo não liberam planos antigos. Aluno marca aviso como lido sem registrar execução. Área isolada /conta-supabase preparada na branch, com paginação e payload/sessão verificados. 31 verificações SQL passaram local/banco real, zero fixtures e advisor sem alertas. Total atual: 94 testes locais com SDK simulado, TypeScript/build/lint aprovados. Sem dieta, exercícios estruturados, revisão, consentimento clínico integrado, navegador/contas reais ou publicação. Veja database-status-0-15.md.
+
+## Conclusão informada pelo aluno
+
+A sétima migration (`20261006133715_training_completion_records.sql`) acrescenta uma conclusão única por treino publicado, independente do aviso lido. O aluno registra por RPC protegida; profissional vinculado lê com as regras atuais do plano. Revogação e nova versão do vínculo impedem leitura de registros antigos. Sem pontos de ranking, sessões repetidas ou prova externa.
+
+Serviços, controlador e confirmação visual preparados em /conta-supabase. 16 verificações SQL reais revertidas, sete suítes SQL locais e 102 testes SDK simulados passaram; TypeScript/lint/build aprovados e advisor sem alertas. Zero usuários reais; Auth/navegador não homologados. Branch somente, prévia demonstrativa inalterada.
