@@ -186,12 +186,17 @@ onRecordAfterUpdateSuccess((e) => {
       }
       const linkedProf = u.get('linked_professional')
 
-      if (role === 'aluno' && linkedProf) {
-        try {
-          const pUser = $app.findRecordById('users', linkedProf)
-          const pPlan = (pUser.get('plan') || 'basico').toLowerCase()
-          effectiveMultiplier = planMultipliers[pPlan] ?? 1
-        } catch (_) {}
+      if (role === 'aluno') {
+        const multAluno = planMultipliers[rawPlan] ?? 0
+        let multProf = 0
+        if (linkedProf) {
+          try {
+            const pUser = $app.findRecordById('users', linkedProf)
+            const pPlan = (pUser.get('plan') || 'basico').toLowerCase()
+            multProf = planMultipliers[pPlan] ?? 0
+          } catch (_) {}
+        }
+        effectiveMultiplier = linkedProf ? Math.max(multAluno, multProf) : multAluno
       }
 
       // Regra de Inadimplência: se assinatura estiver inadimplente, downgrade temporário para Grátis (0x)
@@ -533,12 +538,17 @@ onRecordAfterCreateSuccess((e) => {
       }
       const linkedProf = u.get('linked_professional')
 
-      if (role === 'aluno' && linkedProf) {
-        try {
-          const pUser = $app.findRecordById('users', linkedProf)
-          const pPlan = (pUser.get('plan') || 'basico').toLowerCase()
-          effectiveMultiplier = planMultipliers[pPlan] ?? 1
-        } catch (_) {}
+      if (role === 'aluno') {
+        const multAluno = planMultipliers[rawPlan] ?? 0
+        let multProf = 0
+        if (linkedProf) {
+          try {
+            const pUser = $app.findRecordById('users', linkedProf)
+            const pPlan = (pUser.get('plan') || 'basico').toLowerCase()
+            multProf = planMultipliers[pPlan] ?? 0
+          } catch (_) {}
+        }
+        effectiveMultiplier = linkedProf ? Math.max(multAluno, multProf) : multAluno
       }
 
       const subStatus = u.get('subscription_status') || 'ativa'

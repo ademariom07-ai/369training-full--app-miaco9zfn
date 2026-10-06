@@ -50,12 +50,17 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       effectiveMultiplier = planMultipliers['basico'] ?? 1 // 1x — parceiro grátis pontua como Básico
     }
     const linkedProfId = u.get('linked_professional')
-    if (role === 'aluno' && linkedProfId) {
-      try {
-        const profUser = $app.findRecordById('users', linkedProfId)
-        const profPlan = (profUser.get('plan') || 'basico').toLowerCase()
-        effectiveMultiplier = planMultipliers[profPlan] ?? 1
-      } catch (_) {}
+    if (role === 'aluno') {
+      const multAluno = planMultipliers[rawPlan] ?? 0
+      let multProf = 0
+      if (linkedProfId) {
+        try {
+          const profUser = $app.findRecordById('users', linkedProfId)
+          const profPlan = (profUser.get('plan') || 'basico').toLowerCase()
+          multProf = planMultipliers[profPlan] ?? 0
+        } catch (_) {}
+      }
+      effectiveMultiplier = linkedProfId ? Math.max(multAluno, multProf) : multAluno
     }
 
     const subStatus = (u.get('subscription_status') || 'ativa').toLowerCase()

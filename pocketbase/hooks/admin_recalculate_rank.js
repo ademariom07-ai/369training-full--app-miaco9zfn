@@ -1,10 +1,11 @@
 // Recalculate partner & student ranking on demand (Caminho C - v2)
 // Formula: PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
-// - Aluno vinculado pontua no plano do profissional
+// - Para aluno vinculado: effectiveMultiplier = Math.max(multAluno, multProf)
+// - Para parceiro grátis: pontua como Básico (1x), tie_break plan_effective = 'basico_gratis'
 // - Aluno inadimplente sem vínculo sofre downgrade temporário para 0x
 // - PRO PARCEIRO: teto de contagem min(serviços reais, pro_parceiro_floor = 150)
-// - Parceiro Grátis: pontua como Básico (1x), tie_break plan_effective = 'basico_gratis'
-// Otimizado para suportar até 10k+ usuários com agregação SQL direta e execução rápida em lotes!
+// - Serviços válidos: validation_status = 'totalmente_validada'
+// Regras JSVM: Usar $app.findRecordsByFilter e $app.findRecordById (compatível com PocketBase Goja sem problemas de ponteiro de .all())
 
 routerAdd(
   'POST',
@@ -53,134 +54,118 @@ routerAdd(
         }
       } catch (_) {}
 
-      // Agregações de serviços concluídos válidos no mês por usuário
+      // 1. Carregar todos os usuários aprovados via findRecordsByFilter
+      const approvedUsers = $app.findRecordsByFilter(
+        'users',
+        'approved = true',
+        '-created',
+        5000,
+        0,
+      )
+
+      // Mapa de usuários para lookup rápido
+      const profPlans = {}
+      for (const u of approvedUsers) {
+        if ((u.get('role') || 'aluno') === 'profissional') {
+          profPlans[u.id] = (u.get('plan') || 'basico').toLowerCase()
+        }
+      }
+
+      // 2. Agregações de serviços concluídos com validação mútua no mês corrente
       const serviceCounts = {}
       try {
-        const svcRows = $app
-          .db()
-          .newQuery(`
-          SELECT
-            CASE
-              WHEN (professional IS NOT NULL AND professional != '') THEN professional
-              ELSE student
-            END as user_id,
-            COUNT(*) as total_svc
-          FROM services
-          WHERE status = 'concluido'
-            AND validation_status = 'totalmente_validada'
-            AND created >= {:monthStart}
-            AND NOT (
-              (type LIKE '%treino%' OR type LIKE '%workout%')
-              AND (professional IS NULL OR professional = '')
-            )
-          GROUP BY user_id
-        `)
-          .bind({ monthStart: currentMonthStart })
-          .all()
+        const servicesThisMonth = $app.findRecordsByFilter(
+          'services',
+          `status = 'concluido' && validation_status = 'totalmente_validada' && created >= '${currentMonthStart}'`,
+          '-created',
+          10000,
+          0,
+        )
 
-        for (const row of svcRows) {
-          if (row.user_id) {
-            serviceCounts[row.user_id] = parseInt(row.total_svc, 10) || 0
+        for (const svc of servicesThisMonth) {
+          const p = svc.get('professional')
+          const s = svc.get('student')
+          const t = (svc.get('type') || '').toLowerCase()
+          const isWorkoutType =
+            t === 'treino_ia' ||
+            t === 'treino' ||
+            t.indexOf('treino') !== -1 ||
+            t.indexOf('workout') !== -1
+
+          if (isWorkoutType && (!p || p === '')) {
+            continue
+          }
+
+          if (p) {
+            serviceCounts[p] = (serviceCounts[p] || 0) + 1
+          }
+          if (s) {
+            serviceCounts[s] = (serviceCounts[s] || 0) + 1
           }
         }
-      } catch (err) {
-        console.warn('Erro ao consultar agregação de serviços:', err)
+      } catch (svcErr) {
+        console.warn('Aviso ao agregar servicos via findRecordsByFilter:', svcErr)
       }
 
-      // Agregações de indicações no mês por usuário
+      // 3. Agregações de indicações no mês corrente
       const monthRefCounts = {}
       try {
-        const refMonthRows = $app
-          .db()
-          .newQuery(`
-          SELECT referrer, COUNT(*) as total_ref
-          FROM referrals
-          WHERE created >= {:monthStart}
-          GROUP BY referrer
-        `)
-          .bind({ monthStart: currentMonthStart })
-          .all()
-
-        for (const row of refMonthRows) {
-          if (row.referrer) {
-            monthRefCounts[row.referrer] = parseInt(row.total_ref, 10) || 0
+        const refsThisMonth = $app.findRecordsByFilter(
+          'referrals',
+          `created >= '${currentMonthStart}'`,
+          '-created',
+          10000,
+          0,
+        )
+        for (const ref of refsThisMonth) {
+          const refId = ref.get('referrer')
+          if (refId) {
+            monthRefCounts[refId] = (monthRefCounts[refId] || 0) + 1
           }
         }
-      } catch (err) {
-        console.warn('Erro ao consultar indicações do mês:', err)
+      } catch (refErr) {
+        console.warn('Aviso ao agregar indicacoes do mes via findRecordsByFilter:', refErr)
       }
 
-      // Agregações de indicações totais
+      // 4. Agregações de indicações totais
       const allRefCounts = {}
       try {
-        const refAllRows = $app
-          .db()
-          .newQuery(`
-          SELECT referrer, COUNT(*) as total_ref
-          FROM referrals
-          GROUP BY referrer
-        `)
-          .all()
-
-        for (const row of refAllRows) {
-          if (row.referrer) {
-            allRefCounts[row.referrer] = parseInt(row.total_ref, 10) || 0
+        const allRefs = $app.findRecordsByFilter('referrals', 'id != ""', '-created', 10000, 0)
+        for (const ref of allRefs) {
+          const refId = ref.get('referrer')
+          if (refId) {
+            allRefCounts[refId] = (allRefCounts[refId] || 0) + 1
           }
         }
-      } catch (err) {
-        console.warn('Erro ao consultar indicações totais:', err)
+      } catch (allRefErr) {
+        console.warn('Aviso ao agregar indicacoes totais via findRecordsByFilter:', allRefErr)
       }
 
-      // Agregações de pontos passados de snapshots fechados
+      // 5. Agregações de pontos passados de snapshots fechados (ciclos != cycle corrente)
       const pastSnapPoints = {}
       try {
-        const snapRows = $app
-          .db()
-          .newQuery(`
-          SELECT user, SUM(points) as total_past
-          FROM monthly_rank_snapshots
-          WHERE cycle != {:cycle}
-          GROUP BY user
-        `)
-          .bind({ cycle: cycle })
-          .all()
-
-        for (const row of snapRows) {
-          if (row.user) {
-            pastSnapPoints[row.user] = parseFloat(row.total_past) || 0
+        const pastSnaps = $app.findRecordsByFilter(
+          'monthly_rank_snapshots',
+          `cycle != '${cycle}'`,
+          '-created',
+          10000,
+          0,
+        )
+        for (const snap of pastSnaps) {
+          const uid = snap.get('user')
+          if (uid) {
+            pastSnapPoints[uid] = (pastSnapPoints[uid] || 0) + (Number(snap.get('points')) || 0)
           }
         }
-      } catch (err) {
-        console.warn('Erro ao consultar snapshots passados:', err)
+      } catch (snapErr) {
+        console.warn('Aviso ao agregar snapshots passados via findRecordsByFilter:', snapErr)
       }
-
-      // Mapa de planos dos profissionais para herança de alunos patrocinados
-      const profPlans = {}
-      try {
-        const pRows = $app
-          .db()
-          .newQuery("SELECT id, plan FROM users WHERE role = 'profissional'")
-          .all()
-        for (const pr of pRows) {
-          profPlans[pr.id] = (pr.plan || 'basico').toLowerCase()
-        }
-      } catch (_) {}
-
-      // Buscar todos os usuários aprovados
-      const usersRows = $app
-        .db()
-        .newQuery(`
-        SELECT id, name, role, plan, subscription_status, linked_professional, rating_avg, created
-        FROM users
-        WHERE approved = 1
-      `)
-        .all()
 
       const scores = []
 
-      for (const u of usersRows) {
-        const rawPlan = (u.plan || 'gratis').toLowerCase()
-        const role = u.role || 'aluno'
+      for (const u of approvedUsers) {
+        const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
+        const role = u.get('role') || 'aluno'
         const isProParceiro = rawPlan === 'pro_parceiro'
         const isPartnerGratis = role === 'profissional' && rawPlan === 'gratis'
 
@@ -188,15 +173,21 @@ routerAdd(
         if (isPartnerGratis) {
           effectiveMultiplier = planMultipliers['basico'] ?? 1 // 1x — pontua como Básico
         }
-        const linkedProfId = u.linked_professional
+        const linkedProfId = u.get('linked_professional')
 
-        if (role === 'aluno' && linkedProfId && profPlans[linkedProfId]) {
-          const profPlan = profPlans[linkedProfId]
-          effectiveMultiplier = planMultipliers[profPlan] ?? 1
+        if (role === 'aluno') {
+          const multAluno = planMultipliers[rawPlan] ?? 0
+          if (linkedProfId) {
+            const profPlan = profPlans[linkedProfId] || 'basico'
+            const multProf = planMultipliers[profPlan] ?? 0
+            effectiveMultiplier = Math.max(multAluno, multProf)
+          } else {
+            effectiveMultiplier = multAluno
+          }
         }
 
         // Regra de inadimplência
-        const subStatus = (u.subscription_status || 'ativa').toLowerCase()
+        const subStatus = (u.get('subscription_status') || 'ativa').toLowerCase()
         if (
           (subStatus === 'inadimplente' || subStatus === 'cancelada') &&
           !linkedProfId &&
@@ -218,9 +209,10 @@ routerAdd(
         const indicacoesCount = monthRefCounts[u.id] || 0
         const totalIndicacoes = allRefCounts[u.id] || 0
 
-        const avaliacao = Math.round(Number(u.rating_avg) || 5)
+        const avaliacao = Math.round(Number(u.get('rating_avg')) || 5)
 
-        const createdDate = u.created ? new Date(u.created.replace(' ', 'T')) : new Date()
+        const uCreated = u.get('created')
+        const createdDate = uCreated ? new Date(String(uCreated).replace(' ', 'T')) : new Date()
         const diffMonths = Math.max(
           1,
           Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)),
@@ -250,7 +242,7 @@ routerAdd(
           monthly_points: monthlyPoints,
           closed_past_points: closedPastPoints,
           total_points: totalPoints,
-          created: u.created,
+          created: uCreated,
         })
       }
 
@@ -265,45 +257,55 @@ routerAdd(
         return new Date(a.created).getTime() - new Date(b.created).getTime()
       })
 
-      // Gravar entradas do ranking no ciclo atual com SQL direto (.all()/.execute() sem transação)
+      // 6. Limpar entradas de ciclos passados em rank_entries
       try {
-        // 1. Limpar entradas de ciclos passados em rank_entries
-        $app
-          .db()
-          .newQuery('DELETE FROM rank_entries WHERE cycle != {:cycle}')
-          .bind({ cycle: cycle })
-          .execute()
+        const oldEntries = $app.findRecordsByFilter(
+          'rank_entries',
+          `cycle != '${cycle}'`,
+          '-created',
+          5000,
+          0,
+        )
+        for (const oldRec of oldEntries) {
+          try {
+            $app.delete(oldRec)
+          } catch (_) {}
+        }
       } catch (delErr) {
         console.warn('Aviso ao limpar rank_entries de ciclos passados:', delErr)
       }
 
-      // 2. Mapear IDs de rank_entries já existentes para este ciclo
+      // 7. Atualizar ou inserir registros no rank_entries
+      const rankCol = $app.findCollectionByNameOrId('rank_entries')
       const existingEntries = {}
       try {
-        const rows = $app
-          .db()
-          .newQuery('SELECT id, user FROM rank_entries WHERE cycle = {:cycle}')
-          .bind({ cycle: cycle })
-          .all()
-        for (const r of rows) {
-          if (r.user && !existingEntries[r.user]) {
-            existingEntries[r.user] = r.id
+        const currentEntries = $app.findRecordsByFilter(
+          'rank_entries',
+          `cycle = '${cycle}'`,
+          '-created',
+          5000,
+          0,
+        )
+        for (const r of currentEntries) {
+          const uid = r.get('user')
+          if (uid && !existingEntries[uid]) {
+            existingEntries[uid] = r
           }
         }
       } catch (fetchErr) {
         console.warn('Aviso ao consultar rank_entries existentes:', fetchErr)
       }
 
-      // 3. Atualizar ou inserir em lotes
       for (let i = 0; i < scores.length; i++) {
         const s = scores[i]
         const pos = i + 1
-        const existingId = existingEntries[s.user_id]
-        const id =
-          existingId ||
-          ($security.md5('rank_' + cycle + '_' + s.user_id) + '123456789012345')
-            .slice(0, 15)
-            .toLowerCase()
+
+        let entry = existingEntries[s.user_id]
+        if (!entry) {
+          entry = new Record(rankCol)
+          entry.set('user', s.user_id)
+          entry.set('cycle', cycle)
+        }
 
         const tieBreakObj = {
           stars: s.stars,
@@ -318,37 +320,19 @@ routerAdd(
         if (s.role === 'profissional' && s.plan === 'gratis') {
           tieBreakObj.plan_effective = 'basico_gratis'
         }
-        const tieBreak = JSON.stringify(tieBreakObj)
+
+        entry.set('points', s.total_points)
+        entry.set('services_count', s.services_count)
+        entry.set('referrals_count', s.referrals_count)
+        entry.set('referrals_this_cycle', s.referrals_this_cycle)
+        entry.set('stars', s.stars)
+        entry.set('ranking_position', pos)
+        entry.set('tie_break_details', tieBreakObj)
 
         try {
-          $app
-            .db()
-            .newQuery(`
-            INSERT OR REPLACE INTO rank_entries (
-              id, created, updated, user, cycle, points, services_count,
-              referrals_count, referrals_this_cycle, stars, ranking_position, tie_break_details
-            ) VALUES (
-              {:id}, {:created}, {:updated}, {:user}, {:cycle}, {:points}, {:services_count},
-              {:referrals_count}, {:referrals_this_cycle}, {:stars}, {:ranking_position}, {:tie_break_details}
-            )
-          `)
-            .bind({
-              id: id,
-              created: nowIso,
-              updated: nowIso,
-              user: s.user_id,
-              cycle: cycle,
-              points: s.total_points,
-              services_count: s.services_count,
-              referrals_count: s.referrals_count,
-              referrals_this_cycle: s.referrals_this_cycle,
-              stars: s.stars,
-              ranking_position: pos,
-              tie_break_details: tieBreak,
-            })
-            .execute()
-        } catch (insertErr) {
-          console.warn(`Erro ao salvar rank_entry do usuário ${s.user_id}:`, insertErr)
+          $app.save(entry)
+        } catch (saveErr) {
+          console.warn(`Erro ao salvar rank_entry do usuario ${s.user_id}:`, saveErr)
         }
       }
 

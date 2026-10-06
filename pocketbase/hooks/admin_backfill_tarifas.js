@@ -228,12 +228,17 @@ routerAdd(
           }
           const linkedProf = u.get('linked_professional')
 
-          if (uRole === 'aluno' && linkedProf) {
-            try {
-              const pUser = $app.findRecordById('users', linkedProf)
-              const pPlan = (pUser.get('plan') || 'basico').toLowerCase()
-              effectiveMultiplier = planMultipliers[pPlan] ?? 1
-            } catch (_) {}
+          if (uRole === 'aluno') {
+            const multAluno = planMultipliers[rawPlan] ?? 0
+            let multProf = 0
+            if (linkedProf) {
+              try {
+                const pUser = $app.findRecordById('users', linkedProf)
+                const pPlan = (pUser.get('plan') || 'basico').toLowerCase()
+                multProf = planMultipliers[pPlan] ?? 0
+              } catch (_) {}
+            }
+            effectiveMultiplier = linkedProf ? Math.max(multAluno, multProf) : multAluno
           }
 
           const subStatus = u.get('subscription_status') || 'ativa'
