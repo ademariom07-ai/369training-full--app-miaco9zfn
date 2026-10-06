@@ -67,7 +67,7 @@ routerAdd(
             COUNT(*) as total_svc
           FROM services
           WHERE status = 'concluido'
-            AND validated = 1
+            AND validation_status = 'totalmente_validada'
             AND created >= {:monthStart}
             AND NOT (
               (type LIKE '%treino%' OR type LIKE '%workout%')

@@ -208,8 +208,8 @@ onRecordAfterUpdateSuccess((e) => {
 
       const serviceFilter =
         role === 'profissional'
-          ? `professional = '${u.id}' && status = 'concluido' && validated = true && created >= '${currentMonthStart}'`
-          : `student = '${u.id}' && status = 'concluido' && validated = true && created >= '${currentMonthStart}'`
+          ? `professional = '${u.id}' && status = 'concluido' && validation_status = 'totalmente_validada' && created >= '${currentMonthStart}'`
+          : `student = '${u.id}' && status = 'concluido' && validation_status = 'totalmente_validada' && created >= '${currentMonthStart}'`
 
       const rawServicesThisMonth = $app.findRecordsByFilter(
         'services',
@@ -554,8 +554,8 @@ onRecordAfterCreateSuccess((e) => {
 
       const serviceFilter =
         role === 'profissional'
-          ? `professional = '${u.id}' && status = 'concluido' && validated = true && created >= '${currentMonthStart}'`
-          : `student = '${u.id}' && status = 'concluido' && validated = true && created >= '${currentMonthStart}'`
+          ? `professional = '${u.id}' && status = 'concluido' && validation_status = 'totalmente_validada' && created >= '${currentMonthStart}'`
+          : `student = '${u.id}' && status = 'concluido' && validation_status = 'totalmente_validada' && created >= '${currentMonthStart}'`
 
       const rawServicesThisMonth = $app.findRecordsByFilter(
         'services',

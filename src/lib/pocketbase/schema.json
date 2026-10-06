@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T12:13:51.191Z",
+  "generatedAt": "2026-10-06T13:03:00.461Z",
   "collections": [
     {
       "name": "users",
@@ -3847,8 +3847,8 @@
       "name": "service_reviews",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (reviewer = @request.auth.id || reviewee = @request.auth.id || @request.auth.role = 'admin')",
-        "view": "@request.auth.id != '' && (reviewer = @request.auth.id || reviewee = @request.auth.id || @request.auth.role = 'admin')",
+        "list": "@request.auth.id != \"\" && (@request.auth.id = reviewer || @request.auth.id = reviewee || @request.auth.role = \"admin\")",
+        "view": "@request.auth.id != \"\" && (@request.auth.id = reviewer || @request.auth.id = reviewee || @request.auth.role = \"admin\")",
         "create": "@request.auth.id != '' && @request.body.reviewer = @request.auth.id",
         "update": "@request.auth.id != '' && (reviewer = @request.auth.id || @request.auth.role = 'admin')",
         "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"

@@ -1,11 +1,11 @@
 // Hook triggered whenever a service review is submitted
-// Regras de Produto:
-// 1. Quando uma avaliação mútua é criada (service_reviews):
-//    - O serviço correspondente tem o estado de validação atualizado:
-//      * 1ª avaliação recebida: valida o serviço (validated = true, validation_status = 'validada', validated_at = now)
-//      * Se já houver 2 avaliações (profissional e aluno): validation_status = 'totalmente_validada'
-//    - Atualiza rating_avg do usuário avaliado (reviewee)
-//    - Dispara recálculo instantâneo do ranking (já que a aula agora está validada para efeito de coeficiente de pontuação!)
+// Regras de Produto MÚTUA ESTREITA:
+// 1. Quando uma avaliação é criada (service_reviews):
+//    - 1ª avaliação: serviço fica com validation_status = 'validada', validated = false (NÃO pontua ainda).
+//    - 2ª avaliação (avaliação mútua entre parceiro e aluno): serviço passa a validation_status = 'totalmente_validada'
+//      e validated = true (APENAS AQUI o serviço é habilitado para pontuação no ranking!).
+// 2. Atualiza rating_avg do usuário avaliado (reviewee)
+// 3. Dispara recálculo instantâneo do ranking (apenas serviços totalmente_validada pontuam)
 
 onRecordAfterCreateSuccess((e) => {
   const review = e.record
@@ -16,7 +16,7 @@ onRecordAfterCreateSuccess((e) => {
 
   if (!serviceId) return
 
-  // 1. Atualizar o serviço (validação)
+  // 1. Atualizar o serviço (validação mútua estrita)
   try {
     const service = $app.findRecordById('services', serviceId)
     if (service) {
@@ -30,15 +30,18 @@ onRecordAfterCreateSuccess((e) => {
       )
 
       const reviewCount = allReviewsForService.length
-      service.set('validated', true)
       if (!service.get('validated_at')) {
         service.set('validated_at', new Date().toISOString().replace('T', ' '))
       }
 
       if (reviewCount >= 2) {
+        // Ambas as partes avaliaram: serviço validado mutuamente!
         service.set('validation_status', 'totalmente_validada')
+        service.set('validated', true)
       } else {
+        // Apenas uma das partes avaliou: aguarda a outra parte; NÃO pontua ainda!
         service.set('validation_status', 'validada')
+        service.set('validated', false)
       }
 
       $app.save(service)
@@ -142,11 +145,11 @@ onRecordAfterCreateSuccess((e) => {
         continue
       }
 
-      // IMPORTANTE: apenas serviços CONCLUÍDOS e VALIDADOS pela avaliação mútua!
+      // IMPORTANTE: apenas serviços CONCLUÍDOS e COM AVALIAÇÃO MÚTUA ('totalmente_validada')!
       const serviceFilter =
         role === 'profissional'
-          ? `professional = '${u.id}' && status = 'concluido' && validated = true && created >= '${currentMonthStart}'`
-          : `student = '${u.id}' && status = 'concluido' && validated = true && created >= '${currentMonthStart}'`
+          ? `professional = '${u.id}' && status = 'concluido' && validation_status = 'totalmente_validada' && created >= '${currentMonthStart}'`
+          : `student = '${u.id}' && status = 'concluido' && validation_status = 'totalmente_validada' && created >= '${currentMonthStart}'`
 
       const rawServicesThisMonth = $app.findRecordsByFilter(
         'services',
