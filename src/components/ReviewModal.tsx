@@ -8,8 +8,9 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Star, Loader2, Award, CheckCircle2 } from 'lucide-react'
+import { Star, Loader2, Award, CheckCircle2, AlertTriangle } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
+import { ClientResponseError } from 'pocketbase'
 import { toast } from 'sonner'
 import type { ServiceReviewRecord } from '@/services/api'
 
@@ -38,27 +39,39 @@ export default function ReviewModal({
   const [hoverRating, setHoverRating] = useState<number>(0)
   const [message, setMessage] = useState<string>(existingReview?.message || '')
   const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Reset or initialize when opened
   React.useEffect(() => {
-    if (existingReview) {
-      setRating(existingReview.rating || 5)
-      setMessage(existingReview.message || '')
-    } else {
-      setRating(5)
-      setMessage('')
+    if (isOpen) {
+      setErrorMessage(null)
+      if (existingReview) {
+        setRating(existingReview.rating || 5)
+        setMessage(existingReview.message || '')
+      } else {
+        setRating(5)
+        setMessage('')
+      }
     }
   }, [existingReview, isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (submitting) return
+
+    setErrorMessage(null)
+
     if (!pb.authStore.record?.id) {
-      toast.error('Você precisa estar autenticado para avaliar.')
+      const authErr = 'Você precisa estar autenticado para avaliar.'
+      setErrorMessage(authErr)
+      toast.error(authErr)
       return
     }
 
     if (rating < 1 || rating > 5) {
-      toast.error('Por favor, selecione uma nota de 1 a 5 estrelas.')
+      const ratingErr = 'Por favor, selecione uma nota de 1 a 5 estrelas.'
+      setErrorMessage(ratingErr)
+      toast.error(ratingErr)
       return
     }
 
@@ -90,8 +103,70 @@ export default function ReviewModal({
       onSuccess(saved)
       onClose()
     } catch (err: unknown) {
-      const error = err as { message?: string }
-      toast.error(error.message || 'Erro ao enviar avaliação.')
+      // Diferenciar falha de rede / transitória de erros com resposta do servidor (ex.: HTTP 400 de validação)
+      let userFriendlyMessage = 'Erro ao enviar avaliação. Tente novamente.'
+
+      const isNetworkError =
+        (err instanceof TypeError &&
+          /failed to fetch|networkerror|load failed/i.test(err.message)) ||
+        (err instanceof ClientResponseError && (err.status === 0 || !err.status)) ||
+        (typeof err === 'object' &&
+          err !== null &&
+          'status' in err &&
+          ((err as { status?: number }).status === 0 || !(err as { status?: number }).status)) ||
+        (typeof err === 'object' &&
+          err !== null &&
+          'message' in err &&
+          typeof (err as { message?: unknown }).message === 'string' &&
+          /failed to fetch|network\s?error|failed to connect/i.test(
+            (err as { message: string }).message,
+          ))
+
+      if (isNetworkError) {
+        userFriendlyMessage =
+          'Falha de conexão ao enviar a avaliação. Verifique sua internet e tente novamente — sua avaliação NÃO foi registrada.'
+      } else if (err instanceof ClientResponseError) {
+        // HTTP 400 ou outro código com resposta do PocketBase
+        const responseData = err.response?.data
+        if (responseData && typeof responseData === 'object') {
+          const detailMessages: string[] = []
+          for (const [key, detail] of Object.entries(responseData)) {
+            if (
+              detail &&
+              typeof detail === 'object' &&
+              'message' in detail &&
+              typeof (detail as { message: unknown }).message === 'string'
+            ) {
+              const msg = (detail as { message: string }).message
+              if (/unique|already exists|duplicad/i.test(msg) || /unique/i.test(key)) {
+                detailMessages.push(
+                  'Você já enviou uma avaliação para esta aula (limite de uma avaliação por pessoa por aula).',
+                )
+              } else {
+                detailMessages.push(`${key}: ${msg}`)
+              }
+            }
+          }
+          if (detailMessages.length > 0) {
+            userFriendlyMessage = detailMessages.join(' ')
+          } else if (err.message) {
+            userFriendlyMessage = err.message
+          }
+        } else if (err.message) {
+          if (/unique|already exists/i.test(err.message)) {
+            userFriendlyMessage =
+              'Você já enviou uma avaliação para esta aula (limite de uma avaliação por pessoa por aula).'
+          } else {
+            userFriendlyMessage = err.message
+          }
+        }
+      } else if (err instanceof Error && err.message) {
+        userFriendlyMessage = err.message
+      }
+
+      setErrorMessage(userFriendlyMessage)
+      toast.error(userFriendlyMessage)
+      // Observação: NÃO fechar o modal e NÃO limpar o formulário (dados mantidos nos states)
     } finally {
       setSubmitting(false)
     }
@@ -179,6 +254,17 @@ export default function ReviewModal({
               maxLength={1000}
             />
           </div>
+
+          {/* Alerta de erro na submissão */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2 animate-in fade-in-50">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+              <div className="space-y-0.5">
+                <span className="font-semibold block text-red-900">Não foi possível enviar</span>
+                <span className="leading-tight text-red-700 block">{errorMessage}</span>
+              </div>
+            </div>
+          )}
 
           {/* Dica informativa de validação */}
           <div className="p-3 rounded-xl bg-[#0057FF]/5 border border-[#0057FF]/20 text-[11px] text-[#0057FF] flex items-start gap-2">
