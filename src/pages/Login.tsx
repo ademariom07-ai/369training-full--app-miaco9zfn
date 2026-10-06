@@ -90,7 +90,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF7] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f7f6f3] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
       {/* Background radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#D4AF37]/15 rounded-full blur-[130px] pointer-events-none" />
 
@@ -101,7 +101,7 @@ export default function Login() {
             <CrestLogo size={72} />
           </Link>
           <h1 className="text-3xl font-extrabold font-montserrat uppercase gold-gradient-text tracking-wider">
-            369TRAINING
+            369WWLLNESS
           </h1>
           <p className="text-xs text-gray-500 font-inter mt-1 tracking-wider uppercase font-semibold">
             Acesso à Plataforma
@@ -159,7 +159,7 @@ export default function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="seu.email@exemplo.com"
-                      className="pl-10 bg-[#FAFAF7] border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#D4AF37]"
+                      className="pl-10 bg-white border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#D4AF37]"
                       required
                     />
                   </div>
@@ -188,7 +188,7 @@ export default function Login() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="pl-10 bg-[#FAFAF7] border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#D4AF37]"
+                      className="pl-10 bg-white border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#D4AF37]"
                       required
                     />
                   </div>
@@ -212,7 +212,7 @@ export default function Login() {
                     type="button"
                     disabled={loading}
                     onClick={() => handleQuickLogin('admin')}
-                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-[#FAFAF7] border border-[#E5E3DC] text-gray-700 hover:border-[#D4AF37] hover:text-[#B8962E] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
+                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-white border border-[#E5E3DC] text-gray-700 hover:border-[#D4AF37] hover:text-[#B8962E] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
                   >
                     {quickLoadingRole === 'admin' ? (
                       <Loader2 className="w-3 h-3 animate-spin text-[#D4AF37]" />
@@ -223,7 +223,7 @@ export default function Login() {
                     type="button"
                     disabled={loading}
                     onClick={() => handleQuickLogin('profissional')}
-                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-[#FAFAF7] border border-[#E5E3DC] text-gray-700 hover:border-[#D4AF37] hover:text-[#B8962E] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
+                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-white border border-[#E5E3DC] text-gray-700 hover:border-[#D4AF37] hover:text-[#B8962E] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
                   >
                     {quickLoadingRole === 'profissional' ? (
                       <Loader2 className="w-3 h-3 animate-spin text-[#D4AF37]" />
@@ -234,7 +234,7 @@ export default function Login() {
                     type="button"
                     disabled={loading}
                     onClick={() => handleQuickLogin('aluno')}
-                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-[#FAFAF7] border border-[#E5E3DC] text-gray-700 hover:border-[#0057FF] hover:text-[#0057FF] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
+                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-white border border-[#E5E3DC] text-gray-700 hover:border-[#0057FF] hover:text-[#0057FF] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
                   >
                     {quickLoadingRole === 'aluno' ? (
                       <Loader2 className="w-3 h-3 animate-spin text-[#0057FF]" />

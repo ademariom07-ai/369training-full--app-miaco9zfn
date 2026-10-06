@@ -93,7 +93,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
 
   // Configuração real de PIX obtida da platform_config
   const [platformPixKey, setPlatformPixKey] = useState('financeiro@369training.com')
-  const [platformPixHolder, setPlatformPixHolder] = useState('369TRAINING LTDA')
+  const [platformPixHolder, setPlatformPixHolder] = useState('369WWLLNESS LTDA')
 
   const userPlan = (user?.plan || 'gratis').toLowerCase()
   const isGratis = userPlan === 'gratis'
@@ -447,7 +447,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
               : 'Carteira, Ranking & Cashback (Profissional)'}
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 font-inter mt-1">
-            Padronização 369TRAINING:{' '}
+            Padronização 369WWLLNESS:{' '}
             <strong className="text-white">
               PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
             </strong>

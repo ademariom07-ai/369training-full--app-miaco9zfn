@@ -124,7 +124,7 @@ export function HidratacaoSection() {
           playAlertSound(soundOption)
 
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('💧 Hora de se Hidratar! (369TRAINING)', {
+            new Notification('💧 Hora de se Hidratar! (369WWLLNESS)', {
               body: `Beba um copo de água (250ml) para manter seu rendimento e atingir sua meta de ${dailyTargetMl}ml.`,
               icon: '/og-image.png',
             })

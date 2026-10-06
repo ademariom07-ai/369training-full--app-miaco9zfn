@@ -135,7 +135,7 @@ export default function AlunoHome() {
           </span>
         </div>
 
-        <div className="w-full h-4 bg-[#FAFAF7] rounded-full overflow-hidden border border-[#E5E3DC] p-0.5">
+        <div className="w-full h-4 bg-[#f7f6f3] rounded-full overflow-hidden border border-[#E5E3DC] p-0.5">
           <div
             className="h-full rounded-full bg-gradient-to-r from-[#0057FF] via-[#8A67FF] to-[#D4AF37] relative animate-shimmer transition-all duration-500"
             style={{ width: `${weeklyProgress}%` }}

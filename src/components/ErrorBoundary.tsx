@@ -86,7 +86,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
               <div>
                 <span className="text-[11px] font-bold tracking-widest text-[#D4AF37] uppercase font-montserrat">
-                  369 TRAINING • RECUPERAÇÃO DE SISTEMA
+                  369WWLLNESS • RECUPERAÇÃO DE SISTEMA
                 </span>
                 <h1 className="text-xl sm:text-2xl font-black font-montserrat text-white mt-1">
                   Ops! Algo inesperado aconteceu nesta tela
@@ -152,7 +152,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             {/* Subtle subtext */}
             <p className="text-center text-[10px] text-gray-500 font-inter mt-5">
-              369TRAINING • Legado, Foco & Estratégia • Modelo Híbrido Protegido
+              369WWLLNESS • Legado, Foco & Estratégia • Modelo Híbrido Protegido
             </p>
           </Card>
         </div>

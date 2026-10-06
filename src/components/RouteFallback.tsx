@@ -3,7 +3,7 @@ import React from 'react'
 export default function RouteFallback() {
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-center bg-[#FAFAF7]"
+      className="min-h-screen w-full flex flex-col items-center justify-center bg-[#f7f6f3]"
       role="status"
       aria-label="Carregando..."
     >

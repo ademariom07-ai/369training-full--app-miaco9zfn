@@ -517,7 +517,7 @@ export default function MeuHistorico() {
             Dossiê Integrado do Atleta
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-white uppercase tracking-tight">
-            Meu Histórico • 369TRAINING
+            Meu Histórico • 369WWLLNESS
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 font-inter max-w-2xl leading-relaxed">
             Consulte sua evolução esportiva agregada em tempo real: treinos gerados pela IA,

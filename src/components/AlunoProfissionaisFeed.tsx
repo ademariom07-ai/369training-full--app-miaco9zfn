@@ -307,7 +307,7 @@ export function AlunoProfissionaisFeed() {
               </DialogHeader>
 
               {/* Bio & Details */}
-              <div className="p-3.5 rounded-xl bg-[#FAFAF7] border border-[#E5E3DC] space-y-2 text-xs">
+              <div className="p-3.5 rounded-xl bg-[#f7f6f3] border border-[#E5E3DC] space-y-2 text-xs">
                 <h4 className="font-bold text-[#B8962E] uppercase font-montserrat text-[11px]">
                   Apresentação Profissional
                 </h4>

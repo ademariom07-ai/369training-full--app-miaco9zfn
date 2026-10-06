@@ -292,7 +292,7 @@ export const SmartwatchDashboard: React.FC<SmartwatchDashboardProps> = ({ userRo
             </h1>
             <p className="text-xs sm:text-sm text-gray-300 font-inter">
               Conecte seu relógio inteligente para monitorar batimentos cardíacos, sono, passos,
-              treinos e queima calórica diretamente no seu ecossistema 369TRAINING.
+              treinos e queima calórica diretamente no seu ecossistema 369WWLLNESS.
             </p>
           </div>
 

@@ -22,7 +22,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center text-white">
         <Loader2 className="w-10 h-10 animate-spin text-[#D4AF37] mb-4" />
-        <p className="text-sm text-gray-400 font-inter">Carregando 369TRAINING...</p>
+        <p className="text-sm text-gray-400 font-inter">Carregando 369WWLLNESS...</p>
       </div>
     )
   }
@@ -45,7 +45,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
         <h2 className="text-2xl font-bold font-montserrat text-white mb-2">Acesso Restrito</h2>
         <p className="text-gray-400 max-w-md mb-6 font-inter text-sm">
           Seu perfil ({user.role || 'não definido'}) não tem permissão para acessar este módulo do
-          sistema 369TRAINING.
+          sistema 369WWLLNESS.
         </p>
         <div className="flex gap-4">
           <Button
@@ -80,7 +80,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
         <h2 className="text-2xl font-bold font-montserrat text-white mb-2">Perfil em Análise</h2>
         <p className="text-gray-400 max-w-lg mb-6 font-inter text-sm leading-relaxed">
           Olá, <span className="text-white font-semibold">{user.name}</span>! Seu cadastro como
-          profissional está sendo auditado pela equipe 369TRAINING. Seus documentos e registro
+          profissional está sendo auditado pela equipe 369WWLLNESS. Seus documentos e registro
           profissional estão em fase de validação para garantia de segurança dos alunos.
         </p>
         <div className="bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 max-w-md w-full mb-6 text-left text-xs text-gray-400 space-y-2">

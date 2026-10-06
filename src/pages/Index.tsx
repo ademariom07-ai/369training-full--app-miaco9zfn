@@ -19,7 +19,7 @@ import {
 
 export default function Index() {
   return (
-    <div className="min-h-screen bg-[#FAFAF7] text-[#1A1A1A] selection:bg-[#D4AF37] selection:text-black overflow-x-hidden">
+    <div className="min-h-screen bg-[#f7f6f3] text-[#1A1A1A] selection:bg-[#D4AF37] selection:text-black overflow-x-hidden">
       {/* Background Glows and Radial Pattern */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-[#D4AF37]/15 rounded-full blur-[100px]" />
@@ -60,7 +60,7 @@ export default function Index() {
         </div>
 
         <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight font-montserrat uppercase mb-4 gold-gradient-text">
-          369 TRAINING
+          369WWLLNESS
         </h1>
 
         <p className="text-xl sm:text-2xl font-bold gold-gradient-text tracking-widest uppercase font-montserrat mb-6">
@@ -160,7 +160,7 @@ export default function Index() {
             Simples e Poderoso
           </span>
           <h2 className="text-3xl font-bold font-montserrat text-[#1A1A1A] uppercase mt-1">
-            Como Funciona o 369TRAINING
+            Como Funciona o 369WWLLNESS
           </h2>
         </div>
 
@@ -224,7 +224,7 @@ export default function Index() {
               Pool de Parceiros 38% & Metas ESG
             </h2>
             <p className="text-gray-700 font-inter text-sm sm:text-base leading-relaxed mb-6">
-              A 369TRAINING revoluciona o mercado de saúde ao redistribuir{' '}
+              A 369WWLLNESS revoluciona o mercado de saúde ao redistribuir{' '}
               <strong className="text-[#1A1A1A] font-semibold">
                 38% de todo o pool de serviços
               </strong>{' '}
@@ -357,7 +357,7 @@ export default function Index() {
           </div>
 
           <div className="text-center md:text-right text-xs text-gray-500 font-inter">
-            © {new Date().getFullYear()} 369TRAINING. Todos os direitos reservados.
+            © {new Date().getFullYear()} 369WWLLNESS. Todos os direitos reservados.
           </div>
         </div>
       </footer>

@@ -174,7 +174,7 @@ export function MinhasAulasColetivasAluno({ currentUserId }: MinhasAulasColetiva
                 </div>
 
                 {/* Info Row */}
-                <div className="p-3 rounded-xl bg-[#FAFAF7] border border-[#E5E3DC] text-xs space-y-1.5 mb-3">
+                <div className="p-3 rounded-xl bg-[#f7f6f3] border border-[#E5E3DC] text-xs space-y-1.5 mb-3">
                   <div className="flex items-center justify-between text-gray-600">
                     <span className="flex items-center gap-1.5 font-medium">
                       <Calendar className="w-3.5 h-3.5 text-[#B8962E]" />
@@ -314,7 +314,7 @@ export function MinhasAulasColetivasAluno({ currentUserId }: MinhasAulasColetiva
                 alt="Selfie Coletiva da Turma"
                 className="w-full h-72 rounded-xl object-cover border border-[#D4AF37] shadow-md"
               />
-              <div className="p-3 bg-[#FAFAF7] rounded-xl text-xs space-y-1">
+              <div className="p-3 bg-[#f7f6f3] rounded-xl text-xs space-y-1">
                 <p className="font-bold text-[#1A1A1A]">{activeSessionSelfie.title}</p>
                 <p className="text-gray-500">
                   Data: {activeSessionSelfie.date} às {activeSessionSelfie.start_time}

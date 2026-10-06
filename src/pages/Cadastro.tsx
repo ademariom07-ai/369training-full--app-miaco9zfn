@@ -463,7 +463,7 @@ export default function Cadastro() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF7] flex flex-col justify-center items-center px-4 pt-12 pb-32 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f7f6f3] flex flex-col justify-center items-center px-4 pt-12 pb-32 relative overflow-hidden">
       {/* Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D4AF37]/15 rounded-full blur-[140px] pointer-events-none" />
 
@@ -474,7 +474,7 @@ export default function Cadastro() {
             <CrestLogo size={68} />
           </Link>
           <h1 className="text-3xl font-extrabold font-montserrat uppercase gold-gradient-text tracking-wider">
-            369TRAINING
+            369WWLLNESS
           </h1>
           <p className="text-xs text-[#6B7280] font-inter mt-1 tracking-wider uppercase">
             Criar Nova Conta no Ecossistema
@@ -1346,7 +1346,7 @@ export default function Cadastro() {
               </h2>
               <p className="text-xs text-[#6B7280] font-inter mt-1.5">
                 Responda este breve questionário para que os profissionais e assistentes da
-                369TRAINING adaptem seus treinos desde o primeiro dia.
+                369WWLLNESS adaptem seus treinos desde o primeiro dia.
               </p>
             </div>
 

@@ -216,7 +216,7 @@ export function LegalDocViewer({ slugOverride }: LegalDocViewerProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF7] text-[#1A1A1A] selection:bg-[#D4AF37] selection:text-black font-inter">
+    <div className="min-h-screen bg-[#f7f6f3] text-[#1A1A1A] selection:bg-[#D4AF37] selection:text-black font-inter">
       {/* Header */}
       <header className="border-b border-[#E5E3DC] bg-white/90 backdrop-blur-md sticky top-0 z-30 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -373,7 +373,7 @@ export function LegalDocViewer({ slugOverride }: LegalDocViewerProps) {
       {/* Footer */}
       <footer className="border-t border-[#E5E3DC] bg-white py-6 px-6 text-center text-xs text-[#6B7280] font-inter">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} 369TRAINING LTDA. CNPJ: 00.000.000/0001-00</p>
+          <p>© {new Date().getFullYear()} 369WWLLNESS LTDA. CNPJ: 00.000.000/0001-00</p>
           <div className="flex gap-4 text-xs">
             <Link to="/politica-de-privacidade" className="text-gray-400 hover:text-[#D4AF37]">
               Privacidade
