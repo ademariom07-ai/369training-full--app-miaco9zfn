@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As três migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As quatro migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -69,3 +69,7 @@ A branch inclui /conta-supabase fora do contexto PocketBase, com login/restaura�
 ## Catálogo e pedido de vínculo
 
 A conta /conta-supabase oferece catálogo paginado mínimo para aluno sem vínculo pendente/ativo, solicitação por profissional escolhido, aceite pelo profissional aprovado e encerramento confirmado pelos participantes. Catálogo e protocolo são funções do banco, sem ampliar RLS de profiles ou acesso clínico. Total atual: 47 testes locais com SDK simulado; 15 novas verificações SQL do catálogo passaram no banco real e local, zero fixtures persistentes e advisor sem alertas. TypeScript/build/lint aprovados. Três migrations aplicadas; interface salva somente na branch. Login/cadastro/recuperação, nomes dos participantes e navegação com contas reais ainda precisam de homologação. A prévia permanece demonstrativa. Nenhum pacote 0–15 está completo.
+
+## Nomes dos participantes
+
+A quarta migration participant_link_summary (20261006012514) acrescenta RPC de vínculos próprios com nome mínimo da contraparte somente em pending/active, condicionado a papel/aprovação atuais. Não amplia acesso direto a profiles; nomes não são devolvidos em revoked. A conta usa essa leitura na lista e confirmação de encerramento. 22 verificações SQL passaram no banco real e local; zero fixtures persistentes e advisor sem alertas. Total atual: 57 testes locais com SDK simulado, TypeScript/build/lint aprovados. Contas reais e navegação ainda não homologadas; nenhuma publicação. Veja database-status-0-15.md.

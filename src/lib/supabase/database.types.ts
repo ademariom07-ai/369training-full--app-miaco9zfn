@@ -113,6 +113,19 @@ export type Database = {
           professional_id: string
         }[]
       }
+      list_participant_links: {
+        Args: { p_page: number }
+        Returns: {
+          accepted_at: string
+          participant_name: string
+          professional_id: string
+          requested_at: string
+          revoked_at: string
+          state: string
+          student_id: string
+          version: number
+        }[]
+      }
       request_student_link: {
         Args: { p_professional_id: string }
         Returns: {
