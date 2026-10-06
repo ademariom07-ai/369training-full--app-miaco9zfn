@@ -12,3 +12,7 @@ it('signed-out caller never invokes RPC',async()=>{const m=mock();m.state.signed
 it('session change rejects successful RPC response',async()=>{const m=mock();m.onResult(()=>{m.state.token='t2'});await expect(requestStudentLink(provider,m.client)).rejects.toThrow('Sessão alterada')})
 it('own and professional reads bind actor and professional pagination is limited to twenty',async()=>{const s=mock();await readMyStudentLink(s.client);expect(s.calls).toContainEqual(['eq','student_id',student]);const p=mock(provider);await readProfessionalLinks(2,p.client);expect(p.calls).toContainEqual(['eq','professional_id',provider]);expect(p.calls).toContainEqual(['range',20,39])})
 it('server denial never produces optimistic success',async()=>{const m=mock();m.fail();await expect(requestStudentLink(provider,m.client)).rejects.toThrow('Não foi possível pedir')})
+
+it('request rejects revoked response instead of showing request success',async()=>{const m=mock();m.setRow({state:'revoked'});await expect(requestStudentLink(provider,m.client)).rejects.toThrow()})
+
+it('request from old account UI cannot target a newly restored student account',async()=>{const m=mock();m.state.id=other;await expect(requestStudentLink(provider,m.client,student)).rejects.toThrow('Sessão alterada');expect(m.calls).toEqual([])})

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
-import { acceptStudentLink, revokeStudentLink, type StudentLink } from './links'
+import { requestStudentLink, acceptStudentLink, revokeStudentLink, type StudentLink } from './links'
 import { readOwnProfile, createOwnProfile, renameOwnProfile, type OwnProfile } from './profiles'
 export type AccountState = { phase:'checking'|'signed_out'|'profile_missing'|'ready'|'error'; profile:OwnProfile|null; busy:boolean; error:string }
 type Client=SupabaseClient<Database>
@@ -51,5 +51,10 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const studentId=row.student_id,version=row.version
   return operation(async()=>{if(action==='accept')await acceptStudentLink(studentId,version,client);else await revokeStudentLink(studentId,version,client)})
  }
- return {start,refresh,login,logout,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ function requestLink(professionalId:string){
+  if(state.phase!=='ready'||state.profile?.role!=='aluno'||busy||disposed)throw Error('Pedido indisponível.')
+  const studentId=state.profile.id
+  return operation(async()=>{await requestStudentLink(professionalId,client,studentId)})
+ }
+ return {start,refresh,login,logout,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }

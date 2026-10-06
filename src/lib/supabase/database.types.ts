@@ -106,6 +106,13 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      list_approved_professionals: {
+        Args: { p_page: number }
+        Returns: {
+          display_name: string
+          professional_id: string
+        }[]
+      }
       request_student_link: {
         Args: { p_professional_id: string }
         Returns: {

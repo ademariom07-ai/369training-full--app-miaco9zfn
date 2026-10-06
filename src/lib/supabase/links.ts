@@ -8,11 +8,12 @@ const fields = 'student_id,professional_id,state,version,requested_at,accepted_a
 function uuid(value: string) { if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new Error('Conta inválida.'); return value.toLowerCase() }
 function version(value: number) { if (!Number.isSafeInteger(value) || value < 1) throw new Error('Versão inválida.'); return value }
 function participant(row: StudentLink, id: string) { if (row.student_id !== id && row.professional_id !== id) throw new Error('Vínculo indisponível.'); return row }
-export async function requestStudentLink(professionalId: string, client: Client = getSupabaseClient()) {
+export async function requestStudentLink(professionalId: string, client: Client = getSupabaseClient(), expectedStudentId?: string) {
   const p_professional_id = uuid(professionalId), actor = await verifiedIdentity(client)
+  if (expectedStudentId !== undefined && actor.id !== expectedStudentId) throw new Error('Sessão alterada. Atualize a tela.')
   const result = await client.rpc('request_student_link', { p_professional_id }).single()
   await assertSessionUnchanged(client, actor)
-  if (result.error || !result.data || result.data.student_id !== actor.id || result.data.professional_id !== p_professional_id) throw new Error('Não foi possível pedir o vínculo.')
+  if (result.error || !result.data || result.data.student_id !== actor.id || result.data.professional_id !== p_professional_id || !['pending','active'].includes(result.data.state)) throw new Error('Não foi possível pedir o vínculo.')
   return participant(result.data, actor.id)
 }
 export async function acceptStudentLink(studentId: string, expectedVersion: number, client: Client = getSupabaseClient()) {
