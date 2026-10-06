@@ -236,14 +236,24 @@ export default function MeuHistorico() {
         purchasesPromise,
       ])
 
-      setIaWorkouts(resIaWorkouts)
-      setProfWorkouts(resProfWorkouts)
-      setProfServices(resProfServices)
-      setClinicalRecords(resClinical)
-      setSessionLogs(resSessionLogs)
-      setMartialArtsProgress(resMartialArts)
-      setProtocols(resProtocols)
-      setPurchases(resPurchases)
+      // Deduplicação defensiva por id para garantir unicidade em montagem / renders
+      const dedupeById = <T extends { id: string }>(items: T[]): T[] => {
+        const seen = new Set<string>()
+        return items.filter((item) => {
+          if (!item?.id || seen.has(item.id)) return false
+          seen.add(item.id)
+          return true
+        })
+      }
+
+      setIaWorkouts(dedupeById(resIaWorkouts))
+      setProfWorkouts(dedupeById(resProfWorkouts))
+      setProfServices(dedupeById(resProfServices))
+      setClinicalRecords(dedupeById(resClinical))
+      setSessionLogs(dedupeById(resSessionLogs))
+      setMartialArtsProgress(dedupeById(resMartialArts))
+      setProtocols(dedupeById(resProtocols))
+      setPurchases(dedupeById(resPurchases))
 
       // Carregar avaliações feitas por este aluno
       try {
@@ -709,14 +719,14 @@ export default function MeuHistorico() {
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredIaWorkouts.map((workout) => {
+                  {filteredIaWorkouts.map((workout, idx) => {
                     const exerciseCount = Array.isArray(workout.exercises)
                       ? workout.exercises.length
                       : 0
                     const isConcluido = workout.status === 'concluido'
                     return (
                       <Card
-                        key={workout.id}
+                        key={workout.id ? `ia-workout-${workout.id}` : `ia-workout-idx-${idx}`}
                         className="bg-[#181818] border border-[#2A2A2A] hover:border-[#D4AF37]/60 p-5 rounded-2xl flex flex-col justify-between space-y-4 transition-all hover:shadow-[0_8px_25px_rgba(212,175,55,0.08)] group"
                       >
                         <div className="space-y-3">
@@ -813,9 +823,11 @@ export default function MeuHistorico() {
                 </Card>
               ) : (
                 <div className="space-y-6">
-                  {groupedProfessionalActivities.map((group) => (
+                  {groupedProfessionalActivities.map((group, groupIdx) => (
                     <Card
-                      key={group.profId}
+                      key={
+                        group.profId ? `group-prof-${group.profId}` : `group-prof-idx-${groupIdx}`
+                      }
                       className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-4"
                     >
                       {/* Cabeçalho do Grupo do Profissional */}
@@ -853,7 +865,7 @@ export default function MeuHistorico() {
                             Serviços Concluídos (Pontuam no Ranking)
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {group.services.map((svc) => {
+                            {group.services.map((svc, svcIdx) => {
                               const hasReviewed = Boolean(myStudentReviews[svc.id])
                               const isValidated = Boolean(svc.validated)
                               const profName =
@@ -861,7 +873,7 @@ export default function MeuHistorico() {
 
                               return (
                                 <div
-                                  key={svc.id}
+                                  key={svc.id ? `svc-${svc.id}` : `svc-idx-${svcIdx}`}
                                   className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] flex flex-col justify-between gap-2.5"
                                 >
                                   <div className="flex items-start justify-between gap-2">
@@ -957,9 +969,9 @@ export default function MeuHistorico() {
                             Fichas de Treino Prescritas
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {group.workouts.map((w) => (
+                            {group.workouts.map((w, wIdx) => (
                               <div
-                                key={w.id}
+                                key={w.id ? `prof-workout-${w.id}` : `prof-workout-idx-${wIdx}`}
                                 className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-between gap-2"
                               >
                                 <div>
@@ -1042,7 +1054,7 @@ export default function MeuHistorico() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* 3.1 Registros de Sessões com Sigilo (Psicologia e Fisioterapia) */}
-                  {filteredSessionLogs.map((log) => {
+                  {filteredSessionLogs.map((log, logIdx) => {
                     const profName = (log.expand?.professional as any)?.name || 'Profissional'
                     const dateFormatted = log.session_date
                       ? new Date(log.session_date).toLocaleDateString('pt-BR')
@@ -1053,7 +1065,7 @@ export default function MeuHistorico() {
 
                     return (
                       <Card
-                        key={log.id}
+                        key={log.id ? `session-log-${log.id}` : `session-log-idx-${logIdx}`}
                         className="bg-[#181818] border border-[#2A2A2A] hover:border-blue-500/50 p-5 rounded-2xl flex flex-col justify-between space-y-3 transition-all"
                       >
                         <div className="space-y-2">
@@ -1098,12 +1110,12 @@ export default function MeuHistorico() {
                   })}
 
                   {/* 3.2 Fichas Clínicas de Educação Física / Geral (Visíveis em detalhe) */}
-                  {filteredClinicalRecords.map((record) => {
+                  {filteredClinicalRecords.map((record, recIdx) => {
                     const profName =
                       (record.expand?.professional as any)?.name || 'Personal Trainer'
                     return (
                       <Card
-                        key={record.id}
+                        key={record.id ? `clinical-rec-${record.id}` : `clinical-rec-idx-${recIdx}`}
                         className="bg-[#181818] border border-[#2A2A2A] hover:border-[#D4AF37]/50 p-5 rounded-2xl flex flex-col justify-between space-y-3 transition-all"
                       >
                         <div className="space-y-2">
@@ -1158,14 +1170,14 @@ export default function MeuHistorico() {
                   })}
 
                   {/* 3.3 Progresso em Artes Marciais (Visível em detalhe) */}
-                  {filteredMartialArts.map((art) => {
+                  {filteredMartialArts.map((art, artIdx) => {
                     const profName = (art.expand?.professional as any)?.name || 'Mestre / Instrutor'
                     const techCount = Array.isArray(art.mastered_techniques)
                       ? art.mastered_techniques.length
                       : 0
                     return (
                       <Card
-                        key={art.id}
+                        key={art.id ? `martial-art-${art.id}` : `martial-art-idx-${artIdx}`}
                         className="bg-[#181818] border border-[#2A2A2A] hover:border-[#6A00FF]/50 p-5 rounded-2xl flex flex-col justify-between space-y-3 transition-all"
                       >
                         <div className="space-y-2">
@@ -1216,13 +1228,13 @@ export default function MeuHistorico() {
                   })}
 
                   {/* 3.4 Protocolos de Treino e Reabilitação */}
-                  {filteredProtocols.map((proto) => {
+                  {filteredProtocols.map((proto, protoIdx) => {
                     const profName =
                       proto.expand?.professional?.name || 'Fisioterapeuta / Treinador'
                     const stepsCount = Array.isArray(proto.steps) ? proto.steps.length : 0
                     return (
                       <Card
-                        key={proto.id}
+                        key={proto.id ? `protocol-${proto.id}` : `protocol-idx-${protoIdx}`}
                         className="bg-[#181818] border border-[#2A2A2A] hover:border-amber-500/50 p-5 rounded-2xl flex flex-col justify-between space-y-3 transition-all"
                       >
                         <div className="space-y-2">
@@ -1309,7 +1321,7 @@ export default function MeuHistorico() {
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredPurchases.map((purchase) => {
+                  {filteredPurchases.map((purchase, purchIdx) => {
                     const content = purchase.expand?.content
                     const prof = content?.expand?.professional_id
                     const downloadUrl = content?.file
@@ -1318,7 +1330,7 @@ export default function MeuHistorico() {
 
                     return (
                       <Card
-                        key={purchase.id}
+                        key={purchase.id ? `purchase-${purchase.id}` : `purchase-idx-${purchIdx}`}
                         className="bg-[#181818] border border-[#2A2A2A] hover:border-[#D4AF37]/60 p-5 rounded-2xl flex flex-col justify-between space-y-3 transition-all"
                       >
                         <div className="space-y-2">
@@ -1443,7 +1455,7 @@ export default function MeuHistorico() {
                   <div className="space-y-2.5">
                     {selectedWorkout.exercises.map((ex: any, idx: number) => (
                       <div
-                        key={idx}
+                        key={ex?.id ? `ex-${ex.id}` : `ex-idx-${idx}`}
                         className="p-3.5 rounded-xl bg-[#181818] border border-[#2A2A2A] space-y-1.5"
                       >
                         <div className="flex items-center justify-between">
@@ -1547,7 +1559,7 @@ export default function MeuHistorico() {
                     <div className="space-y-1.5 max-h-48 overflow-y-auto">
                       {selectedMartialArts.mastered_techniques.map((t: any, i: number) => (
                         <div
-                          key={i}
+                          key={t?.id ? `tech-${t.id}` : `tech-idx-${i}`}
                           className="p-2.5 rounded-lg bg-[#181818] border border-[#2A2A2A] text-xs flex items-center justify-between"
                         >
                           <span className="text-white font-medium">
@@ -1589,7 +1601,7 @@ export default function MeuHistorico() {
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {selectedProtocol.steps.map((st: any, i: number) => (
                       <div
-                        key={i}
+                        key={st?.id ? `step-${st.id}` : `step-idx-${i}`}
                         className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-xs space-y-1"
                       >
                         <strong className="text-[#D4AF37] block font-montserrat">
