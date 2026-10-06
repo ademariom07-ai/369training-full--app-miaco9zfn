@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As cinco migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As seis migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -81,3 +81,7 @@ A quarta migration participant_link_summary (20261006012514) acrescenta RPC de v
 ## Solicitação e análise de acesso profissional
 
 Quinta migration professional_applications (20261006122253) aplicada. Solicitação própria não promove papel; administrador autorizado no banco analisa a versão pendente com motivo, registra histórico e promove somente para profissional aprovado. Sem autoaprovação/metadata admin; vínculo ativo/pendente de aluno bloqueia aprovação. Candidaturas/decisões têm RLS por dono/admin e escrita só pelas RPCs. Fila e formulário preparados na conta da branch, sem criar administrador real nem publicar. Trinta verificações SQL passaram local/banco real, zero fixtures; advisor sem alertas. Total atual 82 testes locais SDK simulado, TypeScript/build/lint aprovados. Verificação humana de habilitação, retenção/LGPD, navegador/contas reais e migração geral continuam pendentes. Consulte database-status-0-15.md.
+
+## Treino textual protegido com aviso
+
+Sexta migration protected_training_plans (20261006131737) aplicada. Criação humana de treino requer Educação Física aprovada e versão exata de vínculo ativo; publicação e aviso do aluno são atômicos e idempotentes por chave. RLS nega terceiros/admin, revogação/perda de aprovação e reabertura do vínculo não liberam planos antigos. Aluno marca aviso como lido sem registrar execução. Área isolada /conta-supabase preparada na branch, com paginação e payload/sessão verificados. 31 verificações SQL passaram local/banco real, zero fixtures e advisor sem alertas. Total atual: 94 testes locais com SDK simulado, TypeScript/build/lint aprovados. Sem dieta, exercícios estruturados, revisão, consentimento clínico integrado, navegador/contas reais ou publicação. Veja database-status-0-15.md.

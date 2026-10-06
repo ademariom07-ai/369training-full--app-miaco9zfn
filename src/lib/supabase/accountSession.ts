@@ -1,3 +1,4 @@
+import {createTrainingPlan,markTrainingRead,type TrainingInput} from './trainingPlans'
 import {submitApplication,reviewApplication,type Specialty,type Application} from './applications'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
@@ -7,6 +8,7 @@ export type AccountState = { phase:'checking'|'signed_out'|'profile_missing'|'re
 type Client=SupabaseClient<Database>
 export function createAccountSession(client:Client, changed:(state:AccountState)=>void, schedule:(task:()=>void)=>()=>void=task=>{const id=setTimeout(task,0);return()=>clearTimeout(id)},redirectTo?:string) {
  let recovery=false,recoveryAccountId:string|null=null,lastMailAttempt=-Infinity
+ let trainingRetry:(TrainingInput&{professionalId:string})|null=null
  let disposed=false,busy=false,epoch=0,cancelScheduled=()=>{},unsubscribe=()=>{}
  let state:AccountState={phase:'checking',profile:null,busy:false,error:''}
  function publish(next:Omit<AccountState,'busy'>){state={...next,busy};if(!disposed)changed({...state})}
@@ -29,6 +31,7 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const result=client.auth.onAuthStateChange((event,session)=>{
    if(disposed)return
    if(event==='PASSWORD_RECOVERY'&&session?.user?.id){recovery=true;recoveryAccountId=session.user.id}
+   if(trainingRetry&&(!session||session.user?.id!==trainingRetry.professionalId))trainingRetry=null
    if(!session||recovery&&session.user?.id!==recoveryAccountId){recovery=false;recoveryAccountId=null}
    ++epoch;cancelScheduled();cleared(session?(recovery?'password_recovery':'checking'):'signed_out')
    // Synchronous callback only: SDK calls run after its auth lock is released.
@@ -111,5 +114,19 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const admin=state.profile.id,snapshot={...row}
   return operation(async()=>{await reviewApplication(snapshot,decision,reason,admin,client)})
  }
- return {start,refresh,login,logout,applyProfessional,reviewProfessional,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ function publishTraining(link:StudentLink,title:string,content:string){
+  const profile=state.profile
+  if(state.phase!=='ready'||profile?.role!=='profissional'||!profile.approved||link.professional_id!==profile.id||link.state!=='active'||busy||disposed)throw Error('Publicação indisponível.')
+  if(typeof title!=='string'||typeof content!=='string')throw Error('Dados inválidos.')
+  const body={professionalId:profile.id,studentId:link.student_id,linkVersion:link.version,title:title.trim(),content:content.trim()}
+  if(!trainingRetry||trainingRetry.professionalId!==body.professionalId||trainingRetry.studentId!==body.studentId||trainingRetry.linkVersion!==body.linkVersion||trainingRetry.title!==body.title||trainingRetry.content!==body.content)trainingRetry={...body,requestId:crypto.randomUUID()}
+  const input={...trainingRetry}
+  return operation(async()=>{await createTrainingPlan(input,input.professionalId,client);trainingRetry=null})
+ }
+ function readTraining(planId:string){
+  if(state.phase!=='ready'||state.profile?.role!=='aluno'||busy||disposed)throw Error('Aviso indisponível.')
+  const id=state.profile.id
+  return operation(async()=>{await markTrainingRead(planId,id,client)})
+ }
+ return {start,refresh,login,logout,publishTraining,readTraining,applyProfessional,reviewProfessional,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }

@@ -178,6 +178,90 @@ export type Database = {
           },
         ]
       }
+      training_plan_notifications: {
+        Row: {
+          created_at: string
+          plan_id: string
+          read_at: string | null
+          recipient_id: string
+        }
+        Insert: {
+          created_at?: string
+          plan_id: string
+          read_at?: string | null
+          recipient_id: string
+        }
+        Update: {
+          created_at?: string
+          plan_id?: string
+          read_at?: string | null
+          recipient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_plan_notifications_plan_id_recipient_id_fkey"
+            columns: ["plan_id", "recipient_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id", "student_id"]
+          },
+          {
+            foreignKeyName: "training_plan_notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_plans: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          link_version: number
+          professional_id: string
+          request_id: string
+          student_id: string
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          link_version: number
+          professional_id: string
+          request_id: string
+          student_id: string
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          link_version?: number
+          professional_id?: string
+          request_id?: string
+          student_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_plans_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -201,6 +285,31 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      create_training_plan: {
+        Args: {
+          p_content: string
+          p_expected_link_version: number
+          p_request_id: string
+          p_student_id: string
+          p_title: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          link_version: number
+          professional_id: string
+          request_id: string
+          student_id: string
+          title: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "training_plans"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       list_approved_professionals: {
         Args: { p_page: number }
         Returns: {
@@ -220,6 +329,21 @@ export type Database = {
           student_id: string
           version: number
         }[]
+      }
+      read_training_notification: {
+        Args: { p_plan_id: string }
+        Returns: {
+          created_at: string
+          plan_id: string
+          read_at: string | null
+          recipient_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "training_plan_notifications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       request_student_link: {
         Args: { p_professional_id: string }
