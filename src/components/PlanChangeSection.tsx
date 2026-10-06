@@ -557,7 +557,7 @@ export function PlanChangeSection() {
               <Sparkles className="w-5 h-5 text-[#D4AF37]" /> Confirmar Assinatura / Troca de Plano
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-400 font-inter pt-2">
-              Você está prestes a atualizar sua modalidade no ecossistema 369WWLLNESS.
+              Você está prestes a atualizar sua modalidade no ecossistema 369WELLNESS.
             </DialogDescription>
           </DialogHeader>
 

@@ -38,7 +38,7 @@ export default function LgpdConsentimentos() {
 
   // Configuração dinâmica de DPO via platform_config
   const [dpoEmail, setDpoEmail] = useState('dpo@369training.com')
-  const [dpoName, setDpoName] = useState('DPO 369WWLLNESS')
+  const [dpoName, setDpoName] = useState('DPO 369WELLNESS')
   const [retentionMonths, setRetentionMonths] = useState(6)
 
   useEffect(() => {
@@ -170,7 +170,7 @@ export default function LgpdConsentimentos() {
           legalBases:
             'Base contratual brasileira (Lei 13.709/2018) na ausência de leis locais equivalentes',
           overview:
-            'Para usuários residentes em outros territórios soberanos, a 369WWLLNESS adota como padrão ético e técnico os princípios da Lei Geral de Proteção de Dados do Brasil (Lei 13.709/2018) combinados às melhores práticas internacionais de segurança da informação (ISO/IEC 27001 e criptografia em repouso e trânsito).',
+            'Para usuários residentes em outros territórios soberanos, a 369WELLNESS adota como padrão ético e técnico os princípios da Lei Geral de Proteção de Dados do Brasil (Lei 13.709/2018) combinados às melhores práticas internacionais de segurança da informação (ISO/IEC 27001 e criptografia em repouso e trânsito).',
           rights:
             'Garantia irrestrita de acesso, retificação, eliminação de dados de saúde e revogação de consentimentos.',
           dpoNote: `Encarregado Internacional de Privacidade (DPO): ${dpoEmail}`,
@@ -390,7 +390,7 @@ export default function LgpdConsentimentos() {
             Retenção Legal
           </h3>
           <p>
-            O Encarregado pelo Tratamento de Dados Pessoais (DPO) da 369WWLLNESS atua como canal de
+            O Encarregado pelo Tratamento de Dados Pessoais (DPO) da 369WELLNESS atua como canal de
             comunicação entre o titular dos dados, a Autoridade Nacional de Proteção de Dados (ANPD)
             e a plataforma.
           </p>
@@ -435,7 +435,7 @@ export default function LgpdConsentimentos() {
       {/* Footer */}
       <footer className="border-t border-[#E5E3DC] bg-white py-6 px-6 text-center text-xs text-[#6B7280] font-inter">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} 369WWLLNESS LTDA. Todos os direitos reservados.</p>
+          <p>© {new Date().getFullYear()} 369WELLNESS LTDA. Todos os direitos reservados.</p>
           <div className="flex gap-4 text-xs">
             <Link to="/termos-de-uso" className="text-gray-400 hover:text-[#D4AF37]">
               Termos de Uso

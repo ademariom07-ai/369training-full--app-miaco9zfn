@@ -101,7 +101,7 @@ export default function Login() {
             <CrestLogo size={72} />
           </Link>
           <h1 className="text-3xl font-extrabold font-montserrat uppercase gold-gradient-text tracking-wider">
-            369WWLLNESS
+            369WELLNESS
           </h1>
           <p className="text-xs text-gray-500 font-inter mt-1 tracking-wider uppercase font-semibold">
             Acesso à Plataforma

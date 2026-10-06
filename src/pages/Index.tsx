@@ -60,7 +60,7 @@ export default function Index() {
         </div>
 
         <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight font-montserrat uppercase mb-4 gold-gradient-text">
-          369WWLLNESS
+          369WELLNESS
         </h1>
 
         <p className="text-xl sm:text-2xl font-bold gold-gradient-text tracking-widest uppercase font-montserrat mb-6">
@@ -160,7 +160,7 @@ export default function Index() {
             Simples e Poderoso
           </span>
           <h2 className="text-3xl font-bold font-montserrat text-[#1A1A1A] uppercase mt-1">
-            Como Funciona o 369WWLLNESS
+            Como Funciona o 369WELLNESS
           </h2>
         </div>
 
@@ -224,7 +224,7 @@ export default function Index() {
               Pool de Parceiros 38% & Metas ESG
             </h2>
             <p className="text-gray-700 font-inter text-sm sm:text-base leading-relaxed mb-6">
-              A 369WWLLNESS revoluciona o mercado de saúde ao redistribuir{' '}
+              A 369WELLNESS revoluciona o mercado de saúde ao redistribuir{' '}
               <strong className="text-[#1A1A1A] font-semibold">
                 38% de todo o pool de serviços
               </strong>{' '}
@@ -357,7 +357,7 @@ export default function Index() {
           </div>
 
           <div className="text-center md:text-right text-xs text-gray-500 font-inter">
-            © {new Date().getFullYear()} 369WWLLNESS. Todos os direitos reservados.
+            © {new Date().getFullYear()} 369WELLNESS. Todos os direitos reservados.
           </div>
         </div>
       </footer>

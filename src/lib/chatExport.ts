@@ -60,7 +60,7 @@ export async function exportChatToPdf(params: {
   doc.setTextColor(212, 175, 55) // Gold #D4AF37
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
-  doc.text('369WWLLNESS — REGISTRO OFICIAL DE COMUNICAÇÃO', margin + 6, y + 8)
+  doc.text('369WELLNESS — REGISTRO OFICIAL DE COMUNICAÇÃO', margin + 6, y + 8)
 
   doc.setTextColor(220, 220, 220)
   doc.setFontSize(9)
@@ -156,7 +156,7 @@ export async function exportChatToPdf(params: {
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(100, 100, 100)
     doc.text(
-      `Gerado eletronicamente em ${nowFormatted} • Plataforma 369WWLLNESS • Página ${i} de ${totalPages}`,
+      `Gerado eletronicamente em ${nowFormatted} • Plataforma 369WELLNESS • Página ${i} de ${totalPages}`,
       margin + 2,
       pageHeight - 9,
     )

@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* 369WWLLNESS Off-white Global Theme (#f7f6f3) */
+    /* 369WELLNESS Off-white Global Theme (#f7f6f3) */
     --background: 45 14% 96.1%; /* #f7f6f3 */
     --foreground: 0 0% 10%; /* #1A1A1A */
 
@@ -250,7 +250,7 @@ button.bg-red-600,
   color: #ffffff !important;
 }
 
-/* Custom 369WWLLNESS utilities */
+/* Custom 369WELLNESS utilities */
 .gold-gradient-text {
   background: linear-gradient(135deg, #a68019 0%, #c49a2c 50%, #806012 100%);
   -webkit-background-clip: text;

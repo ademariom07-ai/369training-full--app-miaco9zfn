@@ -188,7 +188,7 @@ export function SensitiveDataConsentModal({
             >
               Eu concordo de forma expressa, informada e destacada com o tratamento dos meus dados
               sensíveis de saúde e biométricos para fins de treinamento, nutrição e fisioterapia no
-              369WWLLNESS.
+              369WELLNESS.
             </label>
           </div>
         </div>

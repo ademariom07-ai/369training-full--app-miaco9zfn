@@ -1070,7 +1070,7 @@ export default function EncontrarProfissional() {
                     </div>
                     <p className="text-gray-300 font-inter">
                       Como você ainda não está na lista de parceiro deste profissional, a plataforma
-                      369WWLLNESS aplica uma{' '}
+                      369WELLNESS aplica uma{' '}
                       <strong className="text-amber-300">taxa extra de 50%</strong> sobre o valor da
                       consulta para realização do agendamento.
                     </p>

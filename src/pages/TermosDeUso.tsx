@@ -136,8 +136,8 @@ export default function TermosDeUso() {
             </h2>
             <p>
               Ao acessar, cadastrar-se ou utilizar a plataforma{' '}
-              <strong className="text-white">369WWLLNESS</strong>, operada pela{' '}
-              <strong className="text-white">369WWLLNESS LTDA</strong>, você (&ldquo;Usuário&rdquo;,
+              <strong className="text-white">369WELLNESS</strong>, operada pela{' '}
+              <strong className="text-white">369WELLNESS LTDA</strong>, você (&ldquo;Usuário&rdquo;,
               seja na condição de Aluno, Atleta, Profissional de Saúde ou Administrador) declara ter
               lido, compreendido e aceito integralmente estes Termos de Uso e a nossa Política de
               Privacidade.
@@ -154,7 +154,7 @@ export default function TermosDeUso() {
               <span className="text-[#D4AF37]">2.</span> Descrição do Ecossistema B2B & B2C
             </h2>
             <p>
-              A 369WWLLNESS é uma plataforma digital que conecta profissionais de Educação Física
+              A 369WELLNESS é uma plataforma digital que conecta profissionais de Educação Física
               (CREF), Nutrição (CRN), Psicologia (CRP), Fisioterapia (CREFITO) e Artes Marciais a
               alunos e clientes interessados em serviços de treinamento físico, planejamento
               alimentar, suporte em saúde mental e psicologia clínica/esportiva, reabilitação
@@ -198,7 +198,7 @@ export default function TermosDeUso() {
               <li>
                 <strong className="text-white">Auditoria Regulatória:</strong> Todo cadastro
                 profissional passa por validação administrativa antes da liberação de atendimento a
-                alunos. A 369WWLLNESS reserva-se o direito de suspender cadastros com
+                alunos. A 369WELLNESS reserva-se o direito de suspender cadastros com
                 irregularidades documentais.
               </li>
             </ul>
@@ -241,7 +241,7 @@ export default function TermosDeUso() {
               Pagamentos
             </h2>
             <p>
-              A 369WWLLNESS opera com planos de assinatura e taxas operacionais por serviço
+              A 369WELLNESS opera com planos de assinatura e taxas operacionais por serviço
               concluído:
             </p>
             <ul className="list-disc pl-5 space-y-2">
@@ -279,7 +279,7 @@ export default function TermosDeUso() {
               <span className="text-[#D4AF37]">6.</span> Prescrições e Inteligência Artificial
             </h2>
             <p>
-              As ferramentas de Inteligência Artificial disponibilizadas na 369WWLLNESS têm caráter
+              As ferramentas de Inteligência Artificial disponibilizadas na 369WELLNESS têm caráter
               de <strong className="text-white">suporte técnico e otimização biomecânica</strong>. A
               avaliação clínica, liberação para esforço e supervisão dos exercícios permanecem sob
               responsabilidade do profissional credenciado ou por conta e risco do aluno quando
@@ -295,7 +295,7 @@ export default function TermosDeUso() {
             <p>
               Todas as marcas, símbolos (incluindo o Brasão 369, algoritmos de árvore híbrida de 36
               níveis, códigos-fonte, designs e identidades visuais) são de propriedade exclusiva da
-              369WWLLNESS LTDA e protegidos pelas Leis de Propriedade Industrial (Lei nº 9.279/1996)
+              369WELLNESS LTDA e protegidos pelas Leis de Propriedade Industrial (Lei nº 9.279/1996)
               e Direitos Autorais (Lei nº 9.610/1998).
             </p>
           </section>
@@ -307,7 +307,7 @@ export default function TermosDeUso() {
             </h2>
             <p>
               O Usuário pode solicitar a exclusão de sua conta a qualquer momento através do perfil.
-              A 369WWLLNESS poderá suspender ou encerrar imediatamente contas em caso de violação
+              A 369WELLNESS poderá suspender ou encerrar imediatamente contas em caso de violação
               destes Termos, fraudes financeiras, ofensas na comunidade ou falsificação de registros
               de classe.
             </p>
@@ -364,7 +364,7 @@ export default function TermosDeUso() {
       {/* Footer */}
       <footer className="border-t border-[#E5E3DC] bg-white py-6 px-6 text-center text-xs text-[#6B7280] font-inter">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} 369WWLLNESS LTDA. CNPJ: 00.000.000/0001-00</p>
+          <p>© {new Date().getFullYear()} 369WELLNESS LTDA. CNPJ: 00.000.000/0001-00</p>
           <div className="flex gap-4 text-xs">
             <Link to="/politica-de-privacidade" className="text-gray-400 hover:text-[#D4AF37]">
               Política de Privacidade

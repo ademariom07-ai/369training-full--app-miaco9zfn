@@ -18,7 +18,7 @@ export const CrestLogo: React.FC<CrestLogoProps> = ({
   avatarUrl = null,
   showText = false,
   subText = false,
-  alt = '369WWLLNESS - Foco • Legado • Estratégia',
+  alt = '369WELLNESS - Foco • Legado • Estratégia',
   loading,
   decoding,
 }) => {
@@ -65,7 +65,7 @@ export const CrestLogo: React.FC<CrestLogoProps> = ({
       {showText && (
         <div className="flex flex-col text-left">
           <span className="font-extrabold tracking-wider text-lg gold-gradient-text uppercase font-montserrat leading-tight">
-            369WWLLNESS
+            369WELLNESS
           </span>
           {subText && (
             <span className="text-[10px] tracking-widest text-[#D4AF37]/80 font-bold uppercase font-montserrat">

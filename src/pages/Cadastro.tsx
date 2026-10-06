@@ -474,7 +474,7 @@ export default function Cadastro() {
             <CrestLogo size={68} />
           </Link>
           <h1 className="text-3xl font-extrabold font-montserrat uppercase gold-gradient-text tracking-wider">
-            369WWLLNESS
+            369WELLNESS
           </h1>
           <p className="text-xs text-[#6B7280] font-inter mt-1 tracking-wider uppercase">
             Criar Nova Conta no Ecossistema
@@ -1346,7 +1346,7 @@ export default function Cadastro() {
               </h2>
               <p className="text-xs text-[#6B7280] font-inter mt-1.5">
                 Responda este breve questionário para que os profissionais e assistentes da
-                369WWLLNESS adaptem seus treinos desde o primeiro dia.
+                369WELLNESS adaptem seus treinos desde o primeiro dia.
               </p>
             </div>
 

@@ -164,7 +164,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        {/* Central Logo Lockup: 369WWLLNESS rigorosamente ao Meio Horizontalmente */}
+        {/* Central Logo Lockup: 369WELLNESS rigorosamente ao Meio Horizontalmente */}
         <div className="flex items-center justify-center shrink-0">
           <Link to={homePath} className="flex items-center justify-center group py-0.5">
             <CrestLogo size={38} showText subText loading="eager" decoding="auto" />
@@ -311,7 +311,7 @@ export default function Layout({ children }: LayoutProps) {
                 <div className="flex items-center gap-2">
                   <CrestLogo size={32} />
                   <span className="font-extrabold font-montserrat text-sm gold-gradient-text">
-                    369WWLLNESS
+                    369WELLNESS
                   </span>
                 </div>
                 <button
@@ -409,7 +409,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* FOOTER */}
       <footer className="border-t border-[#E5E3DC] bg-[#F7F5F0] py-6 px-6 text-center text-xs text-gray-600 font-inter">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} 369WWLLNESS — FOCO • LEGADO • ESTRATÉGIA</p>
+          <p>© {new Date().getFullYear()} 369WELLNESS — FOCO • LEGADO • ESTRATÉGIA</p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-600">
             <Link to="/termos-de-uso" className="hover:text-[#B8962E] transition-colors">
               Termos do Aluno

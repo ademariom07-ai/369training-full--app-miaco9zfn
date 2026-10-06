@@ -316,7 +316,7 @@ export default function ProfissionalConteudos() {
               <Upload className="w-5 h-5 text-[#D4AF37]" /> Enviar Conteúdo para Aprovação
             </DialogTitle>
             <p className="text-xs text-gray-400 font-inter">
-              Materiais passam pela auditoria técnica da 369WWLLNESS antes de serem listados
+              Materiais passam pela auditoria técnica da 369WELLNESS antes de serem listados
               publicamente.
             </p>
           </DialogHeader>

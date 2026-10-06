@@ -231,7 +231,7 @@ export function ReacceptanceModal() {
           </DialogTitle>
           <DialogDescription className="text-xs text-[#4B5563]">
             Houve uma nova versão deste documento legal. Para continuar utilizando o ecossistema
-            369WWLLNESS, leia atentamente e confirme seu aceite.
+            369WELLNESS, leia atentamente e confirme seu aceite.
           </DialogDescription>
         </DialogHeader>
 

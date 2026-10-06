@@ -66,7 +66,7 @@ export default function PoliticaDePrivacidade() {
       default:
         return {
           lawTitle: 'Base Contratual Brasileira & Padrão Internacional de Proteção de Dados',
-          authority: 'Arbitragem & Proteção Internacional 369WWLLNESS',
+          authority: 'Arbitragem & Proteção Internacional 369WELLNESS',
           description:
             'Para jurisdições sem regramento cogente equivalente, a relação jurídica rege-se subsidiariamente pela legislação de proteção de dados brasileira (Lei nº 13.709/2018) com padrões globais de criptografia e transparência.',
           badge: 'Base Internacional',
@@ -158,7 +158,7 @@ export default function PoliticaDePrivacidade() {
               </p>
             </div>
             <p>
-              A <strong className="text-white">369WWLLNESS LTDA</strong> (&ldquo;369WWLLNESS&rdquo;,
+              A <strong className="text-white">369WELLNESS LTDA</strong> (&ldquo;369WELLNESS&rdquo;,
               &ldquo;nós&rdquo; ou &ldquo;plataforma&rdquo;) valoriza profundamente a privacidade e
               a proteção dos dados pessoais de seus Usuários (Alunos, Profissionais de Saúde e
               Parceiros). Esta Política de Privacidade explica com clareza e transparência como
@@ -260,7 +260,7 @@ export default function PoliticaDePrivacidade() {
               <span className="text-[#0057FF]">4.</span> Compartilhamento e Infraestrutura de Dados
             </h2>
             <p>
-              A 369WWLLNESS não comercializa nem transfere seus dados pessoais a terceiros para fins
+              A 369WELLNESS não comercializa nem transfere seus dados pessoais a terceiros para fins
               publicitários independentes. O compartilhamento ocorre estritamente com parceiros
               operacionais essenciais:
             </p>
@@ -396,7 +396,7 @@ export default function PoliticaDePrivacidade() {
             </p>
             <div className="p-4 bg-[#181818] border border-[#2A2A2A] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
               <div>
-                <p className="font-bold text-white font-montserrat">DPO 369WWLLNESS</p>
+                <p className="font-bold text-white font-montserrat">DPO 369WELLNESS</p>
                 <p className="text-gray-400">Encarregado Oficial de Proteção de Dados</p>
               </div>
               <a
@@ -413,7 +413,7 @@ export default function PoliticaDePrivacidade() {
       {/* Footer */}
       <footer className="border-t border-[#E5E3DC] bg-white py-6 px-6 text-center text-xs text-[#6B7280] font-inter">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} 369WWLLNESS LTDA. Todos os direitos reservados.</p>
+          <p>© {new Date().getFullYear()} 369WELLNESS LTDA. Todos os direitos reservados.</p>
           <div className="flex gap-4 text-xs">
             <Link to="/termos-de-uso" className="text-gray-400 hover:text-[#D4AF37]">
               Termos de Uso
