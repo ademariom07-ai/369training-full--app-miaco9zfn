@@ -961,8 +961,8 @@ export default function AdminRankingConfig() {
 
         const serviceFilter =
           role === 'profissional'
-            ? `professional = "${u.id}" && status = "concluido" && created >= "${currentMonthStart}"`
-            : `student = "${u.id}" && status = "concluido" && created >= "${currentMonthStart}"`
+            ? `professional = "${u.id}" && status = "concluido" && validation_status = "totalmente_validada" && created >= "${currentMonthStart}"`
+            : `student = "${u.id}" && status = "concluido" && validation_status = "totalmente_validada" && created >= "${currentMonthStart}"`
 
         let svcs: any[] = []
         try {

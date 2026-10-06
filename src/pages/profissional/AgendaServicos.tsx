@@ -140,6 +140,9 @@ export default function AgendaServicos() {
   // Mapas de serviços e reviews para vincular aos agendamentos concluídos
   const [servicesMap, setServicesMap] = useState<Record<string, ServiceRecord>>({})
   const [myReviewsMap, setMyReviewsMap] = useState<Record<string, ServiceReviewRecord>>({})
+  const [allReviewsByServiceMap, setAllReviewsByServiceMap] = useState<
+    Record<string, ServiceReviewRecord[]>
+  >({})
 
   // Modal de avaliação
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
@@ -188,15 +191,25 @@ export default function AgendaServicos() {
       }
       setServicesMap(sMap)
 
-      // 4. Carregar reviews feitas pelo profissional
-      const revRes = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 200, {
-        filter: `reviewer = "${user.id}"`,
+      // 4. Carregar todas as reviews visíveis ao profissional (como reviewer ou reviewee)
+      const revRes = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 500, {
+        filter: `reviewer = "${user.id}" || reviewee = "${user.id}"`,
+        sort: '-created',
+        expand: 'reviewer,reviewee',
       })
       const rMap: Record<string, ServiceReviewRecord> = {}
+      const allMap: Record<string, ServiceReviewRecord[]> = {}
       for (const r of revRes.items) {
-        rMap[r.service] = r
+        if (r.reviewer === user.id) {
+          rMap[r.service] = r
+        }
+        if (!allMap[r.service]) {
+          allMap[r.service] = []
+        }
+        allMap[r.service].push(r)
       }
       setMyReviewsMap(rMap)
+      setAllReviewsByServiceMap(allMap)
     } catch (err) {
       console.error('Error loading agenda data:', err)
     } finally {
@@ -963,7 +976,15 @@ export default function AgendaServicos() {
                                       const hasReviewed = svc
                                         ? Boolean(myReviewsMap[svc.id])
                                         : false
-                                      const isValidated = svc?.validated
+                                      const isFullyValidated =
+                                        svc?.validation_status === 'totalmente_validada' ||
+                                        Boolean(svc?.validated)
+                                      const svcReviews = svc
+                                        ? allReviewsByServiceMap[svc.id] || []
+                                        : []
+                                      const counterReview = svcReviews.find(
+                                        (r) => r.reviewer !== user?.id,
+                                      )
 
                                       return (
                                         <div className="mt-1 pt-1 border-t border-white/5 space-y-1">
@@ -971,16 +992,39 @@ export default function AgendaServicos() {
                                             <span className="font-semibold text-gray-400">
                                               Validação:
                                             </span>
-                                            {isValidated ? (
+                                            {isFullyValidated ? (
                                               <span className="text-[#22C55E] font-bold flex items-center gap-0.5">
-                                                <CheckCircle2 className="w-2 h-2" /> Validada
+                                                <CheckCircle2 className="w-2 h-2" /> Totalmente
+                                                Validada
+                                              </span>
+                                            ) : hasReviewed ? (
+                                              <span className="text-amber-400 font-medium">
+                                                Aguardando aluno
                                               </span>
                                             ) : (
-                                              <span className="text-amber-400 font-bold">
-                                                Aguardando
-                                              </span>
+                                              <span className="text-gray-400">Pendente</span>
                                             )}
                                           </div>
+
+                                          {/* Revelação mútua: apenas quando totalmente_validada */}
+                                          {isFullyValidated && counterReview && (
+                                            <div className="p-1 rounded bg-[#F7F5F0] border border-[#E4E2DC] text-[8px] text-[#1A1A1A] space-y-0.5">
+                                              <div className="flex items-center justify-between">
+                                                <span className="font-bold text-[#B8962E] flex items-center gap-0.5">
+                                                  ★ {counterReview.rating}/5
+                                                </span>
+                                                <span className="text-[7px] text-[#666666] font-semibold uppercase">
+                                                  Avaliação do Aluno
+                                                </span>
+                                              </div>
+                                              {counterReview.message && (
+                                                <p className="italic text-[#333333] text-[7.5px] line-clamp-2 leading-tight">
+                                                  &ldquo;{counterReview.message}&rdquo;
+                                                </p>
+                                              )}
+                                            </div>
+                                          )}
+
                                           <Button
                                             size="sm"
                                             onClick={() => handleOpenReview(slotApp)}
@@ -1205,37 +1249,102 @@ export default function AgendaServicos() {
                         (() => {
                           const svc = app.service_record ? servicesMap[app.service_record] : null
                           const hasReviewed = svc ? Boolean(myReviewsMap[svc.id]) : false
-                          const isValidated = svc?.validated
+                          const isFullyValidated =
+                            svc?.validation_status === 'totalmente_validada' ||
+                            Boolean(svc?.validated)
+                          const svcReviews = svc ? allReviewsByServiceMap[svc.id] || [] : []
+                          const counterReview = svcReviews.find((r) => r.reviewer !== user?.id)
 
                           return (
-                            <div className="flex items-center gap-2">
-                              {isValidated ? (
-                                <span className="text-xs font-mono font-bold text-[#22C55E] flex items-center gap-1.5 bg-[#22C55E]/10 border border-[#22C55E]/30 px-2.5 py-1 rounded-lg">
-                                  <CheckCircle2 className="w-3.5 h-3.5" /> Aula Validada • Pontuada
-                                  no Ranking
-                                </span>
-                              ) : (
-                                <span className="text-xs font-mono font-bold text-amber-400 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
-                                  <Clock className="w-3.5 h-3.5" /> Concluído — Aguardando
-                                  Avaliação/Validação
-                                </span>
-                              )}
+                            <div className="w-full space-y-3">
+                              {/* Revelação mútua de avaliações: APENAS quando totalmente_validada */}
+                              {isFullyValidated ? (
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-xs font-mono font-bold text-[#22C55E] flex items-center gap-1.5 bg-[#22C55E]/10 border border-[#22C55E]/30 px-2.5 py-1 rounded-lg">
+                                      <CheckCircle2 className="w-3.5 h-3.5" /> Totalmente Validada •
+                                      Pontuada no Ranking
+                                    </span>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleOpenReview(app)}
+                                      disabled={actionLoading === `rev-${app.id}`}
+                                      className="bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 hover:bg-[#D4AF37]/30 text-xs uppercase font-bold rounded-xl h-8 px-3.5 flex items-center gap-1.5"
+                                    >
+                                      <Star className="w-3.5 h-3.5 fill-[#D4AF37]" /> Avaliado ✓
+                                    </Button>
+                                  </div>
 
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenReview(app)}
-                                disabled={actionLoading === `rev-${app.id}`}
-                                className={`text-xs uppercase font-bold rounded-xl h-8 px-3.5 flex items-center gap-1.5 ${
-                                  hasReviewed
-                                    ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 hover:bg-[#D4AF37]/30'
-                                    : 'bg-[#D4AF37] text-black hover:bg-[#c49f2e] shadow-sm'
-                                }`}
-                              >
-                                <Star
-                                  className={`w-3.5 h-3.5 ${hasReviewed ? 'fill-[#D4AF37]' : 'fill-black'}`}
-                                />
-                                {hasReviewed ? 'Avaliado ✓' : 'Avaliar Aluno'}
-                              </Button>
+                                  {/* Caixa da avaliação mútua revelada da contraparte (aluno) */}
+                                  {counterReview ? (
+                                    <div className="p-3 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] text-[#1A1A1A] space-y-1.5">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1">
+                                          {[1, 2, 3, 4, 5].map((s) => (
+                                            <Star
+                                              key={s}
+                                              className={`w-3.5 h-3.5 ${
+                                                s <= counterReview.rating
+                                                  ? 'fill-[#D4AF37] text-[#D4AF37]'
+                                                  : 'fill-transparent text-[#CCCCCC]'
+                                              }`}
+                                            />
+                                          ))}
+                                          <span className="text-xs font-bold text-[#B8962E] font-mono ml-1">
+                                            ({counterReview.rating}/5)
+                                          </span>
+                                        </div>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#0057FF] font-montserrat">
+                                          Avaliação do Aluno
+                                        </span>
+                                      </div>
+                                      {counterReview.message ? (
+                                        <p className="text-xs text-[#333333] font-inter italic leading-relaxed">
+                                          &ldquo;{counterReview.message}&rdquo;
+                                        </p>
+                                      ) : (
+                                        <p className="text-[11px] text-[#666666] font-inter italic">
+                                          Nota atribuída sem mensagem escrita.
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="p-2.5 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] text-xs text-[#666666]">
+                                      Avaliações mútuas confirmadas pelo sistema.
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  {hasReviewed ? (
+                                    <span className="text-xs font-mono font-medium text-amber-400 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
+                                      <Clock className="w-3.5 h-3.5" /> Você avaliou — aguardando a
+                                      avaliação da outra parte
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs font-mono font-bold text-amber-400 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
+                                      <Clock className="w-3.5 h-3.5" /> Concluído — Avalie para
+                                      validar no ranking
+                                    </span>
+                                  )}
+
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleOpenReview(app)}
+                                    disabled={actionLoading === `rev-${app.id}`}
+                                    className={`text-xs uppercase font-bold rounded-xl h-8 px-3.5 flex items-center gap-1.5 ${
+                                      hasReviewed
+                                        ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 hover:bg-[#D4AF37]/30'
+                                        : 'bg-[#D4AF37] text-black hover:bg-[#c49f2e] shadow-sm'
+                                    }`}
+                                  >
+                                    <Star
+                                      className={`w-3.5 h-3.5 ${hasReviewed ? 'fill-[#D4AF37]' : 'fill-black'}`}
+                                    />
+                                    {hasReviewed ? 'Avaliado ✓' : 'Avaliar Aluno'}
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )
                         })()}

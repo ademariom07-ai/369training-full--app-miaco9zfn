@@ -270,9 +270,9 @@ export default function ReviewModal({
           <div className="p-3 rounded-xl bg-[#0057FF]/5 border border-[#0057FF]/20 text-[11px] text-[#0057FF] flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-[#0057FF]" />
             <span className="leading-tight text-[#333333]">
-              Ao enviar a avaliação, a aula é{' '}
-              <strong className="text-[#0057FF]">validada no ranking</strong> e entra no coeficiente
-              de pontuação (services_count) de ambas as partes.
+              A validação completa da aula e a pontuação no ranking (services_count) acontecem
+              quando <strong className="text-[#0057FF]">ambas as partes avaliarem</strong>. Quando a
+              outra parte também avaliar, as notas e mensagens serão mutuamente reveladas.
             </span>
           </div>
 

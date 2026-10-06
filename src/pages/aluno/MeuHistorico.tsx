@@ -123,6 +123,9 @@ export default function MeuHistorico() {
 
   // Avaliação mútua pelo aluno
   const [myStudentReviews, setMyStudentReviews] = useState<Record<string, ServiceReviewRecord>>({})
+  const [allReviewsByService, setAllReviewsByService] = useState<
+    Record<string, ServiceReviewRecord[]>
+  >({})
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const [selectedReviewTarget, setSelectedReviewTarget] = useState<{
     serviceId: string
@@ -255,16 +258,26 @@ export default function MeuHistorico() {
       setProtocols(dedupeById(resProtocols))
       setPurchases(dedupeById(resPurchases))
 
-      // Carregar avaliações feitas por este aluno
+      // Carregar avaliações do aluno (como reviewer ou reviewee) para permitir revelação quando totalmente_validada
       try {
-        const revs = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 200, {
-          filter: `reviewer = "${user.id}"`,
+        const revs = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 500, {
+          filter: `reviewer = "${user.id}" || reviewee = "${user.id}"`,
+          sort: '-created',
+          expand: 'reviewer,reviewee',
         })
         const revMap: Record<string, ServiceReviewRecord> = {}
+        const allMap: Record<string, ServiceReviewRecord[]> = {}
         for (const r of revs.items) {
-          revMap[r.service] = r
+          if (r.reviewer === user.id) {
+            revMap[r.service] = r
+          }
+          if (!allMap[r.service]) {
+            allMap[r.service] = []
+          }
+          allMap[r.service].push(r)
         }
         setMyStudentReviews(revMap)
+        setAllReviewsByService(allMap)
       } catch {
         /* intentionally ignored */
       }
@@ -867,9 +880,13 @@ export default function MeuHistorico() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {group.services.map((svc, svcIdx) => {
                               const hasReviewed = Boolean(myStudentReviews[svc.id])
-                              const isValidated = Boolean(svc.validated)
+                              const isFullyValidated =
+                                svc.validation_status === 'totalmente_validada' ||
+                                Boolean(svc.validated)
                               const profName =
                                 svc.expand?.professional?.name || group.profName || 'Profissional'
+                              const svcReviews = allReviewsByService[svc.id] || []
+                              const counterReview = svcReviews.find((r) => r.reviewer !== user?.id)
 
                               return (
                                 <div
@@ -889,13 +906,18 @@ export default function MeuHistorico() {
                                       </p>
                                     </div>
 
-                                    {isValidated ? (
+                                    {isFullyValidated ? (
                                       <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 shrink-0 flex items-center gap-1">
-                                        <CheckCircle2 className="w-2.5 h-2.5" /> Validada ✓
+                                        <CheckCircle2 className="w-2.5 h-2.5" /> Totalmente Validada
+                                        ✓
+                                      </span>
+                                    ) : hasReviewed ? (
+                                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0 flex items-center gap-1">
+                                        <Clock className="w-2.5 h-2.5" /> Aguardando Profissional
                                       </span>
                                     ) : (
                                       <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0 flex items-center gap-1">
-                                        <Clock className="w-2.5 h-2.5" /> Aguardando Validação
+                                        <Clock className="w-2.5 h-2.5" /> Avalie para validar
                                       </span>
                                     )}
                                   </div>
@@ -904,6 +926,41 @@ export default function MeuHistorico() {
                                     <p className="text-[11px] text-gray-400 font-inter italic line-clamp-1">
                                       &ldquo;{svc.notes}&rdquo;
                                     </p>
+                                  )}
+
+                                  {/* Revelação mútua: apenas quando totalmente_validada */}
+                                  {isFullyValidated && counterReview && (
+                                    <div className="p-2.5 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] text-[#1A1A1A] space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1">
+                                          {[1, 2, 3, 4, 5].map((s) => (
+                                            <Star
+                                              key={s}
+                                              className={`w-3 h-3 ${
+                                                s <= counterReview.rating
+                                                  ? 'fill-[#D4AF37] text-[#D4AF37]'
+                                                  : 'fill-transparent text-[#CCCCCC]'
+                                              }`}
+                                            />
+                                          ))}
+                                          <span className="text-[11px] font-bold text-[#B8962E] font-mono ml-1">
+                                            ({counterReview.rating}/5)
+                                          </span>
+                                        </div>
+                                        <span className="text-[9px] font-bold uppercase tracking-wider text-[#0057FF] font-montserrat">
+                                          Avaliação do Profissional
+                                        </span>
+                                      </div>
+                                      {counterReview.message ? (
+                                        <p className="text-[11px] text-[#333333] font-inter italic leading-tight">
+                                          &ldquo;{counterReview.message}&rdquo;
+                                        </p>
+                                      ) : (
+                                        <p className="text-[10px] text-[#666666] font-inter italic">
+                                          Nota atribuída sem mensagem escrita.
+                                        </p>
+                                      )}
+                                    </div>
                                   )}
 
                                   <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t border-[#222]">
@@ -915,12 +972,14 @@ export default function MeuHistorico() {
                                     </span>
                                     <span
                                       className={
-                                        isValidated
+                                        isFullyValidated
                                           ? 'text-[#22C55E] font-bold'
                                           : 'text-amber-400 font-semibold'
                                       }
                                     >
-                                      {isValidated ? '+1 Serviço no Ranking' : 'Valide p/ pontuar'}
+                                      {isFullyValidated
+                                        ? '+1 Serviço no Ranking'
+                                        : 'Valide p/ pontuar'}
                                     </span>
                                   </div>
 
@@ -928,7 +987,9 @@ export default function MeuHistorico() {
                                   <div className="pt-2 border-t border-[#222] flex items-center justify-between gap-2">
                                     <span className="text-[10px] text-gray-400 font-inter">
                                       {hasReviewed
-                                        ? 'Sua nota foi enviada'
+                                        ? isFullyValidated
+                                          ? 'Avaliações mútuas confirmadas'
+                                          : 'Você avaliou — aguardando a outra parte'
                                         : 'Avalie para validar no ranking'}
                                     </span>
                                     <Button
