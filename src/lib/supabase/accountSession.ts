@@ -1,3 +1,4 @@
+import {submitApplication,reviewApplication,type Specialty,type Application} from './applications'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 import { requestStudentLink, acceptStudentLink, revokeStudentLink, type StudentLink } from './links'
@@ -99,5 +100,16 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const studentId=state.profile.id
   return operation(async()=>{await requestStudentLink(professionalId,client,studentId)})
  }
- return {start,refresh,login,logout,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ function applyProfessional(specialty:Specialty,credential:string){
+  const profile=state.profile
+  if(state.phase!=='ready'||!profile||busy||disposed||!(profile.role==='aluno'||profile.role==='profissional'&&!profile.approved))throw Error('Solicitação indisponível.')
+  const id=profile.id
+  return operation(async()=>{await submitApplication(specialty,credential,id,client)})
+ }
+ function reviewProfessional(row:Application,decision:'approved'|'rejected',reason:string){
+  if(state.phase!=='ready'||state.profile?.role!=='admin'||busy||disposed)throw Error('Análise indisponível.')
+  const admin=state.profile.id,snapshot={...row}
+  return operation(async()=>{await reviewApplication(snapshot,decision,reason,admin,client)})
+ }
+ return {start,refresh,login,logout,applyProfessional,reviewProfessional,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }

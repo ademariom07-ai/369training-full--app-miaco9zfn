@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      professional_application_reviews: {
+        Row: {
+          applicant_id: string
+          application_version: number
+          created_at: string
+          credential: string
+          decision: string
+          id: string
+          reason: string
+          reviewer_id: string
+          specialty: string
+        }
+        Insert: {
+          applicant_id: string
+          application_version: number
+          created_at?: string
+          credential: string
+          decision: string
+          id?: string
+          reason: string
+          reviewer_id: string
+          specialty: string
+        }
+        Update: {
+          applicant_id?: string
+          application_version?: number
+          created_at?: string
+          credential?: string
+          decision?: string
+          id?: string
+          reason?: string
+          reviewer_id?: string
+          specialty?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_application_reviews_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "professional_applications"
+            referencedColumns: ["applicant_id"]
+          },
+          {
+            foreignKeyName: "professional_application_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_applications: {
+        Row: {
+          applicant_id: string
+          applicant_name: string
+          credential: string
+          requested_at: string
+          review_reason: string | null
+          reviewed_at: string | null
+          specialty: string
+          status: string
+          version: number
+        }
+        Insert: {
+          applicant_id: string
+          applicant_name: string
+          credential: string
+          requested_at?: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          specialty: string
+          status?: string
+          version?: number
+        }
+        Update: {
+          applicant_id?: string
+          applicant_name?: string
+          credential?: string
+          requested_at?: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          specialty?: string
+          status?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_applications_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           approved: boolean
@@ -144,6 +239,31 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      review_professional_application: {
+        Args: {
+          p_applicant_id: string
+          p_decision: string
+          p_expected_version: number
+          p_reason: string
+        }
+        Returns: {
+          applicant_id: string
+          applicant_name: string
+          credential: string
+          requested_at: string
+          review_reason: string | null
+          reviewed_at: string | null
+          specialty: string
+          status: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "professional_applications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       revoke_student_link: {
         Args: { p_expected_version: number; p_student_id: string }
         Returns: {
@@ -158,6 +278,26 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "student_professional_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      submit_professional_application: {
+        Args: { p_credential: string; p_specialty: string }
+        Returns: {
+          applicant_id: string
+          applicant_name: string
+          credential: string
+          requested_at: string
+          review_reason: string | null
+          reviewed_at: string | null
+          specialty: string
+          status: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "professional_applications"
           isOneToOne: false
           isSetofReturn: true
         }

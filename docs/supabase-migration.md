@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As quatro migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As cinco migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -77,3 +77,7 @@ A quarta migration participant_link_summary (20261006012514) acrescenta RPC de v
 ## Cadastro e recuperação preparados
 
 /conta-supabase inclui cadastro, recuperação por email e nova senha após PASSWORD_RECOVERY da mesma conta. Cadastro não define privilégios; profiles conserva aluno/approved=false. Retorno fixo à origem atual, sem parâmetro de redirecionamento do usuário; exige allowlist /conta-supabase, SMTP e revisão da configuração Auth em ambiente de teste. Não usar a prévia demonstrativa como callback. Nova senha sai da sessão local antes da confirmação, espera local de 60 segundos entre tentativas de email e mensagens genéricas. Senhas não são persistidas pelo aplicativo. Total atual: 70 testes locais com SDK simulado, build/TypeScript/lint aprovados. Nenhum email/conta real, mudança de configuração ou publicação nesta rodada. Homologação de links, sessões concorrentes, termos/consentimento e navegador pendente; recarga do modo de recuperação pode exigir novo link. Veja database-status-0-15.md.
+
+## Solicitação e análise de acesso profissional
+
+Quinta migration professional_applications (20261006122253) aplicada. Solicitação própria não promove papel; administrador autorizado no banco analisa a versão pendente com motivo, registra histórico e promove somente para profissional aprovado. Sem autoaprovação/metadata admin; vínculo ativo/pendente de aluno bloqueia aprovação. Candidaturas/decisões têm RLS por dono/admin e escrita só pelas RPCs. Fila e formulário preparados na conta da branch, sem criar administrador real nem publicar. Trinta verificações SQL passaram local/banco real, zero fixtures; advisor sem alertas. Total atual 82 testes locais SDK simulado, TypeScript/build/lint aprovados. Verificação humana de habilitação, retenção/LGPD, navegador/contas reais e migração geral continuam pendentes. Consulte database-status-0-15.md.

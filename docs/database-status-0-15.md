@@ -1,11 +1,15 @@
 # 369 WELLNESS — banco e pacotes 0–15
 
-Verificado em 05/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
+Verificado em 06/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
+
+## Estado consolidado atual
+
+Cinco migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes e solicitação/análise de acesso profissional. Na branch, /conta-supabase contém login/cadastro/recuperação preparados, edição do próprio nome, vínculo e fila administrativa de candidaturas. 82 testes locais com SDK simulado aprovados; TypeScript/build/lint aprovados. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
 
 ## Etapa inicial aplicada
 
-Migration `20261005211816_identity_profiles_foundation.sql` aplicada no Supabase, com a mesma versão registrada no histórico remoto. Cria apenas `public.profiles`, referenciando `auth.users`, sem copiar migrations, IDs, contas, senhas ou dados do PocketBase. Nome limitado a 160 caracteres; novos perfis criados pelo cliente recebem papel aluno e approved=false. Papel/aprovação são reservados ao backend confiável; nenhum administrador foi criado e ainda não há fluxo administrativo de promoção.
+Migration `20261005211816_identity_profiles_foundation.sql` aplicada no Supabase, com a mesma versão registrada no histórico remoto. Cria apenas `public.profiles`, referenciando `auth.users`, sem copiar migrations, IDs, contas, senhas ou dados do PocketBase. Nome limitado a 160 caracteres; novos perfis criados pelo cliente recebem papel aluno e approved=false. Papel/aprovação são reservados ao backend confiável; nenhum administrador foi criado. O fluxo de análise administrativa foi adicionado na quinta migration, descrita ao final.
 
 Cada conta autenticada não anônima pode ler somente o próprio perfil, criar seu próprio registro com id/nome e alterar somente o nome. Sem acesso anônimo, edição de id/papel/aprovação/data de criação, exclusão por cliente ou acesso administrativo global pelo simples valor role. Concessões por coluna são explícitas; INSERT/UPDATE completos não estão autorizados. A migration inicial não cria SECURITY DEFINER ou trigger de cadastro automático. Não há chave secreta no cliente nem decisão de autorização baseada em user_metadata.
 
@@ -25,16 +29,16 @@ As funções de perfil passaram a ser consumidas apenas pela rota isolada /conta
 
 | Pacote | Escopo | Situação de banco |
 | --- | --- | --- |
-| 0 | Base, carteira, chat, administrativo | Parcial: base de identidade criada; demais módulos pendentes |
+| 0 | Base, carteira, chat, administrativo | Parcial: identidade e análise de acesso profissional preparadas; carteira/chat/admin geral pendentes |
 | 1 | IA e wearable | Parcial: integrações, consentimento e backend pendentes |
-| 2 | Segurança, vínculo, cashback | Parcial: perfis isolados e protocolo de vínculo no banco; financeiro e telas pendentes |
+| 2 | Segurança, vínculo, cashback | Parcial: perfis isolados e pedido/aceite/encerramento ligados à conta; cashback/homologação pendentes |
 | 3 | Usuários, ranking, rede, agenda | Parcial: agenda, rede e ranking pendentes |
 | 4 | Conclusão de serviços e fechamento | Parcial: transações/idempotência pendentes |
 | 5 | Repetição de arquivos anteriores | Parcial: depende dos módulos anteriores |
-| 6 | Login e autenticação | Parcial: login e conta Supabase em rota isolada; homologação e migração geral pendentes |
+| 6 | Login e autenticação | Parcial: cadastro/login/recuperação preparados; emails/contas reais e migração geral pendentes |
 | 7 | Layout e acesso | Parcial: sem troca dos guards ou homologação no navegador |
 | 8 | Telas e histórico do aluno | Parcial: persistência Supabase pendente |
-| 9 | Telas profissionais | Parcial: vínculo no banco; telas, treino/dieta e avisos Supabase pendentes |
+| 9 | Telas profissionais | Parcial: conta, vínculo e solicitação/aprovação preparados; treino/dieta/avisos/dashboard pendentes |
 | 10 | Wearable, documentos e usuários | Parcial: documentos/consentimentos/Storage pendentes |
 | 11 | Consentimentos e financeiro | Parcial: schemas e validação pendentes |
 | 12 | Ranking periódico | Parcial: fórmula e agendamento pendentes |
@@ -137,3 +141,19 @@ Antes de homologar, configurar SMTP, Site URL e redirect exato da origem de test
 Código salvo somente na branch prep/supabase-vite, sem merge/main ou publicação. Todos os pacotes 0–15 seguem parciais, nenhum completo. A prévia permanece demonstrativa. Próximas prioridades: homologação de acesso e vínculos no navegador; solicitação/aprovação profissional pelo backoffice; treino/dieta/avisos com vínculo ativo.
 
 Referências oficiais consultadas: https://supabase.com/docs/guides/auth/passwords e https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail
+
+## Etapa de solicitação e análise profissional — 06/10/2026
+
+Quinta migration aplicada: 20261006122253_professional_applications.sql. Candidatura própria nas áreas educação física, nutrição, fisioterapia, psicologia e artes marciais, com nome de exibição copiado do perfil e registro/referência de qualificação limitado a 160 caracteres. Aluno ou profissional ainda não aprovado pode solicitar; enviar pedido não muda papel/aprovação. Uma candidatura atual por conta. Repetição idêntica enquanto pendente é idempotente; alteração durante análise é bloqueada. Após recusa, novo envio incrementa versão e preserva decisões anteriores. Profissional já aprovado/admin não solicita. Perfil deve possuir nome não vazio.
+
+professional_applications e professional_application_reviews têm RLS e SELECT explícito autenticado, sem escrita direta de cliente. Solicitante lê somente o próprio pedido/decisões; administrador com papel atual armazenado no banco lê a fila e histórico, sem ampliar acesso geral a profiles/dados clínicos. Auth anônimo e role anon não possuem acesso. Funções públicas SECURITY INVOKER; núcleos SECURITY DEFINER privados com search_path vazio, identidade/papel verificados no banco, EXECUTE retirado de PUBLIC/anon. Não usa metadata editável para autorização.
+
+A análise exige administrador autorizado, alvo diferente do ator, versão exata pendente, decisão approved/rejected e motivo de 1–1000 caracteres. Bloqueia aprovação se há vínculo como aluno pending/active; o aluno deve encerrá-lo antes para evitar troca de papel que oculte uma relação ativa. Aprovação atualiza role=profissional/approved=true e grava decisão atomicamente; recusa preserva o papel atual. Perfis são bloqueados em ordem de UUID, depois candidatura, e revalidados. Uma decisão por candidatura/versão; repetição de análise é rejeitada e requer nova leitura. O histórico inclui revisor, decisão, motivo, área e credencial daquele envio; não pode ser editado/excluído pelo cliente. Não é um ledger imutável contra service_role/administradores do banco. Exclusão da conta pelo backend pode remover histórico do solicitante por cascade; política de retenção/LGPD ainda precisa ser definida.
+
+30 verificações SQL passaram no PostgreSQL WASM local e no Supabase real: solicitação/defaults, idempotência, alteração pendente bloqueada, autoanálise, metadata admin falsa, INSERT/UPDATE/DELETE diretos, isolamento entre solicitantes, área/credencial inválidas, profissional aprovado, fila administrativa, versão antiga/motivo vazio, recusa, histórico, reenvio, vínculo de aluno impedindo aprovação, promoção autorizada, auditoria protegida e anonimato. Testes com BEGIN/ROLLBACK e subtransação, sem dados de teste persistentes. Depois: zero Auth users, profiles, vínculos, candidaturas e decisões. Quatro suites SQL anteriores passaram novamente no local. Advisor de segurança sem alertas após migration. Não foram testados JWT forjado, login HTTP ou sessões concorrentes reais.
+
+Na conta, formulário de solicitação, situação/motivo e reenvio após recusa. Administrador vê fila pendente paginada, nome do envio, área e credencial; decisão exige motivo e confirmação, com checkbox de conferência para aprovação. Cancelar confirmação não grava. Checkbox é requisito da interface: a autoridade no servidor é o administrador autorizado; não há consulta automática a conselhos ou documentos. Não armazenamos anexos/documentos de identidade/saúde nessa etapa. Nome/credencial não comprovam identidade legal ou habilitação. O administrador inicial continua exigindo provisionamento confiável fora do formulário; nenhuma conta real/admin foi criada.
+
+Mutações seguem o bloqueio síncrono do controlador da conta. Alvo/versão da análise são copiados antes de aguardar, identidade verificada, respostas de sessão trocada descartadas; listagens limpam dados ao mudar conta/página. Papel/aprovação não aparecem no payload de envio. Doze testes locais adicionais com SDK simulado passaram, total 82: payloads mínimos, entrada/troca de dono, análise vinculada a versão, autoanálise/estado/decisão inválidos, respostas incompatíveis, escopo da consulta, fila limitada, erro do servidor, papel de banco, contador e bloqueio de operação concorrente, erro sem promoção otimista. TypeScript/build/lint/diff check aprovados. Testes não montam React nem homologam navegador.
+
+Sem merge na main, publicação, importação PocketBase ou envio de email. Todos os pacotes 0–15 continuam parciais; nenhum totalmente aplicado. Próximas prioridades: configurar/homologar Auth e vínculos em contas reais de teste; homologar fila administrativa e verificação profissional; depois treino/dieta/avisos com acesso por vínculo ativo, agenda/pagamento e ranking. Conta com papéis simultâneos aluno/profissional ainda não é suportada pelo enum atual; reconciliação/migração das contas existentes continua pendente.
