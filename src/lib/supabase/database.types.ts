@@ -711,6 +711,27 @@ export type Database = {
           professional_id: string
         }[]
       }
+      quote_booking_slot: {
+        Args: { p_day: string; p_hour: number; p_professional_id: string }
+        Returns: {
+          availability_version: number
+          balance_cents: number
+          day: string
+          deposit_basis_points: number
+          deposit_cents: number
+          ends_at: string
+          free_cancel_deadline: string
+          free_cancel_hours: number
+          hour: number
+          no_show_deposit_retained: boolean
+          price_cents: number
+          professional_id: string
+          quoted_at: string
+          starts_at: string
+          terms_id: string
+          terms_version: number
+        }[]
+      }
       read_training_notification: {
         Args: { p_plan_id: string }
         Returns: {

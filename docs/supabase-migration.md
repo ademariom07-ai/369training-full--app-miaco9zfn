@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As onze migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As doze migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -122,3 +122,10 @@ Calendário mensal/Liberar Dia e consulta pelo aluno preparados na rota /conta-s
 Décima primeira migration: `20261007174853_professional_booking_terms.sql`. Versões imutáveis via APIs, perfil aprovado revalidado/bloqueado e criação idempotente com versão esperada. Preço em centavos, sinal em basis points, sinal calculado no banco com numeric/meio centavo para cima, prazo de cancelamento gratuito 0–720 horas e retenção de sinal por no-show registrada conforme requisito. Sem reserva, cobrança, retenção ou crédito efetivo. Consulta do aluno retorna somente a última versão mínima do profissional aprovado.
 
 Formulário profissional e consulta pelo aluno preparados na rota /conta-supabase. 30 testes SQL reais/locais transacionais, zero fixtures persistidas, advisor sem alertas. 12 testes novos de helpers/SDK/controller; total local 170 (152 módulo Supabase + 18 regras/CSV). TypeScript/build/lint aprovados. Conta real/navegador/concorrência multisessão não homologados. Futura reserva deverá capturar a versão aceita e só confirmar após sinal verificado no gateway. Sem deploy ou merge; todos os pacotes permanecem parciais. Ver docs/database-status-0-15.md.
+
+
+## Cotação de horário — 07/10/2026
+
+Décima segunda migration: `20261007182712_validated_booking_quote.sql`. RPC de leitura para aluno autenticado verifica profissional aprovado, disponibilidade liberada/futura e condições mais recentes; retorna preço/sinal/restante, versões e prazo de cancelamento calculados no servidor. Sem criação de reserva, retenção do horário, aceite persistido, garantia de preço, pagamento ou pontos.
+
+Conferência por horário preparada junto à consulta da agenda em /conta-supabase. 21 verificações SQL reais/locais com rollback, zero fixtures persistidas, advisor sem alertas; nove testes novos do SDK, total local 179 (161 módulo Supabase + 18 regras/CSV). TypeScript/build/lint aprovados. Cotação não é autoridade para futura gravação: servidor deverá revalidar versões e disponibilidade sob locks, e confirmação dependerá de sinal verificado no gateway. Frontend sem homologação em navegador ou publicação. Todos os pacotes seguem parciais; detalhes em docs/database-status-0-15.md.
