@@ -109,6 +109,41 @@ export type Database = {
           },
         ]
       }
+      professional_availability_days: {
+        Row: {
+          available_hours: number[]
+          day: string
+          professional_id: string
+          released: boolean
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          available_hours?: number[]
+          day: string
+          professional_id: string
+          released?: boolean
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          available_hours?: number[]
+          day?: string
+          professional_id?: string
+          released?: boolean
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_availability_days_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           approved: boolean
@@ -607,6 +642,14 @@ export type Database = {
           version: number
         }[]
       }
+      list_released_availability: {
+        Args: { p_month: string; p_professional_id: string }
+        Returns: {
+          available_hours: number[]
+          day: string
+          professional_id: string
+        }[]
+      }
       read_training_notification: {
         Args: { p_plan_id: string }
         Returns: {
@@ -697,6 +740,28 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "student_professional_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      save_professional_availability: {
+        Args: {
+          p_day: string
+          p_expected_version: number
+          p_hours: number[]
+          p_released: boolean
+        }
+        Returns: {
+          available_hours: number[]
+          day: string
+          professional_id: string
+          released: boolean
+          updated_at: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "professional_availability_days"
           isOneToOne: false
           isSetofReturn: true
         }

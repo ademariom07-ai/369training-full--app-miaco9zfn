@@ -5,7 +5,7 @@ Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
 ## Estado consolidado atual
 
-Nove migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso, conclusão informada pelo aluno, carteira/reserva própria e rascunhos administrativos de ranking/cashback. Na branch, /conta-supabase contém login/cadastro/recuperação preparados, edição do próprio nome, vínculo, fila administrativa de candidaturas, treino textual com aviso de leitura e conclusão, carteira com reserva/cancelamento e comparação/salvamento de regras somente em rascunho. 143 testes locais aprovados: 125 do módulo Supabase com SDK simulado e 18 de ranking/cashback/CSV. TypeScript/build e lint dos módulos novos aprovados; carteira legada mantém avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
+Dez migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso, conclusão informada pelo aluno, carteira/reserva própria, rascunhos administrativos de ranking/cashback e disponibilidade profissional por dia. Na branch, /conta-supabase contém acesso preparado, próprio perfil, vínculo, candidaturas, treino textual/aviso/conclusão, carteira/reserva/cancelamento, revisão de regras em rascunho e calendário mensal de disponibilidade com Liberar Dia e consulta pelo aluno. 158 testes locais aprovados: 140 do módulo Supabase com SDK simulado e 18 de ranking/cashback/CSV. TypeScript/build e lint dos módulos novos aprovados; carteira legada mantém avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
 
 ## Etapa inicial aplicada
 
@@ -32,13 +32,13 @@ As funções de perfil passaram a ser consumidas apenas pela rota isolada /conta
 | 0 | Base, carteira, chat, administrativo | Parcial: identidade, análise profissional e carteira/reserva próprias preparadas; funding/PIX/chat/admin geral pendentes |
 | 1 | IA e wearable | Parcial: integrações, consentimento e backend pendentes |
 | 2 | Segurança, vínculo, cashback | Parcial: perfis isolados e pedido/aceite/encerramento ligados à conta; simulador cashback corrigido e propostas administrativas imutáveis; fechamento financeiro/Supabase e homologação pendentes |
-| 3 | Usuários, ranking, rede, agenda | Parcial: cálculo de ranking e rascunhos administrativos versionados preparados; agenda, rede e integração do ranking pendentes |
+| 3 | Usuários, ranking, rede, agenda | Parcial: cálculo de ranking e rascunhos administrativos versionados preparados; agenda de disponibilidade preparada; reservas pagas, rede e integração do ranking pendentes |
 | 4 | Conclusão de serviços e fechamento | Parcial: reserva/cancelamento de saldo atômicos e idempotentes; fechamento de cashback e pagamentos pendentes |
 | 5 | Repetição de arquivos anteriores | Parcial: depende dos módulos anteriores |
 | 6 | Login e autenticação | Parcial: cadastro/login/recuperação preparados; emails/contas reais e migração geral pendentes |
 | 7 | Layout e acesso | Parcial: sem troca dos guards ou homologação no navegador |
 | 8 | Telas e histórico do aluno | Parcial: leitura de treino/aviso e conclusão única informada pelo aluno; sessões repetidas, progresso detalhado e histórico geral pendentes |
-| 9 | Telas profissionais | Parcial: conta/vínculo/aprovação e treino textual/aviso e leitura da conclusão do aluno preparados; dieta/revisões/dashboard pendentes |
+| 9 | Telas profissionais | Parcial: conta/vínculo/aprovação e treino textual/aviso e leitura da conclusão do aluno preparados; agenda mensal com Liberar Dia preparada; dieta/revisões/dashboard e reservas pagas pendentes |
 | 10 | Wearable, documentos e usuários | Parcial: documentos/consentimentos/Storage pendentes |
 | 11 | Consentimentos e financeiro | Parcial: carteira/reserva com RLS aplicadas; consentimentos/ledger completo/funding/pagamentos pendentes |
 | 12 | Ranking periódico | Parcial: fórmulas comparadas e rascunhos imutáveis no banco; regra ativa e agendamento pendentes |
@@ -53,7 +53,7 @@ Totalmente aplicados: **0**. Uma migration concluída não significa um pacote c
 1. Identidade: homologar login/cadastro Supabase e fluxo controlado de solicitação/aprovação profissional; definir mapa de IDs e migração de contas sem importar senhas.
 2. Vínculos: integrar o protocolo já aplicado às telas após homologar login; separar catálogo profissional público de dados privados.
 3. Treino/dieta/avisos: criação validada no banco, acesso dos participantes, notificação idempotente e leitura por destinatário.
-4. Agenda: disponibilidade, capacidade, reservas concorrentes, sinal confirmado pelo gateway, cancelamento.
+4. Agenda: homologar disponibilidade preparada; adicionar capacidade/coletivas, duração variável, reservas concorrentes, sinal confirmado pelo gateway e cancelamento.
 5. Financeiro/ranking: ledger imutável, webhook assinado, critérios e reconciliação; depois IA, wearable e Storage privado.
 
 Prévia demonstrativa existente: https://wellness-369-demo.ademariom07.chatgpt.site
@@ -234,3 +234,20 @@ Somente um administrador confiável, consultado de profiles no banco, pode ler o
 A seção administrativa preparada na rota /conta-supabase compara exemplos fictícios de piso/teto/serviços reais usando a função existente, exibe histórico paginado e salva somente rascunhos. Ela aparece apenas ao perfil admin verificado; o banco revalida a permissão. Títulos/justificativas são renderizados como texto React, sem HTML dinâmico. Troca de sessão limpa a key de repetição do controller e desmonta a seção; a chave vive apenas em memória. Formulários e controles de alteração da conta compartilham o lock do controller.
 
 **Pendências priorizadas:** decidir piso ou teto de 150 serviços e demais divergências das fórmulas; definir percentual/base/pesos/eligibilidade/referrals e destino de reserva; validar exemplos de fechamento em centavos; depois desenhar ativação/versionamento de regra, contadores server-side e snapshots mensais. Créditos dependerão de eventos financeiros verificáveis, ledger/reconciliação e homologação. Agenda, parceiros, administrativo geral, IA e demais requisitos dos pacotes seguem parciais. Nenhuma publicação ou merge nesta etapa.
+
+
+## Décima migration — disponibilidade mensal profissional
+
+`20261007125240_professional_availability_days.sql` aplicada no banco real. Tabela por profissional/dia, horários inteiros das 05h às 23h (blocos de uma hora, último termina 00h), flag released, versão positiva e data do servidor. Salvamento limitado a hoje até hoje+366 dias no fuso America/Sao_Paulo. Os horários são validados, sem duplicatas, e armazenados ordenados. Um dia vazio não pode ser liberado. Esta base não cria consultas, aulas coletivas, capacidade, valores, sinal, reservas, pagamentos, avaliações, conclusão de serviço ou pontos.
+
+RLS permite leitura direta somente ao próprio profissional ainda aprovado, autenticado e não anônimo. Sem acesso administrativo global ou leitura direta pelos alunos. Escrita direta negada inclusive à service_role. A RPC de salvamento identifica e bloqueia o perfil profissional do banco e o dia, compara a versão esperada e incrementa a versão; um cliente desatualizado falha e precisa reler a agenda. Versão zero cria apenas um dia inexistente. Não há retry automático que sobrescreva alterações de outra sessão. Este teste de comparação de versão é sequencial; concorrência real multisessão continua pendente.
+
+A RPC de consulta para alunos retorna somente profissional/dia/horários liberados de um profissional aprovado com nome público, em um mês delimitado. O profissional recebe apenas sua agenda própria pelo serviço tipado. Dias não liberados, profissionais sem aprovação e blocos já iniciados no dia atual não aparecem na consulta do aluno. A consulta não concede leitura de profiles, dados clínicos ou identidades de agendados. Wrappers públicos SECURITY INVOKER; núcleos privados SECURITY DEFINER, search_path vazio, auth.uid/anon checks e EXECUTE restrito. A filtragem dos blocos já iniciados foi ajustada antes da entrega e revalidada no banco.
+
+31 verificações SQL passaram localmente e no Supabase: proprietário/normalização, leitura própria, versão desatualizada, duplicatas/horários/valores nulos, limite de datas, liberação vazia, DML direto, metadata forjada, aluno vendo somente após liberar, isolamento de profissional/admin, anonimato, serviço sem escrita direta, perda de aprovação, retirada do dia da busca e ocultação dos blocos já iniciados. Fixtures revertidas por BEGIN/ROLLBACK externo e subtransação adicional. As dez suítes SQL locais passaram. Consulta final verifica zero usuários, perfis, dias de disponibilidade, rascunhos e carteiras. Advisor de segurança sem alertas.
+
+15 testes novos de calendário e SDK/controller com mocks: datas reais/leap year, navegação de mês, limites de 366 dias/fuso de São Paulo, horários canônicos inclusive arrays esparsos inválidos, dono implícito, aprovação/perfil, versão/resposta inesperadas, token alterado, leitura mensal limitada, registros corrompidos/duplicados/fora do mês, consulta mínima por aluno, lock compartilhado, snapshot de inputs e erro sem retry automático. Total local atual: 158 = 140 Supabase + 18 regras/CSV. TypeScript, lint dos módulos novos, build e diff check aprovados. Não somar testes de outros checkouts. Tela React preparada e compilada, sem montagem/homologação com contas reais no navegador nesta etapa.
+
+Calendário profissional mensal preparado: seleção de dia, clique por bloco para liberar/bloquear, botão Liberar Dia ou Retirar dia da busca. Bloquear o último horário retira a publicação. Seleção de dia permanece na página quando o controller revalida a conta após uma alteração. Aluno consulta horários no catálogo e no vínculo existente. O calendário marca disponibilidade, sem contadores de pendentes/confirmados/concluídos porque ainda não existem reservas integradas.
+
+**Próximos marcos priorizados:** (1) homologar contas e calendário; (2) definir política de duração/capacidade/coletivas e configurar percentuais de sinal e limite de cancelamento no servidor; (3) reservas transacionais com lock do horário, gateway/webhook assinado e confirmação somente após sinal; (4) conclusão validada de serviço/avaliação e vínculo aos contadores de ranking; (5) escolher regra de indicações/piso ou teto 150/base do pool, validar fechamento em centavos e ledger de créditos. Ranking/cashback seguem em rascunho e simulação, sem regra ativa ou créditos. Não houve merge ou publicação. Pacotes 0–15: todos parciais, nenhum completo.

@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As nove migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As dez migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -108,3 +108,10 @@ Serviços/controlador e tela em /conta-supabase preparados com confirmação exp
 Nona migration: `20261007122713_ranking_policy_drafts.sql`. Tabela imutável via APIs de aplicação, RLS restrito a administradores do banco, criação idempotente por RPC privada/wrapper público, UUID de versão e data/autor do servidor. A função retorna SETOF e o SDK exige single(); assinatura final testada e tipos regenerados. 22 testes SQL transacionais no banco real e local, zero fixtures persistidas e advisor sem alertas.
 
 A rota /conta-supabase recebeu seção administrativa preparada para comparar alternativas e registrar propostas de ranking/cashback. Nenhuma escolha default, ativação, fechamento ou crédito. Base ponderada não define pesos nesta etapa. 11 testes novos com SDK/controller simulado; total 143 testes locais (125 Supabase + 18 regras/CSV), compilação TypeScript e build aprovados. Frontend ainda não homologado em navegador ou publicado; nenhum admin real criado. Ver detalhes e pendências em docs/database-status-0-15.md.
+
+
+## Agenda de disponibilidade — 07/10/2026
+
+Décima migration: `20261007125240_professional_availability_days.sql`. RLS própria do profissional aprovado, escrita exclusivamente por RPC que compara versão e bloqueia perfil/dia; horários de uma hora das 05h às 00h, data em America/Sao_Paulo e limite de 366 dias. Consulta do aluno retorna somente disponibilidade liberada, sem blocos já iniciados. Sem reservas, sinal, pagamentos, coletivas ou evento de ranking.
+
+Calendário mensal/Liberar Dia e consulta pelo aluno preparados na rota /conta-supabase, com SDK tipado e lock comum do controller. 31 verificações SQL reais/locais transacionais, zero fixtures persistidas, advisor sem alertas. 15 testes novos de SDK/controller/calendário; total 158 (140 Supabase + 18 regras/CSV). TypeScript/build/lint aprovados. Frontend não publicado nem homologado em navegador; contas reais e concorrência multisessão pendentes. Todos os pacotes continuam parciais. Ver docs/database-status-0-15.md.
