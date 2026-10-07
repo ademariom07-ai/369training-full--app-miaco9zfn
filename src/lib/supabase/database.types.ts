@@ -288,6 +288,133 @@ export type Database = {
           },
         ]
       }
+      wallet_accounts: {
+        Row: {
+          available_cents: number
+          reserved_cents: number
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          available_cents?: number
+          reserved_cents?: number
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          available_cents?: number
+          reserved_cents?: number
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_reservation_events: {
+        Row: {
+          account_version: number
+          amount_cents: number
+          available_after: number
+          available_before: number
+          created_at: string
+          id: string
+          kind: string
+          reserved_after: number
+          reserved_before: number
+          user_id: string
+          withdrawal_id: string
+        }
+        Insert: {
+          account_version: number
+          amount_cents: number
+          available_after: number
+          available_before: number
+          created_at?: string
+          id?: string
+          kind: string
+          reserved_after: number
+          reserved_before: number
+          user_id: string
+          withdrawal_id: string
+        }
+        Update: {
+          account_version?: number
+          amount_cents?: number
+          available_after?: number
+          available_before?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          reserved_after?: number
+          reserved_before?: number
+          user_id?: string
+          withdrawal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_reservation_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_accounts"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "wallet_reservation_events_withdrawal_id_user_id_fkey"
+            columns: ["withdrawal_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_withdrawals"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      wallet_withdrawals: {
+        Row: {
+          amount_cents: number
+          cancelled_at: string | null
+          created_at: string
+          id: string
+          request_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          request_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          request_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_withdrawals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_accounts"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -307,6 +434,24 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "student_professional_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cancel_wallet_withdrawal: {
+        Args: { p_withdrawal_id: string }
+        Returns: {
+          amount_cents: number
+          cancelled_at: string | null
+          created_at: string
+          id: string
+          request_id: string
+          status: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "wallet_withdrawals"
           isOneToOne: false
           isSetofReturn: true
         }
@@ -346,6 +491,22 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "training_plans"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      ensure_wallet_account: {
+        Args: never
+        Returns: {
+          available_cents: number
+          reserved_cents: number
+          updated_at: string
+          user_id: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "wallet_accounts"
           isOneToOne: false
           isSetofReturn: true
         }
@@ -399,6 +560,24 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "student_professional_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      reserve_wallet_withdrawal: {
+        Args: { p_amount_cents: number; p_request_id: string }
+        Returns: {
+          amount_cents: number
+          cancelled_at: string | null
+          created_at: string
+          id: string
+          request_id: string
+          status: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "wallet_withdrawals"
           isOneToOne: false
           isSetofReturn: true
         }

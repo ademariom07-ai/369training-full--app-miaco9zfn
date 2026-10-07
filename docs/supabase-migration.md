@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As sete migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As oito migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -95,3 +95,9 @@ Serviços, controlador e confirmação visual preparados em /conta-supabase. 16 
 ## Preparação do ranking e cashback
 
 Simulador legado corrigido em centavos e cálculo local de pontos preparado com política/versionamento explícitos. Carteira aguarda fechamento confirmado. Exportação CSV protege contra fórmulas em texto. 120 testes locais (102 SDK +18 cálculo/exportação), sem novas migrations financeiras. Não há crédito, reserva de saque ou fechamento Supabase nesta etapa. Base do pool, redistribuição e piso/teto150 permanecem decisões pendentes; próximo backend deve usar ledger transacional e chaves de idempotência, sem copiar hooks PocketBase.
+
+## Carteira/reserva própria (07/10/2026)
+
+Oitava migration aplicada: `20261007112808_wallet_reservation_foundation.sql`. Carteira zero, reserva com saldo disponível/reservado e cancelamento atômico/idempotente, eventos de auditoria e RLS próprio. Nenhuma operação de crédito/funding/PIX/cashback nem ledger completo de pagamentos. Tabelas sem DML direto até para service_role; futuras integrações precisam de RPCs específicos com origem verificada. FKs RESTRICT requerem retenção/anonimização definida.
+
+Serviços/controlador e tela em /conta-supabase preparados com confirmação explícita. 32 verificações SQL reais revertidas, oito suítes SQL locais, 132 testes SDK/cálculo/exportação, TypeScript/lint do módulo/build aprovados; advisor sem alertas e zero fixtures persistidas. Conexão Auth/UI real, concorrência entre sessões e pagamentos não homologados. Branch apenas; prévia demonstrativa inalterada.

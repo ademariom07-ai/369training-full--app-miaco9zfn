@@ -1,11 +1,11 @@
 # 369 WELLNESS — banco e pacotes 0–15
 
-Verificado em 06/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
+Verificado em 07/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
 ## Estado consolidado atual
 
-Sete migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso e conclusão informada pelo aluno. Na branch, /conta-supabase contém login/cadastro/recuperação preparados, edição do próprio nome, vínculo, fila administrativa de candidaturas e treino textual com aviso de leitura e confirmação de conclusão. 120 testes locais aprovados: 102 do módulo Supabase com SDK simulado e 18 de ranking/cashback/CSV. TypeScript/build aprovados; lint dos módulos novos e simulador sem avisos, carteira legada com avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
+Oito migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso , conclusão informada pelo aluno e carteira/reserva própria. Na branch, /conta-supabase contém login/cadastro/recuperação preparados, edição do próprio nome, vínculo, fila administrativa de candidaturas e treino textual com aviso de leitura e confirmação de conclusão, além da carteira com reserva/cancelamento preparados. 132 testes locais aprovados: 114 do módulo Supabase com SDK simulado e 18 de ranking/cashback/CSV. TypeScript/build aprovados; lint dos módulos novos e simulador sem avisos, carteira legada com avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
 
 ## Etapa inicial aplicada
 
@@ -29,18 +29,18 @@ As funções de perfil passaram a ser consumidas apenas pela rota isolada /conta
 
 | Pacote | Escopo | Situação de banco |
 | --- | --- | --- |
-| 0 | Base, carteira, chat, administrativo | Parcial: identidade e análise de acesso profissional preparadas; carteira/chat/admin geral pendentes |
+| 0 | Base, carteira, chat, administrativo | Parcial: identidade, análise profissional e carteira/reserva próprias preparadas; funding/PIX/chat/admin geral pendentes |
 | 1 | IA e wearable | Parcial: integrações, consentimento e backend pendentes |
 | 2 | Segurança, vínculo, cashback | Parcial: perfis isolados e pedido/aceite/encerramento ligados à conta; simulador cashback corrigido; fechamento financeiro/Supabase e homologação pendentes |
 | 3 | Usuários, ranking, rede, agenda | Parcial: cálculo de ranking versionado preparado; agenda, rede e integração do ranking pendentes |
-| 4 | Conclusão de serviços e fechamento | Parcial: transações/idempotência pendentes |
+| 4 | Conclusão de serviços e fechamento | Parcial: reserva/cancelamento de saldo atômicos e idempotentes; fechamento de cashback e pagamentos pendentes |
 | 5 | Repetição de arquivos anteriores | Parcial: depende dos módulos anteriores |
 | 6 | Login e autenticação | Parcial: cadastro/login/recuperação preparados; emails/contas reais e migração geral pendentes |
 | 7 | Layout e acesso | Parcial: sem troca dos guards ou homologação no navegador |
 | 8 | Telas e histórico do aluno | Parcial: leitura de treino/aviso e conclusão única informada pelo aluno; sessões repetidas, progresso detalhado e histórico geral pendentes |
 | 9 | Telas profissionais | Parcial: conta/vínculo/aprovação e treino textual/aviso e leitura da conclusão do aluno preparados; dieta/revisões/dashboard pendentes |
 | 10 | Wearable, documentos e usuários | Parcial: documentos/consentimentos/Storage pendentes |
-| 11 | Consentimentos e financeiro | Parcial: schemas e validação pendentes |
+| 11 | Consentimentos e financeiro | Parcial: carteira/reserva com RLS aplicadas; consentimentos/ledger completo/funding/pagamentos pendentes |
 | 12 | Ranking periódico | Parcial: fórmulas explícitas preparadas para comparação; regra ativa e agendamento pendentes |
 | 13 | Turmas e resumo financeiro | Parcial: concorrência e pagamentos pendentes |
 | 14 | Revisão de migrations | Parcial: tradução/revisão de módulos pendente |
@@ -203,3 +203,19 @@ Planilha identifica simulação sem crédito, diferencia participantes fictício
 Validação: 18 novos testes relevantes de cálculo/CSV e 102 existentes do módulo Supabase, total120; valores pequenos, níveis parciais, exclusões totais/parciais, plano vinculado desconhecido, posições duplicadas, montantes inválidos, estabilidade e população369.371. O caso de exclusão da posição1 em três posições agora distribui R$240,67 e reserva R$139,33, com resumo conciliado. TypeScript/build aprovados; módulos novos/simulador lint sem avisos. Carteira legada ainda possui avisos de imports não usados e dependência de effect anteriores à etapa. Sem montagem React, login real, teste concorrente, pagamento ou produção.
 
 Próximas prioridades: P0 conciliar base/percentual do pool e regra de redistribuição; P0 ledger transacional com reserva de saque e idempotência por restrição única; P1 escolher piso/teto150 e fórmula de indicação; P1 validar contagem aluno/profissional, elegibilidade e origem financeira; P1 homologar navegador e concorrência. Todos os pacotes continuam parciais, zero concluídos. Alterações somente na branch prep/supabase-vite, sem merge/main ou publicação.
+
+## Carteira e reserva de saque — base aplicada (07/10/2026)
+
+Migration `20261007112808_wallet_reservation_foundation.sql` aplicada; versão verificada no histórico remoto. Cria wallet_accounts, wallet_withdrawals e wallet_reservation_events, todos com RLS e SELECT próprio para usuários autenticados não anônimos. Admin não obtém leitura global. Clientes e service_role não têm DML direto nessas tabelas; nenhuma chave de servidor adicionada ao frontend.
+
+Carteira inicia em zero e usa centavos inteiros limitados ao intervalo seguro do SDK JavaScript. Pedido de reserva deriva o titular da sessão, bloqueia perfil e conta, verifica disponível e move o valor disponível → reservado na mesma transação do pedido e evento. Chave única por usuário/pedido garante reenvio sem nova reserva; a mesma chave com outro valor é rejeitada. Pedido cancelado não é reaberto por reenvio. Cancelamento próprio devolve o reservado → disponível uma única vez. Eventos têm restrições de conservação do total, valores antes/depois, versão única da conta e evento único por pedido/tipo.
+
+É auditoria de reserva, não ledger completo de pagamentos em partidas dobradas. Nenhum RPC de depósito, crédito, cashback, estorno financeiro, aprovação bancária ou PIX existe nesta etapa. Não foram criadas contas/carteiras reais nem saldos. Fixtures de saldo foram inseridas apenas por SQL privilegiado dentro de testes BEGIN/ROLLBACK com subtransação. Eventos não são editáveis pelos papéis API; proprietário do banco continua uma autoridade privilegiada. FKs RESTRICT preservam registros financeiros e podem bloquear exclusão de perfil; retenção/anonimização precisam de política específica futura.
+
+Serviços SDK verificam identidade com getUser e sessão antes/depois, titular das respostas, centavos, estados e datas. Leitura pagina20 e lê a conta antes/depois dos pedidos: alteração de versão/saldo/data exige atualização. Controlador trava operações simultâneas e conserva a chave de pedido em memória após resposta incerta; não conserva essa chave após recarregar a página. Recarregamento exige conferir reservas existentes antes de enviar novo pedido. Isso não substitui validação/revogação de sessões nem MFA para pagamentos futuros.
+
+Tela própria em /conta-supabase preparada: ativação de carteira com zero, saldo disponível/reservado, conferência e confirmação da reserva, cancelamento confirmado e paginação. Sem saldo, formulário de reserva fica desabilitado. Linguagem distingue reserva de transferência bancária. Não foi substituída a carteira PocketBase legada.
+
+Validação: 32 verificações SQL no banco real passaram; oito suítes SQL locais passaram; usuários/perfis/carteiras/pedidos/eventos zero ao final. Advisor de segurança sem alertas. 12 novos testes SDK/controlador, total132 locais (114 Supabase,18 ranking/cashback/CSV), TypeScript/lint do módulo e build aprovados. São testes SQL sequenciais e SDK simulado: não testam Auth real, UI montada, duas sessões simultâneas ou transferência financeira. Locks/chaves foram implementados, mas concorrência entre sessões ainda precisa de homologação.
+
+Próximo marco financeiro: conciliar base do pool, redistribuição entre níveis, fórmula de indicação e piso/teto150; projetar ledger/funding com origem de pagamento verificada; depois homologar fechamento e pagamento transacionais com concorrência e estornos. Ranking não escreve saldo; conclusão de treino não gera pontos/créditos nesta etapa. Todos os pacotes 0–15 continuam parciais, zero completos. Branch apenas, sem merge/main ou publicação. Prévia demonstrativa: https://wellness-369-demo.ademariom07.chatgpt.site .
