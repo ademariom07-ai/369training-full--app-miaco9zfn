@@ -144,6 +144,53 @@ export type Database = {
           },
         ]
       }
+      professional_booking_terms: {
+        Row: {
+          created_at: string
+          deposit_basis_points: number
+          deposit_cents: number | null
+          free_cancel_hours: number
+          id: string
+          no_show_deposit_retained: boolean
+          price_cents: number
+          professional_id: string
+          request_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          deposit_basis_points: number
+          deposit_cents?: number | null
+          free_cancel_hours: number
+          id?: string
+          no_show_deposit_retained?: boolean
+          price_cents: number
+          professional_id: string
+          request_id: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          deposit_basis_points?: number
+          deposit_cents?: number | null
+          free_cancel_hours?: number
+          id?: string
+          no_show_deposit_retained?: boolean
+          price_cents?: number
+          professional_id?: string
+          request_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_booking_terms_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           approved: boolean
@@ -622,6 +669,20 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_professional_booking_terms: {
+        Args: { p_professional_id: string }
+        Returns: {
+          created_at: string
+          deposit_basis_points: number
+          deposit_cents: number
+          free_cancel_hours: number
+          id: string
+          no_show_deposit_retained: boolean
+          price_cents: number
+          professional_id: string
+          version: number
+        }[]
+      }
       list_approved_professionals: {
         Args: { p_page: number }
         Returns: {
@@ -762,6 +823,33 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "professional_availability_days"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      save_professional_booking_terms: {
+        Args: {
+          p_deposit_basis_points: number
+          p_expected_version: number
+          p_free_cancel_hours: number
+          p_price_cents: number
+          p_request_id: string
+        }
+        Returns: {
+          created_at: string
+          deposit_basis_points: number
+          deposit_cents: number | null
+          free_cancel_hours: number
+          id: string
+          no_show_deposit_retained: boolean
+          price_cents: number
+          professional_id: string
+          request_id: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "professional_booking_terms"
           isOneToOne: false
           isSetofReturn: true
         }
