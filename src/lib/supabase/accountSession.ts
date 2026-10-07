@@ -1,3 +1,4 @@
+import {createRankingDraft,validateDraft,type DraftInput} from './rankingDrafts'
 import {ensureOwnWallet,reserveWallet,cancelWallet} from './wallet'
 import {completeTrainingPlan} from './trainingCompletions'
 import {createTrainingPlan,markTrainingRead,type TrainingInput} from './trainingPlans'
@@ -10,6 +11,7 @@ export type AccountState = { phase:'checking'|'signed_out'|'profile_missing'|'re
 type Client=SupabaseClient<Database>
 export function createAccountSession(client:Client, changed:(state:AccountState)=>void, schedule:(task:()=>void)=>()=>void=task=>{const id=setTimeout(task,0);return()=>clearTimeout(id)},redirectTo?:string) {
  let recovery=false,recoveryAccountId:string|null=null,lastMailAttempt=-Infinity
+ let draftRetry:{owner:string;body:DraftInput;requestId:string}|null=null
  let walletRetry:{owner:string;amount:number;requestId:string}|null=null
  let trainingRetry:(TrainingInput&{professionalId:string})|null=null
  let disposed=false,busy=false,epoch=0,cancelScheduled=()=>{},unsubscribe=()=>{}
@@ -34,6 +36,7 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const result=client.auth.onAuthStateChange((event,session)=>{
    if(disposed)return
    if(event==='PASSWORD_RECOVERY'&&session?.user?.id){recovery=true;recoveryAccountId=session.user.id}
+   if(draftRetry&&(!session||session.user?.id!==draftRetry.owner))draftRetry=null
    if(walletRetry&&(!session||session.user?.id!==walletRetry.owner))walletRetry=null
    if(trainingRetry&&(!session||session.user?.id!==trainingRetry.professionalId))trainingRetry=null
    if(!session||recovery&&session.user?.id!==recoveryAccountId){recovery=false;recoveryAccountId=null}
@@ -137,6 +140,13 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const id=state.profile.id
   return operation(async()=>{await completeTrainingPlan(planId,id,client)})
  }
+ function saveRankingDraft(input:DraftInput){
+  if(state.phase!=='ready'||state.profile?.role!=='admin'||busy||disposed)throw Error('Acesso administrativo necessário.')
+  const owner=state.profile.id,body=validateDraft(input)
+  if(!draftRetry||draftRetry.owner!==owner||JSON.stringify(draftRetry.body)!==JSON.stringify(body))draftRetry={owner,body,requestId:crypto.randomUUID()}
+  const request={...draftRetry,body:{...draftRetry.body}}
+  return operation(async()=>{await createRankingDraft(request.body,request.requestId,request.owner,client);draftRetry=null})
+ }
  function walletOwner(){if(state.phase!=='ready'||!state.profile||busy||disposed)throw Error('Carteira indisponível.');return state.profile.id}
  function initializeWallet(){const owner=walletOwner();return operation(async()=>{await ensureOwnWallet(owner,client)})}
  function reserveWithdrawal(amount:number){
@@ -147,5 +157,5 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   return operation(async()=>{await reserveWallet(request.requestId,request.amount,request.owner,client);walletRetry=null})
  }
  function cancelWithdrawal(row:{id:string;user_id:string}){const owner=walletOwner();if(row.user_id!==owner)throw Error('Reserva indisponível.');const id=row.id;return operation(async()=>{await cancelWallet(id,owner,client)})}
- return {start,refresh,login,logout,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ return {start,refresh,login,logout,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }

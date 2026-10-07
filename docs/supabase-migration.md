@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As oito migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As nove migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -101,3 +101,10 @@ Simulador legado corrigido em centavos e cálculo local de pontos preparado com 
 Oitava migration aplicada: `20261007112808_wallet_reservation_foundation.sql`. Carteira zero, reserva com saldo disponível/reservado e cancelamento atômico/idempotente, eventos de auditoria e RLS próprio. Nenhuma operação de crédito/funding/PIX/cashback nem ledger completo de pagamentos. Tabelas sem DML direto até para service_role; futuras integrações precisam de RPCs específicos com origem verificada. FKs RESTRICT requerem retenção/anonimização definida.
 
 Serviços/controlador e tela em /conta-supabase preparados com confirmação explícita. 32 verificações SQL reais revertidas, oito suítes SQL locais, 132 testes SDK/cálculo/exportação, TypeScript/lint do módulo/build aprovados; advisor sem alertas e zero fixtures persistidas. Conexão Auth/UI real, concorrência entre sessões e pagamentos não homologados. Branch apenas; prévia demonstrativa inalterada.
+
+
+## Rascunhos de regras — 07/10/2026
+
+Nona migration: `20261007122713_ranking_policy_drafts.sql`. Tabela imutável via APIs de aplicação, RLS restrito a administradores do banco, criação idempotente por RPC privada/wrapper público, UUID de versão e data/autor do servidor. A função retorna SETOF e o SDK exige single(); assinatura final testada e tipos regenerados. 22 testes SQL transacionais no banco real e local, zero fixtures persistidas e advisor sem alertas.
+
+A rota /conta-supabase recebeu seção administrativa preparada para comparar alternativas e registrar propostas de ranking/cashback. Nenhuma escolha default, ativação, fechamento ou crédito. Base ponderada não define pesos nesta etapa. 11 testes novos com SDK/controller simulado; total 143 testes locais (125 Supabase + 18 regras/CSV), compilação TypeScript e build aprovados. Frontend ainda não homologado em navegador ou publicado; nenhum admin real criado. Ver detalhes e pendências em docs/database-status-0-15.md.

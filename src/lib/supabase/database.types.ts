@@ -133,6 +133,53 @@ export type Database = {
         }
         Relationships: []
       }
+      ranking_policy_drafts: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          notes: string
+          partner_services: string
+          pool_basis: string
+          rating: string
+          referrals: string
+          request_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string
+          partner_services: string
+          pool_basis: string
+          rating: string
+          referrals: string
+          request_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string
+          partner_services?: string
+          pool_basis?: string
+          rating?: string
+          referrals?: string
+          request_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_policy_drafts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_professional_links: {
         Row: {
           accepted_at: string | null
@@ -466,6 +513,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "training_completions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      create_ranking_policy_draft: {
+        Args: {
+          p_notes: string
+          p_partner_services: string
+          p_pool_basis: string
+          p_rating: string
+          p_referrals: string
+          p_request_id: string
+          p_title: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          id: string
+          notes: string
+          partner_services: string
+          pool_basis: string
+          rating: string
+          referrals: string
+          request_id: string
+          title: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ranking_policy_drafts"
           isOneToOne: false
           isSetofReturn: true
         }

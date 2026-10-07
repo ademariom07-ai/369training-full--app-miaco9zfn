@@ -1,0 +1,45 @@
+begin;
+do $test$
+declare a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();s uuid:=gen_random_uuid();k uuid:=gen_random_uuid();r public.ranking_policy_drafts;checks integer:=0;
+begin
+ begin
+  insert into auth.users(id) values(a),(b),(s);
+  insert into public.profiles(id,display_name,role) values(a,'Draft admin','admin'),(b,'Other admin','admin'),(s,'Student','aluno');
+  set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);
+  select * into r from public.create_ranking_policy_draft(k,' Review ',' Notes ','minimum_one','floor_150','rounded','tarifas_only');
+  if r.created_by<>a or r.title<>'Review' or r.notes<>'Notes' or r.created_at is null then raise exception 'draft actor and normalization';end if;checks:=checks+1;
+  perform public.create_ranking_policy_draft(k,'Review','Notes','minimum_one','floor_150','rounded','tarifas_only');
+  if (select count(*) from public.ranking_policy_drafts)<>1 then raise exception 'duplicate retry';end if;checks:=checks+1;
+  begin perform public.create_ranking_policy_draft(k,'Review','Notes','minimum_one','cap_150','rounded','tarifas_only');raise exception 'key conflict accepted';exception when unique_violation then checks:=checks+1;end;
+  perform public.create_ranking_policy_draft(gen_random_uuid(),'Cap','', 'plus_one','cap_150','exact','tarifas_and_monthly');
+  if (select count(*) from public.ranking_policy_drafts)<>2 then raise exception 'new version';end if;checks:=checks+1;
+  begin perform public.create_ranking_policy_draft(gen_random_uuid(),'Bad','','minimum_one','unknown','rounded','tarifas_only');raise exception 'invalid mode';exception when invalid_parameter_value then checks:=checks+1;end;
+  begin perform public.create_ranking_policy_draft(null,'Bad','','minimum_one','actual','rounded','tarifas_only');raise exception 'null key';exception when invalid_parameter_value then checks:=checks+1;end;
+  begin perform public.create_ranking_policy_draft(gen_random_uuid(),' ','','minimum_one','actual','rounded','tarifas_only');raise exception 'empty title';exception when invalid_parameter_value then checks:=checks+1;end;
+  begin perform public.create_ranking_policy_draft(gen_random_uuid(),'Title',repeat('a',2001),'minimum_one','actual','rounded','tarifas_only');raise exception 'long notes';exception when invalid_parameter_value then checks:=checks+1;end;
+  begin perform public.create_ranking_policy_draft(gen_random_uuid(),'Title','','minimum_one','actual','rounded',null);raise exception 'null basis';exception when invalid_parameter_value then checks:=checks+1;end;
+  begin update public.ranking_policy_drafts set partner_services='actual';raise exception 'direct update';exception when insufficient_privilege then checks:=checks+1;end;
+  begin delete from public.ranking_policy_drafts;raise exception 'direct delete';exception when insufficient_privilege then checks:=checks+1;end;
+  begin insert into public.ranking_policy_drafts(request_id,created_by,title,referrals,partner_services,rating,pool_basis) values(gen_random_uuid(),a,'Direct','minimum_one','actual','rounded','tarifas_only');raise exception 'direct insert';exception when insufficient_privilege then checks:=checks+1;end;
+  perform set_config('request.jwt.claims',json_build_object('sub',b,'is_anonymous',false)::text,true);
+  if (select count(*) from public.ranking_policy_drafts)<>2 then raise exception 'other admin history';end if;checks:=checks+1;
+  perform set_config('request.jwt.claims',json_build_object('sub',s,'is_anonymous',false,'user_metadata',json_build_object('role','admin'))::text,true);
+  if exists(select 1 from public.ranking_policy_drafts) then raise exception 'student read metadata spoof';end if;checks:=checks+1;
+  begin perform public.create_ranking_policy_draft(gen_random_uuid(),'Spoof','','minimum_one','actual','rounded','tarifas_only');raise exception 'student writes';exception when insufficient_privilege then checks:=checks+1;end;
+  perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',true)::text,true);
+  if exists(select 1 from public.ranking_policy_drafts) then raise exception 'anonymous read';end if;checks:=checks+1;
+  begin perform public.create_ranking_policy_draft(gen_random_uuid(),'Anon','','minimum_one','actual','rounded','tarifas_only');raise exception 'anonymous writes';exception when insufficient_privilege then checks:=checks+1;end;
+  set local role anon;begin perform public.create_ranking_policy_draft(gen_random_uuid(),'Anon','','minimum_one','actual','rounded','tarifas_only');raise exception 'anon executes';exception when insufficient_privilege then checks:=checks+1;end;
+  set local role service_role;begin delete from public.ranking_policy_drafts;raise exception 'service deletes';exception when insufficient_privilege then checks:=checks+1;end;
+  reset role;update public.profiles set role='aluno' where id=a;
+  set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);
+  if exists(select 1 from public.ranking_policy_drafts) then raise exception 'demoted admin reads';end if;checks:=checks+1;
+  begin perform public.create_ranking_policy_draft(k,'Review','Notes','minimum_one','floor_150','rounded','tarifas_only');raise exception 'demoted admin retries';exception when insufficient_privilege then checks:=checks+1;end;
+  reset role;
+  if exists(select 1 from public.wallet_accounts where user_id in(a,b,s)) then raise exception 'draft generated money';end if;checks:=checks+1;
+  if checks<>22 then raise exception 'unexpected checks %',checks;end if;
+  raise sqlstate 'W3691' using message='22 draft checks passed; rollback fixtures';
+ exception when sqlstate 'W3691' then null;
+ end;
+end $test$;
+rollback;
