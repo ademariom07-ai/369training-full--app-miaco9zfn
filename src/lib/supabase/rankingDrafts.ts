@@ -1,6 +1,6 @@
 import type {SupabaseClient} from '@supabase/supabase-js'
 import type {Database} from './database.types'
-import type {RankingPolicy} from '../rankingRules'
+import {APPROVED_PARTNER_SERVICES,type RankingPolicy} from '../rankingRules'
 import {getSupabaseClient} from './client'
 import {verifiedIdentity,assertSessionUnchanged,readOwnProfile} from './profiles'
 type Client=SupabaseClient<Database>
@@ -15,6 +15,7 @@ export function validateDraft(input:DraftInput):DraftInput{
  if(!title||Array.from(title).length>120||Array.from(notes).length>2000||!['minimum_one','plus_one','legacy_divisor_18'].includes(input.referrals)||!['actual','floor_150','cap_150'].includes(input.partnerServices)||!['rounded','exact'].includes(input.rating)||!poolBases.includes(input.poolBasis))throw Error('Escolha todas as opções do rascunho.')
  return{title,notes,referrals:input.referrals,partnerServices:input.partnerServices,rating:input.rating,poolBasis:input.poolBasis}
 }
+export function validateNewDraft(input:DraftInput){const body=validateDraft(input);if(body.partnerServices!==APPROVED_PARTNER_SERVICES)throw Error('PRO PARCEIRO usa teto de 150 serviços.');return body}
 function row(value:Database['public']['Tables']['ranking_policy_drafts']['Row']):RankingDraft{
  if(!value||typeof value.created_at!=='string'||!Number.isFinite(Date.parse(value.created_at)))throw Error('Rascunho indisponível.')
  const body=validateDraft({title:value.title,notes:value.notes,referrals:value.referrals as DraftInput['referrals'],partnerServices:value.partner_services as DraftInput['partnerServices'],rating:value.rating as DraftInput['rating'],poolBasis:value.pool_basis as DraftInput['poolBasis']})
@@ -23,7 +24,7 @@ function row(value:Database['public']['Tables']['ranking_policy_drafts']['Row'])
 }
 async function admin(expectedId:string,client:Client){const id=uuid(expectedId),identity=await verifiedIdentity(client);if(identity.id!==id)throw Error('Sessão alterada.');const profile=await readOwnProfile(client);await assertSessionUnchanged(client,identity);if(profile?.id!==id||profile.role!=='admin')throw Error('Acesso administrativo necessário.');return identity}
 export async function createRankingDraft(input:DraftInput,requestId:string,expectedId:string,client:Client=getSupabaseClient()){
- const body=validateDraft(input),key=uuid(requestId),identity=await admin(expectedId,client)
+ const body=validateNewDraft(input),key=uuid(requestId),identity=await admin(expectedId,client)
  const result=await client.rpc('create_ranking_policy_draft',{p_request_id:key,p_title:body.title,p_notes:body.notes,p_referrals:body.referrals,p_partner_services:body.partnerServices,p_rating:body.rating,p_pool_basis:body.poolBasis}).single()
  await assertSessionUnchanged(client,identity)
  if(result.error||!result.data)throw Error('Não foi possível salvar o rascunho.');const draft=row(result.data)

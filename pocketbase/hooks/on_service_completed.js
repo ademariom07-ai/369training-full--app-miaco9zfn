@@ -3,7 +3,7 @@
 // 1. Débito de tarifa: PRO PARCEIRO paga R$ 0 de tarifa por serviço (apenas o fixo de R$ 149/mês).
 //    Planos: basico R$ 1, pro R$ 2, premium R$ 3, pro_parceiro R$ 0, gratis R$ 1.
 // 2. Anti-duplicidade na tarifa: wallet_transactions já com reference_id = service.id && type = 'tarifa'.
-// 3. Teto do PRO PARCEIRO: Math.min(realServicesCount, proParceiroFloor) (teto de 150).
+// 3. Teto do PRO PARCEIRO: Math.min(realServicesCount, proParceiroCap) (teto de 150).
 // 4. Parceiro Grátis: pontua como Básico (1x), sem cashback, tie_break com plan_effective = 'basico_gratis'.
 
 onRecordAfterUpdateSuccess((e) => {
@@ -161,15 +161,7 @@ onRecordAfterUpdateSuccess((e) => {
       pro_parceiro: 0.0,
     }
 
-    let proParceiroFloor = 150
-    try {
-      const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
-      if (floorRec) {
-        const v = floorRec.get('value')
-        if (typeof v === 'number') proParceiroFloor = v
-        else if (typeof v === 'string' && !isNaN(Number(v))) proParceiroFloor = Number(v)
-      }
-    } catch (_) {}
+    const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
 
     const scores = []
 
@@ -273,7 +265,7 @@ onRecordAfterUpdateSuccess((e) => {
       // TETO de serviços do PRO PARCEIRO: Math.min(servicos_reais, 150)
       let effectiveServicesCount = realServicesCount
       if (isProParceiro) {
-        effectiveServicesCount = Math.min(realServicesCount, proParceiroFloor)
+        effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
       }
 
       const indicacoesCount = referralsThisMonth.length
@@ -509,15 +501,7 @@ onRecordAfterCreateSuccess((e) => {
       pro_parceiro: 0.0,
     }
 
-    let proParceiroFloor = 150
-    try {
-      const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
-      if (floorRec) {
-        const v = floorRec.get('value')
-        if (typeof v === 'number') proParceiroFloor = v
-        else if (typeof v === 'string' && !isNaN(Number(v))) proParceiroFloor = Number(v)
-      }
-    } catch (_) {}
+    const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
 
     const scores = []
 
@@ -616,7 +600,7 @@ onRecordAfterCreateSuccess((e) => {
       let realServicesCount = servicesThisMonth.length
       let effectiveServicesCount = realServicesCount
       if (isProParceiro) {
-        effectiveServicesCount = Math.min(realServicesCount, proParceiroFloor)
+        effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
       }
 
       const indicacoesCount = referralsThisMonth.length

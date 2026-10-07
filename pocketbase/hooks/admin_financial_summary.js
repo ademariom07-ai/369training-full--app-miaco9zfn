@@ -116,24 +116,14 @@ routerAdd(
             if (rawVal.service_tarifa_pct !== undefined) {
               poolFeedConfig.service_tarifa_pct = Number(rawVal.service_tarifa_pct) || 1.0
             }
-            if (rawVal.pro_parceiro_floor !== undefined) {
-              poolFeedConfig.pro_parceiro_floor = Number(rawVal.pro_parceiro_floor) || 150
-            }
           }
         }
       } catch (errPfc) {
         console.warn('Aviso ao carregar pool_feed_config:', errPfc)
       }
 
-      try {
-        const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
-        if (floorRec) {
-          const v = floorRec.get('value')
-          if (typeof v === 'number') poolFeedConfig.pro_parceiro_floor = v
-          else if (typeof v === 'string' && !isNaN(Number(v)))
-            poolFeedConfig.pro_parceiro_floor = Number(v)
-        }
-      } catch (_) {}
+      // Legacy response key retained; approved semantics are a fixed ceiling.
+      poolFeedConfig.pro_parceiro_floor = 150
 
       // Mapa de todos os usuários para lookup
       const userMap = {}

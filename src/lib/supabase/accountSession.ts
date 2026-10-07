@@ -1,6 +1,6 @@
 import {saveBookingTerms,validateBookingTerms,type BookingTermsInput} from './bookingTerms'
 import {saveOwnAvailability,validateAvailability,type AvailabilityInput} from './availability'
-import {createRankingDraft,validateDraft,type DraftInput} from './rankingDrafts'
+import {createRankingDraft,validateNewDraft as validateDraft,type DraftInput} from './rankingDrafts'
 import {ensureOwnWallet,reserveWallet,cancelWallet} from './wallet'
 import {completeTrainingPlan} from './trainingCompletions'
 import {createTrainingPlan,markTrainingRead,type TrainingInput} from './trainingPlans'

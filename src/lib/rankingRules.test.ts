@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest'
-import {calculateRankingPreview as calc,orderRankingPreview,type RankingPolicy} from './rankingRules'
+import {calculateRankingPreview as calc,orderRankingPreview,countedRankingServices,calculateWellnessRankingPreview,type RankingPolicy} from './rankingRules'
 const policy:RankingPolicy={version:'test-v1',referrals:'minimum_one',partnerServices:'actual',rating:'rounded'}
 const facts={id:'a',multiplier:2,completedEligibleServices:10,validatedReferrals:3,rating:4.5,seniorityMonths:12,previousPoints:100,partnerPro:false,joinedAt:'2026-01-01T00:00:00Z'}
 it('monthly and accumulated points use only supplied validated service/referral counts',()=>{expect(calc(policy,facts)).toMatchObject({monthlyPoints:75,totalPoints:175,simulationOnly:true});expect(calc(policy,{...facts,validatedReferrals:0}).monthlyPoints).toBe(35)})
@@ -8,3 +8,6 @@ it('floor and ceiling 150 remain distinct explicit choices',()=>{const f={...fac
 it('zero rating is kept rather than replaced with five stars',()=>{expect(calc(policy,{...facts,rating:0}).monthlyPoints).toBe(70)})
 it('invalid or overflowing facts cannot produce a score',()=>{for(const change of [{rating:6},{multiplier:4},{validatedReferrals:-1},{previousPoints:Infinity},{completedEligibleServices:1.5},{joinedAt:'bad'},{completedEligibleServices:Number.MAX_SAFE_INTEGER}])expect(()=>calc(policy,{...facts,...change})).toThrow()})
 it('deterministic ties keep general positions and reject mixed policies or duplicate users',()=>{const a=calc(policy,facts),b=calc(policy,{...facts,id:'b'});expect(orderRankingPreview([b,a]).map(r=>[r.id,r.position])).toEqual([['a',1],['b',2]]);expect(()=>orderRankingPreview([a,a])).toThrow();expect(()=>orderRankingPreview([a,{...b,rulesVersion:'other'}])).toThrow()})
+
+it('approved PRO PARCEIRO counts 0 10 149 150 151 200 with fixed ceiling',()=>{expect([0,10,149,150,151,200].map(n=>countedRankingServices(n,true))).toEqual([0,10,149,150,150,150]);expect(countedRankingServices(200,false)).toBe(200)})
+it('approved cap precedes multipliers and does not cap the entire point total',()=>{const p={version:'wellness-cap-150-2026-10-07',referrals:'minimum_one' as const,rating:'rounded' as const};const f={...facts,partnerPro:true,completedEligibleServices:200};expect(calculateWellnessRankingPreview(p,f).monthlyPoints).toBe(915);expect(calculateWellnessRankingPreview(p,{...f,completedEligibleServices:10}).monthlyPoints).toBe(75);expect(calculateWellnessRankingPreview(p,{...f,partnerPro:false}).monthlyPoints).toBe(1215)})

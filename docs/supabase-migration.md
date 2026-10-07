@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As doze migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As treze migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -129,3 +129,10 @@ Formulário profissional e consulta pelo aluno preparados na rota /conta-supabas
 Décima segunda migration: `20261007182712_validated_booking_quote.sql`. RPC de leitura para aluno autenticado verifica profissional aprovado, disponibilidade liberada/futura e condições mais recentes; retorna preço/sinal/restante, versões e prazo de cancelamento calculados no servidor. Sem criação de reserva, retenção do horário, aceite persistido, garantia de preço, pagamento ou pontos.
 
 Conferência por horário preparada junto à consulta da agenda em /conta-supabase. 21 verificações SQL reais/locais com rollback, zero fixtures persistidas, advisor sem alertas; nove testes novos do SDK, total local 179 (161 módulo Supabase + 18 regras/CSV). TypeScript/build/lint aprovados. Cotação não é autoridade para futura gravação: servidor deverá revalidar versões e disponibilidade sob locks, e confirmação dependerá de sinal verificado no gateway. Frontend sem homologação em navegador ou publicação. Todos os pacotes seguem parciais; detalhes em docs/database-status-0-15.md.
+
+
+## Teto PRO PARCEIRO aprovado — 07/10/2026
+
+Usuário confirmou TETO: 10 serviços contam como 10 e 200 como 150. Migration `20261007193312_approved_partner_service_cap.sql` restringe novos rascunhos administrativos a cap_150 e preserva o histórico. Tipo/assinatura RPC inalterados. Código de cálculo aprovado e tela administrativa fixam min(serviços,150); caminhos legados também corrigidos no código, sem execução/deploy/backfill PocketBase.
+
+183 testes locais; suíte de rascunhos com 25 verificações SQL reais/locais; zero fixtures persistidas e advisor sem alertas. TypeScript/build/lint dos novos módulos e sintaxe dos hooks aprovados. Regra de serviços resolvida; demais decisões de ranking/cashback e fechamento financeiro ainda pendentes. Não reabrir a pergunta piso/teto. Sem publicação do app ou merge; detalhes no relatório de status.

@@ -200,19 +200,7 @@ routerAdd(
           pro_parceiro: 0.0,
         }
 
-        let proParceiroFloor = 150
-        try {
-          const floorRec = $app.findFirstRecordByData(
-            'platform_config',
-            'key',
-            'pro_parceiro_floor',
-          )
-          if (floorRec) {
-            const v = floorRec.get('value')
-            if (typeof v === 'number') proParceiroFloor = v
-            else if (typeof v === 'string' && !isNaN(Number(v))) proParceiroFloor = Number(v)
-          }
-        } catch (_) {}
+        const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
 
         const scores = []
 
@@ -311,7 +299,7 @@ routerAdd(
           let realServicesCount = servicesThisMonth.length
           let effectiveServicesCount = realServicesCount
           if (isProParceiro) {
-            effectiveServicesCount = Math.min(realServicesCount, proParceiroFloor)
+            effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
           }
 
           const indicacoesCount = referralsThisMonth.length

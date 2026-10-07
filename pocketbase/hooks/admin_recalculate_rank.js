@@ -44,14 +44,7 @@ routerAdd(
         pro_parceiro: 1,
       }
 
-      let proParceiroFloor = 150
-      try {
-        const floorRec = $app.findFirstRecordByData('platform_config', 'key', 'pro_parceiro_floor')
-        if (floorRec) {
-          const v = floorRec.get('value')
-          if (typeof v === 'number') proParceiroFloor = v
-        }
-      } catch (_) {}
+      const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
 
       // Agregações de serviços concluídos válidos no mês por usuário
       const serviceCounts = {}
@@ -212,7 +205,7 @@ routerAdd(
         const realServicesCount = serviceCounts[u.id] || 0
         let effectiveServicesCount = realServicesCount
         if (isProParceiro) {
-          effectiveServicesCount = Math.min(realServicesCount, proParceiroFloor)
+          effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
         }
 
         const indicacoesCount = monthRefCounts[u.id] || 0

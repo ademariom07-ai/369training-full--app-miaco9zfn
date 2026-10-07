@@ -1,3 +1,4 @@
+import {countedRankingServices,PARTNER_SERVICE_CAP} from '@/lib/rankingRules'
 import React, { useState, useEffect, useMemo } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
@@ -106,10 +107,10 @@ export default function AdminRankingConfig() {
   const [tarifaPro, setTarifaPro] = useState('2.00')
   const [tarifaPremium, setTarifaPremium] = useState('3.00')
 
-  // Configurações Oficiais do Plano PRO PARCEIRO (R$ 149,00 / Piso 150)
+  // Configurações Oficiais do Plano PRO PARCEIRO (R$ 149,00 / Teto 150)
   const [proParceiroPriceMonthly, setProParceiroPriceMonthly] = useState('149.00')
   const [proParceiroPriceAnnual, setProParceiroPriceAnnual] = useState('1490.00')
-  const [proParceiroFloor, setProParceiroFloor] = useState('150')
+
 
   // Regra de Indicação e Validação (default: 5 serviços)
   const [minServicesReferral, setMinServicesReferral] = useState('5')
@@ -655,12 +656,6 @@ export default function AdminRankingConfig() {
               c.value !== null
             ) {
               setProParceiroPriceAnnual(Number(c.value).toFixed(2))
-            } else if (
-              c.key === 'pro_parceiro_floor' &&
-              c.value !== undefined &&
-              c.value !== null
-            ) {
-              setProParceiroFloor(String(c.value))
             }
           })
         }
@@ -836,7 +831,7 @@ export default function AdminRankingConfig() {
       // 5. Atualizar pro_parceiro_price_monthly, pro_parceiro_price_annual e pro_parceiro_floor
       const pMonthly = parseFloat(proParceiroPriceMonthly) || 149.0
       const pAnnual = parseFloat(proParceiroPriceAnnual) || 1490.0
-      const pFloor = parseInt(proParceiroFloor, 10) || 150
+      const pFloor = PARTNER_SERVICE_CAP
 
       const proParceiroItems = [
         {
@@ -852,7 +847,7 @@ export default function AdminRankingConfig() {
         {
           key: 'pro_parceiro_floor',
           value: pFloor,
-          desc: 'Piso mínimo de contagem de serviços para pontuação do PRO PARCEIRO no ranking (150 atendimentos)',
+          desc: 'Teto fixo de 150 serviços para pontuação do PRO PARCEIRO (chave legada)',
         },
       ]
 
@@ -1011,9 +1006,7 @@ export default function AdminRankingConfig() {
         )
         const antiguidade = Math.min(diffMonths, 10)
 
-        const countedServices = isProParceiro
-          ? Math.max(svcs.length, parseInt(proParceiroFloor, 10) || 150)
-          : svcs.length
+        const countedServices = countedRankingServices(svcs.length,isProParceiro)
         const indicacoesFator = Math.max(refsMonth.length, 1)
         const monthlyPoints =
           Math.round(effectiveMultiplier * countedServices * indicacoesFator) +
@@ -2621,7 +2614,7 @@ export default function AdminRankingConfig() {
                     </div>
                   </div>
 
-                  {/* Configurações Especiais: PRO PARCEIRO (R$ 149,00 / Piso 150) */}
+                  {/* Configurações Especiais: PRO PARCEIRO (R$ 149,00 / Teto 150) */}
                   <div className="mt-6 pt-4 border-t border-[#2A2A2A] space-y-3">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#00C853]/20 text-[#00C853] border border-[#00C853]/40">
@@ -2669,13 +2662,13 @@ export default function AdminRankingConfig() {
 
                       <div>
                         <label className="block text-[10px] uppercase text-gray-300 font-semibold mb-1">
-                          Piso do Ranking (Serviços)
+                          Teto do Ranking (Serviços)
                         </label>
                         <Input
                           type="number"
                           min={1}
-                          value={proParceiroFloor}
-                          onChange={(e) => setProParceiroFloor(e.target.value)}
+                          value={PARTNER_SERVICE_CAP}
+                          readOnly
                           className="bg-[#141414] border-[#00C853]/40 rounded-xl text-xs text-[#00C853] font-mono font-bold"
                         />
                       </div>
