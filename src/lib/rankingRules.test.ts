@@ -11,3 +11,35 @@ it('deterministic ties keep general positions and reject mixed policies or dupli
 
 it('approved PRO PARCEIRO counts 0 10 149 150 151 200 with fixed ceiling',()=>{expect([0,10,149,150,151,200].map(n=>countedRankingServices(n,true))).toEqual([0,10,149,150,150,150]);expect(countedRankingServices(200,false)).toBe(200)})
 it('approved cap precedes multipliers and does not cap the entire point total',()=>{const p={version:'wellness-cap-150-2026-10-07',referrals:'minimum_one' as const,rating:'rounded' as const};const f={...facts,partnerPro:true,completedEligibleServices:200};expect(calculateWellnessRankingPreview(p,f).monthlyPoints).toBe(915);expect(calculateWellnessRankingPreview(p,{...f,completedEligibleServices:10}).monthlyPoints).toBe(75);expect(calculateWellnessRankingPreview(p,{...f,partnerPro:false}).monthlyPoints).toBe(1215)})
+
+it('exact fractional ratings carry into following months without losing hundredths',()=>{
+ const p={...policy,rating:'exact' as const}
+ const first=calc(p,{...facts,rating:4.37,previousPoints:100.25})
+ expect(first).toMatchObject({monthlyPoints:74.37,totalPoints:174.62})
+ const second=calc(p,{...facts,rating:4.37,previousPoints:first.totalPoints})
+ expect(second.totalPoints).toBe(248.99)
+})
+it('rejects sub-hundredth balances and unsafe accumulated totals',()=>{
+ for(const previousPoints of [-0.01,0.001,NaN,Number.MAX_SAFE_INTEGER/100])expect(()=>calc(policy,{...facts,previousPoints})).toThrow()
+ expect(()=>calc({...policy,rating:'exact'},{...facts,rating:4.371})).toThrow()
+})
+it('same version label cannot combine different referral service or rating policies',()=>{
+ const a=calc(policy,facts)
+ for(const change of [{referrals:'plus_one' as const},{partnerServices:'cap_150' as const},{rating:'exact' as const}]){
+  const b=calc({...policy,...change},{...facts,id:'b'})
+  expect(()=>orderRankingPreview([a,b])).toThrow()
+ }
+})
+it('rejects malformed and sparse ranking rows before assigning positions',()=>{
+ const a=calc(policy,facts)
+ for(const change of [{id:''},{rating:6},{rating:-1},{monthlyPoints:-1},{monthlyPoints:176},{totalPoints:0.001},{rulesKey:''},{simulationOnly:1}])expect(()=>orderRankingPreview([{...a,...change} as typeof a])).toThrow()
+ expect(()=>orderRankingPreview(new Array(2))).toThrow()
+ expect(orderRankingPreview([])).toEqual([])
+})
+it('sorting preserves inputs and uses rating then date then id for ties',()=>{
+ const a=calc(policy,{...facts,id:'a'}),b=calc(policy,{...facts,id:'b'}),c=calc(policy,{...facts,id:'c'})
+ const rows=[{...c,rating:4,joinedAt:'2025-01-01T00:00:00Z'},{...b,joinedAt:'2025-01-01T00:00:00Z'},a]
+ const before=JSON.stringify(rows)
+ expect(orderRankingPreview(rows).map(r=>r.id)).toEqual(['b','a','c'])
+ expect(JSON.stringify(rows)).toBe(before)
+})

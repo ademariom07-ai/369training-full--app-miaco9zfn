@@ -1,6 +1,6 @@
 # 369 WELLNESS — banco e pacotes 0–15
 
-Verificado em 07/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
+Verificado em 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
 ## Decisão vigente do PRO PARCEIRO
@@ -9,7 +9,7 @@ Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
 ## Estado consolidado atual
 
-Treze migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso, conclusão informada pelo aluno, carteira/reserva própria, rascunhos administrativos de ranking/cashback, disponibilidade profissional por dia, condições versionadas de atendimento cotação de horário validada no servidor e teto aprovado de serviços PRO PARCEIRO. Na branch, /conta-supabase contém acesso preparado, próprio perfil, vínculo, candidaturas, treino textual/aviso/conclusão, carteira/reserva/cancelamento, revisão de regras em rascunho, calendário mensal/Liberar Dia, configuração de preço/sinal/cancelamento e conferência de um horário pelo aluno. 183 testes locais aprovados: 163 do módulo Supabase (helpers e SDK/controllers com mocks) e 20 de ranking/cashback/CSV. TypeScript/build e lint dos módulos novos aprovados; carteira legada mantém avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
+Treze migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso, conclusão informada pelo aluno, carteira/reserva própria, rascunhos administrativos de ranking/cashback, disponibilidade profissional por dia, condições versionadas de atendimento cotação de horário validada no servidor e teto aprovado de serviços PRO PARCEIRO. Na branch, /conta-supabase contém acesso preparado, próprio perfil, vínculo, candidaturas, treino textual/aviso/conclusão, carteira/reserva/cancelamento, revisão de regras em rascunho, calendário mensal/Liberar Dia, configuração de preço/sinal/cancelamento e conferência de um horário pelo aluno. 188 testes locais aprovados: 163 do módulo Supabase (helpers e SDK/controllers com mocks) e 25 de ranking/cashback/CSV. TypeScript/build e lint dos módulos novos aprovados; carteira legada mantém avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
 
 ## Etapa inicial aplicada
 
@@ -304,3 +304,14 @@ Também foi corrigido no código legado o cálculo de AdminRankingConfig que ain
 Validação: 183 testes locais aprovados (163 módulo Supabase + 20 regras/CSV), incluindo novos casos 0/10/149/150/151/200, outros planos sem esse teto, aplicação antes dos multiplicadores, rejeição de novo piso/mode actual e leitura do histórico. A suíte SQL de rascunhos foi atualizada para a política vigente: 25 verificações passaram localmente e no banco real, incluindo três verificações novas de rejeição/preservação de histórico. Todas as doze suítes SQL locais passaram após as treze migrations. Fixtures revertidas com transação externa e subtransação. Consulta final confirma zero usuários/perfis/rascunhos. Advisor de segurança sem alertas. TypeScript, build e lint dos módulos novos aprovados; os seis arquivos de hooks alterados passaram em node --check. A verificação dos hooks é de sintaxe e revisão de código, sem execução no runtime PocketBase; não representa homologação fim a fim. Nenhum teste de outro checkout foi somado.
 
 A decisão altera a contagem de serviços para ranking; não altera serviços realmente realizados, total de pontos acumulados, percentuais de pool, elegibilidade ou saldos existentes automaticamente. Cashback real e regra completa de fechamento continuam pendentes. Pacotes 0–15: todos parciais. Branch atualizada sem merge na main ou publicação do aplicativo; a prévia demonstrativa existente não incorpora esta entrega.
+
+
+## Continuação em 08/10/2026 — integridade da simulação mensal de ranking
+
+Corrigidos dois bloqueios da preparação dos pacotes 2/3/4: saldos anteriores com centésimos de ponto eram rejeitados, embora a simulação de avaliação exata pudesse produzi-los; e resultados de fórmulas diferentes podiam ser ordenados juntos quando tinham o mesmo nome de versão. O cálculo agora acumula pontos em centésimos inteiros e a ordenação compara também a identificação completa das opções da fórmula. O teto aprovado do PRO PARCEIRO continua em 150 serviços antes dos multiplicadores. Nenhuma outra opção de negócio foi ativada.
+
+Cinco testes adicionados: transporte de 174,62 pontos ao mês seguinte, rejeição de precisão além de centésimos e estouro, mistura de fórmulas sob a mesma versão, linhas inválidas/lacunas e desempate sem alterar a entrada. A ordenação também rejeita notas fora de 0–5, totais menores que a parcela mensal e identificadores vazios. A identificação da fórmula é uma verificação local de consistência, não assinatura ou autorização de pagamento.
+
+Validação: 188 testes locais (163 SDK/helpers/controllers com mocks + 25 ranking/cashback/CSV), TypeScript, build, lint dos dois arquivos alterados e diff check. Sem migration, alteração de permissões ou execução no banco nesta etapa; as verificações SQL e o advisor descritos acima são evidências anteriores, não uma nova auditoria.
+
+Escopo: código salvo somente na branch prep/supabase-vite. Não há fechamento mensal servidor, pontos persistidos nem crédito de cashback. Pacotes 0–15 continuam parciais, zero totalmente concluídos. Próximos marcos: definir indicações/avaliação e base/pesos/elegibilidade financeira; implementar eventos elegíveis e fechamento idempotente auditável; homologar autenticação e integração em navegador. A prévia pública continua demonstrativa, sem estas alterações: https://wellness-369-demo.ademariom07.chatgpt.site.
