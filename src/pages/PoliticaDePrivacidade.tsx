@@ -400,10 +400,10 @@ export default function PoliticaDePrivacidade() {
                 <p className="text-gray-400">Encarregado Oficial de Proteção de Dados</p>
               </div>
               <a
-                href="mailto:dpo@369training.com"
+                href="mailto:dpo@369wellness.com"
                 className="px-4 py-2 rounded-lg bg-[#0057FF] text-white font-bold hover:bg-[#1a6aff] transition-all"
               >
-                dpo@369training.com
+                dpo@369wellness.com
               </a>
             </div>
           </section>

@@ -826,6 +826,10 @@ export default function Cadastro() {
                       <option value="Perda de peso">Perda de peso</option>
                       <option value="Resistência aeróbica">Resistência aeróbica</option>
                       <option value="Artes marciais">Artes marciais</option>
+                      <option value="Encontrar um profissional">Encontrar um profissional</option>
+                      <option value="Treino com IA">Treino com IA</option>
+                      <option value="Treinos funcionais">Treinos funcionais</option>
+                      <option value="Condicionamento físico">Condicionamento físico</option>
                     </select>
                   </div>
                 )}

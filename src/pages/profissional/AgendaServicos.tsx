@@ -240,6 +240,8 @@ export default function AgendaServicos() {
   }
 
   // 1-Clique: Liberar / Pausar Liberação do Dia Inteiro
+  // Utiliza o endpoint batch /backend/v1/schedules/toggle-day para consolidar em 1 chamada única
+  // eliminando o loop de 19 requisições que causava HTTP 429 (Too Many Requests)
   const handleToggleLiberarDia = async (dateStr: string, dayName: string) => {
     if (!user) return
     const currentlyLiberado = isDayLiberado(dateStr)
@@ -247,30 +249,21 @@ export default function AgendaServicos() {
 
     setActionLoading(`day-${dateStr}`)
     try {
-      const daySchedules = schedules.filter((s) => s.data === dateStr)
+      const res = await pb.send('/backend/v1/schedules/toggle-day', {
+        method: 'POST',
+        body: {
+          date: dateStr,
+          day_name: dayName,
+          dia_liberado: nextLiberadoState,
+          slots: FIXED_TIME_SLOTS.map((s) => ({
+            hora_inicio: s.hora_inicio,
+            hora_fim: s.hora_fim,
+          })),
+        },
+      })
 
-      if (daySchedules.length === 0) {
-        // Criar todos os 19 horários de forma serial com pequeno atraso para evitar HTTP 429 (Too Many Requests)
-        for (const slot of FIXED_TIME_SLOTS) {
-          await pb.collection('weekly_schedules').create({
-            profissional: user.id,
-            dia_da_semana: dayName,
-            data: dateStr,
-            hora_inicio: slot.hora_inicio,
-            hora_fim: slot.hora_fim,
-            disponivel: true,
-            dia_liberado: nextLiberadoState,
-          })
-          await new Promise((resolve) => setTimeout(resolve, 150))
-        }
-      } else {
-        // Atualizar registros existentes deste dia de forma serial para evitar estouro de rate limit
-        for (const s of daySchedules) {
-          await pb.collection('weekly_schedules').update(s.id, {
-            dia_liberado: nextLiberadoState,
-          })
-          await new Promise((resolve) => setTimeout(resolve, 150))
-        }
+      if (res && res.success === false) {
+        throw new Error(res.message || 'Falha ao alterar liberação do dia.')
       }
 
       toast.success(
@@ -286,7 +279,6 @@ export default function AgendaServicos() {
       } else {
         toast.error(error?.message || 'Erro ao alterar liberação do dia.')
       }
-      // Mesmo em erro parcial, recarrega o que foi gravado até o momento
       await loadData().catch(() => {})
     } finally {
       setActionLoading(null)

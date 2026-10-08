@@ -160,7 +160,7 @@ export default function AlunoPerfil() {
       return
     }
 
-    const fakePix = `00020126580014br.gov.bcb.pix0136369training-pix-key-${Date.now()}520400005303986540${val.toFixed(2)}5802BR5925369TRAINING SERVICOS6009SAO PAULO62070503***6304E8A9`
+    const fakePix = `00020126580014br.gov.bcb.pix0136369wellness-pix-key-${Date.now()}520400005303986540${val.toFixed(2)}5802BR5925369WELLNESS SERVICOS6009SAO PAULO62070503***6304E8A9`
     setPixCodeGenerated(fakePix)
     toast.success('Código PIX Copia e Cola gerado com sucesso!')
   }
@@ -170,19 +170,29 @@ export default function AlunoPerfil() {
     setSubmittingDeposit(true)
     try {
       const val = parseFloat(depositAmount) || 100
-      await pb.collection('wallet_transactions').create({
-        user: user.id,
-        type: 'deposito',
-        amount: val,
-        status: 'pendente',
-        pix_code: pixCodeGenerated,
-        comprovante: comprovanteText || 'Comprovante PIX anexado pelo aluno',
-        description: `Recarga de Carteira via PIX - R$ ${val.toFixed(2)}`,
+      const formData = new FormData()
+      formData.append('amount', String(val))
+      formData.append('pix_code', pixCodeGenerated || '')
+      formData.append(
+        'description',
+        `Recarga de Carteira via PIX - R$ ${val.toFixed(2)}${
+          comprovanteText ? ` - Comprovante/ID: ${comprovanteText}` : ''
+        }`,
+      )
+
+      const res = await pb.send('/backend/v1/wallet/deposit', {
+        method: 'POST',
+        body: formData,
       })
 
-      toast.success('Comprovante enviado para validação administrativa!')
+      if (res && res.success === false) {
+        throw new Error(res.message || 'Falha ao processar depósito.')
+      }
+
+      toast.success(res?.message || 'Comprovante enviado para validação administrativa!')
       setPixCodeGenerated(null)
       setComprovanteText('')
+      loadWalletData()
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao enviar comprovante.')

@@ -348,13 +348,13 @@ export default function TermosDeUso() {
             <p className="text-xs text-gray-400">
               Dúvidas sobre estes Termos de Uso podem ser encaminhadas diretamente para nossa equipe
               jurídica pelo e-mail:{' '}
-              <a href="mailto:juridico@369training.com" className="text-[#D4AF37] underline">
-                juridico@369training.com
-              </a>{' '}
-              ou pelo DPO em{' '}
-              <a href="mailto:dpo@369training.com" className="text-[#D4AF37] underline">
-                dpo@369training.com
+              <a href="mailto:juridico@369wellness.com" className="text-[#D4AF37] underline">
+                juridico@369wellness.com
               </a>
+              . Para assuntos de privacidade e LGPD, contate{' '}
+              <a href="mailto:dpo@369wellness.com" className="text-[#D4AF37] underline">
+                dpo@369wellness.com
+              </a>{' '}
               .
             </p>
           </section>

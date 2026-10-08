@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-07T19:37:14.047Z",
+  "generatedAt": "2026-10-08T12:52:31.532Z",
   "collections": [
     {
       "name": "users",
@@ -3907,6 +3907,69 @@
         "CREATE INDEX idx_review_service ON service_reviews (service)",
         "CREATE INDEX idx_review_reviewee ON service_reviews (reviewee)"
       ]
+    },
+    {
+      "name": "matching_profiles",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\" && user = @request.auth.id",
+        "view": "@request.auth.id != \"\" && user = @request.auth.id",
+        "create": "@request.auth.id != \"\" && @request.body.user = @request.auth.id",
+        "update": "@request.auth.id != \"\" && user = @request.auth.id",
+        "delete": "@request.auth.id != \"\" && user = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "age_group",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "primary_goal",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "training_type",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "specialty_needed",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "availability",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "location_pref",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "answers",
+          "type": "json",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": []
     }
   ]
 }

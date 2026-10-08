@@ -349,7 +349,7 @@ export default function Index() {
               LGPD & Consentimentos
             </Link>
             <a
-              href="mailto:suporte@369training.com"
+              href="mailto:suporte@369wellness.com"
               className="hover:text-[#B8962E] transition-colors"
             >
               Suporte 369

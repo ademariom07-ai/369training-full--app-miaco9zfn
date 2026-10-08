@@ -92,7 +92,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
   const [upgrading, setUpgrading] = useState(false)
 
   // Configuração real de PIX obtida da platform_config
-  const [platformPixKey, setPlatformPixKey] = useState('financeiro@369training.com')
+  const [platformPixKey, setPlatformPixKey] = useState('financeiro@369wellness.com')
   const [platformPixHolder, setPlatformPixHolder] = useState('369WELLNESS LTDA')
 
   const userPlan = (user?.plan || 'gratis').toLowerCase()

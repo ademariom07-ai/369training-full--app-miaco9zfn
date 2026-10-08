@@ -365,20 +365,21 @@ export default function EncontrarProfissional() {
         remaining_amount: remainingAmount,
       })
 
-      // Se for 1ª consulta, gerar a wallet_transaction pendente do adiantamento (PIX)
+      // Se for 1ª consulta, gerar o depósito de adiantamento (PIX) via endpoint seguro
       if (isFirstConsultation && sinalAmount > 0) {
         try {
-          await pb.collection('wallet_transactions').create({
-            user: user.id,
-            type: 'deposito',
-            amount: sinalAmount,
-            status: 'pendente',
-            reference_type: 'appointment',
-            reference_id: appt.id,
-            description: `Adiantamento de 30% (Sinal PIX) - 1ª Consulta com ${selectedProf.name}`,
+          const depositData = new FormData()
+          depositData.append('amount', String(sinalAmount))
+          depositData.append(
+            'description',
+            `Adiantamento de 30% (Sinal PIX) - 1ª Consulta #${appt.id} com ${selectedProf.name}`,
+          )
+          await pb.send('/backend/v1/wallet/deposit', {
+            method: 'POST',
+            body: depositData,
           })
         } catch (e) {
-          console.warn('Erro ao registrar transação de sinal:', e)
+          console.warn('Erro ao registrar depósito de sinal:', e)
         }
       }
 

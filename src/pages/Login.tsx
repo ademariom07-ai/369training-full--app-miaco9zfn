@@ -66,10 +66,10 @@ export default function Login() {
     if (targetRole === 'admin') {
       targetEmail = 'ademariom07@gmail.com'
     } else if (targetRole === 'profissional') {
-      targetEmail = 'carlos.coach@369training.com'
+      targetEmail = 'carlos.coach@369wellness.com'
       setRoleSelection('profissional')
     } else {
-      targetEmail = 'aluno.lucas@369training.com'
+      targetEmail = 'aluno.lucas@369wellness.com'
       setRoleSelection('aluno')
     }
 

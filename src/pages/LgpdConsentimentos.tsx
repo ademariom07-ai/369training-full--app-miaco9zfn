@@ -37,7 +37,7 @@ export default function LgpdConsentimentos() {
   const [revokingId, setRevokingId] = useState<string | null>(null)
 
   // Configuração dinâmica de DPO via platform_config
-  const [dpoEmail, setDpoEmail] = useState('dpo@369training.com')
+  const [dpoEmail, setDpoEmail] = useState('dpo@369wellness.com')
   const [dpoName, setDpoName] = useState('DPO 369WELLNESS')
   const [retentionMonths, setRetentionMonths] = useState(6)
 
