@@ -107,26 +107,8 @@ routerAdd(
         testEmailResult.sent = true
       } catch (mailErr) {
         const errMsg = mailErr ? mailErr.message : 'Falha desconhecida no envio primário'
-        // Fallback para usuário SMTP bd4b5d001@smtp-brevo.com
-        try {
-          const fallbackMessage = new MailerMessage({
-            from: {
-              address: 'bd4b5d001@smtp-brevo.com',
-              name: '369WELLNESS',
-            },
-            to: [{ address: 'ademariom07@gmail.com' }],
-            subject: 'Teste de Conexão SMTP Brevo (Fallback) • 369WELLNESS',
-            html: '<p>Teste de envio SMTP 369WELLNESS via smtp-relay.brevo.com:587 (bd4b5d001@smtp-brevo.com).</p>',
-          })
-          $app.newMailClient().send(fallbackMessage)
-          testEmailResult.sent = true
-          testEmailResult.sender_used = 'bd4b5d001@smtp-brevo.com'
-          settings.meta.senderAddress = 'bd4b5d001@smtp-brevo.com'
-          $app.save(settings)
-        } catch (fallbackErr) {
-          testEmailResult.sent = false
-          testEmailResult.error = `Primário: ${errMsg} | Fallback: ${fallbackErr ? fallbackErr.message : String(fallbackErr)}`
-        }
+        testEmailResult.sent = false
+        testEmailResult.error = errMsg
       }
 
       return c.json(200, {
