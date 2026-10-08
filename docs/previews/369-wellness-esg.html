@@ -1,0 +1,56 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>369 WELLNESS · Prévia ESG</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f4f8fb;color:#182c37;font:16px system-ui,sans-serif}header{background:#c6f54b;padding:24px max(24px,calc((100vw - 960px)/2));font-weight:800;font-size:24px}header small{display:block;font-size:13px;font-weight:500;margin-top:5px}main{max-width:1000px;margin:32px auto;padding:0 20px}h1{font-size:30px;letter-spacing:-.6px}p{line-height:1.55}section{background:white;border:1px solid #deeaee;border-radius:18px;padding:24px;margin:20px 0}.badge{color:#6733a4;background:#f2eafa;padding:6px 12px;border-radius:20px;font-size:13px;display:inline-block}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.form{display:grid;grid-template-columns:2fr 1fr;gap:20px}label{font-weight:600}input,select{display:block;width:100%;padding:13px;margin-top:8px;border:1px solid #aac2cf;border-radius:9px;background:white;font:inherit}.metric{padding:18px;background:#edf7ff;border-radius:12px}.metric b{display:block;font-size:25px;margin-top:8px}.metric.main{background:#effbd9}.metric span{font-size:13px}table{border-collapse:collapse;width:100%;margin-top:20px}td,th{padding:12px;text-align:left;border-bottom:1px solid #e2eaed}caption{text-align:left;font-weight:700;padding-top:22px}#error{color:#a71c32}small,.muted{color:#526974}.note{border-left:4px solid #9452d4;padding-left:16px}@media(max-width:650px){.grid,.form{grid-template-columns:1fr}h1{font-size:25px}section{padding:18px}}</style>
+<header>369 WELLNESS<small>Administrativo · conferência das regras ESG</small></header><main><span class="badge">Prévia interativa · sem movimentação financeira</span><h1>Confira o cashback de cada cenário</h1><p>Informe um valor bruto mensal e a quantidade de metas cumpridas. Cada meta exigida cumprida acrescenta <strong>15 pontos percentuais</strong>, até 100%.</p>
+<section><div class="form"><label for="amount">Cashback bruto mensal (R$)<input id="amount" value="20000,00" inputmode="decimal" maxlength="32" aria-describedby="help error"></label><label for="fulfilled">Metas cumpridas<select id="fulfilled"><option>0</option><option>1</option><option>2</option><option>3</option></select></label></div><p id="help" class="muted">Use vírgula nos centavos e não use separador de milhar: 20000,00.</p><p id="error" role="alert"></p>
+<div id="result" aria-live="polite"><p id="requirement"></p><div class="grid"><div class="metric"><span>Bruto mensal</span><b id="gross"></b></div><div class="metric main"><span id="payLabel"></span><b id="pay"></b></div><div class="metric"><span id="reductionLabel"></span><b id="reduction"></b></div></div><table><caption>Cenários para este valor bruto</caption><thead><tr><th>Metas cumpridas</th><th>Percentual</th><th>Valor após metas</th></tr></thead><tbody id="scenarios"></tbody></table></div></section>
+<section><h2>Faixas mensais confirmadas</h2><table><thead><tr><th>Cashback bruto</th><th>Metas exigidas</th><th>Percentual inicial</th></tr></thead><tbody><tr><td>Abaixo de R$ 10 mil</td><td>0</td><td>100%</td></tr><tr><td>R$ 10 mil a menos de R$ 15 mil</td><td>1</td><td>85%</td></tr><tr><td>R$ 15 mil a menos de R$ 20 mil</td><td>2</td><td>70%</td></tr><tr><td>R$ 20 mil ou mais</td><td>3</td><td>55%</td></tr></tbody></table></section>
+<p class="note">Esta prévia usa valores hipotéticos. Não consulta contas, não aprova projetos e não libera pagamentos. O destino da redução permanece pendente. A redução é arredondada uma vez e o líquido conserva o total.</p><p class="muted">As regras de split interno não são exibidas. Este arquivo funciona localmente e não envia os valores informados.</p></main><script>
+/** Confirmed monthly ESG thresholds. Guidance does not approve projects. */
+function getEsgGuidance(cashbackCents, basis = 'monthly') {
+    if (!Number.isSafeInteger(cashbackCents) || cashbackCents < 0 || basis !== 'monthly')
+        throw Error('Base ESG inválida.');
+    return { guidanceOnly: true, basis, cashbackCents, projects: cashbackCents >= 2000000 ? 3 : cashbackCents >= 1500000 ? 2 : cashbackCents >= 1000000 ? 1 : 0 };
+}
+/** Confirmed business rule, simulation only: 15 percentage points of gross
+ * monthly cashback per unmet required project. No ledger writes or redistribution.
+ * Production must derive fulfilledProjects from trusted approval records.
+ */
+function calculateMonthlyEsgPreview(grossMonthlyCents, fulfilledProjects) {
+    const { projects: requiredProjects } = getEsgGuidance(grossMonthlyCents);
+    if (!Number.isSafeInteger(fulfilledProjects) || fulfilledProjects < 0 || fulfilledProjects > 3)
+        throw Error('Quantidade de projetos inválida.');
+    const unmetProjects = Math.max(0, requiredProjects - fulfilledProjects), reductionPercent = 15 * unmetProjects;
+    // Round the aggregate reduction once; derive payable as the exact remainder.
+    const reductionCents = Number((BigInt(grossMonthlyCents) * BigInt(reductionPercent) + 50n) / 100n);
+    return { simulationOnly: true, rulesVersion: 'wellness-esg-monthly-15-per-missing-v1', basis: 'monthly', grossMonthlyCents, requiredProjects, fulfilledProjects, unmetProjects, reductionPercent, payablePercent: 100 - reductionPercent, reductionCents, payableCents: grossMonthlyCents - reductionCents };
+}
+/** Strict pt-BR amount without thousands separators; no float parsing. */
+function parseMonthlyCashbackInput(raw) {
+    if (typeof raw !== 'string' || raw.length > 32 || !/^\d+(?:,\d{1,2})?$/.test(raw))
+        throw Error('Informe reais sem separador de milhar, por exemplo 20000,00.');
+    const [whole, fraction = ''] = raw.split(',');
+    const cents = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+    if (cents > BigInt(Number.MAX_SAFE_INTEGER))
+        throw Error('Valor acima do limite da simulação.');
+    return Number(cents);
+}
+
+const el=id=>document.getElementById(id);
+const money=cents=>(cents/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function render(){
+ try{
+  const gross=parseMonthlyCashbackInput(el('amount').value),r=calculateMonthlyEsgPreview(gross,Number(el('fulfilled').value));
+  el('error').textContent='';el('amount').setAttribute('aria-invalid','false');el('result').hidden=false;
+  el('requirement').textContent=`Metas exigidas: ${r.requiredProjects}. Cumpridas consideradas: ${Math.min(r.fulfilledProjects,r.requiredProjects)}.`;
+  el('gross').textContent=money(gross);el('payLabel').textContent=`Valor após metas (${r.payablePercent}%)`;el('pay').textContent=money(r.payableCents);
+  el('reductionLabel').textContent=`Redução (${r.reductionPercent}%)`;el('reduction').textContent=money(r.reductionCents);
+  el('scenarios').replaceChildren();
+  for(let n=0;n<=r.requiredProjects;n++){
+   const s=calculateMonthlyEsgPreview(gross,n),tr=document.createElement('tr');
+   for(const value of [String(n),s.payablePercent+'%',money(s.payableCents)]){const td=document.createElement('td');td.textContent=value;tr.append(td)}
+   el('scenarios').append(tr);
+  }
+ }catch(e){el('error').textContent=e.message;el('amount').setAttribute('aria-invalid','true');el('result').hidden=true}
+}
+el('amount').addEventListener('input',render);el('fulfilled').addEventListener('change',render);render();
+</script></html>

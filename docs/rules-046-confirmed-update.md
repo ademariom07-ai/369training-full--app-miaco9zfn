@@ -55,8 +55,13 @@ Fonte oficial: https://www.gov.br/mj/pt-br/assuntos/seus-direitos/consumidor/bol
 
 ## Validação e limites
 
-204 testes locais aprovados: 163 helpers/SDK/controllers Supabase com mocks, 37 cálculos ranking/cashback/CSV/ESG e 4 contratos da migration PocketBase. TypeScript, build, lint dos módulos novos/alterados e diff check aprovados.
+206 testes locais aprovados: 163 helpers/SDK/controllers Supabase com mocks, 39 cálculos ranking/cashback/CSV/ESG e 4 contratos da migration PocketBase. TypeScript, build, lint dos módulos novos/alterados e diff check aprovados.
 
 Sem novas migrations, alteração de dados reais, publicação, transferência ou crédito. A migration 0065 do split continua preparada e não aplicada em PocketBase real. A visibilidade proprietário + administrativo está registrada; painel/API administrativa consolidada, atualização diária no servidor e snapshots mensais continuam pendentes. A proposta linear ainda não está ligada às telas nem ao fechamento financeiro. Todos os pacotes 0–15 permanecem parciais.
 
 Prévia demonstrativa existente, ainda sem estas alterações: https://wellness-369-demo.ademariom07.chatgpt.site
+
+
+## Conferência disponível na branch
+
+A área administrativa de rascunhos contém agora a simulação mensal ESG com entrada manual e comparação de todos os cenários da faixa. Não está conectada a saldos ou aprovação real. Uma prévia independente está em [369-wellness-esg.html](previews/369-wellness-esg.html); sem publicação do aplicativo. Não confundir com a proposta de distribuição linear global, que permanece isolada e sem ativação financeira.
