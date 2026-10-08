@@ -1,3 +1,4 @@
+import {submitEsgProject,reviewEsgProject,validateEsgInput,type EsgInput,type EsgProject} from './esgProjects'
 import {saveBookingTerms,validateBookingTerms,type BookingTermsInput} from './bookingTerms'
 import {saveOwnAvailability,validateAvailability,type AvailabilityInput} from './availability'
 import {createRankingDraft,validateNewDraft as validateDraft,type DraftInput} from './rankingDrafts'
@@ -13,6 +14,7 @@ export type AccountState = { phase:'checking'|'signed_out'|'profile_missing'|'re
 type Client=SupabaseClient<Database>
 export function createAccountSession(client:Client, changed:(state:AccountState)=>void, schedule:(task:()=>void)=>()=>void=task=>{const id=setTimeout(task,0);return()=>clearTimeout(id)},redirectTo?:string) {
  let recovery=false,recoveryAccountId:string|null=null,lastMailAttempt=-Infinity
+ let esgRetry:{owner:string;body:EsgInput;requestId:string}|null=null
  let termsRetry:{owner:string;body:BookingTermsInput;requestId:string}|null=null
  let draftRetry:{owner:string;body:DraftInput;requestId:string}|null=null
  let walletRetry:{owner:string;amount:number;requestId:string}|null=null
@@ -39,6 +41,7 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const result=client.auth.onAuthStateChange((event,session)=>{
    if(disposed)return
    if(event==='PASSWORD_RECOVERY'&&session?.user?.id){recovery=true;recoveryAccountId=session.user.id}
+   if(esgRetry&&(!session||session.user?.id!==esgRetry.owner))esgRetry=null
    if(termsRetry&&(!session||session.user?.id!==termsRetry.owner))termsRetry=null
    if(draftRetry&&(!session||session.user?.id!==draftRetry.owner))draftRetry=null
    if(walletRetry&&(!session||session.user?.id!==walletRetry.owner))walletRetry=null
@@ -174,5 +177,17 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   return operation(async()=>{await reserveWallet(request.requestId,request.amount,request.owner,client);walletRetry=null})
  }
  function cancelWithdrawal(row:{id:string;user_id:string}){const owner=walletOwner();if(row.user_id!==owner)throw Error('Reserva indisponível.');const id=row.id;return operation(async()=>{await cancelWallet(id,owner,client)})}
- return {start,refresh,login,logout,saveTerms,saveAvailability,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{termsRetry=null;draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ function submitEsg(input:EsgInput){
+  if(state.phase!=='ready'||!state.profile||!['aluno','profissional'].includes(state.profile.role))throw Error('Envio indisponível.')
+  const owner=state.profile.id,body=validateEsgInput(input)
+  if(!esgRetry||esgRetry.owner!==owner||JSON.stringify(esgRetry.body)!==JSON.stringify(body))esgRetry={owner,body,requestId:crypto.randomUUID()}
+  const request={...esgRetry,body:{...esgRetry.body}}
+  return operation(async()=>{await submitEsgProject(request.body,request.requestId,request.owner,client);esgRetry=null})
+ }
+ function reviewEsg(row:EsgProject,decision:'approved'|'rejected',reason:string){
+  if(state.phase!=='ready'||!state.profile||state.profile.role!=='admin')throw Error('Análise indisponível.')
+  const owner=state.profile.id,project={...row}
+  return operation(async()=>{await reviewEsgProject(project,decision,reason,owner,client)})
+ }
+ return {start,refresh,login,logout,submitEsg,reviewEsg,saveTerms,saveAvailability,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{esgRetry=null;termsRetry=null;draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }

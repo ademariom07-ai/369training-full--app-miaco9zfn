@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      esg_project_reviews: {
+        Row: {
+          created_at: string
+          decision: string
+          project_id: string
+          reason: string
+          reviewed_version: number
+          reviewer_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision: string
+          project_id: string
+          reason: string
+          reviewed_version: number
+          reviewer_id: string
+        }
+        Update: {
+          created_at?: string
+          decision?: string
+          project_id?: string
+          reason?: string
+          reviewed_version?: number
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esg_project_reviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "esg_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esg_project_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esg_projects: {
+        Row: {
+          category: string
+          description: string
+          id: string
+          owner_id: string
+          request_id: string
+          review_reason: string | null
+          reviewed_at: string | null
+          status: string
+          submitted_at: string
+          title: string
+          version: number
+        }
+        Insert: {
+          category: string
+          description: string
+          id?: string
+          owner_id: string
+          request_id: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          status?: string
+          submitted_at?: string
+          title: string
+          version?: number
+        }
+        Update: {
+          category?: string
+          description?: string
+          id?: string
+          owner_id?: string
+          request_id?: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          status?: string
+          submitted_at?: string
+          title?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esg_projects_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_application_reviews: {
         Row: {
           applicant_id: string
@@ -783,6 +875,33 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      review_esg_project: {
+        Args: {
+          p_decision: string
+          p_expected_version: number
+          p_project_id: string
+          p_reason: string
+        }
+        Returns: {
+          category: string
+          description: string
+          id: string
+          owner_id: string
+          request_id: string
+          review_reason: string | null
+          reviewed_at: string | null
+          status: string
+          submitted_at: string
+          title: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "esg_projects"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       review_professional_application: {
         Args: {
           p_applicant_id: string
@@ -871,6 +990,33 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "professional_booking_terms"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      submit_esg_project: {
+        Args: {
+          p_category: string
+          p_description: string
+          p_request_id: string
+          p_title: string
+        }
+        Returns: {
+          category: string
+          description: string
+          id: string
+          owner_id: string
+          request_id: string
+          review_reason: string | null
+          reviewed_at: string | null
+          status: string
+          submitted_at: string
+          title: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "esg_projects"
           isOneToOne: false
           isSetofReturn: true
         }

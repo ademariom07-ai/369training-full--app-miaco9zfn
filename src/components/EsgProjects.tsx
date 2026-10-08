@@ -1,0 +1,32 @@
+import {useEffect,useRef,useState} from 'react'
+import {Button} from '@/components/ui/button'
+import {Input} from '@/components/ui/input'
+import {esgCategories,readEsgProjects,type EsgInput,type EsgProject} from '@/lib/supabase/esgProjects'
+import type {OwnProfile} from '@/lib/supabase/profiles'
+type Props={account:OwnProfile;disabled:boolean;onSubmit:(input:EsgInput)=>Promise<void>;onReview:(row:EsgProject,decision:'approved'|'rejected',reason:string)=>Promise<void>}
+const labels={pending:'Em análise',approved:'Aprovado',rejected:'Recusado'}
+export default function EsgProjects({account,disabled,onSubmit,onReview}:Props){
+ const admin=account.role==='admin',mounted=useRef(true),lock=useRef(false)
+ const [rows,setRows]=useState<EsgProject[]>([]),[page,setPage]=useState(1),[reload,setReload]=useState(0),[owner,setOwner]=useState<string|null>(null),[loading,setLoading]=useState(true),[sending,setSending]=useState(false),[error,setError]=useState('')
+ const [category,setCategory]=useState<EsgInput['category']>('social'),[title,setTitle]=useState(''),[description,setDescription]=useState(''),[review,setReview]=useState<{row:EsgProject;decision:'approved'|'rejected'}|null>(null),[reason,setReason]=useState(''),[checked,setChecked]=useState(false)
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false}},[])
+ useEffect(()=>{let active=true;setOwner(null);setRows([]);setReview(null);setReason('');setChecked(false);setLoading(true);setError('')
+  void readEsgProjects(account.id,admin?'admin':'own',page).then(data=>{if(active){setRows(data);setOwner(account.id)}}).catch(()=>{if(active)setError('Não foi possível verificar os projetos. Atualize sua conta.')}).finally(()=>{if(active)setLoading(false)})
+  return()=>{active=false}
+ },[account.id,admin,page,reload])
+ const blocked=disabled||loading||sending||owner!==account.id
+ async function act(task:()=>Promise<void>){if(blocked||lock.current)return;lock.current=true;setSending(true);setError('');try{await task();if(mounted.current){setReload(n=>n+1);setTitle('');setDescription('')}}catch{if(mounted.current)setError('Não foi possível confirmar. Atualize o histórico antes de repetir.')}finally{lock.current=false;if(mounted.current)setSending(false)}}
+ return <section aria-label={admin?'Análise de projetos ESG':'Meus projetos ESG'} className="space-y-4 rounded-xl border p-4">
+ <h2 className="text-lg font-semibold">{admin?'Análise de projetos ESG':'Meus projetos ESG'}</h2><p>Cadastre ações econômicas, sociais ou ambientais para análise. A decisão fica no histórico; não libera cashback automaticamente. Validade financeira e comprovação documental serão tratadas em etapa própria.</p>
+ {error&&<p role="alert">{error}</p>}{loading&&<p role="status">Verificando projetos…</p>}
+ {!admin&&<form className="space-y-3" onSubmit={e=>{e.preventDefault();void act(()=>onSubmit({category,title,description}))}}>
+ <label className="block">Categoria<select className="block w-full rounded border p-2" value={category} disabled={blocked} onChange={e=>setCategory(e.target.value as EsgInput['category'])}>{Object.entries(esgCategories).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label>
+ <label className="block">Título<Input required maxLength={120} value={title} disabled={blocked} onChange={e=>setTitle(e.target.value)}/></label>
+ <label className="block">Descrição das ações realizadas<textarea className="block w-full rounded border p-2" required maxLength={6000} rows={4} value={description} disabled={blocked} onChange={e=>setDescription(e.target.value)}/></label>
+ <p className="text-sm">Descreva objetivos, ações e resultados. Não inclua dados pessoais de beneficiários. O envio é preservado; uma correção deve ser enviada como novo projeto.</p>
+ <Button type="submit" disabled={blocked||!title.trim()||!description.trim()}>Enviar para análise</Button></form>}
+ {owner===account.id&&(rows.length?<ul className="space-y-3">{rows.map(row=><li className="space-y-2 rounded border p-3" key={row.id}><h3 className="font-semibold">{row.title}</h3><p>{esgCategories[row.category as EsgInput['category']]} · {labels[row.status as keyof typeof labels]}</p>{admin&&<p className="break-all text-sm">Conta do participante: {row.owner_id}</p>}<p className="whitespace-pre-wrap break-words">{row.description}</p><p className="text-sm">Enviado em {new Date(row.submitted_at).toLocaleString('pt-BR')}</p>{row.review_reason&&<p className="whitespace-pre-wrap break-words">Justificativa: {row.review_reason}</p>}{admin&&row.status==='pending'&&row.owner_id!==account.id&&<div className="flex gap-2"><Button type="button" disabled={blocked} onClick={()=>{setReview({row,decision:'approved'});setReason('');setChecked(false)}}>Analisar aprovação</Button><Button type="button" variant="outline" disabled={blocked} onClick={()=>{setReview({row,decision:'rejected'});setReason('');setChecked(false)}}>Analisar recusa</Button></div>}</li>)}</ul>:<p>Nenhum projeto nesta página.</p>)}
+ {admin&&review&&<form className="space-y-3 rounded border border-violet-300 p-3" onSubmit={e=>{e.preventDefault();if(checked)void act(()=>onReview(review.row,review.decision,reason))}}><h3 className="font-semibold">{review.decision==='approved'?'Aprovar':'Recusar'}: {review.row.title}</h3><label className="block">Justificativa da decisão<textarea className="block w-full rounded border p-2" required maxLength={1000} value={reason} disabled={blocked} onChange={e=>setReason(e.target.value)}/></label><label className="flex gap-2"><input type="checkbox" required checked={checked} disabled={blocked} onChange={e=>setChecked(e.target.checked)}/>Conferi o projeto e confirmo a decisão registrada, sem liberação de cashback.</label><div className="flex gap-2"><Button type="submit" disabled={blocked||!checked||!reason.trim()}>Registrar decisão</Button><Button type="button" variant="outline" disabled={blocked} onClick={()=>setReview(null)}>Cancelar</Button></div></form>}
+ <div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={blocked||page<=1} onClick={()=>setPage(n=>n-1)}>Anterior</Button><span>Página {page}</span><Button type="button" variant="outline" disabled={blocked||rows.length<20||page>=10000} onClick={()=>setPage(n=>n+1)}>Próxima</Button><Button type="button" variant="outline" disabled={disabled||loading||sending} onClick={()=>setReload(n=>n+1)}>Atualizar histórico</Button></div>
+ </section>
+}
