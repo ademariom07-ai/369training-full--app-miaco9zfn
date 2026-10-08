@@ -1,19 +1,29 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 migrate((app) => {
-  // 1. Diagnóstico e leitura da chave SMTP_PASSWORD do ambiente
+  // 1. Diagnóstico do segredo de ambiente
+  // Lê SMTP_PASSWORD do ambiente via $os.getenv com .trim()
   const rawPass = $os.getenv('SMTP_PASSWORD') || ''
   const trimmedPass = rawPass.trim()
-  const hasLeadingSpace = rawPass.length > 0 && rawPass[0] <= ' '
-  const hasTrailingSpace = rawPass.length > 0 && rawPass[rawPass.length - 1] <= ' '
-  const prefix = trimmedPass.length >= 6 ? trimmedPass.substring(0, 6) : 'SHORT'
 
-  console.log('[BREVO-DIAG] raw length:', rawPass.length)
-  console.log('[BREVO-DIAG] trimmed length:', trimmedPass.length)
-  console.log('[BREVO-DIAG] leading space:', hasLeadingSpace, 'trailing space:', hasTrailingSpace)
-  console.log('[BREVO-DIAG] prefix:', prefix)
+  const rawLen = rawPass.length
+  const trimmedLen = trimmedPass.length
+  const hasLeadingSpace = rawLen > 0 && rawPass[0] <= ' '
+  const hasTrailingSpace = rawLen > 0 && rawPass[rawLen - 1] <= ' '
+  const prefix = trimmedLen >= 6 ? trimmedPass.substring(0, 6) : 'SHORT'
 
-  // 2. Templates de e-mail oficiais pt-BR na Auth Collection "users"
+  console.log('[BREVO-0081] Diagnóstico da chave SMTP:')
+  console.log('[BREVO-0081] Comprimento bruto (raw):', rawLen)
+  console.log('[BREVO-0081] Comprimento com trim:', trimmedLen)
+  console.log(
+    '[BREVO-0081] Espaço no início:',
+    hasLeadingSpace,
+    '| Espaço no fim:',
+    hasTrailingSpace,
+  )
+  console.log('[BREVO-0081] Prefixo diagnosticado (6 chars):', prefix)
+
+  // 2. Persistir templates de e-mail pt-BR na coleção users
   const usersCol = app.findCollectionByNameOrId('users')
   if (usersCol) {
     usersCol.verificationTemplate = {
@@ -75,7 +85,15 @@ migrate((app) => {
     app.save(usersCol)
   }
 
-  // 3. Teste das 4 variantes SMTP Brevo
+  // 3. Bateria de testes das 4 variantes SMTP Brevo:
+  // - 587 LOGIN (STARTTLS)
+  // - 587 PLAIN (STARTTLS)
+  // - 465 LOGIN (TLS implícito)
+  // - 465 PLAIN (TLS implícito)
+  // Remetente: wellness369@outlook.com (369WELLNESS)
+  // Destinatário: ademariom07@gmail.com
+  // Username: bd4b5d001@smtp-brevo.com (login do painel Brevo)
+
   const variants = [
     { name: 'VAR_1_PORT_587_LOGIN_STARTTLS', port: 587, tls: false, authMethod: 'LOGIN' },
     { name: 'VAR_2_PORT_587_PLAIN_STARTTLS', port: 587, tls: false, authMethod: 'PLAIN' },
@@ -89,7 +107,7 @@ migrate((app) => {
   for (let i = 0; i < variants.length; i++) {
     const v = variants[i]
     console.log(
-      '[BREVO-TEST] Executando variante:',
+      '[BREVO-0081] Testando variante:',
       v.name,
       'porta:',
       v.port,
@@ -104,7 +122,9 @@ migrate((app) => {
     settings.smtp.host = 'smtp-relay.brevo.com'
     settings.smtp.port = v.port
     settings.smtp.username = 'bd4b5d001@smtp-brevo.com'
-    settings.smtp.password = trimmedPass
+    if (trimmedPass) {
+      settings.smtp.password = trimmedPass
+    }
     settings.smtp.authMethod = v.authMethod
     settings.smtp.tls = v.tls
     settings.meta.senderName = '369WELLNESS'
@@ -139,34 +159,36 @@ migrate((app) => {
       })
 
       app.newMailClient().send(msg)
-      console.log('[BREVO-TEST] >>> SUCESSO na variante:', v.name)
+      console.log('[BREVO-0081] >>> SUCESSO na variante:', v.name)
       testResults.push({ variant: v.name, success: true })
       winningVariant = v
       break
     } catch (testErr) {
       const errMsg = testErr ? testErr.message || String(testErr) : 'Erro desconhecido'
-      console.warn('[BREVO-TEST] >>> FALHA na variante', v.name, ':', errMsg)
+      console.warn('[BREVO-0081] >>> FALHA na variante', v.name, ':', errMsg)
       testResults.push({ variant: v.name, success: false, error: errMsg })
     }
   }
 
-  // 4. Persistir configuração final
+  // 4. Persistir a configuração final do SMTP
   const finalSettings = app.settings()
   finalSettings.smtp.enabled = true
   finalSettings.smtp.host = 'smtp-relay.brevo.com'
   finalSettings.smtp.username = 'bd4b5d001@smtp-brevo.com'
-  finalSettings.smtp.password = trimmedPass
+  if (trimmedPass) {
+    finalSettings.smtp.password = trimmedPass
+  }
   finalSettings.meta.senderName = '369WELLNESS'
   finalSettings.meta.senderAddress = 'wellness369@outlook.com'
 
   if (winningVariant) {
-    console.log('[BREVO-FINAL] Fixando parâmetros da variante vencedora:', winningVariant.name)
+    console.log('[BREVO-0081] Gravando variante vitoriosa:', winningVariant.name)
     finalSettings.smtp.port = winningVariant.port
     finalSettings.smtp.authMethod = winningVariant.authMethod
     finalSettings.smtp.tls = winningVariant.tls
   } else {
     console.warn(
-      '[BREVO-FINAL] Persistindo configuração Brevo oficial (587, LOGIN, STARTTLS) com a senha atualizada.',
+      '[BREVO-0081] Nenhuma variante completou envio. Persistindo configuração Brevo oficial (587, LOGIN, STARTTLS) com a senha atualizada.',
     )
     finalSettings.smtp.port = 587
     finalSettings.smtp.authMethod = 'LOGIN'
@@ -174,7 +196,7 @@ migrate((app) => {
   }
   app.save(finalSettings)
 
-  // 5. Salva sumário de diagnóstico no platform_config
+  // 5. Salva diagnóstico no platform_config
   let diagRecord = null
   try {
     diagRecord = app.findFirstRecordByData('platform_config', 'key', 'smtp_diag_last_run')
@@ -184,11 +206,11 @@ migrate((app) => {
     diagRecord.set('key', 'smtp_diag_last_run')
   }
 
-  diagRecord.set('description', 'Diagnostico da execucao de migracao SMTP Brevo')
+  diagRecord.set('description', 'Diagnóstico da bateria de testes SMTP Brevo (migração 0081)')
   diagRecord.set('value', {
     executed_at: new Date().toISOString(),
-    raw_length: rawPass.length,
-    trimmed_length: trimmedPass.length,
+    raw_length: rawLen,
+    trimmed_length: trimmedLen,
     has_leading_space: hasLeadingSpace,
     has_trailing_space: hasTrailingSpace,
     prefix: prefix,
@@ -197,4 +219,8 @@ migrate((app) => {
     test_results: testResults,
   })
   app.save(diagRecord)
+  console.log(
+    '[BREVO-0081] Conclusão da migração 0081. Vencedora:',
+    winningVariant ? winningVariant.name : 'NENHUMA (todas falharam)',
+  )
 })
