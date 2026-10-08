@@ -8,9 +8,7 @@ onBootstrap((e) => {
   e.next()
   try {
     const rawPass = $os.getenv('SMTP_PASSWORD') || ''
-    const smtpPass =
-      rawPass.trim() ||
-      'xsmtpsib-34234efe1959dba85ee1e3e95f212694bedbfde6b148c759ef180df541d0abe4-I5fiwXT9AFt7fNHZ'
+    const smtpPass = rawPass.trim()
     const settings = e.app.settings()
 
     settings.smtp.enabled = true
@@ -19,7 +17,9 @@ onBootstrap((e) => {
     settings.smtp.authMethod = 'LOGIN'
     settings.smtp.tls = false // PocketBase usa STARTTLS na porta 587 quando tls é false
     settings.smtp.username = 'bd4b5d001@smtp-brevo.com'
-    settings.smtp.password = smtpPass
+    if (smtpPass) {
+      settings.smtp.password = smtpPass
+    }
     settings.meta.senderName = '369WELLNESS'
     settings.meta.senderAddress = 'wellness369@outlook.com'
 
@@ -48,9 +48,7 @@ routerAdd(
       }
 
       const rawPass = $os.getenv('SMTP_PASSWORD') || ''
-      const smtpPass =
-        rawPass.trim() ||
-        'xsmtpsib-34234efe1959dba85ee1e3e95f212694bedbfde6b148c759ef180df541d0abe4-I5fiwXT9AFt7fNHZ'
+      const smtpPass = rawPass.trim()
       const hasLeading = rawPass.length > 0 && rawPass[0] <= ' '
       const hasTrailing = rawPass.length > 0 && rawPass[rawPass.length - 1] <= ' '
       const prefix = smtpPass.length >= 6 ? smtpPass.substring(0, 6) : 'SHORT'
@@ -75,7 +73,9 @@ routerAdd(
       settings.smtp.authMethod = 'LOGIN'
       settings.smtp.tls = false
       settings.smtp.username = 'bd4b5d001@smtp-brevo.com'
-      settings.smtp.password = smtpPass
+      if (smtpPass) {
+        settings.smtp.password = smtpPass
+      }
       settings.meta.senderName = '369WELLNESS'
       settings.meta.senderAddress = 'wellness369@outlook.com'
       $app.save(settings)
