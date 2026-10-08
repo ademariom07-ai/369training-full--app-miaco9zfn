@@ -16,18 +16,18 @@ routerAdd(
       const smtpPass = $os.getenv('SMTP_PASSWORD') || ''
       const settings = $app.settings()
 
-      // Garantir configuração atualizada
+      // Garantir configuração atualizada para Gmail
       settings.smtp.enabled = true
-      settings.smtp.host = 'smtp-mail.outlook.com'
+      settings.smtp.host = 'smtp.gmail.com'
       settings.smtp.port = 587
-      settings.smtp.username = 'wellness369@outlook.com'
+      settings.smtp.username = 'ademariom07@gmail.com'
       if (smtpPass) {
         settings.smtp.password = smtpPass
       }
       settings.smtp.authMethod = 'LOGIN'
       settings.smtp.tls = false
       settings.meta.senderName = '369WELLNESS'
-      settings.meta.senderAddress = 'wellness369@outlook.com'
+      settings.meta.senderAddress = 'ademariom07@gmail.com'
       $app.save(settings)
 
       // Atualizar templates na coleção users
@@ -86,8 +86,8 @@ routerAdd(
             name: settings.meta.senderName,
           },
           to: [{ address: 'ademariom07@gmail.com' }],
-          subject: 'Teste de Conexão SMTP Outlook • 369WELLNESS',
-          html: '<p>Teste de envio SMTP 369WELLNESS via smtp-mail.outlook.com:587 (wellness369@outlook.com).</p>',
+          subject: 'Teste de Conexão SMTP Gmail • 369WELLNESS',
+          html: '<p>Teste de envio SMTP 369WELLNESS via smtp.gmail.com:587 (ademariom07@gmail.com).</p>',
         })
         $app.newMailClient().send(testMessage)
         testEmailResult.sent = true
@@ -99,7 +99,7 @@ routerAdd(
       return c.json(200, {
         success: true,
         smtp_configured: true,
-        sender: 'wellness369@outlook.com',
+        sender: 'ademariom07@gmail.com',
         test_email: testEmailResult,
       })
     } catch (err) {
