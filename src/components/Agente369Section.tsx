@@ -600,46 +600,49 @@ export function Agente369Section() {
 
       {/* MODAL 2: GERAÇÃO DE TREINO DETERMINÍSTICO */}
       <Dialog open={workoutModalOpen} onOpenChange={setWorkoutModalOpen}>
-        <DialogContent className="max-w-2xl bg-[#181818] border border-[#2D2D2D] text-white">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold font-montserrat flex items-center gap-2 text-white">
-              <Dumbbell className="w-5 h-5 text-[#D4AF37]" />
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto bg-[#f7f6f3] border-2 border-[#E5E3DC] text-[#1A1A1A] p-6 sm:p-8">
+          <DialogHeader className="pb-3 border-b border-[#E5E3DC]">
+            <DialogTitle className="text-xl sm:text-2xl font-extrabold font-montserrat flex items-center gap-2.5 text-[#0D1B2A]">
+              <div className="w-9 h-9 rounded-xl bg-[#0057FF]/10 flex items-center justify-center text-[#0057FF] shrink-0">
+                <Dumbbell className="w-5 h-5 text-[#0057FF]" />
+              </div>
               Gerar Treino Determinístico Supervisionado
             </DialogTitle>
-            <DialogDescription className="text-xs text-gray-400 font-inter">
-              Motor baseado em templates aprovados por mestres em educação física. A IA
-              parametrizará apenas carga, volume e segurança biomecânica.
+            <DialogDescription className="text-sm sm:text-base text-gray-600 font-inter mt-1 leading-relaxed">
+              Motor baseado em templates aprovados por mestres em educação física (CREF). A
+              inteligência parametrizará carga, volume e segurança biomecânica de acordo com o seu
+              perfil.
             </DialogDescription>
           </DialogHeader>
 
           {/* RED FLAG ALERT CASO OCORRA */}
           {redFlagAlert && (
-            <div className="bg-red-950/80 border-2 border-red-500 rounded-2xl p-4 my-2 text-red-200">
-              <div className="flex items-center gap-2 font-bold text-sm text-red-400 mb-1">
-                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+            <div className="bg-red-50 border-2 border-red-500 rounded-2xl p-4 my-2 text-red-950">
+              <div className="flex items-center gap-2 font-bold text-base text-red-700 mb-1">
+                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
                 Geração Interrompida por Segurança Médica
               </div>
-              <p className="text-xs leading-relaxed">{redFlagAlert}</p>
+              <p className="text-sm leading-relaxed">{redFlagAlert}</p>
             </div>
           )}
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-5 py-2">
             <div>
-              <label className="text-xs font-bold text-gray-300 uppercase block mb-1">
+              <label className="text-sm font-bold text-[#0D1B2A] uppercase tracking-wide block mb-2">
                 Faixa Etária Alvo (Protocolo Homologado):
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setTargetAgeGroup('40-59')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
+                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
                     targetAgeGroup === '40-59'
-                      ? 'border-[#D4AF37] bg-[#D4AF37]/10'
-                      : 'border-[#2D2D2D] bg-[#141414] opacity-70'
+                      ? 'border-[#0057FF] bg-blue-50/80 shadow-xs'
+                      : 'border-[#E5E3DC] bg-white opacity-80 hover:opacity-100 hover:border-gray-400'
                   }`}
                 >
-                  <div className="font-bold text-xs text-white">40 a 59 Anos</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">
+                  <div className="font-extrabold text-base text-[#0D1B2A]">40 a 59 Anos</div>
+                  <div className="text-xs sm:text-sm text-gray-600 mt-1 leading-snug">
                     Hipertrofia Funcional & Preservação Óssea/Articular
                   </div>
                 </button>
@@ -647,14 +650,16 @@ export function Agente369Section() {
                 <button
                   type="button"
                   onClick={() => setTargetAgeGroup('60+')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
+                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
                     targetAgeGroup === '60+'
-                      ? 'border-[#D4AF37] bg-[#D4AF37]/10'
-                      : 'border-[#2D2D2D] bg-[#141414] opacity-70'
+                      ? 'border-[#0057FF] bg-blue-50/80 shadow-xs'
+                      : 'border-[#E5E3DC] bg-white opacity-80 hover:opacity-100 hover:border-gray-400'
                   }`}
                 >
-                  <div className="font-bold text-xs text-white">60+ Anos (Sênior Ativo)</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">
+                  <div className="font-extrabold text-base text-[#0D1B2A]">
+                    60+ Anos (Sênior Ativo)
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-600 mt-1 leading-snug">
                     Multicomponente (Força + Equilíbrio + Marcha ≥3x/sem)
                   </div>
                 </button>
@@ -663,15 +668,20 @@ export function Agente369Section() {
 
             {/* Smartwatch Sono Info */}
             {agentStatus?.limits.smartwatch_sleep_adjustment && agentStatus?.recent_sleep && (
-              <div className="bg-[#151D24] border border-[#00E5FF]/30 p-3 rounded-xl flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <Moon className="w-4 h-4 text-[#00E5FF]" />
-                  <span className="text-gray-300">
-                    Último sono registrado: <strong>{agentStatus.recent_sleep.sleep_hours}h</strong>{' '}
+              <div className="bg-white border-2 border-blue-200 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-sm">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <Moon className="w-5 h-5 text-[#0057FF]" />
+                  </div>
+                  <span className="text-[#2B2B2B] font-medium">
+                    Último sono registrado:{' '}
+                    <strong className="text-[#0D1B2A]">
+                      {agentStatus.recent_sleep.sleep_hours}h
+                    </strong>{' '}
                     (Score: {agentStatus.recent_sleep.sleep_score}/100)
                   </span>
                 </div>
-                <Badge className="bg-[#00E5FF]/20 text-[#00E5FF] text-[10px] border-0">
+                <Badge className="bg-blue-100 text-[#0057FF] text-xs font-bold border-0 px-3 py-1 self-start sm:self-auto">
                   {agentStatus.recent_sleep.sleep_hours < 6
                     ? 'Regenerativo (<6h)'
                     : agentStatus.recent_sleep.sleep_hours < 7
@@ -684,97 +694,188 @@ export function Agente369Section() {
             {/* Check Ciclo Menstrual caso Premium */}
             {agentStatus?.limits.menstrual_cycle_module && (
               <div>
-                <label className="text-xs font-semibold text-gray-300 block mb-1">
+                <label className="text-sm font-bold text-[#0D1B2A] block mb-1.5">
                   Sintoma Menstrual no Dia (Ajuste Individual — Evidência Clínica):
                 </label>
                 <Input
                   value={cycleSymptom}
                   onChange={(e) => setCycleSymptom(e.target.value)}
                   placeholder="Ex: cólica leve, fadiga muscular, sem sintomas..."
-                  className="bg-[#121212] border-[#2A2A2A] text-xs text-white"
+                  className="bg-white border-2 border-[#E5E3DC] text-sm sm:text-base text-[#1A1A1A] h-11 px-3.5 rounded-xl placeholder:text-gray-400"
                 />
               </div>
             )}
 
             <div>
-              <label className="text-xs font-semibold text-gray-300 block mb-1">
+              <label className="text-sm font-bold text-[#0D1B2A] block mb-1.5">
                 Sintomas ou observações para o treino de hoje:
               </label>
               <Textarea
                 value={workoutSymptoms}
                 onChange={(e) => setWorkoutSymptoms(e.target.value)}
-                placeholder="Ex: lombar levemente fadigada do dia anterior, foco em membros superiores..."
-                className="bg-[#121212] border-[#2A2A2A] text-xs text-white"
+                placeholder="Ex: lombar levemente fadigada do dia anterior, foco em membros superiores, preferência por sentar e levantar..."
+                className="bg-white border-2 border-[#E5E3DC] text-sm sm:text-base text-[#1A1A1A] p-3 rounded-xl placeholder:text-gray-400"
                 rows={2}
               />
-              <p className="text-[10px] text-gray-500 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 mt-1.5 font-medium">
                 * Qualquer relato de dor no peito, falta de ar ou tontura interromperá a geração
-                automaticamente.
+                automaticamente por segurança médica.
               </p>
             </div>
 
-            {/* EXIBIÇÃO DO TREINO GERADO */}
+            {/* EXIBIÇÃO DO TREINO GERADO — DESIGN CLARO, ALTO CONTRASTE E TIPOGRAFIA ACESSÍVEL 60+ */}
             {generatedWorkout && (
-              <div className="bg-[#141414] border border-emerald-500/40 rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-emerald-400 text-xs uppercase flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4" /> {generatedWorkout.title}
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 text-emerald-300 text-[10px]"
-                  >
-                    {generatedWorkout.target_age_group}
-                  </Badge>
+              <div className="bg-[#f7f6f3] border-2 border-[#0057FF]/30 rounded-2xl p-5 sm:p-6 space-y-4 shadow-lg text-[#1A1A1A]">
+                {/* Cabeçalho do Treino Gerado */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E5E3DC]">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-[#0057FF] text-white font-bold text-xs sm:text-sm px-3 py-1 shadow-xs">
+                        {generatedWorkout.target_age_group === '60+'
+                          ? 'Sênior 60+'
+                          : 'Adulto 40-59'}
+                      </Badge>
+                      <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        Protocolo Homologado CREF
+                      </span>
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-extrabold font-montserrat text-[#0D1B2A] tracking-tight leading-snug">
+                      {generatedWorkout.title}
+                    </h3>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-bold text-[#B8962E] bg-[#D4AF37]/15 border border-[#D4AF37]/40 px-3 py-1.5 rounded-xl font-mono">
+                      {generatedWorkout.template_code || 'TPL-369'}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="text-[11px] text-gray-300 font-inter border-y border-[#262626] py-2">
-                  <p>
-                    <strong>Aprovação Técnica:</strong> {generatedWorkout.approved_by_cref}
-                  </p>
-                  <p>
-                    <strong>Diretrizes:</strong> {generatedWorkout.guidelines}
-                  </p>
+                {/* Painel Informativo Técnico e Ajustes do Treino */}
+                <div className="bg-white rounded-xl p-4 border border-[#E5E3DC] space-y-2.5 text-sm sm:text-base leading-relaxed text-[#2B2B2B]">
+                  <div className="flex items-start gap-2.5">
+                    <span className="font-bold text-[#0D1B2A] min-w-[140px] shrink-0 text-sm sm:text-base">
+                      Aprovação Técnica:
+                    </span>
+                    <span className="text-[#333333] font-medium text-sm sm:text-base">
+                      {generatedWorkout.approved_by_cref}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2.5 pt-2 border-t border-[#F0EFEB]">
+                    <span className="font-bold text-[#0D1B2A] min-w-[140px] shrink-0 text-sm sm:text-base">
+                      Diretrizes Clínicas:
+                    </span>
+                    <span className="text-[#333333] text-sm sm:text-base leading-relaxed">
+                      {generatedWorkout.guidelines}
+                    </span>
+                  </div>
+
+                  {/* Ajuste por Sono do Smartwatch */}
                   {generatedWorkout.sleep_adjustment && (
-                    <p className="text-[#00E5FF] mt-1 font-semibold">
-                      ⚙️ {generatedWorkout.sleep_adjustment.action}
-                    </p>
+                    <div className="mt-2 p-3 bg-blue-50/90 border border-blue-200 rounded-lg flex items-start gap-2.5 text-blue-900 text-sm sm:text-base font-medium">
+                      <Moon className="w-5 h-5 text-[#0057FF] shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-[#0057FF]">Ajuste por Sono (Smartwatch):</strong>{' '}
+                        {generatedWorkout.sleep_adjustment.action}
+                      </div>
+                    </div>
                   )}
+
+                  {/* Ajuste por Sintomas do Ciclo Menstrual */}
                   {generatedWorkout.menstrual_adjustment && (
-                    <p className="text-[#FF3366] mt-1 font-semibold">
-                      🌸 {generatedWorkout.menstrual_adjustment.action}
-                    </p>
+                    <div className="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2.5 text-rose-950 text-sm sm:text-base font-medium">
+                      <Heart className="w-5 h-5 text-[#FF3366] shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-[#FF3366]">Ajuste por Sintoma:</strong>{' '}
+                        {generatedWorkout.menstrual_adjustment.action}
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {/* Lista de Blocos e Exercícios com Alta Legibilidade */}
+                <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2">
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 font-medium px-1">
+                    <span>Sequência de Exercícios do Protocolo:</span>
+                    <span className="font-semibold text-[#0057FF]">
+                      {generatedWorkout.exercises?.reduce(
+                        (acc: number, b: any) => acc + (b.exercises?.length || 0),
+                        0,
+                      ) || 0}{' '}
+                      exercícios no total
+                    </span>
+                  </div>
+
                   {generatedWorkout.exercises?.map((blk: any, idx: number) => (
                     <div
                       key={idx}
-                      className="bg-[#1C1C1C] p-2.5 rounded-lg border border-[#2B2B2B]"
+                      className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-[#E5E3DC] shadow-sm hover:border-[#0057FF]/40 transition-colors"
                     >
-                      <div className="text-[11px] font-bold text-[#D4AF37] mb-1">{blk.block}</div>
-                      <div className="space-y-1">
+                      {/* Título do Bloco */}
+                      <div className="flex items-center gap-2 pb-3 mb-3 border-b border-[#E5E3DC]">
+                        <div className="w-3 h-3 rounded-full bg-[#0057FF]" />
+                        <h4 className="text-base sm:text-lg font-bold font-montserrat text-[#0D1B2A] tracking-tight">
+                          {blk.block}
+                        </h4>
+                      </div>
+
+                      {/* Itens de Exercício */}
+                      <div className="space-y-3">
                         {blk.exercises?.map((ex: any, eIdx: number) => (
                           <div
                             key={eIdx}
-                            className="flex justify-between text-[10px] text-gray-300"
+                            className="p-3.5 sm:p-4 rounded-xl bg-[#FAFAF8] border border-[#EBE8E1] hover:bg-[#F3F2EE] transition-colors flex flex-col md:flex-row md:items-center justify-between gap-2.5"
                           >
-                            <span>• {ex.name}</span>
-                            <span className="text-gray-400 font-mono">
-                              {ex.sets}x{ex.reps} | {ex.load} | rest {ex.rest}
-                            </span>
+                            {/* Nome do exercício com marcador e tamanho acessível */}
+                            <div className="flex items-start gap-3">
+                              <span className="text-[#0057FF] font-black text-lg leading-none mt-0.5">
+                                •
+                              </span>
+                              <div>
+                                <span className="text-base sm:text-lg font-bold text-[#1A1A1A] leading-snug">
+                                  {ex.name}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Prescrição: Séries x Repetições, Carga e Descanso */}
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 self-start md:self-auto pl-6 md:pl-0">
+                              {/* Séries x Reps */}
+                              <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white border border-[#D4AF37] text-[#8C6D14] font-bold text-sm sm:text-base font-mono shadow-2xs">
+                                {ex.sets} séries × {ex.reps}
+                              </span>
+
+                              {/* Carga */}
+                              <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[#0057FF] font-semibold text-sm sm:text-base">
+                                Carga: {ex.load}
+                              </span>
+
+                              {/* Descanso */}
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 font-semibold text-sm sm:text-base">
+                                <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+                                {ex.rest} de repouso
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Nota de Segurança e Acessibilidade no Rodapé do Treino */}
+                <div className="p-3 bg-white rounded-xl border border-[#E5E3DC] flex items-center gap-2.5 text-xs sm:text-sm text-gray-700 font-medium">
+                  <Info className="w-4 h-4 sm:w-5 sm:h-5 text-[#0057FF] shrink-0" />
+                  <span>
+                    Dica: Faça pausas de hidratação entre os blocos e respeite a sua cadência
+                    natural de respiração.
+                  </span>
+                </div>
               </div>
             )}
           </div>
 
-          <DialogFooter className="border-t border-[#2A2A2A] pt-4">
+          <DialogFooter className="border-t border-[#E5E3DC] pt-5 gap-3 flex-col sm:flex-row">
             <Button
               type="button"
               variant="outline"
@@ -783,16 +884,16 @@ export function Agente369Section() {
                 setGeneratedWorkout(null)
                 setRedFlagAlert(null)
               }}
-              className="border-[#333] text-gray-300 text-xs"
+              className="border-2 border-[#E5E3DC] bg-white hover:bg-gray-100 text-[#1A1A1A] font-bold text-sm sm:text-base h-11 sm:h-12 px-5 rounded-xl w-full sm:w-auto"
             >
               Fechar
             </Button>
             <Button
               onClick={handleGenerateWorkout}
               disabled={generatingWorkout}
-              className="bg-[#D4AF37] hover:bg-[#B8972E] text-black font-bold text-xs"
+              className="bg-[#0057FF] hover:bg-[#0046CC] text-white font-extrabold text-sm sm:text-base h-11 sm:h-12 px-6 rounded-xl shadow-md w-full sm:w-auto flex items-center justify-center gap-2"
             >
-              {generatingWorkout ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              {generatingWorkout ? <Loader2 className="w-5 h-5 animate-spin mr-1" /> : null}
               Parametrizar Treino Agora
             </Button>
           </DialogFooter>
