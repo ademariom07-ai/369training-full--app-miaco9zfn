@@ -3,6 +3,40 @@
 // Configuration of Brevo SMTP & Custom Email Templates for 369WELLNESS
 // Reads SMTP password from $os.getenv('SMTP_PASSWORD')
 
+// Garante configuração no boot do PocketBase
+onBootstrap((e) => {
+  e.next()
+  try {
+    const rawPass = $os.getenv('SMTP_PASSWORD') || ''
+    const smtpPass = rawPass.trim()
+    const settings = e.app.settings()
+
+    settings.smtp.enabled = true
+    settings.smtp.host = 'smtp-relay.brevo.com'
+    settings.smtp.port = 587
+    settings.smtp.authMethod = 'LOGIN'
+    settings.smtp.tls = false // PocketBase usa STARTTLS na porta 587 quando tls é false
+    settings.smtp.username = 'bd4b5d001@smtp-brevo.com'
+    if (smtpPass) {
+      settings.smtp.password = smtpPass
+    }
+    settings.meta.senderName = '369WELLNESS'
+    settings.meta.senderAddress = 'wellness369@outlook.com'
+
+    e.app.save(settings)
+
+    const suffix = smtpPass.length >= 6 ? smtpPass.slice(-6) : 'SHORT'
+    console.log(
+      '[SMTP_BOOT] Brevo settings aplicadas no boot. Pass len:',
+      smtpPass.length,
+      'suffix:',
+      suffix,
+    )
+  } catch (err) {
+    console.error('[SMTP_BOOT] Erro ao aplicar Brevo settings no boot:', err)
+  }
+})
+
 routerAdd(
   'POST',
   '/backend/v1/auth/test-smtp',
@@ -33,17 +67,15 @@ routerAdd(
       )
 
       const settings = $app.settings()
-
-      // Garantir configuração atualizada para Brevo
       settings.smtp.enabled = true
       settings.smtp.host = 'smtp-relay.brevo.com'
       settings.smtp.port = 587
+      settings.smtp.authMethod = 'LOGIN'
+      settings.smtp.tls = false
       settings.smtp.username = 'bd4b5d001@smtp-brevo.com'
       if (smtpPass) {
         settings.smtp.password = smtpPass
       }
-      settings.smtp.authMethod = 'LOGIN'
-      settings.smtp.tls = false // PocketBase usa STARTTLS na porta 587 quando tls é false
       settings.meta.senderName = '369WELLNESS'
       settings.meta.senderAddress = 'wellness369@outlook.com'
       $app.save(settings)
