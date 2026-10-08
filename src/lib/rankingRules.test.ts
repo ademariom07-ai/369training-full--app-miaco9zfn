@@ -44,14 +44,14 @@ it('sorting preserves inputs and uses rating then date then id for ties',()=>{
  expect(JSON.stringify(rows)).toBe(before)
 })
 
-it('046 free plan earns no monthly points including rating and seniority',()=>{
- const row=calculateWellnessRankingPreview({version:'046',referrals:'minimum_one',rating:'exact'},{...facts,multiplier:0,previousPoints:100.25})
- expect(row).toMatchObject({monthlyPoints:0,totalPoints:100.25,eligibleForRanking:false})
- expect(orderRankingPreview([row])).toEqual([])
+it('046 corrected free plan receives rating and seniority but is inactive for cashback',()=>{
+ const row=calculateWellnessRankingPreview({version:'046-corrected',referrals:'minimum_one',rating:'exact'},{...facts,multiplier:0,previousPoints:100.25})
+ expect(row).toMatchObject({monthlyPoints:14.5,totalPoints:114.75,eligibleForCashback:false})
+ expect(orderRankingPreview([row])[0].position).toBe(1)
 })
-it('046 free participants never occupy positions even with a larger historical balance',()=>{
+it('046 corrected ranking includes free users by total points with no second position',()=>{
  const free=calc(policy,{...facts,id:'free',multiplier:0,previousPoints:10000})
  const paid=calc(policy,{...facts,id:'paid'})
- expect(orderRankingPreview([free,paid]).map(r=>[r.id,r.position])).toEqual([['paid',1]])
- expect(()=>orderRankingPreview([{...paid,eligibleForRanking:undefined} as unknown as typeof paid])).toThrow()
+ expect(orderRankingPreview([paid,free]).map(r=>[r.id,r.position,r.eligibleForCashback])).toEqual([['free',1,false],['paid',2,true]])
+ expect(()=>orderRankingPreview([{...paid,eligibleForCashback:undefined} as unknown as typeof paid])).toThrow()
 })

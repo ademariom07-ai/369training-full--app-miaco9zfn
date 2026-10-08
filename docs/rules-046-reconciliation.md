@@ -1,5 +1,7 @@
 # 369 WELLNESS — conciliação da ATUALIZAÇÃO 0.46
 
+**Atualização posterior:** as respostas do usuário substituem partes desta análise histórica. Consulte [decisões confirmadas](rules-046-confirmed-update.md): Grátis ganha avaliação/antiguidade e participa do ranking; fica inativo somente para cashback. Existe apenas posição por pontos, não posição financeira por entrada.
+
 Data: 08/10/2026. Fonte: documento enviado pelo usuário, ATUALIZAÇÃO 0.46.docx, e instrução explícita de que SPLIT PADRÃO é exclusivo do administrativo. Não importar regras do ERP LavaCar por semelhança. Este documento não ativa pagamentos nem publica o aplicativo.
 
 ## Regras recebidas e aplicação
