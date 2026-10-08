@@ -20,23 +20,23 @@ export function calculateRankingPreview(policy:RankingPolicy,facts:RankingFacts)
  const effectiveServices=facts.partnerPro?policy.partnerServices==='floor_150'?Math.max(services,150):policy.partnerServices==='cap_150'?countedRankingServices(services,true):services:services
  const factor=policy.referrals==='minimum_one'?Math.max(referrals,1):policy.referrals==='plus_one'?referrals+1:referrals/18+1
  const rating=policy.rating==='rounded'?Math.round(facts.rating):facts.rating
- const monthly=Math.round(multiplier*effectiveServices*factor)+rating+Math.min(10,Math.max(age,1))
+ const monthly=multiplier===0?0:Math.round(multiplier*effectiveServices*factor)+rating+Math.min(10,Math.max(age,1))
  const monthlyHundredths=pointHundredths(monthly),totalHundredths=previous+monthlyHundredths
  if(!Number.isSafeInteger(totalHundredths))throw Error('Pontuação fora dos limites.')
- return {simulationOnly:true as const,rulesVersion:policy.version,rulesKey:policyKey(policy),id:facts.id,monthlyPoints:monthlyHundredths/100,totalPoints:totalHundredths/100,rating,joinedAt:facts.joinedAt}
+ return {simulationOnly:true as const,rulesVersion:policy.version,rulesKey:policyKey(policy),eligibleForRanking:multiplier>0,id:facts.id,monthlyPoints:monthlyHundredths/100,totalPoints:totalHundredths/100,rating,joinedAt:facts.joinedAt}
 }
 export function orderRankingPreview(rows:ReturnType<typeof calculateRankingPreview>[]){
  if(!Array.isArray(rows)||rows.length>500000)throw Error('Ranking inválido ou regras misturadas.')
  const ids=new Set<string>(),versions=new Set<string>(),keys=new Set<string>()
  // Iteration includes sparse entries; Array.some/map would silently skip them.
  for(const row of rows){
-  if(!row||row.simulationOnly!==true||typeof row.id!=='string'||!row.id.trim()||ids.has(row.id)||typeof row.rulesVersion!=='string'||!row.rulesVersion.trim()||typeof row.rulesKey!=='string'||!row.rulesKey||!Number.isFinite(row.rating)||row.rating<0||row.rating>5||typeof row.joinedAt!=='string'||!Number.isFinite(Date.parse(row.joinedAt)))throw Error('Ranking inválido ou regras misturadas.')
+  if(!row||row.simulationOnly!==true||typeof row.eligibleForRanking!=='boolean'||typeof row.id!=='string'||!row.id.trim()||ids.has(row.id)||typeof row.rulesVersion!=='string'||!row.rulesVersion.trim()||typeof row.rulesKey!=='string'||!row.rulesKey||!Number.isFinite(row.rating)||row.rating<0||row.rating>5||typeof row.joinedAt!=='string'||!Number.isFinite(Date.parse(row.joinedAt)))throw Error('Ranking inválido ou regras misturadas.')
   const monthly=pointHundredths(row.monthlyPoints),total=pointHundredths(row.totalPoints)
   if(total<monthly)throw Error('Ranking inválido ou regras misturadas.')
   ids.add(row.id);versions.add(row.rulesVersion);keys.add(row.rulesKey)
  }
  if(versions.size>1||keys.size>1)throw Error('Ranking inválido ou regras misturadas.')
- return rows.map(r=>({...r})).sort((a,b)=>b.totalPoints-a.totalPoints||b.rating-a.rating||Date.parse(a.joinedAt)-Date.parse(b.joinedAt)||(a.id<b.id?-1:a.id>b.id?1:0)).map((r,i)=>({...r,position:i+1}))
+ return rows.filter(r=>r.eligibleForRanking).map(r=>({...r})).sort((a,b)=>b.totalPoints-a.totalPoints||b.rating-a.rating||Date.parse(a.joinedAt)-Date.parse(b.joinedAt)||(a.id<b.id?-1:a.id>b.id?1:0)).map((r,i)=>({...r,position:i+1}))
 }
 
 /** Current WELLNESS decision; other policy fields still require explicit selection. */

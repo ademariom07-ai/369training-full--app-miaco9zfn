@@ -90,7 +90,7 @@ export default function ProfissionalPerfil() {
         sort: '-created',
         expand: 'referred',
       }),
-      pb.collection('platform_config').getFullList(),
+      pb.collection('platform_config').getFullList({filter: 'key = "min_services_to_validate_referral"', fields: 'key,value'}),
     ])
       .then(([refRes, configs]) => {
         setReferralsList(refRes.items)

@@ -43,3 +43,15 @@ it('sorting preserves inputs and uses rating then date then id for ties',()=>{
  expect(orderRankingPreview(rows).map(r=>r.id)).toEqual(['b','a','c'])
  expect(JSON.stringify(rows)).toBe(before)
 })
+
+it('046 free plan earns no monthly points including rating and seniority',()=>{
+ const row=calculateWellnessRankingPreview({version:'046',referrals:'minimum_one',rating:'exact'},{...facts,multiplier:0,previousPoints:100.25})
+ expect(row).toMatchObject({monthlyPoints:0,totalPoints:100.25,eligibleForRanking:false})
+ expect(orderRankingPreview([row])).toEqual([])
+})
+it('046 free participants never occupy positions even with a larger historical balance',()=>{
+ const free=calc(policy,{...facts,id:'free',multiplier:0,previousPoints:10000})
+ const paid=calc(policy,{...facts,id:'paid'})
+ expect(orderRankingPreview([free,paid]).map(r=>[r.id,r.position])).toEqual([['paid',1]])
+ expect(()=>orderRankingPreview([{...paid,eligibleForRanking:undefined} as unknown as typeof paid])).toThrow()
+})

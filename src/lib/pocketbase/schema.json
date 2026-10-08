@@ -1502,8 +1502,8 @@
       "name": "platform_config",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || key = 'dpo_config' || key = 'pix_config' || key = 'min_services_to_validate_referral')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || key = 'dpo_config' || key = 'pix_config' || key = 'min_services_to_validate_referral')",
         "create": "@request.auth.role = 'admin'",
         "update": "@request.auth.role = 'admin'",
         "delete": "@request.auth.role = 'admin'"
