@@ -1,6 +1,6 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// Configuration of Gmail SMTP & Custom Email Templates for 369WELLNESS
+// Configuration of Brevo SMTP & Custom Email Templates for 369WELLNESS
 // Reads SMTP password from $os.getenv('SMTP_PASSWORD')
 
 routerAdd(
@@ -16,18 +16,18 @@ routerAdd(
       const smtpPass = $os.getenv('SMTP_PASSWORD') || ''
       const settings = $app.settings()
 
-      // Garantir configuração atualizada para Gmail
+      // Garantir configuração atualizada para Brevo
       settings.smtp.enabled = true
-      settings.smtp.host = 'smtp.gmail.com'
+      settings.smtp.host = 'smtp-relay.brevo.com'
       settings.smtp.port = 587
-      settings.smtp.username = 'ademariom07@gmail.com'
+      settings.smtp.username = 'bd4b5d001@smtp-brevo.com'
       if (smtpPass) {
         settings.smtp.password = smtpPass
       }
       settings.smtp.authMethod = 'LOGIN'
-      settings.smtp.tls = false
+      settings.smtp.tls = false // PocketBase usa STARTTLS na porta 587 quando tls é false
       settings.meta.senderName = '369WELLNESS'
-      settings.meta.senderAddress = 'ademariom07@gmail.com'
+      settings.meta.senderAddress = 'wellness369@outlook.com'
       $app.save(settings)
 
       // Atualizar templates na coleção users
@@ -74,32 +74,65 @@ routerAdd(
   </div>
 </div>`,
         }
+
+        usersCol.confirmEmailChangeTemplate = {
+          subject: 'Confirmação de Troca de E-mail • 369WELLNESS',
+          body: `
+<div style="font-family: Arial, sans-serif; background-color: #0A0A0A; color: #FFFFFF; padding: 40px 20px; text-align: center;">
+  <div style="max-width: 500px; margin: 0 auto; background: #141414; border: 1px solid #D4AF37; border-radius: 16px; padding: 32px;">
+    <h1 style="color: #D4AF37; font-size: 24px; margin-bottom: 8px;">369WELLNESS</h1>
+    <p style="color: #E5E5E5; font-size: 15px;">Clique abaixo para confirmar a alteração de e-mail na sua conta:</p>
+    <a href="{APP_URL}/confirmar-email/{TOKEN}" style="display: inline-block; background-color: #D4AF37; color: #000000; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin-top: 16px;">
+      CONFIRMAR NOVO E-MAIL
+    </a>
+  </div>
+</div>`,
+        }
         $app.save(usersCol)
       }
 
-      // Disparar envio de teste
-      let testEmailResult = { sent: false, error: null }
+      // Disparar envio de teste com remetente primário e fallback se necessário
+      let testEmailResult = { sent: false, error: null, sender_used: 'wellness369@outlook.com' }
       try {
         const testMessage = new MailerMessage({
           from: {
-            address: settings.meta.senderAddress,
-            name: settings.meta.senderName,
+            address: 'wellness369@outlook.com',
+            name: '369WELLNESS',
           },
           to: [{ address: 'ademariom07@gmail.com' }],
-          subject: 'Teste de Conexão SMTP Gmail • 369WELLNESS',
-          html: '<p>Teste de envio SMTP 369WELLNESS via smtp.gmail.com:587 (ademariom07@gmail.com).</p>',
+          subject: 'Teste de Conexão SMTP Brevo • 369WELLNESS',
+          html: '<p>Teste de envio SMTP 369WELLNESS via smtp-relay.brevo.com:587 (wellness369@outlook.com).</p>',
         })
         $app.newMailClient().send(testMessage)
         testEmailResult.sent = true
       } catch (mailErr) {
-        testEmailResult.sent = false
-        testEmailResult.error = mailErr ? mailErr.message : 'Falha desconhecida no envio de teste'
+        const errMsg = mailErr ? mailErr.message : 'Falha desconhecida no envio primário'
+        // Fallback para usuário SMTP bd4b5d001@smtp-brevo.com
+        try {
+          const fallbackMessage = new MailerMessage({
+            from: {
+              address: 'bd4b5d001@smtp-brevo.com',
+              name: '369WELLNESS',
+            },
+            to: [{ address: 'ademariom07@gmail.com' }],
+            subject: 'Teste de Conexão SMTP Brevo (Fallback) • 369WELLNESS',
+            html: '<p>Teste de envio SMTP 369WELLNESS via smtp-relay.brevo.com:587 (bd4b5d001@smtp-brevo.com).</p>',
+          })
+          $app.newMailClient().send(fallbackMessage)
+          testEmailResult.sent = true
+          testEmailResult.sender_used = 'bd4b5d001@smtp-brevo.com'
+          settings.meta.senderAddress = 'bd4b5d001@smtp-brevo.com'
+          $app.save(settings)
+        } catch (fallbackErr) {
+          testEmailResult.sent = false
+          testEmailResult.error = `Primário: ${errMsg} | Fallback: ${fallbackErr ? fallbackErr.message : String(fallbackErr)}`
+        }
       }
 
       return c.json(200, {
         success: true,
         smtp_configured: true,
-        sender: 'ademariom07@gmail.com',
+        sender: testEmailResult.sender_used,
         test_email: testEmailResult,
       })
     } catch (err) {
