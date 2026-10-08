@@ -97,6 +97,8 @@ export default function EncontrarProfissional() {
   const [mSpecialtyNeeded, setMSpecialtyNeeded] = useState<string>('')
   const [mAvailability, setMAvailability] = useState<string>('')
   const [mLocationPref, setMLocationPref] = useState<string>('')
+  const [mHealthNeeds, setMHealthNeeds] = useState<string>('')
+  const [mSpecificNeeds, setMSpecificNeeds] = useState<string>('')
 
   // Professionals list
   const [professionals, setProfessionals] = useState<UserProfile[]>([])
@@ -161,6 +163,9 @@ export default function EncontrarProfissional() {
         setMSpecialtyNeeded(rec.specialty_needed || '')
         setMAvailability(rec.availability || '')
         setMLocationPref(rec.location_pref || '')
+        const ans = (rec.answers || {}) as Record<string, any>
+        setMHealthNeeds(ans.health_needs || '')
+        setMSpecificNeeds(ans.specific_needs || '')
       })
       .catch(() => {
         setMatchingProfile(null)
@@ -218,6 +223,8 @@ export default function EncontrarProfissional() {
           specialty_needed: mSpecialtyNeeded,
           availability: mAvailability,
           location_pref: mLocationPref,
+          health_needs: mHealthNeeds,
+          specific_needs: mSpecificNeeds,
           updated_at: new Date().toISOString(),
         },
       }
@@ -250,6 +257,8 @@ export default function EncontrarProfissional() {
       setMSpecialtyNeeded('')
       setMAvailability('')
       setMLocationPref('')
+      setMHealthNeeds('')
+      setMSpecificNeeds('')
       setMatchingModalOpen(false)
       return
     }
@@ -263,6 +272,8 @@ export default function EncontrarProfissional() {
       setMSpecialtyNeeded('')
       setMAvailability('')
       setMLocationPref('')
+      setMHealthNeeds('')
+      setMSpecificNeeds('')
       setMatchingModalOpen(false)
       toast.info('Questionário removido. Busca retornou ao modo padrão.')
     } catch (err: any) {
@@ -352,6 +363,50 @@ export default function EncontrarProfissional() {
         // 6. Avaliação média (+ até 10 pts)
         const rating = Number(p.rating_avg) || 5
         score += Math.round(rating * 2)
+
+        // 7. Necessidades Especiais & Saúde (60+, Reabilitação, Dores, Condições Crônicas) (+25 pts)
+        const ans = (matchingProfile.answers || {}) as Record<string, any>
+        const healthNeed = String(ans.health_needs || '').toLowerCase()
+        const userNotes = String(ans.specific_needs || '').toLowerCase()
+        const isSenior = (matchingProfile.age_group || '').includes('60+')
+
+        if (isSenior) {
+          const seniorKeywords = [
+            '60+',
+            'idoso',
+            'terceira idade',
+            'melhor idade',
+            'longevidade',
+            'funcional sênior',
+            'gerontologia',
+            'mobilidade',
+          ]
+          const matchesSenior = seniorKeywords.some(
+            (w) => profBio.includes(w) || profSub.includes(w),
+          )
+          if (matchesSenior) {
+            score += 25
+            matchedReasons.push('Especializado em 60+ e Longevidade')
+          }
+        }
+
+        if (healthNeed && healthNeed !== 'nenhuma') {
+          const healthKeywords = healthNeed.split(/[\s,/]+/).filter((w) => w.length > 3)
+          const hitsHealth = healthKeywords.some((w) => profBio.includes(w) || profSub.includes(w))
+          if (hitsHealth) {
+            score += 20
+            matchedReasons.push(`Apto para: ${ans.health_needs}`)
+          }
+        }
+
+        if (userNotes && userNotes.length > 3) {
+          const notesWords = userNotes.split(/[\s,.;]+/).filter((w) => w.length >= 4)
+          const hitsNotes = notesWords.some((w) => profBio.includes(w) || profSub.includes(w))
+          if (hitsNotes) {
+            score += 15
+            matchedReasons.push('Alinhado às suas necessidades')
+          }
+        }
       }
 
       return {
@@ -1499,216 +1554,293 @@ export default function EncontrarProfissional() {
         </DialogContent>
       </Dialog>
 
-      {/* QUESTIONÁRIO INICIAL DE MATCHING (MODAL) */}
+      {/* QUESTIONÁRIO INICIAL DE MATCHING (MODAL ACESSÍVEL 60+) */}
       <Dialog open={matchingModalOpen} onOpenChange={setMatchingModalOpen}>
-        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-xl rounded-2xl p-5 sm:p-7 max-h-[92vh] overflow-y-auto">
+        <DialogContent className="bg-white border-2 border-[#E5E3DC] text-[#1A1A1A] max-w-2xl rounded-2xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto shadow-2xl">
           <DialogHeader>
-            <div className="flex items-center gap-2.5">
-              <div className="p-2.5 rounded-xl bg-[#0057FF] text-white shadow-lg">
-                <Sparkles className="w-5 h-5 text-[#D4AF37]" />
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-[#0057FF] text-white shadow-lg shrink-0">
+                <Sparkles className="w-6 h-6 text-[#D4AF37]" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-extrabold font-montserrat uppercase tracking-tight text-white">
-                  Questionário de Matching
+                <DialogTitle className="text-xl sm:text-2xl font-black font-montserrat uppercase tracking-tight text-[#1A1A1A]">
+                  Questionário de Matching 369
                 </DialogTitle>
-                <p className="text-xs text-gray-400 font-inter mt-0.5">
-                  Descubra os especialistas 369 mais compatíveis com o seu perfil, objetivo e
-                  localização.
+                <p className="text-xs sm:text-sm text-gray-600 font-inter mt-1 leading-relaxed">
+                  Conte suas necessidades, idade e objetivos. O sistema 369WELLNESS cruza seu perfil
+                  com os especialistas cadastrados e indica os mais compatíveis com você.
                 </p>
               </div>
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSaveMatching} className="space-y-4 pt-2">
-            {/* Especialidade Necessária */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
-                1. Especialidade Principal Necessária *
+          <form onSubmit={handleSaveMatching} className="space-y-5 pt-3">
+            {/* 1. Especialidade Necessária */}
+            <div className="p-4 rounded-2xl bg-[#F7F6F3] border border-[#E5E3DC]">
+              <label className="block text-xs sm:text-sm font-black uppercase text-[#1A1A1A] font-montserrat mb-2">
+                1. Especialidade Principal Procurada *
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {[
                   'Educação Física',
                   'Nutrição',
                   'Fisioterapia',
                   'Artes Marciais',
                   'Psicologia',
-                ].map((spec) => (
-                  <button
-                    type="button"
-                    key={spec}
-                    onClick={() => setMSpecialtyNeeded(spec)}
-                    className={`p-2.5 rounded-xl border text-xs font-bold font-montserrat uppercase text-left transition-all ${
-                      mSpecialtyNeeded === spec
-                        ? 'bg-[#0057FF] border-[#0057FF] text-white shadow-[0_0_15px_rgba(0,87,255,0.4)]'
-                        : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white hover:border-[#D4AF37]'
-                    }`}
-                  >
-                    {spec}
-                  </button>
-                ))}
+                ].map((spec) => {
+                  const selected = mSpecialtyNeeded === spec
+                  return (
+                    <button
+                      type="button"
+                      key={spec}
+                      onClick={() => setMSpecialtyNeeded(spec)}
+                      className={`p-3 rounded-xl border-2 text-xs sm:text-sm font-bold font-montserrat uppercase text-left transition-all flex items-center justify-between ${
+                        selected
+                          ? 'bg-[#0057FF] border-[#0057FF] text-white shadow-md'
+                          : 'bg-white border-[#E5E3DC] text-[#374151] hover:border-[#0057FF]/60 hover:text-[#0057FF]'
+                      }`}
+                    >
+                      <span>{spec}</span>
+                      {selected && <CheckCircle className="w-4 h-4 text-[#D4AF37]" />}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            {/* Objetivo Principal */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
-                2. Qual é o seu Objetivo Principal?
+            {/* 2. Faixa Etária (Acessibilidade 60+) */}
+            <div className="p-4 rounded-2xl bg-[#F7F6F3] border border-[#E5E3DC]">
+              <label className="block text-xs sm:text-sm font-black uppercase text-[#1A1A1A] font-montserrat mb-2">
+                2. Sua Idade / Faixa Etária *
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { id: '18 a 29 anos', label: '18 a 29 anos' },
+                  { id: '30 a 39 anos', label: '30 a 39 anos' },
+                  { id: '40 a 49 anos', label: '40 a 49 anos' },
+                  { id: '50 a 59 anos', label: '50 a 59 anos' },
+                  { id: '60+ anos (Melhor Idade)', label: '60+ Melhor Idade' },
+                  { id: 'Outra / Prefiro não informar', label: 'Não informar' },
+                ].map((age) => {
+                  const selected = mAgeGroup === age.id
+                  return (
+                    <button
+                      type="button"
+                      key={age.id}
+                      onClick={() => setMAgeGroup(age.id)}
+                      className={`p-2.5 rounded-xl border-2 text-xs sm:text-sm font-bold font-montserrat text-center transition-all ${
+                        selected
+                          ? 'bg-[#D4AF37] border-[#D4AF37] text-black shadow-md'
+                          : 'bg-white border-[#E5E3DC] text-[#374151] hover:border-[#D4AF37]'
+                      }`}
+                    >
+                      {age.label}
+                    </button>
+                  )
+                })}
+              </div>
+              {mAgeGroup.includes('60+') && (
+                <div className="mt-3 p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs sm:text-sm text-[#0057FF] font-medium flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 shrink-0 text-[#0057FF]" />
+                  <span>
+                    Priorizaremos especialistas com foco em longevidade, mobilidade, prevenção de
+                    quedas e biomecânica segura para o público sênior 60+.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Objetivo Principal */}
+            <div className="p-4 rounded-2xl bg-[#F7F6F3] border border-[#E5E3DC]">
+              <label className="block text-xs sm:text-sm font-black uppercase text-[#1A1A1A] font-montserrat mb-2">
+                3. Qual é o seu Objetivo Principal? *
               </label>
               <select
                 value={mPrimaryGoal}
                 onChange={(e) => setMPrimaryGoal(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                className="w-full h-11 px-3.5 rounded-xl bg-white border-2 border-[#E5E3DC] text-[#1A1A1A] text-xs sm:text-sm font-bold focus:ring-2 focus:ring-[#0057FF] focus:border-[#0057FF] focus:outline-none"
               >
-                <option value="">Selecione um objetivo...</option>
-                <option value="Emagrecimento e Definição">Emagrecimento e Definição</option>
-                <option value="Hipertrofia e Ganho de Massa">Hipertrofia e Ganho de Massa</option>
-                <option value="Condicionamento e Saúde">Condicionamento Físico e Saúde</option>
+                <option value="">Selecione seu objetivo principal...</option>
+                <option value="Emagrecimento e Definição">Emagrecimento e Queima de Gordura</option>
+                <option value="Hipertrofia e Ganho de Massa">
+                  Hipertrofia e Ganho de Massa Muscular
+                </option>
+                <option value="Condicionamento e Saúde">
+                  Condicionamento Físico, Disposição e Saúde Geral
+                </option>
                 <option value="Reabilitação de Lesão / Dores">
-                  Reabilitação de Lesão / Alívio de Dores
+                  Reabilitação de Lesões, Coluna e Alívio de Dores
+                </option>
+                <option value="Mobilidade e Autonomia 60+">
+                  Mobilidade, Força Funcional e Autonomia (60+)
                 </option>
                 <option value="Performance e Artes Marciais">
-                  Performance em Luta / Artes Marciais
+                  Performance Atlética e Luta / Artes Marciais
                 </option>
                 <option value="Reeducação Alimentar">
-                  Reeducação Alimentar e Nutrição Esportiva
+                  Reeducação Alimentar e Nutrição Personalizada
                 </option>
-                <option value="Controle de Estresse e Mente">Saúde Mental, Ansiedade e Foco</option>
+                <option value="Controle de Estresse e Mente">
+                  Saúde Mental, Ansiedade e Qualidade do Sono
+                </option>
               </select>
             </div>
 
-            {/* Tipo de Treino Preferido */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
-                3. Tipo de Treino Preferido
+            {/* 4. Necessidades Específicas e de Saúde */}
+            <div className="p-4 rounded-2xl bg-[#F7F6F3] border border-[#E5E3DC] space-y-3">
+              <label className="block text-xs sm:text-sm font-black uppercase text-[#1A1A1A] font-montserrat">
+                4. Necessidades Especiais e Cuidados de Saúde
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { id: 'nenhuma', label: 'Nenhuma limitação ou dor física' },
+                  { id: 'dores_coluna', label: 'Dores na coluna ou articulações' },
+                  { id: 'pos_lesao', label: 'Recuperação pós-lesão ou cirurgia' },
+                  { id: 'hipertensao_diabetes', label: 'Hipertensão ou Diabetes sob controle' },
+                  { id: 'osteoporose_artrose', label: 'Osteoporose, Artrose ou Reumatismo' },
+                  { id: 'ansiedade_estresse', label: 'Controle de estresse e suporte emocional' },
+                ].map((cond) => {
+                  const selected = mHealthNeeds === cond.id
+                  return (
+                    <button
+                      type="button"
+                      key={cond.id}
+                      onClick={() => setMHealthNeeds(cond.id)}
+                      className={`p-2.5 rounded-xl border-2 text-xs sm:text-sm font-bold text-left transition-all ${
+                        selected
+                          ? 'bg-[#0057FF] border-[#0057FF] text-white shadow-sm'
+                          : 'bg-white border-[#E5E3DC] text-[#374151] hover:border-[#0057FF]/50'
+                      }`}
+                    >
+                      {cond.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Descreva outras necessidades, preferências ou histórico relevante (opcional):
+                </label>
+                <Input
+                  value={mSpecificNeeds}
+                  onChange={(e) => setMSpecificNeeds(e.target.value)}
+                  placeholder="Ex: prefiro treinos sem impacto, foco em postura, retorno aos treinos após 10 anos..."
+                  className="bg-white border-[#E5E3DC] text-[#1A1A1A] text-xs sm:text-sm rounded-xl h-11"
+                />
+              </div>
+            </div>
+
+            {/* 5. Tipo de Treino Preferido */}
+            <div className="p-4 rounded-2xl bg-[#F7F6F3] border border-[#E5E3DC]">
+              <label className="block text-xs sm:text-sm font-black uppercase text-[#1A1A1A] font-montserrat mb-2">
+                5. Tipo de Treino ou Abordagem de Sua Preferência
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {[
                   'Musculação',
                   'Treino Funcional',
                   'Artes Marciais / Luta',
-                  'Corrida e Cárdio',
+                  'Caminhada / Corrida',
                   'Pilates / Postural',
                   'Treino Híbrido 369',
-                ].map((t) => (
-                  <button
-                    type="button"
-                    key={t}
-                    onClick={() => setMTrainingType(t)}
-                    className={`p-2 rounded-xl border text-[11px] font-bold font-montserrat text-left transition-all ${
-                      mTrainingType === t
-                        ? 'bg-[#D4AF37] border-[#D4AF37] text-black shadow-md'
-                        : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
+                ].map((t) => {
+                  const selected = mTrainingType === t
+                  return (
+                    <button
+                      type="button"
+                      key={t}
+                      onClick={() => setMTrainingType(t)}
+                      className={`p-2.5 rounded-xl border-2 text-xs sm:text-sm font-bold font-montserrat text-center transition-all ${
+                        selected
+                          ? 'bg-[#D4AF37] border-[#D4AF37] text-black shadow-md'
+                          : 'bg-white border-[#E5E3DC] text-[#374151] hover:border-[#D4AF37]'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            {/* Faixa Etária */}
+            {/* 6. Modelo de Atendimento & Horário */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
-                  4. Faixa Etária
-                </label>
-                <select
-                  value={mAgeGroup}
-                  onChange={(e) => setMAgeGroup(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
-                >
-                  <option value="">Prefiro não informar</option>
-                  <option value="18 a 29 anos">18 a 29 anos</option>
-                  <option value="30 a 39 anos">30 a 39 anos</option>
-                  <option value="40 a 49 anos">40 a 49 anos</option>
-                  <option value="50 a 59 anos">50 a 59 anos</option>
-                  <option value="60+ anos (Melhor Idade)">60+ anos (Melhor Idade)</option>
-                </select>
-              </div>
-
-              {/* Preferência de Localização */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
-                  5. Modelo de Atendimento
+              <div className="p-4 rounded-2xl bg-[#F7F6F3] border border-[#E5E3DC]">
+                <label className="block text-xs sm:text-sm font-black uppercase text-[#1A1A1A] font-montserrat mb-2">
+                  6. Modelo de Atendimento
                 </label>
                 <select
                   value={mLocationPref}
                   onChange={(e) => setMLocationPref(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                  className="w-full h-11 px-3 rounded-xl bg-white border-2 border-[#E5E3DC] text-[#1A1A1A] text-xs sm:text-sm font-bold focus:ring-2 focus:ring-[#0057FF] focus:outline-none"
                 >
                   <option value="Presencial ou Online">Presencial ou Online (Tanto faz)</option>
                   <option value="Presencial Próximo">Presencial perto de mim</option>
                   <option value="Online Remoto">100% Online Remoto</option>
                 </select>
               </div>
-            </div>
 
-            {/* Disponibilidade de Horário */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
-                6. Disponibilidade de Horário
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {['Manhã (06h - 12h)', 'Tarde (12h - 18h)', 'Noite (18h - 22h)'].map((slot) => (
-                  <button
-                    type="button"
-                    key={slot}
-                    onClick={() => setMAvailability(slot)}
-                    className={`p-2 rounded-xl border text-[11px] font-bold font-montserrat text-center transition-all ${
-                      mAvailability === slot
-                        ? 'bg-[#0057FF] border-[#0057FF] text-white'
-                        : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
+              <div className="p-4 rounded-2xl bg-[#F7F6F3] border border-[#E5E3DC]">
+                <label className="block text-xs sm:text-sm font-black uppercase text-[#1A1A1A] font-montserrat mb-2">
+                  7. Horário Mais Conveniente
+                </label>
+                <select
+                  value={mAvailability}
+                  onChange={(e) => setMAvailability(e.target.value)}
+                  className="w-full h-11 px-3 rounded-xl bg-white border-2 border-[#E5E3DC] text-[#1A1A1A] text-xs sm:text-sm font-bold focus:ring-2 focus:ring-[#0057FF] focus:outline-none"
+                >
+                  <option value="">Qualquer horário</option>
+                  <option value="Manhã (06h - 12h)">Manhã (06h às 12h)</option>
+                  <option value="Tarde (12h - 18h)">Tarde (12h às 18h)</option>
+                  <option value="Noite (18h - 22h)">Noite (18h às 22h)</option>
+                </select>
               </div>
             </div>
 
             {/* Footer actions */}
-            <div className="pt-3 border-t border-[#2A2A2A] flex items-center justify-between gap-3">
+            <div className="pt-4 border-t-2 border-[#E5E3DC] flex flex-col sm:flex-row items-center justify-between gap-3">
               {matchingProfile?.id ? (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleClearMatching}
                   disabled={savingMatching}
-                  className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
+                  className="w-full sm:w-auto border-red-300 text-red-600 hover:bg-red-50 text-xs sm:text-sm font-bold"
                 >
-                  Limpar / Desativar
+                  Limpar / Desativar Matching
                 </Button>
               ) : (
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => setMatchingModalOpen(false)}
-                  className="text-gray-400 hover:text-white text-xs"
+                  className="w-full sm:w-auto text-gray-500 hover:text-gray-900 text-xs sm:text-sm"
                 >
-                  Pular / Fechar
+                  Pular por enquanto
                 </Button>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setMatchingModalOpen(false)}
-                  className="border-[#2A2A2A] text-gray-400 hover:text-white text-xs"
+                  className="border-[#E5E3DC] text-gray-700 hover:bg-gray-100 text-xs sm:text-sm font-semibold"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
                   disabled={savingMatching}
-                  className="bg-[#D4AF37] hover:bg-[#E6C65C] text-black font-extrabold text-xs uppercase px-5 rounded-xl shadow-lg flex items-center gap-1.5"
+                  className="bg-[#D4AF37] hover:bg-[#b8962e] text-black hover:text-white font-black text-xs sm:text-sm uppercase px-6 py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2"
                 >
                   {savingMatching ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <CheckCircle className="w-4 h-4" />
+                    <CheckCircle className="w-5 h-5" />
                   )}
-                  Salvar e Ranquear
+                  Salvar e Cruzar Perfis
                 </Button>
               </div>
             </div>
