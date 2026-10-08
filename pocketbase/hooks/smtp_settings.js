@@ -13,7 +13,25 @@ routerAdd(
         return c.json(403, { success: false, message: 'Acesso restrito ao administrador.' })
       }
 
-      const smtpPass = $os.getenv('SMTP_PASSWORD') || ''
+      const rawPass = $os.getenv('SMTP_PASSWORD') || ''
+      const smtpPass = rawPass.trim()
+      const hasLeading = rawPass.length > 0 && rawPass[0] <= ' '
+      const hasTrailing = rawPass.length > 0 && rawPass[rawPass.length - 1] <= ' '
+      const prefix = smtpPass.length >= 6 ? smtpPass.substring(0, 6) : 'SHORT'
+
+      console.log(
+        '[SMTP_TEST_HOOK] pass raw len:',
+        rawPass.length,
+        'trimmed len:',
+        smtpPass.length,
+        'leading:',
+        hasLeading,
+        'trailing:',
+        hasTrailing,
+        'prefix:',
+        prefix,
+      )
+
       const settings = $app.settings()
 
       // Garantir configuração atualizada para Brevo
@@ -116,6 +134,13 @@ routerAdd(
         smtp_configured: true,
         sender: testEmailResult.sender_used,
         test_email: testEmailResult,
+        diag: {
+          raw_length: rawPass.length,
+          trimmed_length: smtpPass.length,
+          has_leading_space: hasLeading,
+          has_trailing_space: hasTrailing,
+          key_prefix: prefix,
+        },
       })
     } catch (err) {
       return c.json(500, {
