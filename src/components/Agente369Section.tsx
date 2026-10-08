@@ -128,6 +128,303 @@ export function Agente369Section() {
   })
   const [savingCycle, setSavingCycle] = useState(false)
 
+  // Renderizador semântico de Markdown para o chat do Agente 369 (alta legibilidade e 60+)
+  const renderAgentMarkdown = (text: string) => {
+    if (!text) return null
+
+    // Função auxiliar para formatação inline (negrito, itálico, código)
+    const renderInline = (str: string): React.ReactNode => {
+      // Divide por **negrito**
+      const boldParts = str.split(/(\*\*.*?\*\*)/g)
+      return boldParts.map((bPart, bIdx) => {
+        if (bPart.startsWith('**') && bPart.endsWith('**') && bPart.length > 4) {
+          return (
+            <strong key={bIdx} className="font-extrabold text-[#0D1B2A]">
+              {bPart.slice(2, -2)}
+            </strong>
+          )
+        }
+        // Itálico *texto*
+        const italicParts = bPart.split(/(\*.*?\*)/g)
+        return italicParts.map((iPart, iIdx) => {
+          if (iPart.startsWith('*') && iPart.endsWith('*') && iPart.length > 2) {
+            return (
+              <em key={iIdx} className="italic text-[#2B2B2B]">
+                {iPart.slice(1, -1)}
+              </em>
+            )
+          }
+          return iPart
+        })
+      })
+    }
+
+    const lines = text.split('\n')
+    const blocks: React.ReactNode[] = []
+    let currentParagraph: string[] = []
+    let currentListItems: { ordered: boolean; num?: string; text: string }[] = []
+    let currentTableRows: string[][] = []
+
+    const flushParagraph = (key: string) => {
+      if (currentParagraph.length > 0) {
+        const pText = currentParagraph.join(' ')
+        // Detecta se é o aviso/disclaimer CREF obrigatório: "[Aviso: O Agente 369..."
+        if (
+          pText.startsWith('[Aviso:') ||
+          pText.startsWith('Aviso:') ||
+          pText.includes('não substitui avaliação presencial')
+        ) {
+          blocks.push(
+            <div
+              key={`disclaimer-${key}`}
+              className="my-3 p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-start gap-2.5 text-xs sm:text-sm text-blue-950 font-medium"
+            >
+              <ShieldCheck className="w-4 h-4 text-[#0057FF] shrink-0 mt-0.5" />
+              <div className="leading-relaxed">{renderInline(pText.replace(/^\[|\]$/g, ''))}</div>
+            </div>,
+          )
+        } else {
+          blocks.push(
+            <p key={`p-${key}`} className="my-2.5 text-base text-[#2B2B2B] leading-relaxed">
+              {renderInline(pText)}
+            </p>,
+          )
+        }
+        currentParagraph = []
+      }
+    }
+
+    const flushList = (key: string) => {
+      if (currentListItems.length > 0) {
+        const isOrdered = currentListItems[0].ordered
+        if (isOrdered) {
+          blocks.push(
+            <ol key={`ol-${key}`} className="my-3 space-y-2 pl-2">
+              {currentListItems.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-3 text-base text-[#2B2B2B]">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#0057FF]/10 text-[#0057FF] font-black text-sm shrink-0 mt-0.5">
+                    {item.num || idx + 1}
+                  </span>
+                  <div className="flex-1 leading-relaxed">{renderInline(item.text)}</div>
+                </li>
+              ))}
+            </ol>,
+          )
+        } else {
+          blocks.push(
+            <ul key={`ul-${key}`} className="my-3 space-y-2 pl-2">
+              {currentListItems.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-3 text-base text-[#2B2B2B]">
+                  <span className="text-[#0057FF] font-black text-xl leading-none mt-1 shrink-0">
+                    •
+                  </span>
+                  <div className="flex-1 leading-relaxed">{renderInline(item.text)}</div>
+                </li>
+              ))}
+            </ul>,
+          )
+        }
+        currentListItems = []
+      }
+    }
+
+    const flushTable = (key: string) => {
+      if (currentTableRows.length > 0) {
+        // Separa cabeçalho e linhas de dados (removendo a linha divisora com ---)
+        const validRows = currentTableRows.filter(
+          (row) => !row.every((cell) => cell.trim().match(/^:?-+:?$/)),
+        )
+
+        if (validRows.length > 0) {
+          const headerRow = validRows[0]
+          const bodyRows = validRows.slice(1)
+
+          blocks.push(
+            <div
+              key={`tbl-${key}`}
+              className="my-3.5 overflow-x-auto rounded-xl border-2 border-[#E5E3DC] bg-white shadow-xs"
+            >
+              <table className="w-full text-left text-base border-collapse">
+                <thead>
+                  <tr className="bg-gradient-to-r from-blue-50 to-[#D4AF37]/10 border-b-2 border-[#E5E3DC]">
+                    {headerRow.map((col, cIdx) => (
+                      <th
+                        key={cIdx}
+                        className="py-3 px-4 font-extrabold text-[#0D1B2A] text-sm sm:text-base tracking-wide"
+                      >
+                        {renderInline(col)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EBE8E1]">
+                  {bodyRows.map((r, rIdx) => (
+                    <tr
+                      key={rIdx}
+                      className={
+                        rIdx % 2 === 0
+                          ? 'bg-white hover:bg-blue-50/30 transition-colors'
+                          : 'bg-[#FAFAF8] hover:bg-blue-50/30 transition-colors'
+                      }
+                    >
+                      {r.map((cell, cIdx) => (
+                        <td
+                          key={cIdx}
+                          className="py-3 px-4 text-base text-[#2B2B2B] leading-relaxed"
+                        >
+                          {renderInline(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>,
+          )
+        }
+        currentTableRows = []
+      }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+
+      // Linha vazia: descarrega parágrafo, lista e tabela pendentes
+      if (!line) {
+        flushParagraph(`line-${i}`)
+        flushList(`line-${i}`)
+        flushTable(`line-${i}`)
+        continue
+      }
+
+      // Tabela Markdown (| Col 1 | Col 2 |)
+      if (line.startsWith('|') && line.endsWith('|')) {
+        flushParagraph(`line-${i}`)
+        flushList(`line-${i}`)
+        const cells = line
+          .slice(1, -1)
+          .split('|')
+          .map((c) => c.trim())
+        currentTableRows.push(cells)
+        continue
+      } else if (currentTableRows.length > 0) {
+        flushTable(`line-${i}`)
+      }
+
+      // Citação ou Bloco "Importante:" (> texto ou linhas iniciando com "Importante:")
+      if (
+        line.startsWith('>') ||
+        line.toLowerCase().startsWith('importante:') ||
+        line.toLowerCase().startsWith('atenção:') ||
+        line.toLowerCase().startsWith('nota:')
+      ) {
+        flushParagraph(`line-${i}`)
+        flushList(`line-${i}`)
+        const quoteContent = line.startsWith('>') ? line.replace(/^>\s?/, '') : line
+
+        blocks.push(
+          <div
+            key={`quote-${i}`}
+            className="my-3.5 p-4 rounded-xl bg-[#D4AF37]/10 border-l-4 border-[#D4AF37] text-[#1A1A1A] space-y-1 shadow-2xs"
+          >
+            <div className="flex items-center gap-2 font-extrabold text-[#8C6D14] text-base mb-1">
+              <Info className="w-5 h-5 text-[#8C6D14] shrink-0" />
+              <span>Destaque Clínico & Atenção</span>
+            </div>
+            <p className="text-base leading-relaxed text-[#2B2B2B] font-medium">
+              {renderInline(quoteContent)}
+            </p>
+          </div>,
+        )
+        continue
+      }
+
+      // Título H1 (# Título)
+      if (line.startsWith('# ')) {
+        flushParagraph(`line-${i}`)
+        flushList(`line-${i}`)
+        blocks.push(
+          <h2
+            key={`h1-${i}`}
+            className="text-xl sm:text-2xl font-black font-montserrat text-[#0D1B2A] tracking-tight mt-4 mb-2 pb-1.5 border-b border-[#E5E3DC] flex items-center gap-2"
+          >
+            <div className="w-2.5 h-6 rounded-full bg-[#0057FF]" />
+            <span>{renderInline(line.replace('# ', ''))}</span>
+          </h2>,
+        )
+        continue
+      }
+
+      // Título H2 (## Título)
+      if (line.startsWith('## ')) {
+        flushParagraph(`line-${i}`)
+        flushList(`line-${i}`)
+        blocks.push(
+          <h3
+            key={`h2-${i}`}
+            className="text-lg sm:text-xl font-extrabold font-montserrat text-[#0D1B2A] tracking-tight mt-4 mb-2 flex items-center gap-2"
+          >
+            <span className="text-[#0057FF] font-black text-lg">§</span>
+            <span>{renderInline(line.replace('## ', ''))}</span>
+          </h3>,
+        )
+        continue
+      }
+
+      // Título H3 (### Título)
+      if (line.startsWith('### ')) {
+        flushParagraph(`line-${i}`)
+        flushList(`line-${i}`)
+        blocks.push(
+          <h4
+            key={`h3-${i}`}
+            className="text-base sm:text-lg font-bold font-montserrat text-[#0D1B2A] mt-3 mb-1.5 flex items-center gap-2"
+          >
+            <div className="w-2 h-2 rounded-full bg-[#D4AF37]" />
+            <span>{renderInline(line.replace('### ', ''))}</span>
+          </h4>,
+        )
+        continue
+      }
+
+      // Lista numerada (1. item, 2. item)
+      const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/)
+      if (orderedMatch) {
+        flushParagraph(`line-${i}`)
+        currentListItems.push({
+          ordered: true,
+          num: orderedMatch[1],
+          text: orderedMatch[2],
+        })
+        continue
+      }
+
+      // Lista com marcadores (- item, * item)
+      if (line.startsWith('- ') || line.startsWith('* ')) {
+        flushParagraph(`line-${i}`)
+        currentListItems.push({
+          ordered: false,
+          text: line.replace(/^[-*]\s+/, ''),
+        })
+        continue
+      }
+
+      // Se havia lista aberta e veio linha normal, descarrega a lista
+      if (currentListItems.length > 0) {
+        flushList(`line-${i}`)
+      }
+
+      // Parágrafo regular
+      currentParagraph.push(line)
+    }
+
+    flushParagraph('end')
+    flushList('end')
+    flushTable('end')
+
+    return <div className="space-y-1 font-inter">{blocks}</div>
+  }
+
   // Carregar status do agente
   const loadStatus = async () => {
     try {
@@ -309,9 +606,9 @@ export function Agente369Section() {
 
   if (loading && !agentStatus) {
     return (
-      <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl animate-pulse">
-        <div className="h-6 w-48 bg-[#2A2A2A] rounded mb-4" />
-        <div className="h-16 w-full bg-[#2A2A2A] rounded" />
+      <Card className="bg-white border-2 border-[#E5E3DC] p-6 rounded-2xl animate-pulse shadow-sm">
+        <div className="h-6 w-48 bg-[#E5E3DC] rounded mb-4" />
+        <div className="h-16 w-full bg-[#E5E3DC]/60 rounded" />
       </Card>
     )
   }
@@ -902,31 +1199,62 @@ export function Agente369Section() {
 
       {/* MODAL 3: CHAT COM O AGENTE 369 */}
       <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-        <DialogContent className="max-w-2xl bg-[#181818] border border-[#2D2D2D] text-white flex flex-col h-[75vh]">
-          <DialogHeader className="border-b border-[#2A2A2A] pb-3">
-            <DialogTitle className="text-lg font-bold font-montserrat flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Bot className="w-5 h-5 text-[#00E5FF]" />
-                Agente 369 — Copiloto Interativo
+        <DialogContent className="max-w-2xl bg-[#f7f6f3] border-2 border-[#E5E3DC] text-[#1A1A1A] flex flex-col h-[82vh] max-h-[820px] p-5 sm:p-6 shadow-2xl">
+          <DialogHeader className="border-b border-[#E5E3DC] pb-3.5">
+            <DialogTitle className="text-lg sm:text-xl font-bold font-montserrat flex items-center justify-between text-[#0D1B2A]">
+              <span className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#0057FF]/10 flex items-center justify-center text-[#0057FF] shrink-0">
+                  <Bot className="w-5 h-5 text-[#0057FF]" />
+                </div>
+                <span>Agente 369 — Copiloto Interativo</span>
               </span>
-              <Badge variant="outline" className="border-[#00E5FF]/40 text-[#00E5FF] text-[10px]">
+              <Badge
+                variant="outline"
+                className="border-[#0057FF]/30 text-[#0057FF] bg-blue-50/80 font-bold text-xs px-3 py-1"
+              >
                 {agentStatus?.usage.messages_remaining} msgs restantes
               </Badge>
             </DialogTitle>
           </DialogHeader>
 
-          {/* ÁREA DE MENSAGENS */}
-          <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-2">
+          {/* ÁREA DE MENSAGENS COM ROLAGEM E FUNDO CLARO */}
+          <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1 sm:pr-2">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
-                <Bot className="w-12 h-12 text-[#D4AF37]/40 mb-2" />
-                <p className="text-xs font-semibold text-gray-300">
-                  Olá! Eu sou seu copiloto inteligente 369.
+              <div className="h-full min-h-[280px] flex flex-col items-center justify-center text-center p-6 bg-white border border-[#E5E3DC] rounded-2xl shadow-xs">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#0057FF] mb-3">
+                  <Bot className="w-7 h-7 text-[#0057FF]" />
+                </div>
+                <p className="text-base sm:text-lg font-bold text-[#0D1B2A] font-montserrat">
+                  Olá! Eu sou o seu Copiloto Inteligente 369.
                 </p>
-                <p className="text-[11px] text-gray-500 max-w-sm mt-1">
+                <p className="text-sm sm:text-base text-gray-600 max-w-md mt-1.5 leading-relaxed">
                   Pergunte sobre como ajustar seu treino, estratégias de mobilidade, recuperação com
-                  smartwatch ou diretrizes de segurança.
+                  smartwatch ou diretrizes de segurança para a sua rotina.
                 </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setChatInput(
+                        'Como posso adaptar os exercícios de hoje para preservar os joelhos?',
+                      )
+                    }
+                    className="text-xs sm:text-sm bg-[#FAFAF8] hover:bg-blue-50 text-[#0057FF] border border-[#E5E3DC] hover:border-blue-300 px-3 py-1.5 rounded-full transition-colors"
+                  >
+                    💡 Adaptação para joelhos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setChatInput(
+                        'Dormi menos de 6 horas esta noite. O que você recomenda para o meu treino?',
+                      )
+                    }
+                    className="text-xs sm:text-sm bg-[#FAFAF8] hover:bg-blue-50 text-[#0057FF] border border-[#E5E3DC] hover:border-blue-300 px-3 py-1.5 rounded-full transition-colors"
+                  >
+                    🌙 Ajuste por sono &lt;6h
+                  </button>
+                </div>
               </div>
             ) : (
               messages.map((m, idx) => (
@@ -934,32 +1262,61 @@ export function Agente369Section() {
                   key={idx}
                   className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div
-                    className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
-                      m.role === 'user'
-                        ? 'bg-[#D4AF37] text-black font-medium ml-4'
-                        : m.isRedFlag
-                          ? 'bg-red-950/80 border border-red-500 text-red-200 mr-4'
-                          : 'bg-[#222] border border-[#333] text-gray-200 mr-4'
-                    }`}
-                  >
-                    {m.content}
-                  </div>
+                  {m.role === 'user' ? (
+                    /* Balão do Usuário / Aluno: Azul Royal refinado com alto contraste e tipografia 16px */
+                    <div className="max-w-[85%] rounded-2xl p-4 sm:p-4.5 bg-[#0057FF] text-white shadow-md ml-4 text-base leading-relaxed">
+                      <div className="flex items-center gap-1.5 mb-1 text-xs font-bold uppercase tracking-wider text-blue-100">
+                        <span>Você</span>
+                      </div>
+                      <p className="whitespace-pre-wrap font-medium">{m.content}</p>
+                    </div>
+                  ) : m.isRedFlag ? (
+                    /* Alerta Vermelho Clínico (Red Flag): caixa de alta atenção com texto claro e legível */
+                    <div className="max-w-[90%] rounded-2xl p-4 sm:p-5 bg-red-50 border-2 border-red-500 text-red-950 shadow-md mr-4 text-base leading-relaxed">
+                      <div className="flex items-center gap-2 font-bold text-red-700 text-base sm:text-lg mb-2">
+                        <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+                        <span>Alerta de Segurança Médica (Interrupção)</span>
+                      </div>
+                      <div className="font-medium">{renderAgentMarkdown(m.content)}</div>
+                    </div>
+                  ) : (
+                    /* Balão do Assistente Agente 369: Fundo Branco, borda suave #E5E3DC, texto escuro alto contraste e Markdown rico */
+                    <div className="max-w-[90%] sm:max-w-[85%] rounded-2xl p-4 sm:p-5 bg-white border-2 border-[#E5E3DC] text-[#1A1A1A] shadow-md mr-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#F0EFEB]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-[#0057FF]/10 flex items-center justify-center text-[#0057FF]">
+                            <Bot className="w-3.5 h-3.5 text-[#0057FF]" />
+                          </div>
+                          <span className="text-xs sm:text-sm font-extrabold text-[#0D1B2A] tracking-wide uppercase font-montserrat">
+                            Agente 369 • Copiloto
+                          </span>
+                        </div>
+                        <Badge className="bg-[#D4AF37]/15 border border-[#D4AF37]/40 text-[#8C6D14] text-[11px] font-bold px-2 py-0.5">
+                          CREF Compliant
+                        </Badge>
+                      </div>
+                      <div className="text-base leading-relaxed">
+                        {renderAgentMarkdown(m.content)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             )}
             {sendingMsg && (
               <div className="flex justify-start">
-                <div className="bg-[#222] border border-[#333] rounded-2xl p-3 text-xs text-gray-400 flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00E5FF]" />
-                  Processando com Skip Native AI Agent...
+                <div className="bg-white border-2 border-[#E5E3DC] rounded-2xl p-3.5 sm:p-4 text-sm sm:text-base text-gray-700 shadow-sm flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#0057FF]" />
+                  <span className="font-medium text-[#0D1B2A]">
+                    Agente 369 analisando sua solicitação com segurança CREF...
+                  </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* INPUT DO CHAT */}
-          <div className="border-t border-[#2A2A2A] pt-3 flex items-center gap-2">
+          {/* INPUT DO CHAT — TEMA CLARO, FONTE >=16PX, ALTURA TÁTIL H-12 E BOTÃO AZUL ROYAL */}
+          <div className="border-t border-[#E5E3DC] pt-3.5 flex items-center gap-2 sm:gap-3 bg-[#f7f6f3]">
             <Input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
@@ -967,19 +1324,19 @@ export function Agente369Section() {
                 if (e.key === 'Enter') handleSendMessage()
               }}
               placeholder="Digite sua dúvida de treino ou recuperação..."
-              className="bg-[#121212] border-[#2A2A2A] text-xs text-white flex-1"
+              className="bg-white border-2 border-[#E5E3DC] text-base text-[#1A1A1A] placeholder:text-gray-400 flex-1 h-12 px-4 rounded-xl shadow-xs focus-visible:ring-[#0057FF]"
             />
             <Button
               onClick={handleSendMessage}
               disabled={sendingMsg || !chatInput.trim()}
-              className="bg-[#00E5FF] hover:bg-[#00BFD8] text-black font-bold text-xs px-4"
+              className="bg-[#0057FF] hover:bg-[#0046CC] text-white font-bold h-12 px-5 rounded-xl shadow-md shrink-0 flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5" />
+              <span className="hidden sm:inline text-sm font-extrabold">Enviar</span>
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-
       {/* MODAL 4: REGISTRO CICLO MENSTRUAL (LGPD ART. 11) */}
       <Dialog open={cycleModalOpen} onOpenChange={setCycleModalOpen}>
         <DialogContent className="max-w-md bg-[#181818] border border-[#2D2D2D] text-white">
