@@ -37,6 +37,17 @@ import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { PresentationVideoPlayer } from '@/components/PresentationVideoPlayer'
 import { UserCheck, UserX } from 'lucide-react'
+import type { MatchingProfileRecord } from '@/services/api'
+import {
+  HelpCircle,
+  CheckCircle,
+  Filter,
+  X,
+  Target,
+  Dumbbell,
+  Compass,
+  ArrowUpDown,
+} from 'lucide-react'
 
 // Haversine formula to compute distance in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -72,6 +83,20 @@ export default function EncontrarProfissional() {
   const [searchCity, setSearchCity] = useState('')
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('Todas')
   const [selectedPlanBadge, setSelectedPlanBadge] = useState<string>('Todos')
+
+  // Matching Questionnaire State
+  const [matchingModalOpen, setMatchingModalOpen] = useState(false)
+  const [matchingProfile, setMatchingProfile] = useState<MatchingProfileRecord | null>(null)
+  const [savingMatching, setSavingMatching] = useState(false)
+  const [loadingMatching, setLoadingMatching] = useState(false)
+
+  // Matching form fields
+  const [mAgeGroup, setMAgeGroup] = useState<string>('')
+  const [mPrimaryGoal, setMPrimaryGoal] = useState<string>('')
+  const [mTrainingType, setMTrainingType] = useState<string>('')
+  const [mSpecialtyNeeded, setMSpecialtyNeeded] = useState<string>('')
+  const [mAvailability, setMAvailability] = useState<string>('')
+  const [mLocationPref, setMLocationPref] = useState<string>('')
 
   // Professionals list
   const [professionals, setProfessionals] = useState<UserProfile[]>([])
@@ -122,6 +147,29 @@ export default function EncontrarProfissional() {
     }
   }, [])
 
+  // Fetch matching profile of the current user
+  useEffect(() => {
+    if (!user || user.role !== 'aluno') return
+    setLoadingMatching(true)
+    pb.collection('matching_profiles')
+      .getFirstListItem<MatchingProfileRecord>(`user = "${user.id}"`)
+      .then((rec) => {
+        setMatchingProfile(rec)
+        setMAgeGroup(rec.age_group || '')
+        setMPrimaryGoal(rec.primary_goal || '')
+        setMTrainingType(rec.training_type || '')
+        setMSpecialtyNeeded(rec.specialty_needed || '')
+        setMAvailability(rec.availability || '')
+        setMLocationPref(rec.location_pref || '')
+      })
+      .catch(() => {
+        setMatchingProfile(null)
+      })
+      .finally(() => {
+        setLoadingMatching(false)
+      })
+  }, [user])
+
   // Fetch approved professionals
   useEffect(() => {
     setLoading(true)
@@ -140,16 +188,178 @@ export default function EncontrarProfissional() {
       })
   }, [])
 
-  // Process and sort professionals
-  // 1. If geolocation enabled: calculate distance and sort by proximity (ascending distance)
-  // 2. If geolocation unavailable/denied: sort by rating (descending rating_avg)
+  // Save questionnaire
+  const handleSaveMatching = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!user) {
+      toast.error('Faça login para salvar suas preferências.')
+      return
+    }
+
+    if (!mSpecialtyNeeded && !mPrimaryGoal && !mTrainingType) {
+      toast.error('Selecione pelo menos a especialidade necessária ou seu objetivo principal.')
+      return
+    }
+
+    setSavingMatching(true)
+    try {
+      const payload = {
+        user: user.id,
+        age_group: mAgeGroup,
+        primary_goal: mPrimaryGoal,
+        training_type: mTrainingType,
+        specialty_needed: mSpecialtyNeeded,
+        availability: mAvailability,
+        location_pref: mLocationPref,
+        answers: {
+          age_group: mAgeGroup,
+          primary_goal: mPrimaryGoal,
+          training_type: mTrainingType,
+          specialty_needed: mSpecialtyNeeded,
+          availability: mAvailability,
+          location_pref: mLocationPref,
+          updated_at: new Date().toISOString(),
+        },
+      }
+
+      let saved: MatchingProfileRecord
+      if (matchingProfile?.id) {
+        saved = await pb
+          .collection('matching_profiles')
+          .update<MatchingProfileRecord>(matchingProfile.id, payload)
+      } else {
+        saved = await pb.collection('matching_profiles').create<MatchingProfileRecord>(payload)
+      }
+
+      setMatchingProfile(saved)
+      setMatchingModalOpen(false)
+      toast.success('Questionário de matching salvo! Especialistas ordenados por compatibilidade.')
+    } catch (err: any) {
+      console.error('Erro ao salvar questionário:', err)
+      toast.error(err?.message || 'Falha ao salvar questionário.')
+    } finally {
+      setSavingMatching(false)
+    }
+  }
+
+  const handleClearMatching = async () => {
+    if (!matchingProfile?.id) {
+      setMAgeGroup('')
+      setMPrimaryGoal('')
+      setMTrainingType('')
+      setMSpecialtyNeeded('')
+      setMAvailability('')
+      setMLocationPref('')
+      setMatchingModalOpen(false)
+      return
+    }
+    setSavingMatching(true)
+    try {
+      await pb.collection('matching_profiles').delete(matchingProfile.id)
+      setMatchingProfile(null)
+      setMAgeGroup('')
+      setMPrimaryGoal('')
+      setMTrainingType('')
+      setMSpecialtyNeeded('')
+      setMAvailability('')
+      setMLocationPref('')
+      setMatchingModalOpen(false)
+      toast.info('Questionário removido. Busca retornou ao modo padrão.')
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao remover questionário.')
+    } finally {
+      setSavingMatching(false)
+    }
+  }
+
+  // Process and sort professionals with matching algorithm
+  // If matchingProfile exists: calculate compatibility score and generate justification badges
+  // Then sort by compatibility score desc, distance asc, rating desc
+  const hasMatching = Boolean(
+    matchingProfile &&
+    (matchingProfile.specialty_needed ||
+      matchingProfile.primary_goal ||
+      matchingProfile.training_type ||
+      matchingProfile.location_pref),
+  )
+
   const processedProfessionals = professionals
     .map((p) => {
       // Coords default fallback if professional has no exact coords
       const pLat = typeof p.latitude === 'number' && p.latitude !== 0 ? p.latitude : -23.561684
       const pLon = typeof p.longitude === 'number' && p.longitude !== 0 ? p.longitude : -46.655981
       const dist = calculateDistance(userCoords.lat, userCoords.lon, pLat, pLon)
-      return { ...p, calculatedDistance: dist }
+
+      // Score matching
+      let score = 0
+      const matchedReasons: string[] = []
+
+      if (hasMatching && matchingProfile) {
+        const specNeeded = (matchingProfile.specialty_needed || '').toLowerCase()
+        const profSpecs = (p.specialties || []).map((s) => s.toLowerCase())
+        const profBio = (p.bio || '').toLowerCase()
+        const profSub = Array.isArray(p.sub_specialties)
+          ? p.sub_specialties.map((s: any) => String(s).toLowerCase()).join(' ')
+          : ''
+
+        // 1. Especialidade solicitada bate com especialidade do profissional (+50 pts)
+        if (specNeeded && profSpecs.some((s) => s.includes(specNeeded) || specNeeded.includes(s))) {
+          score += 50
+          matchedReasons.push(`Especialista em ${matchingProfile.specialty_needed}`)
+        }
+
+        // 2. Tipo de treino preferido no bio/subspecialties (+25 pts)
+        const tType = (matchingProfile.training_type || '').toLowerCase()
+        if (
+          tType &&
+          (profBio.includes(tType) ||
+            profSub.includes(tType) ||
+            profSpecs.some((s) => s.includes(tType)))
+        ) {
+          score += 25
+          matchedReasons.push(`Foco em ${matchingProfile.training_type}`)
+        }
+
+        // 3. Objetivo principal alinhado (+20 pts)
+        const goal = (matchingProfile.primary_goal || '').toLowerCase()
+        if (goal) {
+          const goalKeywords = goal.split(/[\s,/]+/).filter((w) => w.length > 3)
+          const hitsGoal = goalKeywords.some((w) => profBio.includes(w) || profSub.includes(w))
+          if (hitsGoal) {
+            score += 20
+            matchedReasons.push(`Atende ${matchingProfile.primary_goal}`)
+          }
+        }
+
+        // 4. Proximidade geográfica (+15 pts se <= 10km, +10 pts se <= 25km)
+        if (geoEnabled && dist <= 10) {
+          score += 15
+          matchedReasons.push('Perto de você (<10km)')
+        } else if (geoEnabled && dist <= 25) {
+          score += 10
+          matchedReasons.push('Região próxima (<25km)')
+        }
+
+        // 5. Preferência de localização (presencial/online)
+        const locPref = (matchingProfile.location_pref || '').toLowerCase()
+        if (locPref.includes('online')) {
+          score += 10
+          if (!matchedReasons.some((r) => r.includes('Online'))) {
+            matchedReasons.push('Atendimento online disponível')
+          }
+        }
+
+        // 6. Avaliação média (+ até 10 pts)
+        const rating = Number(p.rating_avg) || 5
+        score += Math.round(rating * 2)
+      }
+
+      return {
+        ...p,
+        calculatedDistance: dist,
+        matchingScore: score,
+        matchingReasons: matchedReasons,
+      }
     })
     .filter((p) => {
       if (searchCity && !p.city?.toLowerCase().includes(searchCity.toLowerCase())) {
@@ -168,6 +378,12 @@ export default function EncontrarProfissional() {
       return true
     })
     .sort((a, b) => {
+      if (hasMatching) {
+        // Se matching estiver ativo, ordenar por compatibilidade (maior pontuação primeiro)
+        if (b.matchingScore !== a.matchingScore) {
+          return b.matchingScore - a.matchingScore
+        }
+      }
       if (geoEnabled) {
         // Ordenar por proximidade (menor distância primeiro)
         if (a.calculatedDistance !== b.calculatedDistance) {
@@ -415,8 +631,22 @@ export default function EncontrarProfissional() {
           </p>
         </div>
 
-        {/* Location badge indicator */}
-        <div className="flex items-center gap-2">
+        {/* Actions: Matching Questionnaire & Location Indicator */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            onClick={() => setMatchingModalOpen(true)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold font-montserrat uppercase transition-all flex items-center gap-2 shadow-md ${
+              hasMatching
+                ? 'bg-[#0057FF] hover:bg-[#0046D5] text-white border border-[#0057FF]'
+                : 'bg-[#D4AF37] hover:bg-[#E6C65C] text-black border border-[#D4AF37]'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{hasMatching ? 'Matching Ativo (Editar)' : 'Questionário de Matching'}</span>
+            {hasMatching && <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />}
+          </Button>
+
           <div
             className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
               geoEnabled
@@ -426,15 +656,67 @@ export default function EncontrarProfissional() {
           >
             <MapPin className="w-3.5 h-3.5" />
             <span>
-              {geoLoading
-                ? 'Obtendo GPS...'
-                : geoEnabled
-                  ? 'GPS ativo • Ordenado por Proximidade'
-                  : 'GPS desligado • Ordenado por Avaliação'}
+              {geoLoading ? 'Obtendo GPS...' : geoEnabled ? 'GPS ativo' : 'GPS desligado'}
             </span>
           </div>
         </div>
       </div>
+
+      {/* MATCHING ACTIVE BANNER (IF CONFIGURED) */}
+      {hasMatching && matchingProfile && (
+        <Card className="bg-[#0057FF]/10 border border-[#0057FF]/40 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-[#0057FF] text-white shrink-0 mt-0.5 shadow-md">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold uppercase font-montserrat text-[#0057FF] tracking-wide">
+                  Matching Personalizado Ativo
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#22C55E]/20 text-[#22C55E] font-bold text-[10px]">
+                  Ranquamento Inteligente 369
+                </span>
+              </div>
+              <p className="text-gray-300 font-inter mt-1">
+                Especialidade:{' '}
+                <strong className="text-white">
+                  {matchingProfile.specialty_needed || 'Todas'}
+                </strong>{' '}
+                • Objetivo:{' '}
+                <strong className="text-white">{matchingProfile.primary_goal || 'Geral'}</strong> •
+                Treino:{' '}
+                <strong className="text-white">{matchingProfile.training_type || 'Geral'}</strong> •
+                Faixa etária:{' '}
+                <strong className="text-white">
+                  {matchingProfile.age_group || 'Não especificada'}
+                </strong>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMatchingModalOpen(true)}
+              className="border-[#0057FF]/50 text-white hover:bg-[#0057FF]/20 text-xs font-bold"
+            >
+              Ajustar
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleClearMatching}
+              disabled={savingMatching}
+              className="text-gray-400 hover:text-red-400 text-xs"
+              title="Voltar à busca normal"
+            >
+              <X className="w-3.5 h-3.5 mr-1" />
+              Desativar
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* FILTER BAR & SEARCH CONTROLS */}
       <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-6 rounded-2xl shadow-xl space-y-4">
@@ -508,7 +790,11 @@ export default function EncontrarProfissional() {
             Timeline de Especialistas ({processedProfessionals.length})
           </span>
           <span className="text-[#D4AF37]">
-            {geoEnabled ? 'Mais próximos primeiro (km)' : 'Mais bem avaliados (★)'}
+            {hasMatching
+              ? '★ Ordenado por Afinidade & Matching'
+              : geoEnabled
+                ? 'Mais próximos primeiro (km)'
+                : 'Mais bem avaliados (★)'}
           </span>
         </div>
 
@@ -617,6 +903,30 @@ export default function EncontrarProfissional() {
                         </p>
                       </div>
                     </div>
+
+                    {/* Selo / Justificativa de Matching 369 */}
+                    {hasMatching && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-lg bg-[#0057FF] text-white shadow-sm font-montserrat">
+                          <Sparkles className="w-3 h-3 text-[#D4AF37]" />
+                          Compatível
+                        </span>
+                        {prof.matchingReasons && prof.matchingReasons.length > 0 ? (
+                          prof.matchingReasons.map((reason, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/40 text-[#D4AF37]"
+                            >
+                              ✓ {reason}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[11px] font-medium text-gray-400 italic">
+                            Disponível para avaliação no perfil
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Short Bio Description */}
                     <p className="text-xs text-gray-300 font-inter leading-relaxed line-clamp-2">
@@ -1186,6 +1496,223 @@ export default function EncontrarProfissional() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* QUESTIONÁRIO INICIAL DE MATCHING (MODAL) */}
+      <Dialog open={matchingModalOpen} onOpenChange={setMatchingModalOpen}>
+        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-xl rounded-2xl p-5 sm:p-7 max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5">
+              <div className="p-2.5 rounded-xl bg-[#0057FF] text-white shadow-lg">
+                <Sparkles className="w-5 h-5 text-[#D4AF37]" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-extrabold font-montserrat uppercase tracking-tight text-white">
+                  Questionário de Matching
+                </DialogTitle>
+                <p className="text-xs text-gray-400 font-inter mt-0.5">
+                  Descubra os especialistas 369 mais compatíveis com o seu perfil, objetivo e
+                  localização.
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveMatching} className="space-y-4 pt-2">
+            {/* Especialidade Necessária */}
+            <div>
+              <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
+                1. Especialidade Principal Necessária *
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  'Educação Física',
+                  'Nutrição',
+                  'Fisioterapia',
+                  'Artes Marciais',
+                  'Psicologia',
+                ].map((spec) => (
+                  <button
+                    type="button"
+                    key={spec}
+                    onClick={() => setMSpecialtyNeeded(spec)}
+                    className={`p-2.5 rounded-xl border text-xs font-bold font-montserrat uppercase text-left transition-all ${
+                      mSpecialtyNeeded === spec
+                        ? 'bg-[#0057FF] border-[#0057FF] text-white shadow-[0_0_15px_rgba(0,87,255,0.4)]'
+                        : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white hover:border-[#D4AF37]'
+                    }`}
+                  >
+                    {spec}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Objetivo Principal */}
+            <div>
+              <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
+                2. Qual é o seu Objetivo Principal?
+              </label>
+              <select
+                value={mPrimaryGoal}
+                onChange={(e) => setMPrimaryGoal(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+              >
+                <option value="">Selecione um objetivo...</option>
+                <option value="Emagrecimento e Definição">Emagrecimento e Definição</option>
+                <option value="Hipertrofia e Ganho de Massa">Hipertrofia e Ganho de Massa</option>
+                <option value="Condicionamento e Saúde">Condicionamento Físico e Saúde</option>
+                <option value="Reabilitação de Lesão / Dores">
+                  Reabilitação de Lesão / Alívio de Dores
+                </option>
+                <option value="Performance e Artes Marciais">
+                  Performance em Luta / Artes Marciais
+                </option>
+                <option value="Reeducação Alimentar">
+                  Reeducação Alimentar e Nutrição Esportiva
+                </option>
+                <option value="Controle de Estresse e Mente">Saúde Mental, Ansiedade e Foco</option>
+              </select>
+            </div>
+
+            {/* Tipo de Treino Preferido */}
+            <div>
+              <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
+                3. Tipo de Treino Preferido
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  'Musculação',
+                  'Treino Funcional',
+                  'Artes Marciais / Luta',
+                  'Corrida e Cárdio',
+                  'Pilates / Postural',
+                  'Treino Híbrido 369',
+                ].map((t) => (
+                  <button
+                    type="button"
+                    key={t}
+                    onClick={() => setMTrainingType(t)}
+                    className={`p-2 rounded-xl border text-[11px] font-bold font-montserrat text-left transition-all ${
+                      mTrainingType === t
+                        ? 'bg-[#D4AF37] border-[#D4AF37] text-black shadow-md'
+                        : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Faixa Etária */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
+                  4. Faixa Etária
+                </label>
+                <select
+                  value={mAgeGroup}
+                  onChange={(e) => setMAgeGroup(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                >
+                  <option value="">Prefiro não informar</option>
+                  <option value="18 a 29 anos">18 a 29 anos</option>
+                  <option value="30 a 39 anos">30 a 39 anos</option>
+                  <option value="40 a 49 anos">40 a 49 anos</option>
+                  <option value="50 a 59 anos">50 a 59 anos</option>
+                  <option value="60+ anos (Melhor Idade)">60+ anos (Melhor Idade)</option>
+                </select>
+              </div>
+
+              {/* Preferência de Localização */}
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
+                  5. Modelo de Atendimento
+                </label>
+                <select
+                  value={mLocationPref}
+                  onChange={(e) => setMLocationPref(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                >
+                  <option value="Presencial ou Online">Presencial ou Online (Tanto faz)</option>
+                  <option value="Presencial Próximo">Presencial perto de mim</option>
+                  <option value="Online Remoto">100% Online Remoto</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Disponibilidade de Horário */}
+            <div>
+              <label className="block text-xs font-bold uppercase text-gray-300 font-montserrat mb-1.5">
+                6. Disponibilidade de Horário
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {['Manhã (06h - 12h)', 'Tarde (12h - 18h)', 'Noite (18h - 22h)'].map((slot) => (
+                  <button
+                    type="button"
+                    key={slot}
+                    onClick={() => setMAvailability(slot)}
+                    className={`p-2 rounded-xl border text-[11px] font-bold font-montserrat text-center transition-all ${
+                      mAvailability === slot
+                        ? 'bg-[#0057FF] border-[#0057FF] text-white'
+                        : 'bg-[#181818] border-[#2A2A2A] text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="pt-3 border-t border-[#2A2A2A] flex items-center justify-between gap-3">
+              {matchingProfile?.id ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClearMatching}
+                  disabled={savingMatching}
+                  className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
+                >
+                  Limpar / Desativar
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setMatchingModalOpen(false)}
+                  className="text-gray-400 hover:text-white text-xs"
+                >
+                  Pular / Fechar
+                </Button>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMatchingModalOpen(false)}
+                  className="border-[#2A2A2A] text-gray-400 hover:text-white text-xs"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={savingMatching}
+                  className="bg-[#D4AF37] hover:bg-[#E6C65C] text-black font-extrabold text-xs uppercase px-5 rounded-xl shadow-lg flex items-center gap-1.5"
+                >
+                  {savingMatching ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  Salvar e Ranquear
+                </Button>
+              </div>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

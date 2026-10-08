@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T12:52:31.532Z",
+  "generatedAt": "2026-10-08T12:57:28.312Z",
   "collections": [
     {
       "name": "users",
@@ -3912,11 +3912,11 @@
       "name": "matching_profiles",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != \"\" && user = @request.auth.id",
-        "view": "@request.auth.id != \"\" && user = @request.auth.id",
-        "create": "@request.auth.id != \"\" && @request.body.user = @request.auth.id",
-        "update": "@request.auth.id != \"\" && user = @request.auth.id",
-        "delete": "@request.auth.id != \"\" && user = @request.auth.id"
+        "list": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.body.user = @request.auth.id || @request.auth.role = 'admin')",
+        "update": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "delete": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')"
       },
       "fields": [
         {
@@ -3967,9 +3967,23 @@
           "type": "json",
           "required": false,
           "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
-      "indexes": []
+      "indexes": ["CREATE INDEX `idx_matching_profiles_user` ON `matching_profiles` (user)"]
     }
   ]
 }

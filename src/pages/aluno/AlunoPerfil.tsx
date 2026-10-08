@@ -124,7 +124,7 @@ export default function AlunoPerfil() {
   }, [user])
 
   // Load Wallet Transactions
-  useEffect(() => {
+  const loadWalletData = () => {
     if (!user) return
     pb.collection('wallet_transactions')
       .getList<WalletTransactionRecord>(1, 20, {
@@ -145,6 +145,10 @@ export default function AlunoPerfil() {
         if (cb > 0) setCashbackBalance(cb)
       })
       .catch(() => {})
+  }
+
+  useEffect(() => {
+    loadWalletData()
   }, [user])
 
   const copyToClipboard = (text: string, msg: string) => {

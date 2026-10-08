@@ -53,6 +53,17 @@ export interface ServiceRecord extends RecordModel {
   }
 }
 
+export interface MatchingProfileRecord extends RecordModel {
+  user: string
+  age_group?: string
+  primary_goal?: string
+  training_type?: string
+  specialty_needed?: string
+  availability?: string
+  location_pref?: string
+  answers?: Record<string, any>
+}
+
 export interface ServiceReviewRecord extends RecordModel {
   service: string
   reviewer: string
