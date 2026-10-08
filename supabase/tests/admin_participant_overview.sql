@@ -1,0 +1,50 @@
+begin;
+do $test$
+declare a uuid:=gen_random_uuid();p uuid:=gen_random_uuid();z uuid:=gen_random_uuid();x uuid;r record;checks integer:=0;i integer;
+begin
+ begin
+ insert into auth.users(id) values(a),(p),(z);
+ insert into public.profiles(id,display_name,role,approved) values(a,'Maria','aluno',false),(p,'Professional','profissional',true),(z,'Admin','admin',false);
+ insert into public.wallet_accounts(user_id,available_cents,reserved_cents) values(a,12345,200);
+ insert into public.esg_projects(owner_id,request_id,category,title,description) values(a,gen_random_uuid(),'social','Pending','Fixture');
+ insert into public.esg_projects(owner_id,request_id,category,title,description,status,version,reviewed_at,review_reason) values(a,gen_random_uuid(),'social','Approved','Fixture','approved',2,now(),'Fixture'),(a,gen_random_uuid(),'ambiental','Rejected','Fixture','rejected',2,now(),'Fixture');
+ for i in 1..25 loop
+ x:=gen_random_uuid();insert into auth.users(id) values(x);insert into public.profiles(id,display_name,role) values(x,'Page-'||lpad(i::text,2,'0'),'aluno');
+ end loop;
+set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false,'user_metadata',json_build_object('role','admin'))::text,true);
+begin perform public.admin_participant_overview(1,'');raise exception 'unexpected allowed query';exception when insufficient_privilege then checks:=checks+1;end;
+perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);
+begin perform public.admin_participant_overview(1,'');raise exception 'unexpected allowed query';exception when insufficient_privilege then checks:=checks+1;end;
+perform set_config('request.jwt.claims',json_build_object('sub',z,'is_anonymous',false)::text,true);
+select * into r from public.admin_participant_overview(1,a::text);if r.participant_id is distinct from a or r.participant_role<>'aluno' or not r.wallet_initialized or r.available_cents<>12345 or r.reserved_cents<>200 or r.wallet_version<>1 or r.esg_pending<>1 or r.esg_approved<>1 or r.esg_rejected<>1 then raise exception 'summary mismatch';end if;checks:=checks+1;
+select * into r from public.admin_participant_overview(1,p::text);if r.participant_id is distinct from p or not r.professional_approved or r.wallet_initialized or r.available_cents is not null or r.reserved_cents is not null or r.wallet_version is not null or r.wallet_updated_at is not null or r.esg_pending<>0 then raise exception 'missing wallet fabricated';end if;checks:=checks+1;
+if exists(select 1 from public.wallet_accounts) then raise exception 'wallet RLS broadened';end if;checks:=checks+1;
+if exists(select 1 from public.profiles where id<>z) then raise exception 'profile RLS broadened';end if;checks:=checks+1;
+if exists(select 1 from public.admin_participant_overview(1,z::text)) then raise exception 'admin listed as participant';end if;checks:=checks+1;
+select * into r from public.admin_participant_overview(1,' mArIa ');if r.participant_id is distinct from a then raise exception 'search case/trim';end if;checks:=checks+1;
+if exists(select 1 from public.admin_participant_overview(1,'%')) then raise exception 'wildcard expansion';end if;checks:=checks+1;
+if exists(select 1 from public.admin_participant_overview(1,$injection$' OR true --$injection$)) then raise exception 'unsafe query';end if;checks:=checks+1;
+if (select count(*) from public.admin_participant_overview(1,'Page-'))<>20 or (select count(*) from public.admin_participant_overview(2,'Page-'))<>5 then raise exception 'pagination';end if;checks:=checks+1;
+if exists(select participant_id from public.admin_participant_overview(1,'Page-') intersect select participant_id from public.admin_participant_overview(2,'Page-')) then raise exception 'duplicate page rows';end if;checks:=checks+1;
+if exists(select 1 from public.admin_participant_overview(3,'Page-')) then raise exception 'empty page';end if;checks:=checks+1;
+begin perform public.admin_participant_overview(0,'');raise exception 'unexpected allowed query';exception when invalid_parameter_value then checks:=checks+1;end;
+begin perform public.admin_participant_overview(10001,'');raise exception 'unexpected allowed query';exception when invalid_parameter_value then checks:=checks+1;end;
+begin perform public.admin_participant_overview(null,'');raise exception 'unexpected allowed query';exception when invalid_parameter_value then checks:=checks+1;end;
+begin perform public.admin_participant_overview(1,null);raise exception 'unexpected allowed query';exception when invalid_parameter_value then checks:=checks+1;end;
+begin perform public.admin_participant_overview(1,repeat('a',121));raise exception 'unexpected allowed query';exception when invalid_parameter_value then checks:=checks+1;end;
+perform set_config('request.jwt.claims',json_build_object('sub',z,'is_anonymous',true)::text,true);
+begin perform public.admin_participant_overview(1,'');raise exception 'unexpected allowed query';exception when insufficient_privilege then checks:=checks+1;end;
+perform set_config('request.jwt.claims','{}',true);
+begin perform public.admin_participant_overview(1,'');raise exception 'unexpected allowed query';exception when insufficient_privilege then checks:=checks+1;end;
+reset role;update public.profiles set role='aluno' where id=z;set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',z,'is_anonymous',false,'user_metadata',json_build_object('role','admin'))::text,true);
+begin perform public.admin_participant_overview(1,'');raise exception 'unexpected allowed query';exception when insufficient_privilege then checks:=checks+1;end;
+set local role anon;
+begin perform public.admin_participant_overview(1,'');raise exception 'unexpected allowed query';exception when insufficient_privilege then checks:=checks+1;end;
+set local role service_role;
+begin perform public.admin_participant_overview(1,'');raise exception 'unexpected allowed query';exception when insufficient_privilege then checks:=checks+1;end;
+reset role;
+if (select count(*) from public.wallet_accounts where user_id in(a,p,z))<>1 or (select available_cents from public.wallet_accounts where user_id=a)<>12345 or exists(select 1 from public.wallet_reservation_events where user_id in(a,p,z)) then raise exception 'read mutated wallet';end if;checks:=checks+1;
+if checks<>24 then raise exception 'wrong count %',checks;end if;raise sqlstate 'W3691' using message='24 checks passed';
+exception when sqlstate 'W3691' then null;end;
+end $test$;
+rollback;

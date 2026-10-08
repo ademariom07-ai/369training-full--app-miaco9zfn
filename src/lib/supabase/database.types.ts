@@ -659,6 +659,25 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_participant_overview: {
+        Args: { p_page: number; p_query: string }
+        Returns: {
+          available_cents: number
+          checked_at: string
+          display_name: string
+          esg_approved: number
+          esg_pending: number
+          esg_rejected: number
+          joined_at: string
+          participant_id: string
+          participant_role: string
+          professional_approved: boolean
+          reserved_cents: number
+          wallet_initialized: boolean
+          wallet_updated_at: string
+          wallet_version: number
+        }[]
+      }
       cancel_wallet_withdrawal: {
         Args: { p_withdrawal_id: string }
         Returns: {

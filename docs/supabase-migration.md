@@ -4,7 +4,7 @@
 
 Projeto de destino: `elahjmtboqhqqxmoaths` (`369wellness`). Em 05/10/2026 foram aplicadas `identity_profiles_foundation` (`20261005211816`) e `student_professional_links` (`20261005213915`), criando perfis e vínculo com aceite, com RLS e privilégios explícitos. Em 06/10/2026 UTC, approved_professional_directory (20261006010131) adicionou catálogo mínimo para alunos. Veja `docs/database-status-0-15.md`.
 
-Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As quatorze migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
+Esta branch contém o SDK, cliente opcional tipado, tipos gerados do banco e funções isoladas para o próprio perfil. As quinze migrations estão aplicadas; serviços tipados de perfis e vínculos estão preparados. Nenhuma tela, autenticação existente, operação financeira ou chamada PocketBase foi redirecionada. Não há importação de dados nem deploy.
 
 ## Configuração local
 
@@ -141,3 +141,8 @@ Usuário confirmou TETO: 10 serviços contam como 10 e 200 como 150. Migration `
 ## Projetos ESG
 
 Aplicada esg_project_reviews (20261008170748), com cadastro próprio e análise administrativa, histórico imutável via API, motivos obrigatórios e repetição idempotente. Inclui SDK/controller e tela isolada na conta Supabase. 38 verificações SQL aprovadas no banco real com rollback integral; advisor sem alertas. Aprovação não movimenta carteira, não define validade/ciclo financeiro e não conta automaticamente como meta cumprida. Ver docs/database-status-0-15.md para os limites de validação e implantação.
+
+
+## Consulta administrativa de participantes
+
+Aplicada admin_participant_overview (20261008172136). RPC read-only para admin confiável, com busca e paginação, recorte mínimo de perfil, carteira e contagens ESG. RLS de perfil/carteira preservada. SDK e tela administrativa adicionados à branch. 24 checks SQL aprovados localmente e no banco real com rollback; advisor sem alertas. Sem crédito, dados clínicos, split ou publicação.
