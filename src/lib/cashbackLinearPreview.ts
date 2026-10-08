@@ -18,10 +18,20 @@ export function calculateLinearCashbackPreview(poolCents:number,ranking:RankingR
  const distributed=rows.reduce((s,r)=>s+r.cashbackCents,0n)
  return {simulationOnly:true as const,proposalVersion:'global-linear-preview-1',poolCents,distributedCents:Number(distributed),unallocatedCents:Number(pool-distributed),participants:rows.map(({id,position,eligibleForCashback,cashbackCents})=>({id,position,eligibleForCashback,cashbackCents:Number(cashbackCents)}))}
 }
-/** Guidance count only. Does not approve projects, release/withhold or redistribute money.
- * Caller must explicitly choose a basis until monthly vs lifetime is confirmed.
- */
-export function getEsgGuidance(cashbackCents:number,basis:'monthly'|'lifetime'){
- if(!Number.isSafeInteger(cashbackCents)||cashbackCents<0||!['monthly','lifetime'].includes(basis))throw Error('Base ESG inválida.')
+/** Confirmed monthly ESG thresholds. Guidance does not approve projects. */
+export function getEsgGuidance(cashbackCents:number,basis:'monthly'='monthly'){
+ if(!Number.isSafeInteger(cashbackCents)||cashbackCents<0||basis!=='monthly')throw Error('Base ESG inválida.')
  return {guidanceOnly:true as const,basis,cashbackCents,projects:cashbackCents>=2000000?3:cashbackCents>=1500000?2:cashbackCents>=1000000?1:0}
+}
+/** Confirmed business rule, simulation only: 15 percentage points of gross
+ * monthly cashback per unmet required project. No ledger writes or redistribution.
+ * Production must derive fulfilledProjects from trusted approval records.
+ */
+export function calculateMonthlyEsgPreview(grossMonthlyCents:number,fulfilledProjects:number){
+ const {projects:requiredProjects}=getEsgGuidance(grossMonthlyCents)
+ if(!Number.isSafeInteger(fulfilledProjects)||fulfilledProjects<0||fulfilledProjects>3)throw Error('Quantidade de projetos inválida.')
+ const unmetProjects=Math.max(0,requiredProjects-fulfilledProjects),reductionPercent=15*unmetProjects
+ // Round the aggregate reduction once; derive payable as the exact remainder.
+ const reductionCents=Number((BigInt(grossMonthlyCents)*BigInt(reductionPercent)+50n)/100n)
+ return {simulationOnly:true as const,rulesVersion:'wellness-esg-monthly-15-per-missing-v1',basis:'monthly' as const,grossMonthlyCents,requiredProjects,fulfilledProjects,unmetProjects,reductionPercent,payablePercent:100-reductionPercent,reductionCents,payableCents:grossMonthlyCents-reductionCents}
 }

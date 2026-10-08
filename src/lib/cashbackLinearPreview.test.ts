@@ -1,6 +1,6 @@
 import {expect,it} from 'vitest'
 import {calculateWellnessRankingPreview as score} from './rankingRules'
-import {calculateLinearCashbackPreview as cash,getEsgGuidance as esg} from './cashbackLinearPreview'
+import {calculateLinearCashbackPreview as cash,getEsgGuidance as esg,calculateMonthlyEsgPreview as release} from './cashbackLinearPreview'
 function rows(n:number){return Array.from({length:n},(_,i)=>score({version:'046-test',referrals:'minimum_one',rating:'rounded'},{id:String(i),multiplier:1,completedEligibleServices:n-i,validatedReferrals:1,rating:5,seniorityMonths:1,previousPoints:0,partnerPro:false,joinedAt:'2026-01-01T00:00:00Z'}))}
 it('proposed linear distribution conserves a pool with uniformly descending weights',()=>{
  const r=cash(100000,rows(4))
@@ -30,8 +30,32 @@ it('rejects invalid pools duplicate identities and mixed policies',()=>{
  expect(()=>cash(1,[input[0],input[0]])).toThrow()
  expect(()=>cash(1,[input[0],{...input[1],rulesKey:'other'}])).toThrow()
 })
-it('ESG guidance uses exact inclusive thresholds and requires an explicit basis',()=>{
+it('ESG guidance uses exact inclusive thresholds and only the confirmed monthly basis',()=>{
  expect([999999,1000000,1499999,1500000,1999999,2000000].map(n=>esg(n,'monthly').projects)).toEqual([0,1,1,2,2,3])
- expect(esg(2000000,'lifetime')).toMatchObject({guidanceOnly:true,basis:'lifetime',projects:3})
- expect(()=>esg(-1,'monthly')).toThrow();expect(()=>esg(1,undefined as unknown as 'monthly')).toThrow()
+ expect(esg(2000000)).toMatchObject({guidanceOnly:true,basis:'monthly',projects:3})
+ expect(()=>esg(-1,'monthly')).toThrow();expect(()=>esg(1,'lifetime' as 'monthly')).toThrow()
+})
+
+it('confirmed ESG matrix deducts only 15 percent per unmet required project',()=>{
+ for(const [gross,expected] of [[999999,[100,100,100,100]],[1000000,[85,100,100,100]],[1500000,[70,85,100,100]],[2000000,[55,70,85,100]]] as const){
+  expect([0,1,2,3].map(n=>release(gross,n).payablePercent)).toEqual(expected)
+ }
+})
+it('ESG threshold depends on gross monthly cashback, not reduced payable',()=>{
+ expect(release(1000000,0)).toMatchObject({requiredProjects:1,payableCents:850000,reductionCents:150000})
+ expect(release(1500000,1)).toMatchObject({requiredProjects:2,payableCents:1275000,reductionCents:225000})
+ expect(release(2000000,0)).toMatchObject({requiredProjects:3,payableCents:1100000,reductionCents:900000})
+})
+it('ESG rounds the aggregate reduction once and conserves all cents',()=>{
+ for(const gross of [0,999999,1000001,1499999,1500001,1999999,2000001,3695850,Number.MAX_SAFE_INTEGER])for(const done of [0,1,2,3]){
+  const r=release(gross,done)
+  expect(BigInt(r.payableCents)+BigInt(r.reductionCents)).toBe(BigInt(gross))
+  expect(r.reductionPercent).toBeLessThanOrEqual(45)
+  expect(r.payableCents).toBeGreaterThanOrEqual(0)
+ }
+ expect(release(3695850,0)).toMatchObject({payableCents:2032717,reductionCents:1663133})
+})
+it('ESG rejects untrusted numeric shapes instead of coercing or creating negative money',()=>{
+ for(const value of [-1,0.5,NaN,Infinity,4])expect(()=>release(2000000,value)).toThrow()
+ for(const gross of [-1,0.5,NaN,Infinity])expect(()=>release(gross,0)).toThrow()
 })
