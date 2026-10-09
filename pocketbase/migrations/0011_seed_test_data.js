@@ -54,10 +54,7 @@ migrate(
     }
 
     // -------------------------------------------------------------
-    // 3. CRIAR 3 ALUNOS de teste:
-    // Aluno 1: email=guerreiro1@test.com, name="Pedro Guerreiro", role=aluno, plan=gratis, plan_type=aluno, password="Teste@123"
-    // Aluno 2: email=guerreiro2@test.com, name="Ana Guerreira", role=aluno, plan=gratis, plan_type=aluno, password="Teste@123"
-    // Aluno 3: email=guerreiro3@test.com, name="Lucas Combatente", role=aluno, plan=gratis, plan_type=aluno, password="Teste@123"
+    // 3. CRIAR 3 ALUNOS de teste
     // -------------------------------------------------------------
     const testStudents = [
       {
@@ -66,7 +63,7 @@ migrate(
         role: 'aluno',
         plan: 'gratis',
         plan_type: 'aluno',
-        password: 'Teste@123',
+        password: $security.randomString(32),
         referral_code: 'PEDRO369',
       },
       {
@@ -75,7 +72,7 @@ migrate(
         role: 'aluno',
         plan: 'gratis',
         plan_type: 'aluno',
-        password: 'Teste@123',
+        password: $security.randomString(32),
         referral_code: 'ANA369',
       },
       {
@@ -84,7 +81,7 @@ migrate(
         role: 'aluno',
         plan: 'gratis',
         plan_type: 'aluno',
-        password: 'Teste@123',
+        password: $security.randomString(32),
         referral_code: 'COMBAT369',
       },
     ]

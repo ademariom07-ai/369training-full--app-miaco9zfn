@@ -55,31 +55,28 @@ export default function Login() {
     }
   }
 
-  // Quick fill & auto-login helper for testing/demo
+  // Quick fill helper for user convenience (pre-fills email/role only, never hardcodes passwords)
   const handleQuickLogin = async (targetRole: 'admin' | 'profissional' | 'aluno') => {
     if (loading) return
 
     setQuickLoadingRole(targetRole)
 
     let targetEmail = ''
-    const targetPass = 'Skip@Pass'
 
     if (targetRole === 'admin') {
       targetEmail = 'ademariom07@gmail.com'
     } else if (targetRole === 'profissional') {
-      targetEmail = 'carlos.coach@369wellness.com'
+      targetEmail = 'lais.personal@gemail.com'
       setRoleSelection('profissional')
     } else {
-      targetEmail = 'aluno.lucas@369wellness.com'
+      targetEmail = 'aluno.lucas@369training.com'
       setRoleSelection('aluno')
     }
 
     setEmail(targetEmail)
-    setPassword(targetPass)
-
-    await executeLogin(targetEmail, targetPass)
+    setPassword('')
+    setQuickLoadingRole(null)
   }
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) {
@@ -207,10 +204,10 @@ export default function Login() {
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Entrar na Plataforma'}
                 </Button>
               </form>
-              {/* Demo Quick Logins */}
+              {/* Preenchimento Rápido de E-mail */}
               <div className="mt-6 pt-4 border-t border-[#E5E3DC]">
                 <p className="text-[11px] text-gray-500 uppercase font-semibold text-center mb-2 font-montserrat">
-                  Acesso Rápido de Demonstração
+                  Preenchimento Rápido de E-mail
                 </p>
                 <div className="flex justify-center gap-2">
                   <button

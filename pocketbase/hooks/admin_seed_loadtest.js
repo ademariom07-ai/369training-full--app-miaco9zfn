@@ -27,6 +27,13 @@ routerAdd(
         })
       }
 
+      // Endpoint de seed desativado permanentemente para ambiente de produção pré-lançamento
+      return c.json(403, {
+        status: 'error',
+        code: 'SEED_DISABLED',
+        message: 'Geração de dados sintéticos desativada para produção.',
+      })
+
       // Parâmetros do body
       let body = {}
       try {

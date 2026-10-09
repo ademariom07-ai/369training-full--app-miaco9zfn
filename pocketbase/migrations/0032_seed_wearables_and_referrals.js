@@ -34,7 +34,7 @@ migrate(
       try {
         carlos = new Record(usersCol)
         carlos.setEmail('carlos.coach@369training.com')
-        carlos.setPassword('Skip@Pass')
+        carlos.setPassword($security.randomString(32))
         carlos.setVerified(true)
         carlos.set('name', 'Prof. Carlos Silva')
         carlos.set('role', 'profissional')
@@ -50,7 +50,7 @@ migrate(
       try {
         lucas = new Record(usersCol)
         lucas.setEmail('aluno.lucas@369training.com')
-        lucas.setPassword('Skip@Pass')
+        lucas.setPassword($security.randomString(32))
         lucas.setVerified(true)
         lucas.set('name', 'Lucas Ferreira')
         lucas.set('role', 'aluno')
@@ -66,7 +66,7 @@ migrate(
       try {
         marina = new Record(usersCol)
         marina.setEmail('marina.fisio@369training.com')
-        marina.setPassword('Skip@Pass')
+        marina.setPassword($security.randomString(32))
         marina.setVerified(true)
         marina.set('name', 'Dra. Marina Santos')
         marina.set('role', 'profissional')
