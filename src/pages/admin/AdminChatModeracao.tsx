@@ -27,10 +27,12 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 
-interface MessageModerationItem extends MessageRecord {
+type UserPreview = { id: string; name: string; email: string; role: string; [key: string]: any }
+
+interface MessageModerationItem extends Omit<MessageRecord, 'expand'> {
   expand?: {
-    sender?: { id: string; name: string; email: string; role: string }
-    receiver?: { id: string; name: string; email: string; role: string }
+    sender?: UserPreview
+    receiver?: UserPreview
   }
 }
 

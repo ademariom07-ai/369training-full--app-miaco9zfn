@@ -54,6 +54,7 @@ const AprovacoesProfissionais = lazy(() => import('@/pages/admin/AprovacoesProfi
 const AdminRankingConfig = lazy(() => import('@/pages/admin/AdminRankingConfig'))
 const AdminAuditoria = lazy(() => import('@/pages/admin/AdminAuditoria'))
 const AdminDocumentosLegais = lazy(() => import('@/pages/admin/AdminDocumentosLegais'))
+const AdminChatModeracao = lazy(() => import('@/pages/admin/AdminChatModeracao'))
 
 export default function App() {
   return (
@@ -457,6 +458,16 @@ export default function App() {
                   <RoleGuard allowedRoles={['admin']}>
                     <Layout>
                       <AdminDocumentosLegais />
+                    </Layout>
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/admin/chat-moderacao"
+                element={
+                  <RoleGuard allowedRoles={['admin']}>
+                    <Layout>
+                      <AdminChatModeracao />
                     </Layout>
                   </RoleGuard>
                 }

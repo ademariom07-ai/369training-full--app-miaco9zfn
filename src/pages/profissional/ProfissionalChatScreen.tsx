@@ -17,9 +17,11 @@ import {
   Search,
   MessageSquare,
   ChevronLeft,
+  Flag,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ChatTermsModal } from '@/components/ChatTermsModal'
+import { ReportMessageModal } from '@/components/ReportMessageModal'
 import { exportChatToPdf } from '@/lib/chatExport'
 
 interface StudentContact {
@@ -522,9 +524,13 @@ export default function ProfissionalChatScreen() {
                               </span>
                               {isMe &&
                                 (m.read ? (
-                                  <CheckCheck className="w-3.5 h-3.5 text-[#D4AF37]" title="Lida" />
+                                  <span title="Lida">
+                                    <CheckCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                  </span>
                                 ) : (
-                                  <Check className="w-3.5 h-3.5 text-white/70" title="Enviada" />
+                                  <span title="Enviada">
+                                    <Check className="w-3.5 h-3.5 text-white/70" />
+                                  </span>
                                 ))}
                             </div>
                           </div>

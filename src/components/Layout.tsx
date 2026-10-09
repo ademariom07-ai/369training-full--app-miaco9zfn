@@ -24,6 +24,7 @@ import {
   ChevronDown,
   FileText,
   History,
+  ShieldAlert,
 } from 'lucide-react'
 import type { NotificationRecord } from '@/services/api'
 
@@ -123,6 +124,7 @@ export default function Layout({ children }: LayoutProps) {
     { label: 'Dashboard', path: '/admin', icon: Home },
     { label: 'Usuários', path: '/admin/usuarios', icon: Users },
     { label: 'Aprovações', path: '/admin/aprovacoes', icon: FileCheck2 },
+    { label: 'Moderação de Chat', path: '/admin/chat-moderacao', icon: ShieldAlert },
     { label: 'Documentos Legais', path: '/admin/documentos-legais', icon: FileText },
     { label: 'Ranking & Cashback', path: '/admin/ranking', icon: Sliders },
     { label: 'Auditoria', path: '/admin/auditoria', icon: ShieldCheck },
