@@ -13,7 +13,7 @@ routerAdd(
       const restrictions = body.restrictions || 'Nenhuma'
       const notes = body.notes || ''
 
-      const prompt = `Você é o gerador de treinos com Inteligência Artificial da 369TRAINING.
+      const prompt = `Você é o gerador de treinos com Inteligência Artificial da 369WELLNESS.
   Crie um plano de treino estruturado, seguro e motivador para o aluno com os seguintes dados:
   - Objetivo principal: ${objective}
   - Nível de experiência: ${experience}

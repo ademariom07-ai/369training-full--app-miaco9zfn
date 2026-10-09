@@ -10,7 +10,7 @@ routerAdd(
       const mealItem = body.mealItem || 'Pão francês com queijo prato'
       const reason = body.reason || 'Opção mais saudável e com mais saciedade'
 
-      const prompt = `Você é o assistente de nutrição 369TRAINING.
+      const prompt = `Você é o assistente de nutrição 369WELLNESS.
 O usuário deseja uma "Substituição Inteligente" para o seguinte alimento/refeição:
 "${mealItem}"
 Motivo/Preferência: "${reason}"

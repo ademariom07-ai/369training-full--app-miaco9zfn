@@ -12,7 +12,7 @@ routerAdd(
       const dietaryRestrictions = body.dietaryRestrictions || 'Nenhuma'
       const mealCount = body.mealCount || 4
 
-      const prompt = `Você é o gerador de planos nutricionais com Inteligência Artificial da 369TRAINING.
+      const prompt = `Você é o gerador de planos nutricionais com Inteligência Artificial da 369WELLNESS.
 Elabore um plano alimentar equilibrado para um aluno com os dados:
 - Objetivo: ${goal}
 - Meta calórica aproximada: ${calories} kcal

@@ -22,8 +22,8 @@ routerAdd(
       }
 
       // Buscar configuração da chave PIX da plataforma
-      let platformPixKey = 'financeiro@369training.com'
-      let platformPixHolder = '369TRAINING LTDA'
+      let platformPixKey = 'financeiro@369wellness.com'
+      let platformPixHolder = '369WELLNESS LTDA'
       try {
         const configRec = $app.findFirstRecordByData('platform_config', 'key', 'pix_config')
         if (configRec) {

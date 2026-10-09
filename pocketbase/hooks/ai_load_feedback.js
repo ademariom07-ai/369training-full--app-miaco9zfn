@@ -14,7 +14,7 @@ routerAdd(
       const reps = body.reps || '10-12'
       const sets = body.sets || '4'
 
-      const prompt = `Você é o assistente biomecânico da 369TRAINING especializado em progressão de cargas (Progressive Overload).
+      const prompt = `Você é o assistente biomecânico da 369WELLNESS especializado em progressão de cargas (Progressive Overload).
 O aluno executou o exercício com os seguintes dados:
 - Exercício: ${exerciseName}
 - Carga atual utilizada: ${weightUsed} kg

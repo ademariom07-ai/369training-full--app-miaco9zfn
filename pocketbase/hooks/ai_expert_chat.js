@@ -72,9 +72,9 @@ routerAdd(
         }
         const systemPrompts = {
           'mentor-expansao-369':
-            'Você é o MENTOR DE EXPANSÃO 369 da 369TRAINING. Focado em crescimento de alunos, marketing e retenção.',
+            'Você é o MENTOR DE EXPANSÃO 369 da 369WELLNESS. Focado em crescimento de alunos, marketing e retenção.',
           'roteirista-saude-10':
-            'Você é o ROTEIRISTA DE SAÚDE NOTA 10 da 369TRAINING. Focado em roteiros de vídeo, posts e engajamento.',
+            'Você é o ROTEIRISTA DE SAÚDE NOTA 10 da 369WELLNESS. Focado em roteiros de vídeo, posts e engajamento.',
         }
         const fallbackPrompt = systemPrompts[expertSlug] || systemPrompts['mentor-expansao-369']
         const reply = $ai.chat({

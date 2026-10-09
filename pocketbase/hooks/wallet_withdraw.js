@@ -38,7 +38,7 @@ routerAdd(
           return e.json(400, {
             success: false,
             message:
-              'A chave PIX (CPF) deve pertencer ao titular da conta 369TRAINING (' +
+              'A chave PIX (CPF) deve pertencer ao titular da conta 369WELLNESS (' +
               authUser.getString('name') +
               ').',
           })
