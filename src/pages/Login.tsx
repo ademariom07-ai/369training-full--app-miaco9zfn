@@ -171,16 +171,12 @@ export default function Login() {
                     <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider font-montserrat">
                       Senha
                     </label>
-                    <a
-                      href="#esqueci"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        toast.info('Instruções enviadas para seu e-mail cadastrado.')
-                      }}
-                      className="text-xs text-[#B8962E] hover:underline font-inter"
+                    <Link
+                      to="/esqueci-senha"
+                      className="text-xs text-[#0057FF] hover:text-[#0047D6] hover:underline font-inter font-semibold"
                     >
                       Esqueceu a senha?
-                    </a>
+                    </Link>
                   </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />

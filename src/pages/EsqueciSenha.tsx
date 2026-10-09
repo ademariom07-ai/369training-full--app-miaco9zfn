@@ -35,66 +35,66 @@ export default function EsqueciSenha() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F7F5F0] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#D4AF37]/15 rounded-full blur-[130px] pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-6">
           <Link to="/" className="inline-block mb-3">
-            <CrestLogo size={68} />
+            <CrestLogo size={72} />
           </Link>
           <h1 className="text-3xl font-extrabold font-montserrat uppercase gold-gradient-text tracking-wider">
             369WELLNESS
           </h1>
-          <p className="text-xs text-gray-400 font-inter mt-1 tracking-wider uppercase font-semibold">
+          <p className="text-sm text-gray-600 font-inter mt-1 tracking-wider uppercase font-semibold">
             Recuperação de Acesso
           </p>
         </div>
 
-        <Card className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <Card className="bg-white border border-[#E5E3DC] rounded-2xl p-6 sm:p-8 shadow-lg">
           {sent ? (
             <div className="text-center py-6 space-y-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-9 h-9" />
               </div>
-              <h2 className="text-xl font-bold font-montserrat text-white">E-mail Enviado!</h2>
-              <p className="text-sm text-gray-300 font-inter leading-relaxed">
-                Enviamos um link de redefinição de senha para{' '}
-                <strong className="text-white">{email}</strong>. Verifique sua caixa de entrada e
-                pasta de spam.
+              <h2 className="text-2xl font-bold font-montserrat text-[#1A1A1A]">E-mail Enviado!</h2>
+              <p className="text-base text-gray-600 font-inter leading-relaxed">
+                Enviamos um link seguro de redefinição de senha para{' '}
+                <strong className="text-black font-semibold">{email}</strong>. Verifique sua caixa
+                de entrada e pasta de lixo eletrônico.
               </p>
               <div className="pt-4">
                 <Link to="/login">
-                  <Button className="w-full bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold">
+                  <Button className="w-full bg-[#0057FF] hover:bg-[#0047D6] text-white font-bold py-6 text-base rounded-xl">
                     Voltar para o Login
                   </Button>
                 </Link>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <h2 className="text-lg font-bold font-montserrat text-white mb-1">
+                <h2 className="text-2xl font-bold font-montserrat text-[#1A1A1A] mb-1">
                   Esqueceu sua senha?
                 </h2>
-                <p className="text-xs text-gray-400 font-inter mb-4">
+                <p className="text-sm sm:text-base text-gray-600 font-inter mb-4">
                   Digite seu e-mail cadastrado na 369WELLNESS para receber o link seguro de
                   redefinição.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5 font-montserrat">
-                  Seu E-mail
+                <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wider mb-2 font-montserrat">
+                  Seu E-mail Cadastrado
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Mail className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu.email@exemplo.com"
-                    className="pl-10 bg-[#1A1A1A] border-[#333333] rounded-xl text-white placeholder:text-gray-500 focus-visible:ring-[#D4AF37]"
+                    className="pl-11 h-13 text-base bg-white border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#0057FF]"
                     required
                   />
                 </div>
@@ -103,7 +103,7 @@ export default function EsqueciSenha() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold py-6 rounded-xl transition-all shadow-md mt-2"
+                className="w-full bg-[#0057FF] hover:bg-[#0047D6] text-white font-bold py-6 text-base rounded-xl transition-all shadow-md mt-2"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -115,9 +115,9 @@ export default function EsqueciSenha() {
               <div className="text-center pt-2">
                 <Link
                   to="/login"
-                  className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-white font-inter"
+                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black font-semibold font-inter"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Voltar para o login
+                  <ArrowLeft className="w-4 h-4" /> Voltar para o login
                 </Link>
               </div>
             </form>

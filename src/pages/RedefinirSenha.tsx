@@ -57,45 +57,47 @@ export default function RedefinirSenha() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F7F5F0] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#D4AF37]/15 rounded-full blur-[130px] pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-6">
           <Link to="/" className="inline-block mb-3">
-            <CrestLogo size={68} />
+            <CrestLogo size={72} />
           </Link>
           <h1 className="text-3xl font-extrabold font-montserrat uppercase gold-gradient-text tracking-wider">
             369WELLNESS
           </h1>
-          <p className="text-xs text-gray-400 font-inter mt-1 tracking-wider uppercase font-semibold">
+          <p className="text-sm text-gray-600 font-inter mt-1 tracking-wider uppercase font-semibold">
             Criar Nova Senha
           </p>
         </div>
 
-        <Card className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <Card className="bg-white border border-[#E5E3DC] rounded-2xl p-6 sm:p-8 shadow-lg">
           {success ? (
             <div className="text-center py-6 space-y-4">
-              <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto animate-bounce" />
-              <h2 className="text-xl font-bold font-montserrat text-white">Senha Redefinida!</h2>
-              <p className="text-sm text-gray-300 font-inter">
+              <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
+              <h2 className="text-2xl font-bold font-montserrat text-[#1A1A1A]">
+                Senha Redefinida!
+              </h2>
+              <p className="text-base text-gray-600 font-inter">
                 Sua senha foi atualizada com sucesso. Redirecionando para o login...
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <h2 className="text-lg font-bold font-montserrat text-white mb-1">
+                <h2 className="text-2xl font-bold font-montserrat text-[#1A1A1A] mb-1">
                   Defina sua nova senha
                 </h2>
-                <p className="text-xs text-gray-400 font-inter mb-4">
+                <p className="text-sm sm:text-base text-gray-600 font-inter mb-4">
                   Crie uma senha segura com no mínimo 8 caracteres.
                 </p>
               </div>
 
               {!urlToken && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5 font-montserrat">
+                  <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wider mb-1.5 font-montserrat">
                     Código / Token do E-mail
                   </label>
                   <Input
@@ -103,61 +105,61 @@ export default function RedefinirSenha() {
                     value={tokenInput}
                     onChange={(e) => setTokenInput(e.target.value)}
                     placeholder="Cole o token recebido no e-mail"
-                    className="bg-[#1A1A1A] border-[#333333] rounded-xl text-white font-mono text-xs focus-visible:ring-[#D4AF37]"
+                    className="bg-white border-[#E5E3DC] rounded-xl text-[#1A1A1A] font-mono text-sm focus-visible:ring-[#0057FF]"
                     required
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5 font-montserrat">
+                <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wider mb-1.5 font-montserrat">
                   Nova Senha
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Lock className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 8 caracteres"
-                    className="pl-10 pr-11 bg-[#1A1A1A] border-[#333333] rounded-xl text-white placeholder:text-gray-500 focus-visible:ring-[#D4AF37]"
+                    className="pl-11 pr-11 h-12 text-base bg-white border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#0057FF]"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-gray-400 hover:text-gray-300 focus:outline-none focus-visible:text-[#B8962E] transition-colors rounded-lg"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:text-[#0057FF] transition-colors rounded-lg"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5 font-montserrat">
+                <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wider mb-1.5 font-montserrat">
                   Confirmar Nova Senha
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Lock className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <Input
                     type={showPasswordConfirm ? 'text' : 'password'}
                     value={passwordConfirm}
                     onChange={(e) => setPasswordConfirm(e.target.value)}
                     placeholder="Repita a nova senha"
-                    className="pl-10 pr-11 bg-[#1A1A1A] border-[#333333] rounded-xl text-white placeholder:text-gray-500 focus-visible:ring-[#D4AF37]"
+                    className="pl-11 pr-11 h-12 text-base bg-white border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#0057FF]"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPasswordConfirm((prev) => !prev)}
                     aria-label={showPasswordConfirm ? 'Ocultar senha' : 'Mostrar senha'}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-gray-400 hover:text-gray-300 focus:outline-none focus-visible:text-[#D4AF37] transition-colors rounded-lg"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:text-[#0057FF] transition-colors rounded-lg"
                   >
                     {showPasswordConfirm ? (
-                      <EyeOff className="w-4 h-4" />
+                      <EyeOff className="w-5 h-5" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-5 h-5" />
                     )}
                   </button>
                 </div>
@@ -166,7 +168,7 @@ export default function RedefinirSenha() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold py-6 rounded-xl transition-all shadow-md mt-2"
+                className="w-full bg-[#0057FF] hover:bg-[#0047D6] text-white font-bold py-6 text-base rounded-xl transition-all shadow-md mt-2"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar Nova Senha'}
               </Button>
