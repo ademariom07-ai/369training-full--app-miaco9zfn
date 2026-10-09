@@ -453,7 +453,31 @@ export default function Cadastro() {
       setTimeout(() => {
         navigate('/login')
       }, 1500)
-    } catch (err: unknown) {
+    } catch (err: any) {
+      // Reconhecimento específico de e-mail duplicado (PocketBase HTTP 400 validation_not_unique)
+      const emailErrCode = err?.response?.data?.email?.code
+      const emailErrMsg = err?.response?.data?.email?.message || ''
+      const rawMsg = err?.message || ''
+      const isEmailDuplicate =
+        emailErrCode === 'validation_not_unique' ||
+        emailErrMsg.includes('validation_not_unique') ||
+        rawMsg.includes('validation_not_unique') ||
+        (typeof rawMsg === 'string' &&
+          rawMsg.toLowerCase().includes('email') &&
+          rawMsg.toLowerCase().includes('unique'))
+
+      if (isEmailDuplicate) {
+        toast.error('Este e-mail já está cadastrado. Faça login ou recupere sua senha.', {
+          duration: 8000,
+          action: {
+            label: 'Fazer Login',
+            onClick: () => navigate('/login'),
+          },
+        })
+        setLoading(false)
+        return
+      }
+
       const detailedMessage = getErrorMessage(err)
       toast.error(detailedMessage || 'Erro ao realizar cadastro. Verifique os dados inseridos.', {
         duration: 5000,
