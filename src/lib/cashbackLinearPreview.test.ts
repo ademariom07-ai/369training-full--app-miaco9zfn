@@ -2,7 +2,7 @@ import {expect,it} from 'vitest'
 import {calculateWellnessRankingPreview as score} from './rankingRules'
 import {calculateLinearCashbackPreview as cash,getEsgGuidance as esg,calculateMonthlyEsgPreview as release} from './cashbackLinearPreview'
 function rows(n:number){return Array.from({length:n},(_,i)=>score({version:'046-test',referrals:'minimum_one',rating:'rounded'},{id:String(i),multiplier:1,completedEligibleServices:n-i,validatedReferrals:1,rating:5,seniorityMonths:1,previousPoints:0,partnerPro:false,joinedAt:'2026-01-01T00:00:00Z'}))}
-it('proposed linear distribution conserves a pool with uniformly descending weights',()=>{
+it('approved linear distribution conserves a pool with uniformly descending weights',()=>{
  const r=cash(100000,rows(4))
  expect(r.participants.map(p=>p.cashbackCents)).toEqual([40000,30000,20000,10000]);expect(r.distributedCents).toBe(100000);expect(r.unallocatedCents).toBe(0)
 })
@@ -58,4 +58,12 @@ it('ESG rounds the aggregate reduction once and conserves all cents',()=>{
 it('ESG rejects untrusted numeric shapes instead of coercing or creating negative money',()=>{
  for(const value of [-1,0.5,NaN,Infinity,4])expect(()=>release(2000000,value)).toThrow()
  for(const gross of [-1,0.5,NaN,Infinity])expect(()=>release(gross,0)).toThrow()
+})
+
+it('approved 10000 BRL and 20 participants matches the accepted example exactly',()=>{
+ const r=cash(1000000,rows(20));expect(r.rulesVersion).toBe('global-linear-v1');expect(r.simulationOnly).toBe(true)
+ expect(r.participants.map(p=>p.cashbackCents)).toEqual([95238,90476,85714,80952,76190,71429,66667,61905,57143,52381,47619,42857,38095,33333,28571,23810,19048,14286,9524,4762]);expect(r.distributedCents).toBe(1000000)
+})
+it('approved 200000 BRL and 500 participants conserves every cent',()=>{
+ const r=cash(20000000,rows(500));expect([0,1,2,9,99,249,498,499].map(i=>r.participants[i].cashbackCents)).toEqual([79840,79681,79521,78403,64032,40080,319,160]);expect(r.distributedCents).toBe(20000000);expect(r.unallocatedCents).toBe(0)
 })

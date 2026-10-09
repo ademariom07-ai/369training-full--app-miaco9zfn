@@ -1,6 +1,7 @@
 import {orderRankingPreview,type calculateRankingPreview} from './rankingRules'
 type RankingRow=ReturnType<typeof calculateRankingPreview>
-/** Proposed global linear equalization, not an active financial policy.
+export const APPROVED_CASHBACK_POLICY = 'global-linear-v1' as const
+/** Global linear equalization approved 2026-10-09. Financial execution is not active.
  * The server must supply the authorized pool and verified eligibility at closing.
  * Client flags/points are simulation inputs only and never authorize payments.
  */
@@ -16,6 +17,6 @@ export function calculateLinearCashbackPreview(poolCents:number,ranking:RankingR
   for(let i=0;remaining>0n;i++,remaining--)priority[i].cashbackCents++
  }
  const distributed=rows.reduce((s,r)=>s+r.cashbackCents,0n)
- return {simulationOnly:true as const,proposalVersion:'global-linear-preview-1',poolCents,distributedCents:Number(distributed),unallocatedCents:Number(pool-distributed),participants:rows.map(({id,position,eligibleForCashback,cashbackCents})=>({id,position,eligibleForCashback,cashbackCents:Number(cashbackCents)}))}
+ return {simulationOnly:true as const,rulesVersion:APPROVED_CASHBACK_POLICY,poolCents,distributedCents:Number(distributed),unallocatedCents:Number(pool-distributed),participants:rows.map(({id,position,eligibleForCashback,cashbackCents})=>({id,position,eligibleForCashback,cashbackCents:Number(cashbackCents)}))}
 }
 export {getEsgGuidance,calculateMonthlyEsgPreview} from './monthlyEsg'

@@ -2,6 +2,12 @@
 
 Fonte: respostas diretas do usuário após a análise da ATUALIZAÇÃO 0.46. Este registro prevalece sobre a interpretação anterior de que Grátis não pontua/não aparece e sobre qualquer posição financeira por ordem de entrada.
 
+## Padrão de distribuição aprovado em 09/10/2026
+
+O usuário aprovou expressamente a fórmula linear global como padrão, substituindo o corretor por níveis para os novos cálculos. Versão: `global-linear-v1`. Para N posições do ranking geral, peso da posição r = N − r + 1 se elegível, zero caso contrário. Cashback bruto = montante administrativo × peso / soma dos pesos elegíveis. N inclui Grátis; as posições não são renumeradas para pagamentos. Sem elegíveis, todo o montante permanece não distribuído. Centavos por maiores restos, desempate pela posição. ESG aplicado depois ao bruto mensal de cada participante. A aprovação da fórmula não ativa pagamentos nem define por si só indicação zero, critérios de elegibilidade ou destino das reduções ESG.
+
+A área administrativa de conferência agora possui simulador linear paginado, com os dois exemplos aprovados. Prévia local independente: [369-wellness-cashback-linear.html](previews/369-wellness-cashback-linear.html), gerada do mesmo motor por `node scripts/build-linear-cashback-preview.cjs`. Sintaxe do JavaScript embarcado verificada; interação no navegador ainda não homologada. A simulação por níveis recebeu aviso de modelo histórico substituído. Os trechos abaixo que chamam a fórmula linear de proposta descrevem a etapa anterior e estão superados por esta aprovação.
+
 ## Decisões confirmadas
 
 - Ranking único, decrescente pelo total de pontos: soma dos meses anteriores fechados + mês corrente. Desempate determinístico existente: avaliação, data de entrada e identificador. Atualização diária; resultado financeiro fixado no fechamento mensal. Não existe uma segunda posição por árvore/entrada. A data de entrada é somente critério secundário de desempate.
