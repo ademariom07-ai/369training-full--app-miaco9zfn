@@ -5,7 +5,7 @@ import { CrestLogo } from '@/components/CrestLogo'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Lock, Loader2, CheckCircle2 } from 'lucide-react'
+import { Lock, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
 
@@ -16,6 +16,8 @@ export default function RedefinirSenha() {
   const [tokenInput, setTokenInput] = useState(urlToken || '')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -114,13 +116,21 @@ export default function RedefinirSenha() {
                 <div className="relative">
                   <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <Input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 8 caracteres"
-                    className="pl-10 bg-[#1A1A1A] border-[#333333] rounded-xl text-white placeholder:text-gray-500 focus-visible:ring-[#D4AF37]"
+                    className="pl-10 pr-11 bg-[#1A1A1A] border-[#333333] rounded-xl text-white placeholder:text-gray-500 focus-visible:ring-[#D4AF37]"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-gray-400 hover:text-gray-300 focus:outline-none focus-visible:text-[#B8962E] transition-colors rounded-lg"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -131,13 +141,25 @@ export default function RedefinirSenha() {
                 <div className="relative">
                   <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <Input
-                    type="password"
+                    type={showPasswordConfirm ? 'text' : 'password'}
                     value={passwordConfirm}
                     onChange={(e) => setPasswordConfirm(e.target.value)}
                     placeholder="Repita a nova senha"
-                    className="pl-10 bg-[#1A1A1A] border-[#333333] rounded-xl text-white placeholder:text-gray-500 focus-visible:ring-[#D4AF37]"
+                    className="pl-10 pr-11 bg-[#1A1A1A] border-[#333333] rounded-xl text-white placeholder:text-gray-500 focus-visible:ring-[#D4AF37]"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordConfirm((prev) => !prev)}
+                    aria-label={showPasswordConfirm ? 'Ocultar senha' : 'Mostrar senha'}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-gray-400 hover:text-gray-300 focus:outline-none focus-visible:text-[#D4AF37] transition-colors rounded-lg"
+                  >
+                    {showPasswordConfirm ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
