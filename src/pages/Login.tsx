@@ -5,7 +5,7 @@ import { CrestLogo } from '@/components/CrestLogo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { Lock, Mail, Loader2, CheckCircle2 } from 'lucide-react'
+import { Lock, Mail, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
 
@@ -17,6 +17,7 @@ export default function Login() {
   const [roleSelection, setRoleSelection] = useState<'aluno' | 'profissional'>('aluno')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [quickLoadingRole, setQuickLoadingRole] = useState<
     'admin' | 'profissional' | 'aluno' | null
@@ -184,13 +185,21 @@ export default function Login() {
                   <div className="relative">
                     <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <Input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="pl-10 bg-white border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#D4AF37]"
+                      className="pl-10 pr-11 bg-white border-[#E5E3DC] rounded-xl text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#D4AF37]"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:text-[#B8962E] transition-colors rounded-lg"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
