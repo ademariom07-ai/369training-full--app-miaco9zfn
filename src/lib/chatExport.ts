@@ -162,5 +162,5 @@ export async function exportChatToPdf(params: {
     )
   }
 
-  doc.save(`369training_chat_${Date.now()}.pdf`)
+  doc.save(`369wellness_chat_${Date.now()}.pdf`)
 }

@@ -1,5 +1,5 @@
 /**
- * Utilitários do Modelo Caminho C da Rede Única Global 369TRAINING
+ * Utilitários do Modelo Caminho C da Rede Única Global 369WELLNESS
  * - 36 Níveis
  * - Nível 1: 1 pessoa (acumulado 1)
  * - Nível 2: 2 pessoas (acumulado 3)

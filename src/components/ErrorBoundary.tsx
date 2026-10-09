@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[369TRAINING ErrorBoundary] Capturado erro na aplicação:', error, errorInfo)
+    console.error('[369WELLNESS ErrorBoundary] Capturado erro na aplicação:', error, errorInfo)
     this.setState({ errorInfo })
   }
 

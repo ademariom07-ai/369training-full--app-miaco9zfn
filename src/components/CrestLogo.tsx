@@ -36,7 +36,7 @@ export const CrestLogo: React.FC<CrestLogoProps> = ({
         className="relative flex items-center justify-center select-none shrink-0 bg-transparent border-0 outline-none p-0"
         style={{ width: scaledSize, height: scaledSize }}
       >
-        {/* Official 369 Training Crest - sem bordas pretas / outline / moldura */}
+        {/* Official 369 Wellness Crest - sem bordas pretas / outline / moldura */}
         <img
           src="/visual-edits/logo-do-projeto01-02fbc174.png"
           alt={alt}

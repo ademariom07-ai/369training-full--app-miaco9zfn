@@ -48,7 +48,7 @@ const SPECIALTY_OPTIONS: { id: GroupSessionSpecialty; label: string; icon: strin
   { id: 'nutricao', label: 'Nutrição / Workshop em Grupo', icon: '🥗' },
   { id: 'fisioterapia', label: 'Fisioterapia / Turma Preventiva', icon: '🩺' },
   { id: 'artes_marciais', label: 'Artes Marciais / Turma de Dojo', icon: '🥋' },
-  { id: 'psicologia', label: 'Psicologia / Roda & Mental Training', icon: '🧠' },
+  { id: 'psicologia', label: 'Psicologia / Roda & Mental Wellness', icon: '🧠' },
 ]
 
 export function GestaoSessoesColetivas({ currentUserId, students }: GestaoSessoesColetivasProps) {

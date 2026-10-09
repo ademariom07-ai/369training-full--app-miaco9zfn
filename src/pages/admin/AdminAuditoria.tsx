@@ -63,7 +63,7 @@ export default function AdminAuditoria() {
     link.setAttribute('href', encodedUri)
     link.setAttribute(
       'download',
-      `auditoria_369training_${new Date().toISOString().slice(0, 10)}.csv`,
+      `auditoria_369wellness_${new Date().toISOString().slice(0, 10)}.csv`,
     )
     document.body.appendChild(link)
     link.click()
