@@ -1,6 +1,6 @@
 # 369 WELLNESS — banco e pacotes 0–15
 
-Verificado em 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
+Atualizado em 09/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
 ## Decisão vigente do PRO PARCEIRO
@@ -13,7 +13,11 @@ Grátis ganha avaliação e antiguidade, participa do ranking por pontos e fica 
 
 ## Estado consolidado atual
 
-Quinze migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso, conclusão informada pelo aluno, carteira/reserva própria, rascunhos administrativos de ranking/cashback, disponibilidade profissional por dia, condições versionadas de atendimento cotação de horário validada no servidor, teto aprovado de serviços PRO PARCEIRO, cadastro/análise de projetos ESG e visão administrativa dos participantes. Na branch, /conta-supabase contém acesso preparado, próprio perfil, vínculo, candidaturas, treino textual/aviso/conclusão, carteira/reserva/cancelamento, revisão de regras em rascunho, calendário mensal/Liberar Dia, configuração de preço/sinal/cancelamento, conferência de um horário pelo aluno, envio/análise ESG e consulta administrativa de participantes. 223 testes locais aprovados: 180 do módulo Supabase (helpers e SDK/controllers com mocks), 39 de ranking/cashback/CSV/ESG e 4 de contrato da migration PocketBase de acesso administrativo. TypeScript/build e lint dos módulos novos aprovados; carteira legada mantém avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
+Quinze migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso, conclusão informada pelo aluno, carteira/reserva própria, rascunhos administrativos de ranking/cashback, disponibilidade profissional por dia, condições versionadas de atendimento cotação de horário validada no servidor, teto aprovado de serviços PRO PARCEIRO, cadastro/análise de projetos ESG e visão administrativa dos participantes. Na branch, /conta-supabase contém acesso preparado, próprio perfil, vínculo, candidaturas, treino textual/aviso/conclusão, carteira/reserva/cancelamento, revisão de regras em rascunho, calendário mensal/Liberar Dia, configuração de preço/sinal/cancelamento, conferência de um horário pelo aluno, envio/análise ESG e consulta administrativa de participantes. 227 testes locais aprovados nas etapas: 180 do módulo Supabase (helpers e SDK/controllers com mocks), 43 de ranking/cashback/CSV/ESG (reexecutados em 09/10) e 4 de contrato da migration PocketBase de acesso administrativo. TypeScript/build e lint dos módulos novos aprovados; carteira legada mantém avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
+
+## Integração do arquivo de correções 0.46 — 09/10
+
+Corrigidos modo real vazio, zero posições, transmissão da exclusão e mensagem de orçamento não distribuído no simulador. Preservada a participação do Grátis no ranking sem cashback. [Comparação, testes e limites](cashback-046-integration.md). Nenhuma migration nova nesta etapa.
 
 ## Etapa inicial aplicada
 

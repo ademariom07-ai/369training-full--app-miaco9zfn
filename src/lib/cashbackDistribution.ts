@@ -141,20 +141,21 @@ function eligibility(row:CashbackInputParticipant):string{
  return ''
 }
 /** Preview of Caminho C. Empty levels retain their allocation until a redistribution policy is approved. */
-export function calculateCashbackDistribution(totalTarifas:number,occupiedPositions=1023,realParticipants:CashbackInputParticipant[]=[],excludedRatePerLevel=0):CashbackDistributionResult{
+export function calculateCashbackDistribution(totalTarifas:number,occupiedPositions=1023,realParticipants:CashbackInputParticipant[]=[],excludedRatePerLevel=0,participantMode: 'real' | 'synthetic' = realParticipants.length ? 'real' : 'synthetic'):CashbackDistributionResult{
  const base=cents(totalTarifas)
- if(!Number.isSafeInteger(occupiedPositions)||occupiedPositions<1||occupiedPositions>MAX_POSITIONS)throw Error('Informe entre 1 e 500.000 posições.')
+ if(!Number.isSafeInteger(occupiedPositions)||occupiedPositions<0||occupiedPositions>MAX_POSITIONS)throw Error('Informe entre 0 e 500.000 posições.')
  if(!Number.isFinite(excludedRatePerLevel)||excludedRatePerLevel<0||excludedRatePerLevel>1||!Array.isArray(realParticipants)||realParticipants.length>occupiedPositions)throw Error('Participantes inválidos.')
+ if(!['real','synthetic'].includes(participantMode)||participantMode==='synthetic'&&realParticipants.length>0)throw Error('Modo de participantes inválido.')
  const realMap=new Map<number,CashbackInputParticipant>()
  for(const row of realParticipants){const position=row?.ranking_position;if(!Number.isSafeInteger(position)||position!<1||position!>occupiedPositions||realMap.has(position!)||row.points!==undefined&&(!Number.isFinite(row.points)||row.points<0))throw Error('Posições inválidas ou repetidas.');realMap.set(position!,{...row})}
- const pool=(base*38n+50n)/100n,h=getLevelForPosition(occupiedPositions)
+ const pool=(base*38n+50n)/100n,h=occupiedPositions ? getLevelForPosition(occupiedPositions) : 0
  const budgets=allocate(pool,Array.from({length:h},(_,i)=>BigInt(h+1+8*(i+1))))
  const participants:CashbackParticipant[]=[],levelsSummary:CashbackLevelSummary[]=[]
  let distributed=0n,redistributed=0n
  for(let level=1;level<=h;level++){
   const bounds=getLevelBounds(level),end=Math.min(bounds.endPos,occupiedPositions),rows:CashbackParticipant[]=[]
   for(let position=bounds.startPos;position<=end;position++){
-   const real=realMap.get(position),simulation=!realParticipants.length
+   const real=realMap.get(position),simulation=participantMode==='synthetic'
    let reason=real?eligibility(real):simulation?'':'Posição sem participante confirmado'
    if(simulation&&((position*9301+49297)%233280)/233280<excludedRatePerLevel)reason='Exclusão simulada'
    rows.push({position,level,userCode:real?.userCode||`369-P${position}`,name:real?.name||`Participante ${simulation?'simulado':'não confirmado'} #${position}`,email:real?.email||'',role:real?.role||'',plan:real?.plan||'',points:real?.points??0,factor:getPositionFactor(position,level),baseLevelPerPerson:0,cashbackMonth:0,isRealUser:!!real,isExcluded:!!reason,exclusionReason:reason||undefined})
@@ -168,5 +169,5 @@ export function calculateCashbackDistribution(totalTarifas:number,occupiedPositi
   for(const row of rows)participants.push(row);distributed+=total;redistributed+=moved
   levelsSummary.push({level,peopleCount:count,startPos:bounds.startPos,endPos:end,corretor:0.2+1.6*level/(h+1),valorEqualizado:Number(budget)/100,valorPorPessoa:eligible?Number(budget)/100/eligible:0,totalDistribuidoNivel:Number(total)/100,divisorTeorico:count,divisorReal:eligible,excluidosCount:count-eligible,valorRedistribuido:Number(moved)/100})
  }
- return{simulationOnly:true,rulesVersion:'caminho-c-preview-2',totalTarifasBase:totalTarifas,pool38:Number(pool)/100,maxHabitedLevel:h,totalOccupiedPositions:occupiedPositions,totalDistributed:Number(distributed)/100,differenceToPool:Number(pool-distributed)/100,totalRedistributed:Number(redistributed)/100,levelsSummary,participants}
+ return{simulationOnly:true,rulesVersion:'caminho-c-preview-3',totalTarifasBase:totalTarifas,pool38:Number(pool)/100,maxHabitedLevel:h,totalOccupiedPositions:occupiedPositions,totalDistributed:Number(distributed)/100,differenceToPool:Number(pool-distributed)/100,totalRedistributed:Number(redistributed)/100,levelsSummary,participants}
 }

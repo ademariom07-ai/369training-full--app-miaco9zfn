@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 
 interface PlanilhaCashbackProps {
   realRankings?: Array<{
+    isExcluded?: boolean
     ranking_position?: number
     points?: number
     user?: string
@@ -88,6 +89,7 @@ export function PlanilhaCashbackDistribuicao({
           .split(' ')[0] || rawName
 
       return {
+        isExcluded: r.isExcluded,
         ranking_position: pos,
         userCode: `${userCode} — ${firstName}`,
         name: rawName,
@@ -106,10 +108,11 @@ export function PlanilhaCashbackDistribuicao({
   const calculation = useMemo(() => {
     try { return {result:calculateCashbackDistribution(
       baseTarifas,
-      posicoesOcupadas,
+      useRealParticipants && !mappedRealParticipants.length ? 0 : posicoesOcupadas,
       useRealParticipants?mappedRealParticipants:[],
       0, // Taxa adicional de excluídos
-    ),error:''} } catch { return {result:calculateCashbackDistribution(0,1),error:'Confira a base (até duas casas decimais), as posições (1 a 500.000) e os participantes antes de simular.'} }
+      useRealParticipants ? 'real' : 'synthetic',
+    ),error:''} } catch { return {result:calculateCashbackDistribution(0,0,[],0,'real'),error:'Confira a base (até duas casas decimais), as posições (0 a 500.000) e os participantes antes de simular.'} }
   }, [baseTarifas, posicoesOcupadas, mappedRealParticipants,useRealParticipants])
   const distributionResult=calculation.result
 
@@ -163,12 +166,12 @@ export function PlanilhaCashbackDistribuicao({
   // Carregar Simulação Baseada no Ranking Real
   const handleLoadRealDataSimulation = () => {
     setUseRealParticipants(true)
-    const realCount = Math.max(1, ...mappedRealParticipants.map(p=>p.ranking_position))
+    const realCount = mappedRealParticipants.reduce((max, p) => Math.max(max, p.ranking_position), 0)
     setPosicoesOcupadas(realCount)
     setFiltroNivel('todos')
     setTermoBusca('')
     setCurrentPage(1)
-    toast.info(`Simulação com base nos ${realCount} participantes do ranking atual.`)
+    toast.info(`Simulação com base nos ${mappedRealParticipants.length} participantes do ranking atual.`)
   }
 
   // Exportar CSV
@@ -200,7 +203,7 @@ export function PlanilhaCashbackDistribuicao({
 
   return (
     <Card className="bg-[#181818] border border-[#D4AF37]/40 p-6 rounded-2xl space-y-6 shadow-2xl">
-      <p role="status">{useRealParticipants&&mappedRealParticipants.length?'Participantes carregados.':'Participantes fictícios.'} Simulação de cashback. Não gera saldo ou crédito. Valores de níveis sem elegíveis permanecem reservados até definição da redistribuição entre níveis.</p>
+      <p role="status">{useRealParticipants ? (mappedRealParticipants.length ? 'Participantes carregados.' : 'Nenhum participante real carregado. Nenhum cashback distribuído.') : 'Participantes fictícios.'} Simulação de cashback. Não gera saldo ou crédito. Valores de níveis sem elegíveis permanecem não distribuídos até definição da redistribuição entre níveis.</p>
       {calculation.error&&<p role="alert">{calculation.error}</p>}
 
       {/* Top Banner / Título */}
@@ -279,11 +282,11 @@ export function PlanilhaCashbackDistribuicao({
           </label>
           <Input
             type="number"
-            min="1"
+            min="0"
             max="500000"
             value={posicoesOcupadas}
             onChange={(e) => {
-              setPosicoesOcupadas(Math.max(1, Math.min(500000, Number(e.target.value) || 1)))
+              setPosicoesOcupadas(Math.max(0, Math.min(500000, Number(e.target.value) || 0)))
               setCurrentPage(1)
             }}
             className="bg-[#181818] border-[#2A2A2A] text-white font-mono"
