@@ -130,14 +130,11 @@ function allocate(total:bigint,weights:bigint[]):bigint[]{
 function eligibility(row:CashbackInputParticipant):string{
  if(row.isExcluded)return 'Exclusão informada'
  if(!['aluno','profissional'].includes(row.role||''))return 'Perfil não confirmado'
- let plan=row.plan
- if(row.role==='aluno'&&row.linked_professional){
-  if(!row.linked_professional_plan)return 'Plano do profissional não confirmado'
-  plan=row.linked_professional_plan
- }
- if(!['basico','pro','premium','pro_parceiro'].includes(plan||''))return 'Plano gratuito ou não confirmado'
+ // A relationship is not proof of a payer choice, a paid plan or an active subscription.
+ // Professional-sponsored services require historical payer facts, not present in this preview.
+ if(!['basico','pro','premium','pro_parceiro'].includes(row.plan||''))return 'Plano gratuito ou não confirmado'
  if(!['ativa','inadimplente','cancelada'].includes(row.subscription_status||''))return 'Assinatura não confirmada'
- if(row.subscription_status!=='ativa'&&!row.linked_professional)return 'Assinatura inativa'
+ if(row.subscription_status!=='ativa')return 'Assinatura inativa'
  return ''
 }
 /** Preview of Caminho C. Empty levels retain their allocation until a redistribution policy is approved. */
@@ -169,5 +166,5 @@ export function calculateCashbackDistribution(totalTarifas:number,occupiedPositi
   for(const row of rows)participants.push(row);distributed+=total;redistributed+=moved
   levelsSummary.push({level,peopleCount:count,startPos:bounds.startPos,endPos:end,corretor:0.2+1.6*level/(h+1),valorEqualizado:Number(budget)/100,valorPorPessoa:eligible?Number(budget)/100/eligible:0,totalDistribuidoNivel:Number(total)/100,divisorTeorico:count,divisorReal:eligible,excluidosCount:count-eligible,valorRedistribuido:Number(moved)/100})
  }
- return{simulationOnly:true,rulesVersion:'caminho-c-preview-3',totalTarifasBase:totalTarifas,pool38:Number(pool)/100,maxHabitedLevel:h,totalOccupiedPositions:occupiedPositions,totalDistributed:Number(distributed)/100,differenceToPool:Number(pool-distributed)/100,totalRedistributed:Number(redistributed)/100,levelsSummary,participants}
+ return{simulationOnly:true,rulesVersion:'caminho-c-preview-4',totalTarifasBase:totalTarifas,pool38:Number(pool)/100,maxHabitedLevel:h,totalOccupiedPositions:occupiedPositions,totalDistributed:Number(distributed)/100,differenceToPool:Number(pool-distributed)/100,totalRedistributed:Number(redistributed)/100,levelsSummary,participants}
 }

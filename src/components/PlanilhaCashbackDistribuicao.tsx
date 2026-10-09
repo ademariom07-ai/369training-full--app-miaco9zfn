@@ -204,6 +204,7 @@ export function PlanilhaCashbackDistribuicao({
   return (
     <Card className="bg-[#181818] border border-[#D4AF37]/40 p-6 rounded-2xl space-y-6 shadow-2xl">
       <p role="status">{useRealParticipants ? (mappedRealParticipants.length ? 'Participantes carregados.' : 'Nenhum participante real carregado. Nenhum cashback distribuído.') : 'Participantes fictícios.'} Simulação de cashback. Não gera saldo ou crédito. Valores de níveis sem elegíveis permanecem não distribuídos até definição da redistribuição entre níveis.</p>
+      {useRealParticipants && <p className="text-sm text-gray-400">Nesta prévia, a elegibilidade considera o plano próprio pago e a assinatura ativa. O vínculo com um profissional não substitui esses dados. Serviços custeados pelo profissional ainda dependem do registro histórico da escolha de pagador.</p>}
       {calculation.error&&<p role="alert">{calculation.error}</p>}
 
       {/* Top Banner / Título */}

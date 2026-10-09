@@ -24,3 +24,11 @@ A orientação do arquivo para retirar Grátis do ranking foi superada pela conf
 Não alterados banco, políticas RLS, carteiras ou publicação. Quinze migrations permanecem aplicadas conforme etapa anterior. Pacotes 0–15 continuam parciais; nenhum integralmente concluído.
 
 Próximos marcos: convergir o modelo financeiro aprovado com fechamento transacional; registrar regras históricas de plano/pagador; validar os fluxos reais com autenticação e concorrência. O vínculo isolado não comprova a escolha de pagador e não deve alimentar créditos oficiais.
+
+## Continuação — elegibilidade de vinculados
+
+Corrigida uma segunda divergência do simulador: qualquer linked_professional preenchido dispensava a assinatura ativa, inclusive em um perfil profissional. Para alunos, o plano do profissional substituía automaticamente o próprio plano e podia promover Grátis a elegível.
+
+Agora o simulador exige plano próprio pago e assinatura ativa, sem exceção por vínculo. O cliente com plano próprio pago continua elegível mesmo vinculado, sem depender do plano do profissional. Grátis conserva posição e recebe zero. A tela informa que serviços custeados pelo profissional ainda dependem do histórico de escolha de pagador; esta entrega não implementa nem presume essa modalidade. Não há modificação do cálculo de pontos ou de direitos financeiros reais.
+
+46 testes financeiros/ranking/ESG/CSV aprovados nesta continuação. Três regressões novas cobrem vínculo com assinatura inativa, autonomia do plano próprio e tentativa de herdar elegibilidade. TypeScript, lint dos arquivos alterados e build aprovados. Total acumulado das etapas: 230 testes; os testes de banco e autenticação não foram reexecutados nesta mudança puramente local do simulador.
