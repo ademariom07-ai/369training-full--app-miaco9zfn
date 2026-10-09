@@ -128,6 +128,7 @@ export default function Layout({ children }: LayoutProps) {
     { label: 'Documentos Legais', path: '/admin/documentos-legais', icon: FileText },
     { label: 'Ranking & Cashback', path: '/admin/ranking', icon: Sliders },
     { label: 'Auditoria', path: '/admin/auditoria', icon: ShieldCheck },
+    { label: 'Perfil', path: '/admin/perfil', icon: User },
   ]
   const currentNav =
     user?.role === 'admin' ? adminNav : user?.role === 'profissional' ? profissionalNav : alunoNav
@@ -232,12 +233,29 @@ export default function Layout({ children }: LayoutProps) {
                   <p className="text-[10px] text-gray-500 truncate">{user?.email}</p>
                 </div>
                 <Link
-                  to={user?.role === 'profissional' ? '/profissional/carteira' : '/aluno/carteira'}
+                  to={
+                    user?.role === 'admin'
+                      ? '/admin/perfil'
+                      : user?.role === 'profissional'
+                        ? '/profissional/perfil'
+                        : '/aluno/perfil'
+                  }
                   onClick={() => setUserMenuOpen(false)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:text-[#1A1A1A] hover:bg-black/5"
                 >
-                  <Wallet className="w-3.5 h-3.5 text-[#B8962E]" /> Minha Carteira
+                  <User className="w-3.5 h-3.5 text-[#0057FF]" /> Meu Perfil
                 </Link>
+                {user?.role !== 'admin' && (
+                  <Link
+                    to={
+                      user?.role === 'profissional' ? '/profissional/carteira' : '/aluno/carteira'
+                    }
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:text-[#1A1A1A] hover:bg-black/5"
+                  >
+                    <Wallet className="w-3.5 h-3.5 text-[#B8962E]" /> Minha Carteira
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={handleLogout}
