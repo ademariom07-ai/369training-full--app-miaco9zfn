@@ -86,7 +86,7 @@ export default function AdminDashboard() {
   // DADOS 100% REAIS DO ENDPOINT ÚNICO (SEM FABRICAÇÃO)
   const [summary, setSummary] = useState<FinancialSummaryData | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState(true)
-  const [fechandoCiclo, setFechandoCiclo] = useState(false)
+  const [fechandoCiclo] = useState(false)
   const [backfillingTarifas, setBackfillingTarifas] = useState(false)
 
   const loadAdminMetrics = async () => {
@@ -179,27 +179,8 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleTriggerFechamento = async () => {
-    setFechandoCiclo(true)
-    try {
-      const data: any = await pb.send('/backend/v1/admin/fechamento_mensal', {
-        method: 'POST',
-      })
-      toast.success(
-        data?.message ||
-          'Fechamento mensal e cálculo equalizado de cashback executados com sucesso!',
-      )
-      loadAdminMetrics()
-    } catch (err: any) {
-      if (err?.data?.code === 'SEM_LASTRO' || err?.message?.includes('sem lastro')) {
-        toast.error('sem lastro para distribuição')
-      } else {
-        toast.error(err?.data?.message || err?.message || 'Erro ao processar fechamento mensal.')
-      }
-      loadAdminMetrics()
-    } finally {
-      setFechandoCiclo(false)
-    }
+  const handleTriggerFechamento = () => {
+    toast.info('Fechamento indisponível: a fórmula linear aprovada ainda precisa de integração e validação no servidor.')
   }
 
   const semLastro = totalEntradasReais <= 0
@@ -211,7 +192,7 @@ export default function AdminDashboard() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-xs font-bold text-[#9A7B1C] uppercase font-montserrat mb-2">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Master Admin • Valores Reais Calculados (Caminho C)
+            Master Admin • Resumo do backend legado
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-[#1A1A1A] uppercase">
             Dashboard Administrativo & Split 369
@@ -219,7 +200,7 @@ export default function AdminDashboard() {
           <p className="text-xs sm:text-sm text-gray-600 font-inter mt-1">
             Ciclo atual:{' '}
             <strong className="text-[#1A1A1A]">{summary?.cycle || 'Carregando...'}</strong> •
-            Valores 100% calculados do banco sem fabricação.
+            Dados retornados pelo backend legado. Fechamento linear ainda não integrado.
           </p>
         </div>
 
@@ -236,7 +217,7 @@ export default function AdminDashboard() {
 
           <Button
             onClick={handleTriggerFechamento}
-            disabled={fechandoCiclo || loadingMetrics}
+            disabled={true}
             className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-xs uppercase px-4 py-2 rounded-xl flex items-center gap-2 shadow-md"
           >
             {fechandoCiclo ? (
@@ -244,7 +225,7 @@ export default function AdminDashboard() {
             ) : (
               <Clock className="w-4 h-4" />
             )}
-            Simular Fechamento Mensal
+            Fechamento linear indisponível
           </Button>
 
           {pendingApprovals > 0 && (
@@ -560,13 +541,13 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        {/* DISTRIBUIÇÃO POR NÍVEIS COM CORRETOR/EQUALIZAÇÃO (CAMINHO C) */}
+        <p className="lg:col-span-2 rounded-xl border border-amber-300 bg-amber-50 p-4">Distribuição vigente: fórmula linear global com ESG mensal. Os valores por níveis abaixo são do modelo legado e não representam a distribuição padrão atual. Fechamento financeiro indisponível nesta tela.</p>
+        {/* Histórico do backend legado */}
         <Card className="lg:col-span-2 bg-white border border-[#E4E2DC] p-6 rounded-2xl shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
             <div>
               <h3 className="font-bold font-montserrat text-[#1A1A1A] text-base uppercase flex items-center gap-2">
-                <Layers className="w-5 h-5 text-[#D4AF37]" /> Distribuição por Níveis da Rede Única
-                (Caminho C)
+                <Layers className="w-5 h-5 text-[#D4AF37]" /> Histórico do modelo por níveis — substituído pelo padrão linear
               </h3>
               <p className="text-xs text-gray-500 font-inter mt-0.5">
                 Pool 38% (R$ {poolRede.toFixed(2)}) dividido por {niveisHabitadosCount} nível(is)

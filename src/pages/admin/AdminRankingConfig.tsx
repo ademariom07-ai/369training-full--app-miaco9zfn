@@ -53,9 +53,8 @@ import {
   HYBRID_THRESHOLD,
   getBinaryTreeLevelsOverview,
   calculateHybridPositionParams,
-  calculateCaminhoCEqualization,
 } from '@/lib/binaryTreeHybrid'
-import { PlanilhaCashbackDistribuicao } from '@/components/PlanilhaCashbackDistribuicao'
+import LinearCashbackSimulator from '@/components/LinearCashbackSimulator'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface RankItem {
@@ -150,8 +149,8 @@ export default function AdminRankingConfig() {
 
   // Fechamento de Ciclo (Opção A) e Histórico de Snapshots
   const [closeModalOpen, setCloseModalOpen] = useState(false)
-  const [closingCycle, setClosingCycle] = useState(false)
-  const [closureSummary, setClosureSummary] = useState<any>(null)
+  const [closingCycle] = useState(false)
+  const [closureSummary] = useState<any>(null)
   const [closureSummaryModalOpen, setClosureSummaryModalOpen] = useState(false)
 
   // Histórico de Ciclos
@@ -159,8 +158,6 @@ export default function AdminRankingConfig() {
   const [selectedCycle, setSelectedCycle] = useState<string>('')
   const [cycleSnapshots, setCycleSnapshots] = useState<any[]>([])
   const [loadingCycleSnapshots, setLoadingCycleSnapshots] = useState(false)
-  const [caminhoCEntrada, setCaminhoCEntrada] = useState(1000)
-  const [caminhoCNiveis, setCaminhoCNiveis] = useState(9)
   const [searchPos, setSearchPos] = useState('')
 
   // Simulador interativo de posições > 511
@@ -304,32 +301,8 @@ export default function AdminRankingConfig() {
   }, [selectedCycle])
 
   // Executar Fechamento de Ciclo (Opção A)
-  const handleExecuteCloseCycle = async () => {
-    setClosingCycle(true)
-    try {
-      const res: any = await pb.send('/backend/v1/admin/close_cycle', {
-        method: 'POST',
-      })
-      setClosureSummary(res)
-      setCloseModalOpen(false)
-      setClosureSummaryModalOpen(true)
-      toast.success(res?.message || `Ciclo ${res?.cycle || currentCycle} fechado com sucesso!`)
-      // Recarregar ranking atual e lista de ciclos
-      await loadData()
-      await loadAvailableCycles()
-      if (res?.cycle) {
-        setSelectedCycle(res.cycle)
-        await loadCycleSnapshots(res.cycle)
-      }
-    } catch (err: any) {
-      const errorMsg =
-        err?.data?.message ||
-        err?.message ||
-        (err?.data?.code === 'SEM_LASTRO' ? 'sem lastro para distribuição' : 'Erro ao fechar ciclo')
-      toast.error(errorMsg)
-    } finally {
-      setClosingCycle(false)
-    }
+  const handleExecuteCloseCycle = () => {
+    toast.info('Fechamento indisponível: a fórmula linear aprovada ainda precisa de integração e validação no servidor.')
   }
 
   // Helpers para Exportação CSV
@@ -881,7 +854,7 @@ export default function AdminRankingConfig() {
       await pb.send('/backend/v1/admin/recalculate_rank', {
         method: 'POST',
       })
-      toast.success('Ranking recalculado com sucesso conforme fórmula do Caminho C!')
+      toast.success('Recálculo legado concluído. Não equivale ao fechamento linear de cashback.')
       await loadData()
     } catch {
       await clientSideRecalculate()
@@ -1211,7 +1184,7 @@ export default function AdminRankingConfig() {
             <Button
               type="button"
               onClick={() => setCloseModalOpen(true)}
-              disabled={closingCycle || recalculating}
+              disabled={true}
               className="bg-gradient-to-r from-[#D4AF37] to-[#E5C158] hover:from-[#b8952b] hover:to-[#D4AF37] text-black font-extrabold text-xs uppercase px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 border border-[#F2D06B]"
             >
               {closingCycle ? (
@@ -1219,11 +1192,12 @@ export default function AdminRankingConfig() {
               ) : (
                 <Lock className="w-4 h-4 text-black" />
               )}
-              {closingCycle ? 'Fechando Ciclo...' : 'Fechar Ciclo e Abrir Novo'}
+              Fechamento linear indisponível
             </Button>
           </div>
         </div>
 
+        <p className="rounded-xl border border-lime-300 bg-lime-50 p-4 text-slate-900">Padrão vigente: distribuição linear global com ESG mensal. Use Cashback linear padrão para conferência fictícia. Painéis de níveis, parâmetros e exportações do backend legado são históricos e não autorizam novos créditos. Fechamento no servidor ainda pendente.</p>
         {/* MODELO HÍBRIDO EXPLAINER BANNER */}
         <Card className="bg-gradient-to-r from-[#181424] via-[#14101f] to-[#181424] border border-[#6A00FF]/40 p-5 rounded-2xl shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1439,7 +1413,7 @@ export default function AdminRankingConfig() {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Calculator className="w-4 h-4" /> Simulador Híbrido (até 68B)
+            <Calculator className="w-4 h-4" /> Simulador histórico por níveis
           </button>
           <button
             type="button"
@@ -1472,7 +1446,7 @@ export default function AdminRankingConfig() {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Sparkles className="w-4 h-4 text-[#22C55E]" /> Equalizador Caminho C
+            <Sparkles className="w-4 h-4 text-[#22C55E]" /> Cashback linear padrão
           </button>
         </div>
 
@@ -2777,148 +2751,8 @@ export default function AdminRankingConfig() {
           </form>
         )}
 
-        {/* TAB 7: EQUALIZADOR CAMINHO C */}
-        {activeTab === 'caminhoC' && (
-          <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-[#22C55E]" /> Equalizador do Caminho C (Pool 38%
-                  + Corretor de Nível)
-                </h3>
-                <p className="text-xs text-gray-400 font-inter mt-1">
-                  Fórmula oficial: <code>Corretor Nível 1 = 0,8 / (próx_nível / 2) + 0,2</code>. A
-                  cada nível habitado soma-se o passo até atingir 1,8 no último nível.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-[#141414] border border-[#2A2A2A]">
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat">
-                  Entrada Total de Tarifas (R$)
-                </label>
-                <Input
-                  type="number"
-                  value={caminhoCEntrada}
-                  onChange={(e) => setCaminhoCEntrada(Number(e.target.value) || 0)}
-                  className="bg-[#181818] border-[#2A2A2A] text-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase mb-1 font-montserrat">
-                  Níveis Habitados na Rede (1 a 36)
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="36"
-                  value={caminhoCNiveis}
-                  onChange={(e) =>
-                    setCaminhoCNiveis(Math.max(1, Math.min(36, Number(e.target.value) || 1)))
-                  }
-                  className="bg-[#181818] border-[#2A2A2A] text-white font-mono"
-                />
-              </div>
-            </div>
-
-            {/* Resultado da Equalização */}
-            {(() => {
-              try {
-                const res = calculateCaminhoCEqualization(
-                  Math.max(0, Number(caminhoCEntrada) || 0),
-                  Math.max(1, Math.min(36, Number(caminhoCNiveis) || 9)),
-                )
-                const levelsList = Array.isArray(res?.levels) ? res.levels : []
-                return (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
-                        <span className="text-[10px] text-gray-400 uppercase font-semibold">
-                          Pool da Rede (38%)
-                        </span>
-                        <p className="text-lg font-bold text-[#D4AF37] font-mono">
-                          R$ {(Number(res.pool) || 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
-                        <span className="text-[10px] text-gray-400 uppercase font-semibold">
-                          % por Nível
-                        </span>
-                        <p className="text-lg font-bold text-[#6A00FF] font-mono">
-                          {(Number(res.pctDoNivel) || 0).toFixed(3)}%
-                        </p>
-                      </div>
-                      <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
-                        <span className="text-[10px] text-gray-400 uppercase font-semibold">
-                          Valor Base por Nível
-                        </span>
-                        <p className="text-lg font-bold text-white font-mono">
-                          R$ {(Number(res.valorDoNivel) || 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="p-3 bg-[#141414] rounded-xl border border-[#2A2A2A]">
-                        <span className="text-[10px] text-gray-400 uppercase font-semibold">
-                          Soma Equalizada
-                        </span>
-                        <p className="text-lg font-bold text-[#22C55E] font-mono">
-                          R$ {(Number(res.somaEqualizados) || 0).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs font-inter">
-                        <thead>
-                          <tr className="border-b border-[#2A2A2A] text-gray-400 font-montserrat uppercase text-[10px]">
-                            <th className="pb-3">Nível</th>
-                            <th className="pb-3 text-center">Pessoas no Nível</th>
-                            <th className="pb-3 text-center">Corretor (Equalizador)</th>
-                            <th className="pb-3 text-center">Limitador Acumulado</th>
-                            <th className="pb-3 text-center">Valor Equalizado</th>
-                            <th className="pb-3 text-right">Valor Aprox. / Pessoa</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#2A2A2A]">
-                          {levelsList.map((lvl) => (
-                            <tr key={lvl.level} className="hover:bg-[#141414] transition-colors">
-                              <td className="py-2.5 font-bold text-white font-montserrat">
-                                Nível {lvl.level}
-                              </td>
-                              <td className="py-2.5 text-center font-mono text-gray-300">
-                                {lvl.pessoasNoNivel}{' '}
-                                {lvl.pessoasNoNivel === 1 ? 'pessoa' : 'pessoas'}
-                              </td>
-                              <td className="py-2.5 text-center font-mono font-bold text-[#6A00FF]">
-                                {(Number(lvl.corretor) || 0).toFixed(2)}
-                              </td>
-                              <td className="py-2.5 text-center font-mono text-gray-400">
-                                {(Number(lvl.limitadorNivel) || 0).toFixed(2)}
-                              </td>
-                              <td className="py-2.5 text-center font-mono font-bold text-[#D4AF37]">
-                                R$ {(Number(lvl.valorEqualizado) || 0).toFixed(2)}
-                              </td>
-                              <td className="py-2.5 text-right font-mono font-bold text-[#22C55E]">
-                                R$ {(Number(lvl.valorPorPessoa) || 0).toFixed(2)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )
-              } catch (err) {
-                console.warn('Erro ao renderizar equalizador:', err)
-                return (
-                  <div className="p-4 bg-[#141414] rounded-xl border border-red-500/20 text-xs text-gray-400">
-                    Não foi possível calcular a simulação com os valores atuais.
-                  </div>
-                )
-              }
-            })()}
-          </Card>
-        )}
+        {/* Regra padrão; valores simulados, sem acionamento financeiro. */}
+        {activeTab === 'caminhoC' && <LinearCashbackSimulator />}
 
         {/* TAB HISTÓRICO DE CICLOS (Opção A) */}
         {activeTab === 'historicoCiclos' && (
@@ -3227,20 +3061,7 @@ export default function AdminRankingConfig() {
               </div>
             </div>
 
-            <PlanilhaCashbackDistribuicao
-              realRankings={
-                allCycleRankParticipants.length > 0 ? allCycleRankParticipants : rankings
-              }
-              defaultBaseTarifas={
-                financialSummary?.pool?.base_total_entradas !== undefined
-                  ? Number(financialSummary.pool.base_total_entradas)
-                  : 0
-              }
-              defaultPositionsCount={Math.max(
-                1,
-                allCycleRankParticipants.length || rankings.length || 1,
-              )}
-            />
+            <LinearCashbackSimulator />
           </div>
         )}
 
@@ -3267,7 +3088,7 @@ export default function AdminRankingConfig() {
               <div className="p-3.5 rounded-xl bg-[#141414] border border-[#333333] space-y-2">
                 <p className="font-semibold text-[#D4AF37] flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" />
-                  Regras da Opção A confirmadas pelo usuário:
+                  Histórico do fluxo legado — fechamento indisponível:
                 </p>
                 <ul className="list-disc pl-5 space-y-1 text-gray-300 text-[11px]">
                   <li>
@@ -3283,9 +3104,8 @@ export default function AdminRankingConfig() {
                     usuário em <code>monthly_rank_snapshots</code>.
                   </li>
                   <li>
-                    <strong>Pool 38%:</strong> rateia tarifas e mensalidades elegíveis entre os
-                    níveis habitados (Caminho C) com crédito na carteira. Se não houver lastro, a
-                    operação é interrompida com aviso sem distribuir nada.
+                    <strong>Regra vigente:</strong> distribuição linear global, com ESG mensal.
+                    O fechamento legado por níveis foi substituído e não pode ser acionado nesta tela.
                   </li>
                   <li>
                     <strong>Ambiente mockado:</strong> nenhuma transação financeira real ou
@@ -3313,7 +3133,7 @@ export default function AdminRankingConfig() {
               <Button
                 type="button"
                 onClick={handleExecuteCloseCycle}
-                disabled={closingCycle}
+                disabled={true}
                 className="bg-gradient-to-r from-[#D4AF37] to-[#E5C158] hover:from-[#b8952b] hover:to-[#D4AF37] text-black font-extrabold text-xs uppercase px-4 py-2 rounded-xl"
               >
                 {closingCycle ? (
@@ -3321,7 +3141,7 @@ export default function AdminRankingConfig() {
                 ) : (
                   <CheckCircle2 className="w-4 h-4 mr-1.5" />
                 )}
-                {closingCycle ? 'Fechando Ciclo...' : 'Confirmar Fechamento'}
+                Integração financeira pendente
               </Button>
             </DialogFooter>
           </DialogContent>
