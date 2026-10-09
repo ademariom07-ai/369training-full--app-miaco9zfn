@@ -1,4 +1,5 @@
-// Cron job to recalculate ranking and execute monthly snapshot & cashback closure on the last day of the month (v2)
+// Daily legacy ranking only. No automatic monthly closure or financial credits.
+// FREE retains rating/seniority; sponsored service facts and validated referrals remain pending.
 cronAdd('recalculate_rank', '0 3 * * *', () => {
   const users = $app.findRecordsByFilter('users', 'approved = true', '-created', 1000, 0)
 
@@ -7,10 +8,6 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     .toISOString()
     .replace('T', ' ')
-
-  const tomorrow = new Date(now)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const isLastDayOfMonth = tomorrow.getDate() === 1
 
   const planMultipliers = {
     gratis: 0,
@@ -36,32 +33,14 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
     const role = u.get('role') || 'aluno'
     const isProParceiro = rawPlan === 'pro_parceiro'
-    const isPartnerGratis = role === 'profissional' && rawPlan === 'gratis'
-
     let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
-    if (isPartnerGratis) {
-      effectiveMultiplier = planMultipliers['basico'] ?? 1 // 1x — parceiro grátis pontua como Básico
-    }
-    const linkedProfId = u.get('linked_professional')
-    if (role === 'aluno' && linkedProfId) {
-      try {
-        const profUser = $app.findRecordById('users', linkedProfId)
-        const profPlan = (profUser.get('plan') || 'basico').toLowerCase()
-        effectiveMultiplier = planMultipliers[profPlan] ?? 1
-      } catch (_) {}
-    }
-
+    // A link alone is not an explicit historical payer/plan selection.
     const subStatus = (u.get('subscription_status') || 'ativa').toLowerCase()
     if (
       (subStatus === 'inadimplente' || subStatus === 'cancelada') &&
-      !linkedProfId &&
       role === 'aluno'
     ) {
       effectiveMultiplier = 0
-    }
-
-    if (effectiveMultiplier === 0 && !isProParceiro) {
-      continue
     }
 
     const serviceFilter =
@@ -192,7 +171,8 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     if (b.stars !== a.stars) {
       return b.stars - a.stars
     }
-    return new Date(a.created).getTime() - new Date(b.created).getTime()
+    const joined = new Date(a.created).getTime() - new Date(b.created).getTime()
+    return joined || (a.user.id < b.user.id ? -1 : a.user.id > b.user.id ? 1 : 0)
   })
 
   const rankCol = $app.findCollectionByNameOrId('rank_entries')
@@ -239,7 +219,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
       formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
     }
     if (s.role === 'profissional' && s.plan === 'gratis') {
-      tieBreakDetails.plan_effective = 'basico_gratis'
+      tieBreakDetails.plan_effective = 'gratis'
     }
     entry.set('tie_break_details', tieBreakDetails)
     $app.save(entry)
@@ -261,48 +241,5 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     }
   } catch (_) {}
 
-  if (isLastDayOfMonth) {
-    try {
-      const snapCol = $app.findCollectionByNameOrId('monthly_rank_snapshots')
-      for (let i = 0; i < scores.length; i++) {
-        const s = scores[i]
-        let snap
-        try {
-          snap = $app.findRecordsByFilter(
-            'monthly_rank_snapshots',
-            `user = '${s.user.id}' && cycle = '${cycle}'`,
-            '-created',
-            1,
-            0,
-          )[0]
-        } catch (_) {}
-
-        if (!snap) {
-          snap = new Record(snapCol)
-        }
-
-        snap.set('user', s.user.id)
-        snap.set('cycle', cycle)
-        snap.set('points', s.monthly_points)
-        snap.set('services_count', s.services_count)
-        snap.set('referrals_count', s.referrals_this_cycle)
-        snap.set('stars', s.stars)
-        snap.set('antiguidade', s.antiguidade)
-        snap.set('ranking_position', i + 1)
-        snap.set('plan', s.plan)
-        snap.set('closed_at', now.toISOString())
-        snap.set('details', {
-          multiplier: s.multiplier,
-          monthly_points: s.monthly_points,
-          total_cumulative_points: s.total_points,
-          services_tarifa_rs: s.services_tarifa_rs,
-          services_real_count: s.services_real_count,
-        })
-        $app.save(snap)
-      }
-      console.log(`Snapshot mensal do ciclo ${cycle} salvo com sucesso no fechamento do mês.`)
-    } catch (err) {
-      console.error('Erro ao registrar snapshot mensal no fechamento:', err)
-    }
-  }
+  // Monthly snapshots must be written by the future audited close after period end.
 })
