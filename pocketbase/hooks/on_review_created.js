@@ -107,31 +107,13 @@ onRecordAfterCreateSuccess((e) => {
       const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
       const role = u.get('role') || 'aluno'
       const isProParceiro = rawPlan === 'pro_parceiro'
-      const isPartnerGratis = role === 'profissional' && rawPlan === 'gratis'
-
+      // Own plan only: a link does not prove historical sponsorship.
       let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
-      if (isPartnerGratis) {
-        effectiveMultiplier = planMultipliers['basico'] ?? 1
-      }
-      const linkedProf = u.get('linked_professional')
-
-      if (role === 'aluno' && linkedProf) {
-        try {
-          const pUser = $app.findRecordById('users', linkedProf)
-          const pPlan = (pUser.get('plan') || 'basico').toLowerCase()
-          effectiveMultiplier = planMultipliers[pPlan] ?? 1
-        } catch (_) {}
-      }
-
       const subStatus = u.get('subscription_status') || 'ativa'
       if (subStatus === 'inadimplente' || subStatus === 'cancelada') {
-        if (role === 'aluno' && !linkedProf) {
+        if (role === 'aluno') {
           effectiveMultiplier = 0
         }
-      }
-
-      if (effectiveMultiplier === 0 && !isProParceiro) {
-        continue
       }
 
       // IMPORTANTE: apenas serviços CONCLUÍDOS e VALIDADOS pela avaliação mútua!
@@ -257,7 +239,8 @@ onRecordAfterCreateSuccess((e) => {
     scores.sort((a, b) => {
       if (b.total_points !== a.total_points) return b.total_points - a.total_points
       if (b.stars !== a.stars) return b.stars - a.stars
-      return new Date(a.created).getTime() - new Date(b.created).getTime()
+      const joined = new Date(a.created).getTime() - new Date(b.created).getTime()
+      return joined || (a.user.id < b.user.id ? -1 : a.user.id > b.user.id ? 1 : 0)
     })
 
     const rankCol = $app.findCollectionByNameOrId('rank_entries')
@@ -295,7 +278,7 @@ onRecordAfterCreateSuccess((e) => {
         formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
       }
       if (s.role === 'profissional' && s.plan === 'gratis') {
-        tieBreakDetails.plan_effective = 'basico_gratis'
+        tieBreakDetails.plan_effective = 'gratis'
       }
 
       entry.set('user', s.user.id)
