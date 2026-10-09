@@ -1,9 +1,9 @@
 // Recalculate partner & student ranking on demand (Caminho C - v2)
 // Formula: PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
-// - Aluno vinculado pontua no plano do profissional
-// - Aluno inadimplente sem vínculo sofre downgrade temporário para 0x
+// - Vínculo isolado não altera plano; patrocínio requer fatos históricos.
+// - Aluno com assinatura inativa usa 0x no produto, preservando avaliação/antiguidade.
 // - PRO PARCEIRO: teto de contagem min(serviços reais, pro_parceiro_floor = 150)
-// - Parceiro Grátis: pontua como Básico (1x), tie_break plan_effective = 'basico_gratis'
+// - Grátis: multiplicador zero, mantendo avaliação/antiguidade e posição.
 // Otimizado para suportar até 10k+ usuários com agregação SQL direta e execução rápida em lotes!
 
 routerAdd(
@@ -147,18 +147,6 @@ routerAdd(
         console.warn('Erro ao consultar snapshots passados:', err)
       }
 
-      // Mapa de planos dos profissionais para herança de alunos patrocinados
-      const profPlans = {}
-      try {
-        const pRows = $app
-          .db()
-          .newQuery("SELECT id, plan FROM users WHERE role = 'profissional'")
-          .all()
-        for (const pr of pRows) {
-          profPlans[pr.id] = (pr.plan || 'basico').toLowerCase()
-        }
-      } catch (_) {}
-
       // Buscar todos os usuários aprovados
       const usersRows = $app
         .db()
@@ -175,31 +163,15 @@ routerAdd(
         const rawPlan = (u.plan || 'gratis').toLowerCase()
         const role = u.role || 'aluno'
         const isProParceiro = rawPlan === 'pro_parceiro'
-        const isPartnerGratis = role === 'profissional' && rawPlan === 'gratis'
-
         let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
-        if (isPartnerGratis) {
-          effectiveMultiplier = planMultipliers['basico'] ?? 1 // 1x — pontua como Básico
-        }
-        const linkedProfId = u.linked_professional
-
-        if (role === 'aluno' && linkedProfId && profPlans[linkedProfId]) {
-          const profPlan = profPlans[linkedProfId]
-          effectiveMultiplier = planMultipliers[profPlan] ?? 1
-        }
 
         // Regra de inadimplência
         const subStatus = (u.subscription_status || 'ativa').toLowerCase()
         if (
           (subStatus === 'inadimplente' || subStatus === 'cancelada') &&
-          !linkedProfId &&
           role === 'aluno'
         ) {
           effectiveMultiplier = 0
-        }
-
-        if (effectiveMultiplier === 0 && !isProParceiro) {
-          continue
         }
 
         const realServicesCount = serviceCounts[u.id] || 0
@@ -255,7 +227,8 @@ routerAdd(
         if (b.stars !== a.stars) {
           return b.stars - a.stars
         }
-        return new Date(a.created).getTime() - new Date(b.created).getTime()
+        const joined = new Date(a.created).getTime() - new Date(b.created).getTime()
+        return joined || (a.user_id < b.user_id ? -1 : a.user_id > b.user_id ? 1 : 0)
       })
 
       // Gravar entradas do ranking no ciclo atual com SQL direto (.all()/.execute() sem transação)
@@ -309,7 +282,7 @@ routerAdd(
           formula: 'PONTOS = (PLANO) × (SERVIÇOS) × (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE',
         }
         if (s.role === 'profissional' && s.plan === 'gratis') {
-          tieBreakObj.plan_effective = 'basico_gratis'
+          tieBreakObj.plan_effective = 'gratis'
         }
         const tieBreak = JSON.stringify(tieBreakObj)
 
@@ -350,7 +323,7 @@ routerAdd(
         total_ranked: scores.length,
         cycle: cycle,
         message:
-          'Ranking recalculado com sucesso conforme fórmula confirmada e suporte a PRO PARCEIRO.',
+          'Recálculo legado concluído com teto PRO PARCEIRO e participação do Grátis. Não representa fechamento financeiro homologado.',
       })
     } catch (err) {
       console.error('Erro no recalculate_rank:', err)

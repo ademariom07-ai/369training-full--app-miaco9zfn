@@ -1,0 +1,14 @@
+import {readFileSync} from 'node:fs'
+import {runInNewContext} from 'node:vm'
+import {createHash} from 'node:crypto'
+import {it,expect} from 'vitest'
+function run(role:string|null='admin'){
+ const users=[['z-free','profissional','gratis'],['a-free','aluno','gratis'],['p-paid','aluno','pro'],['cap','profissional','pro_parceiro']].map(([id,role,plan])=>({id,role,plan,subscription_status:'ativa',linked_professional:'p-paid',rating_avg:4,created:'2025-01-01T00:00:00Z'}))
+ const writes:Record<string,unknown>[]=[],queries:string[]=[];let response:{status:number;body:Record<string,unknown>}|undefined
+ class FixedDate extends Date{constructor(value?:string|number){super(value??'2026-10-09T12:00:00Z')}}
+ runInNewContext(readFileSync('pocketbase/hooks/admin_recalculate_rank.js','utf8'),{Date:FixedDate,console,$security:{md5:(s:string)=>createHash('md5').update(s).digest('hex')},$apis:{requireAuth:()=>true},routerAdd:(_method:string,_path:string,fn:(c:unknown)=>void)=>fn({auth:role===null?null:{getString:()=>role},json:(status:number,body:Record<string,unknown>)=>response={status,body}}),$app:{db:()=>({newQuery:(sql:string)=>{queries.push(sql);let params:Record<string,unknown>={};return {bind(p:Record<string,unknown>){params=p;return this},all(){if(sql.includes('FROM services'))return users.map(u=>({user_id:u.id,total_svc:200}));if(sql.includes('FROM referrals'))return users.map(u=>({referrer:u.id,total_ref:1}));if(sql.includes('SUM(points)'))return users.map(u=>({user:u.id,total_past:10}));if(sql.includes('FROM users'))return users;if(sql.includes('SELECT id, user FROM rank_entries'))return [];throw Error('Unexpected query')},execute(){if(sql.includes('INSERT OR REPLACE'))writes.push(params);else if(!sql.includes('DELETE FROM rank_entries'))throw Error('Unexpected mutation')}}}})}})
+ return {writes,queries,response}
+}
+it('manual recalc preserves free rating seniority and previous points without inheriting a plan',()=>{const {writes,response}=run();expect(response?.status).toBe(200);for(const id of ['a-free','z-free']){const row=writes.find(r=>r.user===id)!;expect(row.points).toBe(24);expect(JSON.parse(String(row.tie_break_details))).toMatchObject({plan_multiplier:0,monthly_points:14,closed_past_points:10})}})
+it('manual recalc keeps cap150 and stable identity tie breaks',()=>{const {writes}=run();expect(writes.map(r=>r.user)).toEqual(['p-paid','cap','a-free','z-free']);expect(writes.find(r=>r.user==='cap')?.services_count).toBe(150);expect(writes.find(r=>r.user==='p-paid')?.services_count).toBe(200)})
+it('manual recalc denies unauthenticated and nonadmin requests before database access',()=>{for(const role of [null,'aluno','profissional']){const r=run(role);expect(r.response?.status).toBe(role===null?401:403);expect(r.queries).toEqual([]);expect(r.writes).toEqual([])}})
