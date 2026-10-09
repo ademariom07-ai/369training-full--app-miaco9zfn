@@ -10,6 +10,7 @@ import {
   Send,
   Video,
   Download,
+  Check,
   CheckCheck,
   Loader2,
   Users,
@@ -46,6 +47,10 @@ export default function ProfissionalChatScreen() {
   const [loadingStudents, setLoadingStudents] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Denúncia de mensagem
+  const [reportModalOpen, setReportModalOpen] = useState(false)
+  const [reportingMsg, setReportingMsg] = useState<MessageRecord | null>(null)
+
   // Termos do Chat
   const [termsAccepted, setTermsAccepted] = useState(true)
   const [checkingTerms, setCheckingTerms] = useState(true)
@@ -68,40 +73,73 @@ export default function ProfissionalChatScreen() {
       })
   }, [user])
 
-  // 2. Load Students List
+  // 2. Load Students List with unread counts
   useEffect(() => {
     if (!user) return
 
     setLoadingStudents(true)
-    pb.collection('users')
-      .getList<StudentContact>(1, 100, {
-        filter: 'role = "aluno"',
-        sort: 'name',
-      })
-      .then((res) => {
-        setStudents(res.items)
+    const fetchStudentsAndUnread = async () => {
+      try {
+        const [usersRes, unreadRes] = await Promise.all([
+          pb.collection('users').getList<StudentContact>(1, 100, {
+            filter: 'role = "aluno"',
+            sort: 'name',
+          }),
+          pb.collection('messages').getList<MessageRecord>(1, 200, {
+            filter: `receiver = "${user.id}" && read = false`,
+          }),
+        ])
+
+        const unreadCountsBySender: Record<string, number> = {}
+        unreadRes.items.forEach((m) => {
+          unreadCountsBySender[m.sender] = (unreadCountsBySender[m.sender] || 0) + 1
+        })
+
+        const mappedStudents = usersRes.items.map((s) => ({
+          ...s,
+          unreadCount: unreadCountsBySender[s.id] || 0,
+        }))
+
+        setStudents(mappedStudents)
+
         if (alunoId) {
-          const target = res.items.find((s) => s.id === alunoId)
+          const target = mappedStudents.find((s) => s.id === alunoId)
           if (target) {
             setActiveStudent(target)
-          } else if (res.items.length > 0) {
-            setActiveStudent(res.items[0])
+          } else if (mappedStudents.length > 0) {
+            setActiveStudent(mappedStudents[0])
           }
-        } else if (res.items.length > 0) {
-          setActiveStudent(res.items[0])
+        } else if (mappedStudents.length > 0) {
+          setActiveStudent(mappedStudents[0])
         }
-      })
-      .catch(() => {
+      } catch {
         setStudents([])
-      })
-      .finally(() => {
+      } finally {
         setLoadingStudents(false)
-      })
+      }
+    }
+
+    fetchStudentsAndUnread()
   }, [user, alunoId])
 
   // 3. Load Active Chat Messages & Subscribe to Realtime
   useEffect(() => {
     if (!user || !activeStudent) return
+
+    // Marcar mensagens recebidas como lidas
+    const markIncomingAsRead = (list: MessageRecord[]) => {
+      const unreadIncoming = list.filter((m) => m.receiver === user.id && !m.read)
+      unreadIncoming.forEach((m) => {
+        pb.collection('messages')
+          .update(m.id, { read: true })
+          .catch(() => {})
+      })
+      if (unreadIncoming.length > 0) {
+        setStudents((prev) =>
+          prev.map((s) => (s.id === activeStudent.id ? { ...s, unreadCount: 0 } : s)),
+        )
+      }
+    }
 
     // Fetch message history between prof and selected student
     pb.collection('messages')
@@ -111,6 +149,7 @@ export default function ProfissionalChatScreen() {
       })
       .then((res) => {
         setMessages(res.items)
+        markIncomingAsRead(res.items)
       })
       .catch(() => {
         setMessages([])
@@ -122,17 +161,31 @@ export default function ProfissionalChatScreen() {
     // Realtime subscription
     pb.collection('messages')
       .subscribe('*', (e) => {
+        const changedMsg = e.record as unknown as MessageRecord
+        const isCurrentConv =
+          (changedMsg.sender === user.id && changedMsg.receiver === activeStudent.id) ||
+          (changedMsg.sender === activeStudent.id && changedMsg.receiver === user.id)
+
         if (e.action === 'create') {
-          const newMsg = e.record as unknown as MessageRecord
-          if (
-            (newMsg.sender === user.id && newMsg.receiver === activeStudent.id) ||
-            (newMsg.sender === activeStudent.id && newMsg.receiver === user.id)
-          ) {
+          if (isCurrentConv) {
             setMessages((prev) => {
-              if (prev.some((m) => m.id === newMsg.id)) return prev
-              return [...prev, newMsg]
+              if (prev.some((m) => m.id === changedMsg.id)) return prev
+              return [...prev, changedMsg]
             })
+            if (changedMsg.receiver === user.id) {
+              pb.collection('messages')
+                .update(changedMsg.id, { read: true })
+                .catch(() => {})
+            }
+          } else if (changedMsg.receiver === user.id) {
+            setStudents((prev) =>
+              prev.map((s) =>
+                s.id === changedMsg.sender ? { ...s, unreadCount: (s.unreadCount || 0) + 1 } : s,
+              ),
+            )
           }
+        } else if (e.action === 'update' && isCurrentConv) {
+          setMessages((prev) => prev.map((m) => (m.id === changedMsg.id ? changedMsg : m)))
         }
       })
       .then((fn) => {
@@ -166,18 +219,25 @@ export default function ProfissionalChatScreen() {
   const handleSelectStudent = (student: StudentContact) => {
     setActiveStudent(student)
     navigate(`/profissional/chat/${student.id}`)
+    setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, unreadCount: 0 } : s)))
   }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inputText.trim() || !user || !activeStudent) return
+    const trimmed = inputText.trim()
+    if (!trimmed || !user || !activeStudent) return
+
+    if (trimmed.length > 2000) {
+      toast.error('A mensagem excede o limite máximo de 2.000 caracteres.')
+      return
+    }
 
     setSending(true)
     try {
       await pb.collection('messages').create({
         sender: user.id,
         receiver: activeStudent.id,
-        content: inputText,
+        content: trimmed,
         read: false,
       })
       setInputText('')
@@ -186,6 +246,28 @@ export default function ProfissionalChatScreen() {
       toast.error(error.message || 'Erro ao enviar mensagem.')
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleOpenReport = (msg: MessageRecord) => {
+    setReportingMsg(msg)
+    setReportModalOpen(true)
+  }
+
+  const handleConfirmReport = async (msgId: string, reason: string) => {
+    try {
+      await pb.collection('messages').update(msgId, {
+        reported: true,
+        report_reason: reason,
+      })
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, reported: true, report_reason: reason } : m)),
+      )
+      toast.success('Denúncia registrada com sucesso para auditoria da moderação.')
+    } catch (err: unknown) {
+      const error = err as Error
+      toast.error(error.message || 'Erro ao registrar denúncia.')
+      throw err
     }
   }
 
@@ -238,6 +320,19 @@ export default function ProfissionalChatScreen() {
           onAccepted={() => setTermsAccepted(true)}
         />
       )}
+
+      {/* Modal de Denúncia de Mensagem */}
+      <ReportMessageModal
+        open={reportModalOpen}
+        messageId={reportingMsg?.id || null}
+        messageContent={reportingMsg?.content}
+        senderName={reportingMsg?.sender === user?.id ? user.name : activeStudent?.name}
+        onClose={() => {
+          setReportModalOpen(false)
+          setReportingMsg(null)
+        }}
+        onConfirmReport={handleConfirmReport}
+      />
 
       {/* Main Chat Container */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 h-full overflow-hidden">
@@ -296,6 +391,11 @@ export default function ProfissionalChatScreen() {
                         <span className="text-xs font-bold font-montserrat truncate text-white">
                           {student.name}
                         </span>
+                        {(student.unreadCount || 0) > 0 && (
+                          <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center font-mono animate-pulse shadow-sm shrink-0">
+                            {student.unreadCount}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[10px] text-gray-400 truncate font-mono">
                         {student.email}
@@ -385,21 +485,48 @@ export default function ProfissionalChatScreen() {
                         className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in`}
                       >
                         <div
-                          className={`max-w-[80%] sm:max-w-[65%] px-4 py-2.5 rounded-2xl text-xs font-inter leading-relaxed ${
+                          className={`relative group max-w-[80%] sm:max-w-[65%] px-4 py-2.5 rounded-2xl text-xs font-inter leading-relaxed ${
                             isMe
                               ? 'bg-[#0057FF] text-white rounded-br-none shadow-[0_4px_15px_rgba(0,87,255,0.25)]'
                               : 'bg-[#181818] text-gray-200 border border-[#D4AF37]/50 rounded-bl-none shadow-md'
                           }`}
                         >
-                          <p>{m.content}</p>
-                          <div className="flex items-center justify-end gap-1 mt-1 text-[10px] opacity-75 font-mono">
-                            <span>
-                              {new Date(m.created).toLocaleTimeString('pt-BR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
-                            {isMe && <CheckCheck className="w-3 h-3 text-[#D4AF37]" />}
+                          <p className="whitespace-pre-wrap break-words">{m.content}</p>
+
+                          <div className="flex items-center justify-between gap-3 mt-1.5 pt-1 border-t border-white/10 text-[10px] opacity-80 font-mono">
+                            {/* Botão de Denúncia (Report) */}
+                            {m.reported ? (
+                              <span className="inline-flex items-center gap-1 text-red-400 font-semibold font-montserrat">
+                                <Flag className="w-3 h-3 fill-red-400" /> Denunciada
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReport(m)}
+                                title="Denunciar mensagem à moderação"
+                                className="opacity-60 hover:opacity-100 text-gray-300 hover:text-red-400 inline-flex items-center gap-1 transition-colors"
+                              >
+                                <Flag className="w-3 h-3" />
+                                <span className="hidden group-hover:inline text-[9px] font-sans">
+                                  Denunciar
+                                </span>
+                              </button>
+                            )}
+
+                            <div className="flex items-center gap-1 ml-auto">
+                              <span>
+                                {new Date(m.created).toLocaleTimeString('pt-BR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                              {isMe &&
+                                (m.read ? (
+                                  <CheckCheck className="w-3.5 h-3.5 text-[#D4AF37]" title="Lida" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5 text-white/70" title="Enviada" />
+                                ))}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -412,12 +539,20 @@ export default function ProfissionalChatScreen() {
               {/* Chat Input */}
               <div className="p-3 bg-[#181818] border-t border-[#2A2A2A]">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                  <Input
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder={`Enviar mensagem para ${activeStudent.name}...`}
-                    className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white"
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder={`Enviar mensagem para ${activeStudent.name}... (máx. 2.000 caracteres)`}
+                      maxLength={2000}
+                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white pr-14"
+                    />
+                    {inputText.length > 1500 && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono">
+                        {2000 - inputText.length}
+                      </span>
+                    )}
+                  </div>
                   <Button
                     type="submit"
                     disabled={sending || !inputText.trim()}

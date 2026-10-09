@@ -10,16 +10,19 @@ import {
   Send,
   Video,
   Download,
+  Check,
   CheckCheck,
   Loader2,
   Users,
   Search,
   MessageSquare,
   Sparkles,
+  Flag,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ChatTermsModal } from '@/components/ChatTermsModal'
 import { exportChatToPdf } from '@/lib/chatExport'
+import { ReportMessageModal } from '@/components/ReportMessageModal'
 
 interface ProfessionalContact {
   id: string
@@ -30,6 +33,7 @@ interface ProfessionalContact {
   specialties?: string[] | string
   plan?: string
   isLinked?: boolean
+  unreadCount?: number
 }
 
 export default function ChatScreen() {
@@ -46,6 +50,10 @@ export default function ChatScreen() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loadingProfs, setLoadingProfs] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Denúncia de mensagem
+  const [reportModalOpen, setReportModalOpen] = useState(false)
+  const [reportingMsg, setReportingMsg] = useState<MessageRecord | null>(null)
 
   // Termos do Chat
   const [termsAccepted, setTermsAccepted] = useState(true)
@@ -117,10 +125,24 @@ export default function ChatScreen() {
           }
         }
 
-        // Mark isLinked
+        // Buscar mensagens não lidas recebidas de cada profissional
+        let unreadCountsBySender: Record<string, number> = {}
+        try {
+          const unreadRes = await pb.collection('messages').getList<MessageRecord>(1, 200, {
+            filter: `receiver = "${user.id}" && read = false`,
+          })
+          unreadRes.items.forEach((m) => {
+            unreadCountsBySender[m.sender] = (unreadCountsBySender[m.sender] || 0) + 1
+          })
+        } catch {
+          // Mantém contagem zerada se falhar
+        }
+
+        // Mark isLinked e unreadCount
         const mappedProfs = allProfs.map((p) => ({
           ...p,
           isLinked: linkedProfId ? p.id === linkedProfId : false,
+          unreadCount: unreadCountsBySender[p.id] || 0,
         }))
 
         // Sort: linked first, then alphabetical
@@ -172,6 +194,21 @@ export default function ChatScreen() {
       return
     }
 
+    // Função auxiliar para marcar mensagens recebidas como lidas
+    const markIncomingAsRead = (list: MessageRecord[]) => {
+      const unreadIncoming = list.filter((m) => m.receiver === user.id && !m.read)
+      unreadIncoming.forEach((m) => {
+        pb.collection('messages')
+          .update(m.id, { read: true })
+          .catch(() => {})
+      })
+      if (unreadIncoming.length > 0) {
+        setProfessionals((prev) =>
+          prev.map((p) => (p.id === activeProf.id ? { ...p, unreadCount: 0 } : p)),
+        )
+      }
+    }
+
     pb.collection('messages')
       .getList<MessageRecord>(1, 100, {
         filter: `(sender = "${user.id}" && receiver = "${activeProf.id}") || (sender = "${activeProf.id}" && receiver = "${user.id}")`,
@@ -179,6 +216,7 @@ export default function ChatScreen() {
       })
       .then((res) => {
         setMessages(res.items)
+        markIncomingAsRead(res.items)
       })
       .catch(() => {
         setMessages([])
@@ -190,17 +228,32 @@ export default function ChatScreen() {
     // Realtime subscription
     pb.collection('messages')
       .subscribe('*', (e) => {
+        const changedMsg = e.record as unknown as MessageRecord
+        const isCurrentConv =
+          (changedMsg.sender === user.id && changedMsg.receiver === activeProf.id) ||
+          (changedMsg.sender === activeProf.id && changedMsg.receiver === user.id)
+
         if (e.action === 'create') {
-          const newMsg = e.record as unknown as MessageRecord
-          if (
-            (newMsg.sender === user.id && newMsg.receiver === activeProf.id) ||
-            (newMsg.sender === activeProf.id && newMsg.receiver === user.id)
-          ) {
+          if (isCurrentConv) {
             setMessages((prev) => {
-              if (prev.some((m) => m.id === newMsg.id)) return prev
-              return [...prev, newMsg]
+              if (prev.some((m) => m.id === changedMsg.id)) return prev
+              return [...prev, changedMsg]
             })
+            if (changedMsg.receiver === user.id) {
+              pb.collection('messages')
+                .update(changedMsg.id, { read: true })
+                .catch(() => {})
+            }
+          } else if (changedMsg.receiver === user.id) {
+            // Incrementa badge de não lidas de outro profissional
+            setProfessionals((prev) =>
+              prev.map((p) =>
+                p.id === changedMsg.sender ? { ...p, unreadCount: (p.unreadCount || 0) + 1 } : p,
+              ),
+            )
           }
+        } else if (e.action === 'update' && isCurrentConv) {
+          setMessages((prev) => prev.map((m) => (m.id === changedMsg.id ? changedMsg : m)))
         }
       })
       .then((fn) => {
@@ -234,18 +287,25 @@ export default function ChatScreen() {
   const handleSelectProf = (prof: ProfessionalContact) => {
     setActiveProf(prof)
     navigate(`/aluno/chat/${prof.id}`)
+    setProfessionals((prev) => prev.map((p) => (p.id === prof.id ? { ...p, unreadCount: 0 } : p)))
   }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inputText.trim() || !user || !activeProf) return
+    const trimmed = inputText.trim()
+    if (!trimmed || !user || !activeProf) return
+
+    if (trimmed.length > 2000) {
+      toast.error('A mensagem excede o limite máximo de 2.000 caracteres.')
+      return
+    }
 
     setSending(true)
     try {
       await pb.collection('messages').create({
         sender: user.id,
         receiver: activeProf.id,
-        content: inputText,
+        content: trimmed,
         read: false,
       })
       setInputText('')
@@ -254,6 +314,28 @@ export default function ChatScreen() {
       toast.error(error.message || 'Erro ao enviar mensagem.')
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleOpenReport = (msg: MessageRecord) => {
+    setReportingMsg(msg)
+    setReportModalOpen(true)
+  }
+
+  const handleConfirmReport = async (msgId: string, reason: string) => {
+    try {
+      await pb.collection('messages').update(msgId, {
+        reported: true,
+        report_reason: reason,
+      })
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, reported: true, report_reason: reason } : m)),
+      )
+      toast.success('Denúncia registrada com sucesso para auditoria da moderação.')
+    } catch (err: unknown) {
+      const error = err as Error
+      toast.error(error.message || 'Erro ao registrar denúncia.')
+      throw err
     }
   }
 
@@ -321,6 +403,19 @@ export default function ChatScreen() {
         />
       )}
 
+      {/* Modal de Denúncia de Mensagem */}
+      <ReportMessageModal
+        open={reportModalOpen}
+        messageId={reportingMsg?.id || null}
+        messageContent={reportingMsg?.content}
+        senderName={reportingMsg?.sender === user?.id ? user.name : activeProf?.name}
+        onClose={() => {
+          setReportModalOpen(false)
+          setReportingMsg(null)
+        }}
+        onConfirmReport={handleConfirmReport}
+      />
+
       {/* Main Container */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 h-full overflow-hidden">
         {/* Left Sidebar: Professionals List */}
@@ -380,11 +475,18 @@ export default function ChatScreen() {
                         <span className="text-xs font-bold font-montserrat truncate text-white">
                           {prof.name}
                         </span>
-                        {prof.isLinked && (
-                          <span className="shrink-0 text-[9px] bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 px-1.5 py-0.2 rounded font-mono font-medium">
-                            Seu Profissional
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {prof.isLinked && (
+                            <span className="text-[9px] bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 px-1.5 py-0.2 rounded font-mono font-medium">
+                              Seu Profissional
+                            </span>
+                          )}
+                          {(prof.unreadCount || 0) > 0 && (
+                            <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center font-mono animate-pulse shadow-sm">
+                              {prof.unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p className="text-[10px] text-gray-400 truncate font-inter">
                         {getSpecialtyLabel(prof)}
@@ -475,21 +577,48 @@ export default function ChatScreen() {
                         className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in`}
                       >
                         <div
-                          className={`max-w-[80%] sm:max-w-[65%] px-4 py-2.5 rounded-2xl text-xs font-inter leading-relaxed ${
+                          className={`relative group max-w-[80%] sm:max-w-[65%] px-4 py-2.5 rounded-2xl text-xs font-inter leading-relaxed ${
                             isMe
                               ? 'bg-[#0057FF] text-white rounded-br-none shadow-[0_4px_15px_rgba(0,87,255,0.25)]'
                               : 'bg-[#181818] text-gray-200 border border-[#D4AF37]/50 rounded-bl-none shadow-md'
                           }`}
                         >
-                          <p>{m.content}</p>
-                          <div className="flex items-center justify-end gap-1 mt-1 text-[10px] opacity-75 font-mono">
-                            <span>
-                              {new Date(m.created).toLocaleTimeString('pt-BR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
-                            {isMe && <CheckCheck className="w-3 h-3 text-[#D4AF37]" />}
+                          <p className="whitespace-pre-wrap break-words">{m.content}</p>
+
+                          <div className="flex items-center justify-between gap-3 mt-1.5 pt-1 border-t border-white/10 text-[10px] opacity-80 font-mono">
+                            {/* Botão de Denúncia (Report) */}
+                            {m.reported ? (
+                              <span className="inline-flex items-center gap-1 text-red-400 font-semibold font-montserrat">
+                                <Flag className="w-3 h-3 fill-red-400" /> Denunciada
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReport(m)}
+                                title="Denunciar mensagem à moderação"
+                                className="opacity-60 hover:opacity-100 text-gray-300 hover:text-red-400 inline-flex items-center gap-1 transition-colors"
+                              >
+                                <Flag className="w-3 h-3" />
+                                <span className="hidden group-hover:inline text-[9px] font-sans">
+                                  Denunciar
+                                </span>
+                              </button>
+                            )}
+
+                            <div className="flex items-center gap-1 ml-auto">
+                              <span>
+                                {new Date(m.created).toLocaleTimeString('pt-BR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                              {isMe &&
+                                (m.read ? (
+                                  <CheckCheck className="w-3.5 h-3.5 text-[#D4AF37]" title="Lida" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5 text-white/70" title="Enviada" />
+                                ))}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -502,12 +631,20 @@ export default function ChatScreen() {
               {/* Chat Input */}
               <div className="p-3 bg-[#181818] border-t border-[#2A2A2A]">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                  <Input
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder={`Enviar mensagem para ${activeProf.name}...`}
-                    className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white"
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder={`Enviar mensagem para ${activeProf.name}... (máx. 2.000 caracteres)`}
+                      maxLength={2000}
+                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white pr-14"
+                    />
+                    {inputText.length > 1500 && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono">
+                        {2000 - inputText.length}
+                      </span>
+                    )}
+                  </div>
                   <Button
                     type="submit"
                     disabled={sending || !inputText.trim()}

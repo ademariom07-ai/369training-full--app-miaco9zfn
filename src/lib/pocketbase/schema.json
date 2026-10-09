@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T11:32:21.014Z",
+  "generatedAt": "2026-10-09T12:13:37.167Z",
   "collections": [
     {
       "name": "users",
@@ -1243,11 +1243,11 @@
       "name": "messages",
       "type": "base",
       "apiRules": {
-        "list": "sender = @request.auth.id || receiver = @request.auth.id",
-        "view": "sender = @request.auth.id || receiver = @request.auth.id",
+        "list": "sender = @request.auth.id || receiver = @request.auth.id || (@request.auth.role = \"admin\" && reported = true)",
+        "view": "sender = @request.auth.id || receiver = @request.auth.id || (@request.auth.role = \"admin\" && reported = true)",
         "create": "@request.body.sender = @request.auth.id && @request.body.receiver != @request.auth.id",
-        "update": "sender = @request.auth.id || receiver = @request.auth.id",
-        "delete": "sender = @request.auth.id"
+        "update": "sender = @request.auth.id || receiver = @request.auth.id || (@request.auth.role = \"admin\" && reported = true)",
+        "delete": "sender = @request.auth.id || (@request.auth.role = \"admin\" && reported = true)"
       },
       "fields": [
         {

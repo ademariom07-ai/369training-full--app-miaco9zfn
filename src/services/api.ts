@@ -200,6 +200,8 @@ export interface MessageRecord extends RecordModel {
   receiver: string
   content: string
   read?: boolean
+  reported?: boolean
+  report_reason?: string
   expand?: {
     sender?: RecordModel
     receiver?: RecordModel
