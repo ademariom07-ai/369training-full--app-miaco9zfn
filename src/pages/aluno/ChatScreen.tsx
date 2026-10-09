@@ -59,22 +59,34 @@ export default function ChatScreen() {
   const [termsAccepted, setTermsAccepted] = useState(true)
   const [checkingTerms, setCheckingTerms] = useState(true)
 
-  // 1. Check terms acceptance
+  // 1. Check terms acceptance (suporta chat_terms_accepted e chat_terms_acceptances)
   useEffect(() => {
     if (!user) return
 
+    let isMounted = true
     setCheckingTerms(true)
-    pb.collection('chat_terms_accepted')
-      .getFirstListItem(`user_id = "${user.id}"`)
-      .then(() => {
-        setTermsAccepted(true)
-      })
-      .catch(() => {
-        setTermsAccepted(false)
-      })
-      .finally(() => {
-        setCheckingTerms(false)
-      })
+
+    const checkTerms = async () => {
+      try {
+        await pb.collection('chat_terms_accepted').getFirstListItem(`user_id = "${user.id}"`)
+        if (isMounted) setTermsAccepted(true)
+      } catch {
+        try {
+          await pb.collection('chat_terms_acceptances').getFirstListItem(`user = "${user.id}"`)
+          if (isMounted) setTermsAccepted(true)
+        } catch {
+          if (isMounted) setTermsAccepted(false)
+        }
+      } finally {
+        if (isMounted) setCheckingTerms(false)
+      }
+    }
+
+    checkTerms()
+
+    return () => {
+      isMounted = false
+    }
   }, [user])
 
   // 2. Load professionals & determine linked professional
@@ -94,23 +106,25 @@ export default function ChatScreen() {
 
         const allProfs = profsRes.items
 
-        // Find linked professional via appointments or services
-        let linkedProfId: string | null = null
+        // Find linked professional via user profile, appointments or services
+        let linkedProfId: string | null = (user as any).linked_professional || null
 
-        // Try appointments sorted by updated/created descending
-        try {
-          const appRes = await pb.collection('appointments').getList(1, 1, {
-            filter: `aluno = "${user.id}"`,
-            sort: '-updated,-created',
-          })
-          if (appRes.items.length > 0 && appRes.items[0].profissional) {
-            linkedProfId = appRes.items[0].profissional
+        // Fallback: check appointments
+        if (!linkedProfId) {
+          try {
+            const appRes = await pb.collection('appointments').getList(1, 1, {
+              filter: `aluno = "${user.id}"`,
+              sort: '-updated,-created',
+            })
+            if (appRes.items.length > 0 && appRes.items[0].profissional) {
+              linkedProfId = appRes.items[0].profissional
+            }
+          } catch {
+            // Ignora se não houver appointments
           }
-        } catch {
-          // Ignora se não houver appointments
         }
 
-        // Try services sorted by updated/created descending
+        // Fallback: check services
         if (!linkedProfId) {
           try {
             const srvRes = await pb.collection('services').getList(1, 1, {

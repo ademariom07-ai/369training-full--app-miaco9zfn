@@ -57,22 +57,34 @@ export default function ProfissionalChatScreen() {
   const [termsAccepted, setTermsAccepted] = useState(true)
   const [checkingTerms, setCheckingTerms] = useState(true)
 
-  // 1. Check Chat Terms
+  // 1. Check Chat Terms (suporta chat_terms_accepted e chat_terms_acceptances)
   useEffect(() => {
     if (!user) return
 
+    let isMounted = true
     setCheckingTerms(true)
-    pb.collection('chat_terms_accepted')
-      .getFirstListItem(`user_id = "${user.id}"`)
-      .then(() => {
-        setTermsAccepted(true)
-      })
-      .catch(() => {
-        setTermsAccepted(false)
-      })
-      .finally(() => {
-        setCheckingTerms(false)
-      })
+
+    const checkTerms = async () => {
+      try {
+        await pb.collection('chat_terms_accepted').getFirstListItem(`user_id = "${user.id}"`)
+        if (isMounted) setTermsAccepted(true)
+      } catch {
+        try {
+          await pb.collection('chat_terms_acceptances').getFirstListItem(`user = "${user.id}"`)
+          if (isMounted) setTermsAccepted(true)
+        } catch {
+          if (isMounted) setTermsAccepted(false)
+        }
+      } finally {
+        if (isMounted) setCheckingTerms(false)
+      }
+    }
+
+    checkTerms()
+
+    return () => {
+      isMounted = false
+    }
   }, [user])
 
   // 2. Load Students List with unread counts

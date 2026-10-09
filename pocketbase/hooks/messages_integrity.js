@@ -35,10 +35,10 @@ onRecordCreate((e) => {
     }
 
     // Se o remetente for profissional, deve estar aprovado pela moderação
-    const role = senderUser.get('role') || 'aluno'
+    const role = senderUser.getString('role') || 'aluno'
     if (role === 'profissional') {
-      const isApproved = senderUser.get('approved')
-      if (isApproved === false || isApproved === 'false') {
+      const isApproved = senderUser.getBool('approved')
+      if (isApproved === false) {
         throw new BadRequestError(
           'Profissionais com cadastro pendente de aprovação não podem enviar mensagens.',
         )

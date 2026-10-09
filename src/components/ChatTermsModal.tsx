@@ -33,12 +33,31 @@ export function ChatTermsModal({ open, userId, onAccepted }: ChatTermsModalProps
       // Mock/hash IP representation
       const ipRaw = `${navigator.userAgent}_${window.location.host}_${userId}`
       const ipHash = await sha256(ipRaw)
+      const now = new Date().toISOString()
 
-      await pb.collection('chat_terms_accepted').create({
-        user_id: userId,
-        accepted_at: new Date().toISOString(),
-        ip_hash: ipHash,
-      })
+      // Registrar em chat_terms_accepted
+      try {
+        await pb.collection('chat_terms_accepted').create({
+          user_id: userId,
+          accepted_at: now,
+          ip_hash: ipHash,
+        })
+      } catch (e1) {
+        console.warn('Registro em chat_terms_accepted:', e1)
+      }
+
+      // Registrar também em chat_terms_acceptances para integridade mútua
+      try {
+        await pb.collection('chat_terms_acceptances').create({
+          user: userId,
+          accepted_at: now,
+          ip_address: 'browser-client',
+          user_agent: navigator.userAgent.slice(0, 200),
+          version: '1.0',
+        })
+      } catch (e2) {
+        console.warn('Registro em chat_terms_acceptances:', e2)
+      }
 
       toast.success('Termos e regras do Chat aceitos com sucesso!')
       onAccepted()
