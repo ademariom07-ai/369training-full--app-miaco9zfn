@@ -1,6 +1,6 @@
 import {expect,it} from 'vitest'
 import {calculateWellnessRankingPreview as score} from './rankingRules'
-import {calculateLinearCashbackPreview as cash,getEsgGuidance as esg,calculateMonthlyEsgPreview as release} from './cashbackLinearPreview'
+import {calculateLinearMonthlyCashbackPreview as monthly,calculateLinearCashbackPreview as cash,getEsgGuidance as esg,calculateMonthlyEsgPreview as release} from './cashbackLinearPreview'
 function rows(n:number){return Array.from({length:n},(_,i)=>score({version:'046-test',referrals:'minimum_one',rating:'rounded'},{id:String(i),multiplier:1,completedEligibleServices:n-i,validatedReferrals:1,rating:5,seniorityMonths:1,previousPoints:0,partnerPro:false,joinedAt:'2026-01-01T00:00:00Z'}))}
 it('approved linear distribution conserves a pool with uniformly descending weights',()=>{
  const r=cash(100000,rows(4))
@@ -66,4 +66,26 @@ it('approved 10000 BRL and 20 participants matches the accepted example exactly'
 })
 it('approved 200000 BRL and 500 participants conserves every cent',()=>{
  const r=cash(20000000,rows(500));expect([0,1,2,9,99,249,498,499].map(i=>r.participants[i].cashbackCents)).toEqual([79840,79681,79521,78403,64032,40080,319,160]);expect(r.distributedCents).toBe(20000000);expect(r.unallocatedCents).toBe(0)
+})
+
+it('monthly linear preview applies ESG by identity without changing position or redistributing reductions',()=>{
+ const input=rows(4),goals=[{id:'3',fulfilledProjects:0},{id:'1',fulfilledProjects:1},{id:'0',fulfilledProjects:3},{id:'2',fulfilledProjects:0}]
+ const r=monthly(10000000,input,goals)
+ expect(r.participants.map(p=>[p.position,p.cashbackCents,p.esg.requiredProjects,p.esg.payableCents])).toEqual([[1,4000000,3,4000000],[2,3000000,3,2100000],[3,2000000,3,1100000],[4,1000000,1,850000]])
+ expect(r.payableCents).toBe(8050000);expect(r.reductionCents).toBe(1950000);expect(r.unallocatedCents).toBe(0)
+})
+it('monthly integration conserves the pool at boundaries and maximum safe cents',()=>{
+ for(const pool of [0,1,1000000,1500000,2000000,Number.MAX_SAFE_INTEGER])for(const done of [0,1,2,3]){
+ const input=rows(7),r=monthly(pool,input,input.map(row=>({id:row.id,fulfilledProjects:done})))
+ expect(BigInt(r.payableCents)+BigInt(r.reductionCents)+BigInt(r.unallocatedCents)).toBe(BigInt(pool))
+ }
+})
+it('monthly integration keeps free position and leaves an ineligible pool unallocated',()=>{
+ const input=rows(2).map(row=>({...row,eligibleForCashback:false})),r=monthly(2000000,input,input.map(row=>({id:row.id,fulfilledProjects:3})))
+ expect(r).toMatchObject({payableCents:0,reductionCents:0,unallocatedCents:2000000});expect(r.participants.map(row=>row.position)).toEqual([1,2]);expect(monthly(100,[],[]).unallocatedCents).toBe(100)
+})
+it('monthly integration rejects missing duplicate unknown and malformed goal records',()=>{
+ const input=rows(1)
+ for(const goals of [[],[{id:'unknown',fulfilledProjects:0}],[{id:'0',fulfilledProjects:4}],[{id:'0',fulfilledProjects:NaN}],Array(1)])expect(()=>monthly(100,input,goals)).toThrow()
+ expect(()=>monthly(100,rows(2),[{id:'0',fulfilledProjects:1},{id:'0',fulfilledProjects:2}])).toThrow()
 })
