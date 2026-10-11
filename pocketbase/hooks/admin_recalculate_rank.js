@@ -52,21 +52,21 @@ routerAdd(
         const svcRows = $app
           .db()
           .newQuery(`
-          SELECT
-            CASE
-              WHEN (professional IS NOT NULL AND professional != '') THEN professional
-              ELSE student
-            END as user_id,
-            COUNT(*) as total_svc
-          FROM services
-          WHERE status = 'concluido'
-            AND validated = 1
-            AND created >= {:monthStart}
+          SELECT u.id as user_id, COUNT(DISTINCT s.id) as total_svc
+          FROM services s
+          JOIN users u ON (
+            (u.role = 'profissional' AND s.professional = u.id)
+            OR (u.role = 'aluno' AND s.student = u.id)
+          )
+          WHERE u.approved = 1
+            AND s.status = 'concluido'
+            AND s.validated = 1
+            AND s.created >= {:monthStart}
             AND NOT (
-              (type LIKE '%treino%' OR type LIKE '%workout%')
-              AND (professional IS NULL OR professional = '')
+              (LOWER(COALESCE(s.type, '')) LIKE '%treino%' OR LOWER(COALESCE(s.type, '')) LIKE '%workout%')
+              AND (s.professional IS NULL OR s.professional = '')
             )
-          GROUP BY user_id
+          GROUP BY u.id
         `)
           .bind({ monthStart: currentMonthStart })
           .all()
@@ -78,6 +78,7 @@ routerAdd(
         }
       } catch (err) {
         console.warn('Erro ao consultar agregação de serviços:', err)
+        throw new Error('Não foi possível validar a contagem de serviços; recálculo interrompido.')
       }
 
       // Agregações de indicações no mês por usuário
