@@ -194,7 +194,11 @@ routerAdd(
         const indicacoesCount = monthRefCounts[u.id] || 0
         const totalIndicacoes = allRefCounts[u.id] || 0
 
-        const avaliacao = Math.round(Number(u.rating_avg ?? 5))
+        const ratingValue = u.rating_avg ?? 5
+        if (typeof ratingValue !== 'number' || !Number.isFinite(ratingValue) || ratingValue < 0 || ratingValue > 5) {
+          throw new Error('Avaliação fora do intervalo permitido; recálculo interrompido.')
+        }
+        const avaliacao = Math.round(ratingValue)
 
         const createdDate = u.created ? new Date(u.created.replace(' ', 'T')) : new Date()
         const diffMonths = Math.max(

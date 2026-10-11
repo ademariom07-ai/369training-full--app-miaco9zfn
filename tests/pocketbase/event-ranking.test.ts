@@ -28,3 +28,5 @@ it('review averaging includes zero without replacing it with five',()=>{
  runInNewContext(block,{revieweeId:'student',console,$app:{findRecordsByFilter:()=>[0,4].map(rating=>({get:()=>rating})),findRecordById:()=>user,save:(record:unknown)=>{expect(record).toBe(user);saved++}}})
  expect(values.rating_avg).toBe(2);expect(saved).toBe(1)
 })
+
+it('event ranking blocks reject invalid ratings',()=>{for(const block of blocks)for(const rating of [-1,5.01,NaN,Infinity,'4' as unknown as number])expect(()=>calculate(block.source,false,rating)).toThrow('Avaliação fora do intervalo permitido')})

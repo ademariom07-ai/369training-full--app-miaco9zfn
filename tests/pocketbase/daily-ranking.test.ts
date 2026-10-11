@@ -19,3 +19,5 @@ it('daily legacy ranking resolves exact ties deterministically by identity',()=>
 it('last day daily run does not close the month or create financial records',()=>{const writes=run();expect(writes).toHaveLength(3);expect(writes.every(r=>r.collection==='rank_entries')).toBe(true)})
 
 it('daily ranking preserves zero rating',()=>{expect(run(0).find(row=>row.values.user==='a-free')?.values).toMatchObject({stars:0,points:10})})
+
+it('daily ranking rejects invalid ratings',()=>{for(const rating of [-1,5.01,NaN,Infinity,'4' as unknown as number])expect(()=>run(rating)).toThrow('Avaliação fora do intervalo permitido')})
