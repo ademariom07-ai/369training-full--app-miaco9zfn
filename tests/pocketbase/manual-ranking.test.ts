@@ -29,7 +29,7 @@ function run(role:string|null='admin',failure:string|boolean=false,rating=4){
  })
  return {writes,queries,response,persisted,committed,attempted}
 }
-it('manual recalc preserves free rating seniority and previous points without inheriting a plan',()=>{const {writes,response}=run();expect(response?.status).toBe(200);for(const id of ['a-free','z-free']){const row=writes.find(r=>r.user===id)!;expect(row.points).toBe(24);expect(JSON.parse(String(row.tie_break_details))).toMatchObject({plan_multiplier:0,monthly_points:14,closed_past_points:10})}})
+it('manual recalc preserves free rating seniority and previous points without inheriting a plan',()=>{const {writes,response}=run();expect(response?.status).toBe(200);for(const id of ['a-free','z-free']){const row=writes.find(r=>r.user===id)!;expect(row.points).toBe(35);expect(JSON.parse(String(row.tie_break_details))).toMatchObject({plan_multiplier:0,monthly_points:25,closed_past_points:10})}})
 it('manual recalc keeps cap150 and stable identity tie breaks',()=>{const {writes}=run();expect(writes.map(r=>r.user)).toEqual(['p-paid','cap','a-free','z-free']);expect(writes.find(r=>r.user==='cap')?.services_count).toBe(150);expect(writes.find(r=>r.user==='p-paid')?.services_count).toBe(200)})
 it('manual recalc denies unauthenticated and nonadmin requests before database access',()=>{for(const role of [null,'aluno','profissional']){const r=run(role);expect(r.response?.status).toBe(role===null?401:403);expect(r.queries).toEqual([]);expect(r.writes).toEqual([])}})
 
@@ -39,6 +39,6 @@ it('query failures preserve prior ranking and return no database details',()=>{f
 it('delete partial write and commit failures rollback the entire simulated transaction',()=>{for(const failure of ['delete','second-write','commit']){const r=run('admin',failure);expect(r.response?.status).toBe(500);expect(r.persisted).toEqual([{user:'previous',points:99}]);expect(r.writes).toEqual([]);expect(r.committed).toBe(false);if(failure==='second-write')expect(r.attempted).toBe(2)}})
 it('successful response is emitted only after transaction commit',()=>{const r=run();expect(r.committed).toBe(true);expect(r.persisted).toHaveLength(4);expect(r.response?.status).toBe(200)})
 
-it('manual ranking keeps a zero rating instead of substituting five',()=>{const r=run('admin',false,0);expect(r.response?.status).toBe(200);expect(r.writes.find(row=>row.user==='a-free')).toMatchObject({stars:0,points:20})})
+it('manual ranking keeps a zero rating instead of substituting five',()=>{const r=run('admin',false,0);expect(r.response?.status).toBe(200);expect(r.writes.find(row=>row.user==='a-free')).toMatchObject({stars:0,points:31})})
 
 it('manual ranking rejects corrupt rating values without committing ranking changes',()=>{for(const rating of [-1,5.01,NaN,Infinity,'4' as unknown as number]){const r=run('admin',false,rating);expect(r.response?.status).toBe(500);expect(r.committed).toBe(false);expect(r.writes).toEqual([]);expect(r.persisted).toEqual([{user:'previous',points:99}])}})

@@ -2,6 +2,12 @@
 
 Fonte: respostas diretas do usuário após a análise da ATUALIZAÇÃO 0.46. Este registro prevalece sobre a interpretação anterior de que Grátis não pontua/não aparece e sobre qualquer posição financeira por ordem de entrada.
 
+## Antiguidade e avaliação confirmadas em 11/10/2026
+
+Antiguidade = máximo(1, meses), sem teto de 10. Confirmação expressa do usuário: remover o teto. Avaliação de 0 a 5 estrelas; quem ainda não recebeu avaliação começa com 5. Grátis usa multiplicador 0 e soma apenas avaliação + antiguidade: iniciante = 6; com nota 5 e 24 meses = 29. Zero real não pode virar cinco. Pontos anteriores continuam acumulados separadamente.
+
+Removido teto do motor TypeScript, cinco blocos dos hooks de ranking, backfill de tarifas e simulador administrativo legado. Estes últimos mantêm cálculo histórico por períodos de 30 dias; não foi alterado para aniversário de mês civil. A regra de antiguidade passa a integrar a chave de política da simulação, evitando mistura com resultados da versão anterior. Cadastros reais e valores padrão persistidos ainda exigem homologação para distinguir zero real de ausência de avaliação.
+
 ## Padrão de distribuição aprovado em 09/10/2026
 
 O usuário aprovou expressamente a fórmula linear global como padrão, substituindo o corretor por níveis para os novos cálculos. Versão: `global-linear-v1`. Para N posições do ranking geral, peso da posição r = N − r + 1 se elegível, zero caso contrário. Cashback bruto = montante administrativo × peso / soma dos pesos elegíveis. N inclui Grátis; as posições não são renumeradas para pagamentos. Sem elegíveis, todo o montante permanece não distribuído. Centavos por maiores restos, desempate pela posição. ESG aplicado depois ao bruto mensal de cada participante. A aprovação da fórmula não ativa pagamentos nem define por si só indicação zero, critérios de elegibilidade ou destino das reduções ESG.

@@ -1,4 +1,5 @@
 /** Explicit simulation policies. No active production policy or ledger writes. */
+export const APPROVED_SENIORITY_RULE='months-min-one-no-cap-2026-10-11' as const
 export const APPROVED_PARTNER_SERVICES='cap_150' as const
 export const PARTNER_SERVICE_CAP=150
 export function countedRankingServices(completed:number,partnerPro:boolean){integer(completed);if(typeof partnerPro!=='boolean')throw Error('Plano inválido.');return partnerPro?Math.min(completed,PARTNER_SERVICE_CAP):completed}
@@ -11,7 +12,7 @@ function pointHundredths(value:number){
  if(!Number.isFinite(value)||value<0||!Number.isSafeInteger(rounded)||Math.abs(scaled-rounded)>0.000001)throw Error('Pontuação fora dos limites.')
  return rounded
 }
-function policyKey(policy:RankingPolicy){return JSON.stringify([policy.version,policy.referrals,policy.partnerServices,policy.rating])}
+function policyKey(policy:RankingPolicy){return JSON.stringify([APPROVED_SENIORITY_RULE,policy.version,policy.referrals,policy.partnerServices,policy.rating])}
 export function calculateRankingPreview(policy:RankingPolicy,facts:RankingFacts){
  if(!policy||typeof policy.version!=='string'||!policy.version.trim()||policy.version.length>80||!['minimum_one','plus_one','legacy_divisor_18'].includes(policy.referrals)||!['actual','floor_150','cap_150'].includes(policy.partnerServices)||!['rounded','exact'].includes(policy.rating))throw Error('Defina uma versão completa das regras.')
  if(!facts||typeof facts.id!=='string'||!facts.id.trim()||!Number.isFinite(Date.parse(facts.joinedAt))||!Number.isFinite(facts.rating)||facts.rating<0||facts.rating>5)throw Error('Participante inválido.')
@@ -20,7 +21,7 @@ export function calculateRankingPreview(policy:RankingPolicy,facts:RankingFacts)
  const effectiveServices=facts.partnerPro?policy.partnerServices==='floor_150'?Math.max(services,150):policy.partnerServices==='cap_150'?countedRankingServices(services,true):services:services
  const factor=policy.referrals==='minimum_one'?Math.max(referrals,1):policy.referrals==='plus_one'?referrals+1:referrals/18+1
  const rating=policy.rating==='rounded'?Math.round(facts.rating):facts.rating
- const monthly=Math.round(multiplier*effectiveServices*factor)+rating+Math.min(10,Math.max(age,1))
+ const monthly=Math.round(multiplier*effectiveServices*factor)+rating+Math.max(age,1)
  const monthlyHundredths=pointHundredths(monthly),totalHundredths=previous+monthlyHundredths
  if(!Number.isSafeInteger(totalHundredths))throw Error('Pontuação fora dos limites.')
  return {simulationOnly:true as const,rulesVersion:policy.version,rulesKey:policyKey(policy),eligibleForCashback:multiplier>0,id:facts.id,monthlyPoints:monthlyHundredths/100,totalPoints:totalHundredths/100,rating,joinedAt:facts.joinedAt}

@@ -197,7 +197,7 @@ onRecordAfterCreateSuccess((e) => {
         1,
         Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)),
       )
-      const antiguidade = Math.min(diffMonths, 10)
+      const antiguidade = Math.max(diffMonths, 1)
 
       const indicacoesFator = Math.max(indicacoesCount, 1)
       const monthlyPoints =

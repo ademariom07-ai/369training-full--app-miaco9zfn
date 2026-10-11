@@ -977,7 +977,7 @@ export default function AdminRankingConfig() {
           1,
           Math.floor((now.getTime() - userCreated.getTime()) / (1000 * 60 * 60 * 24 * 30)),
         )
-        const antiguidade = Math.min(diffMonths, 10)
+        const antiguidade = Math.max(diffMonths, 1)
 
         const countedServices = countedRankingServices(svcs.length,isProParceiro)
         const indicacoesFator = Math.max(refsMonth.length, 1)

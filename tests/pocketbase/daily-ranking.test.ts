@@ -14,10 +14,10 @@ function run(rating=4){
  })
  expect(registered).toBe(1);return writes
 }
-it('daily legacy ranking includes free students and professionals with only rating and seniority',()=>{const writes=run();for(const id of ['a-free','z-free']){const row=writes.find(r=>r.values.user===id)!;expect(row.values.points).toBe(14);expect(row.values.tie_break_details).toMatchObject({plan_multiplier:0,monthly_points:14})}})
+it('daily legacy ranking includes free students and professionals with only rating and seniority',()=>{const writes=run();for(const id of ['a-free','z-free']){const row=writes.find(r=>r.values.user===id)!;expect(row.values.points).toBe(26);expect(row.values.tie_break_details).toMatchObject({plan_multiplier:0,monthly_points:26})}})
 it('daily legacy ranking resolves exact ties deterministically by identity',()=>{const writes=run();expect(writes.map(r=>r.values.user)).toEqual(['p-paid','a-free','z-free']);expect(writes.map(r=>r.values.ranking_position)).toEqual([1,2,3])})
 it('last day daily run does not close the month or create financial records',()=>{const writes=run();expect(writes).toHaveLength(3);expect(writes.every(r=>r.collection==='rank_entries')).toBe(true)})
 
-it('daily ranking preserves zero rating',()=>{expect(run(0).find(row=>row.values.user==='a-free')?.values).toMatchObject({stars:0,points:10})})
+it('daily ranking preserves zero rating',()=>{expect(run(0).find(row=>row.values.user==='a-free')?.values).toMatchObject({stars:0,points:22})})
 
 it('daily ranking rejects invalid ratings',()=>{for(const rating of [-1,5.01,NaN,Infinity,'4' as unknown as number])expect(()=>run(rating)).toThrow('Avaliação fora do intervalo permitido')})

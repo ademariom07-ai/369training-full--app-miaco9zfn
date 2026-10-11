@@ -249,14 +249,14 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
 
       // 5. Pontuação do Mês Vigente (Bloco 2)
       // FÓRMULA CAMINHO C: (PLANO) x (SERVIÇOS) x (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
-      // Plano Grátis = 0x → NÃO pontua!
-      const avaliacao = Math.round(Number(user.rating_avg || 5))
+      // Plano Grátis mantém avaliação e antiguidade, sem cashback.
+      const avaliacao = Math.round(Number(user.rating_avg ?? 5))
       const createdDate = user.created ? new Date(user.created) : new Date()
       const diffMonths = Math.max(
         1,
         Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)),
       )
-      const antiguidade = Math.min(diffMonths, 10)
+      const antiguidade = Math.max(diffMonths, 1)
 
       let calcMesPoints = 0
       if (planMultiplier > 0) {
@@ -264,7 +264,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
         calcMesPoints =
           Math.round(planMultiplier * servsThisMonthCount * indFator) + avaliacao + antiguidade
       } else {
-        calcMesPoints = 0 // Grátis = 0 pts
+        calcMesPoints = avaliacao + antiguidade // Grátis participa do ranking
       }
       setPontuacaoMensal(calcMesPoints)
 
