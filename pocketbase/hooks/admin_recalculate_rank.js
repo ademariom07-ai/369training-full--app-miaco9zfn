@@ -29,6 +29,8 @@ routerAdd(
         })
       }
 
+      let summary
+      $app.runInTransaction((txApp) => {
       const cycle = new Date().toISOString().slice(0, 7)
       const now = new Date()
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -49,7 +51,8 @@ routerAdd(
       // Agregações de serviços concluídos válidos no mês por usuário
       const serviceCounts = {}
       try {
-        const svcRows = $app
+        const svcRows = arrayOf(new DynamicModel({"user_id": "", "total_svc": 0}))
+        txApp
           .db()
           .newQuery(`
           SELECT u.id as user_id, COUNT(DISTINCT s.id) as total_svc
@@ -69,7 +72,7 @@ routerAdd(
           GROUP BY u.id
         `)
           .bind({ monthStart: currentMonthStart })
-          .all()
+          .all(svcRows)
 
         for (const row of svcRows) {
           if (row.user_id) {
@@ -84,7 +87,8 @@ routerAdd(
       // Agregações de indicações no mês por usuário
       const monthRefCounts = {}
       try {
-        const refMonthRows = $app
+        const refMonthRows = arrayOf(new DynamicModel({"referrer": "", "total_ref": 0}))
+        txApp
           .db()
           .newQuery(`
           SELECT referrer, COUNT(*) as total_ref
@@ -93,7 +97,7 @@ routerAdd(
           GROUP BY referrer
         `)
           .bind({ monthStart: currentMonthStart })
-          .all()
+          .all(refMonthRows)
 
         for (const row of refMonthRows) {
           if (row.referrer) {
@@ -102,19 +106,21 @@ routerAdd(
         }
       } catch (err) {
         console.warn('Erro ao consultar indicações do mês:', err)
+        throw new Error("Falha no recálculo; nenhuma alteração confirmada.")
       }
 
       // Agregações de indicações totais
       const allRefCounts = {}
       try {
-        const refAllRows = $app
+        const refAllRows = arrayOf(new DynamicModel({"referrer": "", "total_ref": 0}))
+        txApp
           .db()
           .newQuery(`
           SELECT referrer, COUNT(*) as total_ref
           FROM referrals
           GROUP BY referrer
         `)
-          .all()
+          .all(refAllRows)
 
         for (const row of refAllRows) {
           if (row.referrer) {
@@ -123,12 +129,14 @@ routerAdd(
         }
       } catch (err) {
         console.warn('Erro ao consultar indicações totais:', err)
+        throw new Error("Falha no recálculo; nenhuma alteração confirmada.")
       }
 
       // Agregações de pontos passados de snapshots fechados
       const pastSnapPoints = {}
       try {
-        const snapRows = $app
+        const snapRows = arrayOf(new DynamicModel({"user": "", "total_past": 0}))
+        txApp
           .db()
           .newQuery(`
           SELECT user, SUM(points) as total_past
@@ -137,7 +145,7 @@ routerAdd(
           GROUP BY user
         `)
           .bind({ cycle: cycle })
-          .all()
+          .all(snapRows)
 
         for (const row of snapRows) {
           if (row.user) {
@@ -146,17 +154,19 @@ routerAdd(
         }
       } catch (err) {
         console.warn('Erro ao consultar snapshots passados:', err)
+        throw new Error("Falha no recálculo; nenhuma alteração confirmada.")
       }
 
       // Buscar todos os usuários aprovados
-      const usersRows = $app
+      const usersRows = arrayOf(new DynamicModel({"id": "", "name": "", "role": "", "plan": "", "subscription_status": "", "linked_professional": "", "rating_avg": 0, "created": ""}))
+        txApp
         .db()
         .newQuery(`
         SELECT id, name, role, plan, subscription_status, linked_professional, rating_avg, created
         FROM users
         WHERE approved = 1
       `)
-        .all()
+        .all(usersRows)
 
       const scores = []
 
@@ -232,26 +242,28 @@ routerAdd(
         return joined || (a.user_id < b.user_id ? -1 : a.user_id > b.user_id ? 1 : 0)
       })
 
-      // Gravar entradas do ranking no ciclo atual com SQL direto (.all()/.execute() sem transação)
+      // Gravar entradas do ranking no ciclo atual com SQL direto em transação única
       try {
         // 1. Limpar entradas de ciclos passados em rank_entries
-        $app
+        txApp
           .db()
           .newQuery('DELETE FROM rank_entries WHERE cycle != {:cycle}')
           .bind({ cycle: cycle })
           .execute()
       } catch (delErr) {
         console.warn('Aviso ao limpar rank_entries de ciclos passados:', delErr)
+        throw new Error("Falha no recálculo; nenhuma alteração confirmada.")
       }
 
       // 2. Mapear IDs de rank_entries já existentes para este ciclo
       const existingEntries = {}
       try {
-        const rows = $app
+        const rows = arrayOf(new DynamicModel({"id": "", "user": ""}))
+        txApp
           .db()
           .newQuery('SELECT id, user FROM rank_entries WHERE cycle = {:cycle}')
           .bind({ cycle: cycle })
-          .all()
+          .all(rows)
         for (const r of rows) {
           if (r.user && !existingEntries[r.user]) {
             existingEntries[r.user] = r.id
@@ -259,6 +271,7 @@ routerAdd(
         }
       } catch (fetchErr) {
         console.warn('Aviso ao consultar rank_entries existentes:', fetchErr)
+        throw new Error("Falha no recálculo; nenhuma alteração confirmada.")
       }
 
       // 3. Atualizar ou inserir em lotes
@@ -288,7 +301,7 @@ routerAdd(
         const tieBreak = JSON.stringify(tieBreakObj)
 
         try {
-          $app
+          txApp
             .db()
             .newQuery(`
             INSERT OR REPLACE INTO rank_entries (
@@ -316,22 +329,25 @@ routerAdd(
             .execute()
         } catch (insertErr) {
           console.warn(`Erro ao salvar rank_entry do usuário ${s.user_id}:`, insertErr)
+        throw new Error("Falha no recálculo; nenhuma alteração confirmada.")
         }
       }
 
-      return c.json(200, {
+      summary = {
         status: 'ok',
         total_ranked: scores.length,
         cycle: cycle,
         message:
           'Recálculo legado concluído com teto PRO PARCEIRO e participação do Grátis. Não representa fechamento financeiro homologado.',
+      }
       })
+      return c.json(200, summary)
     } catch (err) {
       console.error('Erro no recalculate_rank:', err)
       return c.json(500, {
         status: 'error',
         code: 'RECALCULATE_ERROR',
-        message: err ? err.message : 'Erro interno ao recalcular ranking.',
+        message: 'Não foi possível recalcular o ranking. Nenhuma alteração foi confirmada.',
       })
     }
   },
