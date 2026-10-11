@@ -30,3 +30,12 @@ it('review averaging includes zero without replacing it with five',()=>{
 })
 
 it('event ranking blocks reject invalid ratings',()=>{for(const block of blocks)for(const rating of [-1,5.01,NaN,Infinity,'4' as unknown as number])expect(()=>calculate(block.source,false,rating)).toThrow('Avaliação fora do intervalo permitido')})
+
+it('event ranking retains decimal averages',()=>{for(const b of blocks)expect(calculate(b.source,false,3.8).find(r=>r.user.id==='a-free')).toMatchObject({monthly_points:24.8,total_points:34.8})})
+
+it('review average includes more than 500 reviews and retains repeating decimals',()=>{
+ const source=readFileSync('pocketbase/hooks/on_review_created.js','utf8');const block=source.slice(source.indexOf('  // 2. Atualizar'),source.indexOf('  // 3. RECÁLCULO'))
+ const ratings=[...Array(500).fill(5),0,1];const offsets:number[]=[];let average=0
+ runInNewContext(block,{revieweeId:'student',console,$app:{findRecordsByFilter:(_c:string,_f:string,_s:string,limit:number,offset:number)=>{offsets.push(offset);return ratings.slice(offset,offset+limit).map(rating=>({get:()=>rating}))},findRecordById:()=>({set:(_k:string,v:number)=>{average=v}}),save:()=>{}}})
+ expect(offsets).toEqual([0,500]);expect(average).toBe(2501/502)
+})

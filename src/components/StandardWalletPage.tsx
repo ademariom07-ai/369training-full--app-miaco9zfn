@@ -250,7 +250,7 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
       // 5. Pontuação do Mês Vigente (Bloco 2)
       // FÓRMULA CAMINHO C: (PLANO) x (SERVIÇOS) x (INDICAÇÕES) + AVALIAÇÃO + ANTIGUIDADE
       // Plano Grátis mantém avaliação e antiguidade, sem cashback.
-      const avaliacao = Math.round(Number(user.rating_avg ?? 5))
+      const avaliacao = Number(user.rating_avg ?? 5)
       const createdDate = user.created ? new Date(user.created) : new Date()
       const diffMonths = Math.max(
         1,

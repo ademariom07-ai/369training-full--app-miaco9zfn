@@ -42,3 +42,5 @@ it('successful response is emitted only after transaction commit',()=>{const r=r
 it('manual ranking keeps a zero rating instead of substituting five',()=>{const r=run('admin',false,0);expect(r.response?.status).toBe(200);expect(r.writes.find(row=>row.user==='a-free')).toMatchObject({stars:0,points:31})})
 
 it('manual ranking rejects corrupt rating values without committing ranking changes',()=>{for(const rating of [-1,5.01,NaN,Infinity,'4' as unknown as number]){const r=run('admin',false,rating);expect(r.response?.status).toBe(500);expect(r.committed).toBe(false);expect(r.writes).toEqual([]);expect(r.persisted).toEqual([{user:'previous',points:99}])}})
+
+it('manual ranking retains decimal averages',()=>{expect(run('admin',false,3.8).writes.find(r=>r.user==='a-free')).toMatchObject({stars:3.8,points:34.8})})

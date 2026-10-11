@@ -50,24 +50,32 @@ onRecordAfterCreateSuccess((e) => {
   // 2. Atualizar rating_avg do reviewee
   if (revieweeId) {
     try {
-      const allReviewsForReviewee = $app.findRecordsByFilter(
-        'service_reviews',
-        `reviewee = '${revieweeId}'`,
-        '-created',
-        500,
-        0,
-      )
-      if (allReviewsForReviewee && allReviewsForReviewee.length > 0) {
-        let sum = 0
-        for (const r of allReviewsForReviewee) {
-          sum += Number(r.get('rating') ?? 5)
+      let sum = 0
+      let count = 0
+      const pageSize = 500
+      for (let offset = 0; ; offset += pageSize) {
+        const reviews = $app.findRecordsByFilter(
+          'service_reviews',
+          `reviewee = '${revieweeId}'`,
+          'created,id',
+          pageSize,
+          offset,
+        )
+        for (const review of reviews) {
+          const rating = review.get('rating')
+          if (typeof rating !== 'number' || !Number.isFinite(rating) || rating < 0 || rating > 5) {
+            throw new Error('Avaliação fora do intervalo permitido')
+          }
+          sum += rating
+          count++
         }
-        const avg = parseFloat((sum / allReviewsForReviewee.length).toFixed(2))
-        const revieweeUser = $app.findRecordById('users', revieweeId)
-        if (revieweeUser) {
-          revieweeUser.set('rating_avg', avg)
-          $app.save(revieweeUser)
-        }
+        if (reviews.length < pageSize) break
+      }
+      const avg = count === 0 ? 5 : sum / count
+      const revieweeUser = $app.findRecordById('users', revieweeId)
+      if (revieweeUser) {
+        revieweeUser.set('rating_avg', avg)
+        $app.save(revieweeUser)
       }
     } catch (errRating) {
       console.warn('Erro ao atualizar rating_avg do usuário avaliado:', errRating)
@@ -191,7 +199,7 @@ onRecordAfterCreateSuccess((e) => {
       if (typeof ratingValue !== 'number' || !Number.isFinite(ratingValue) || ratingValue < 0 || ratingValue > 5) {
         throw new Error('Avaliação fora do intervalo permitido; recálculo interrompido.')
       }
-      const avaliacao = Math.round(ratingValue)
+      const avaliacao = ratingValue
       const createdDate = u.get('created') ? new Date(u.get('created')) : new Date()
       const diffMonths = Math.max(
         1,

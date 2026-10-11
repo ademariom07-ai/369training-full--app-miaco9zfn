@@ -386,7 +386,7 @@ export default function AdminRankingConfig() {
           Indicações_Ciclo: indicacoesCiclo,
           Indicações_Total: Number(r.referrals_count) || 0,
           Pontos_Totais: Number(r.points) || 0,
-          Avaliação_Estrelas: Number(r.stars) || 5,
+          Avaliação_Estrelas: Number(r.stars ?? 5),
           Antiguidade_Meses: Number(r.tie_break_details?.antiguidade) || 1,
           Ciclo: currentCycle,
         }
@@ -971,7 +971,7 @@ export default function AdminRankingConfig() {
           refsMonth = []
         }
 
-        const avaliacao = Math.round(Number(u.rating_avg) || 5)
+        const avaliacao = Number(u.rating_avg ?? 5)
         const userCreated = u.created ? new Date(u.created as string) : new Date()
         const diffMonths = Math.max(
           1,
@@ -1561,7 +1561,7 @@ export default function AdminRankingConfig() {
                           : Number(r.referrals_count) || 0
 
                       // AVALIAÇÃO
-                      const avaliacao = Number(r.stars) || 5
+                      const avaliacao = Number(r.stars ?? 5)
 
                       // ANTIGUIDADE
                       const antiguidade = Number(r.tie_break_details?.antiguidade) || 1
@@ -1789,7 +1789,7 @@ export default function AdminRankingConfig() {
                           r.referrals_this_cycle !== undefined && r.referrals_this_cycle !== null
                             ? Number(r.referrals_this_cycle) || 0
                             : Number(r.referrals_count) || 0
-                        const avaliacao = Number(r.stars) || 5
+                        const avaliacao = Number(r.stars ?? 5)
                         const antiguidade = Number(r.tie_break_details?.antiguidade) || 1
                         const pointsNum = Number(r.points) || 0
 

@@ -198,7 +198,7 @@ routerAdd(
         if (typeof ratingValue !== 'number' || !Number.isFinite(ratingValue) || ratingValue < 0 || ratingValue > 5) {
           throw new Error('Avaliação fora do intervalo permitido; recálculo interrompido.')
         }
-        const avaliacao = Math.round(ratingValue)
+        const avaliacao = ratingValue
 
         const createdDate = u.created ? new Date(u.created.replace(' ', 'T')) : new Date()
         const diffMonths = Math.max(

@@ -10,7 +10,7 @@ it('invalid or overflowing facts cannot produce a score',()=>{for(const change o
 it('deterministic ties keep general positions and reject mixed policies or duplicate users',()=>{const a=calc(policy,facts),b=calc(policy,{...facts,id:'b'});expect(orderRankingPreview([b,a]).map(r=>[r.id,r.position])).toEqual([['a',1],['b',2]]);expect(()=>orderRankingPreview([a,a])).toThrow();expect(()=>orderRankingPreview([a,{...b,rulesVersion:'other'}])).toThrow()})
 
 it('approved PRO PARCEIRO counts 0 10 149 150 151 200 with fixed ceiling',()=>{expect([0,10,149,150,151,200].map(n=>countedRankingServices(n,true))).toEqual([0,10,149,150,150,150]);expect(countedRankingServices(200,false)).toBe(200)})
-it('approved cap precedes multipliers and does not cap the entire point total',()=>{const p={version:'wellness-cap-150-2026-10-07',referrals:'minimum_one' as const,rating:'rounded' as const};const f={...facts,partnerPro:true,completedEligibleServices:200};expect(calculateWellnessRankingPreview(p,f).monthlyPoints).toBe(917);expect(calculateWellnessRankingPreview(p,{...f,completedEligibleServices:10}).monthlyPoints).toBe(77);expect(calculateWellnessRankingPreview(p,{...f,partnerPro:false}).monthlyPoints).toBe(1217)})
+it('approved cap precedes multipliers and does not cap the entire point total',()=>{const p={version:'wellness-cap-150-2026-10-07',referrals:'minimum_one' as const,rating:'rounded' as const};const f={...facts,partnerPro:true,completedEligibleServices:200};expect(calculateWellnessRankingPreview(p,f).monthlyPoints).toBe(916.5);expect(calculateWellnessRankingPreview(p,{...f,completedEligibleServices:10}).monthlyPoints).toBe(76.5);expect(calculateWellnessRankingPreview(p,{...f,partnerPro:false}).monthlyPoints).toBe(1216.5)})
 
 it('exact fractional ratings carry into following months without losing hundredths',()=>{
  const p={...policy,rating:'exact' as const}
@@ -19,9 +19,9 @@ it('exact fractional ratings carry into following months without losing hundredt
  const second=calc(p,{...facts,rating:4.37,previousPoints:first.totalPoints})
  expect(second.totalPoints).toBe(252.99)
 })
-it('rejects sub-hundredth balances and unsafe accumulated totals',()=>{
- for(const previousPoints of [-0.01,0.001,NaN,Number.MAX_SAFE_INTEGER/100])expect(()=>calc(policy,{...facts,previousPoints})).toThrow()
- expect(()=>calc({...policy,rating:'exact'},{...facts,rating:4.371})).toThrow()
+it('accepts fractional averages and rejects invalid or unsafe accumulated totals',()=>{
+ for(const previousPoints of [-0.01,NaN,Number.MAX_SAFE_INTEGER/100])expect(()=>calc(policy,{...facts,previousPoints})).toThrow()
+ expect(calc({...policy,rating:'exact'},{...facts,rating:4.371}).rating).toBe(4.371)
 })
 it('same version label cannot combine different referral service or rating policies',()=>{
  const a=calc(policy,facts)
@@ -32,7 +32,7 @@ it('same version label cannot combine different referral service or rating polic
 })
 it('rejects malformed and sparse ranking rows before assigning positions',()=>{
  const a=calc(policy,facts)
- for(const change of [{id:''},{rating:6},{rating:-1},{monthlyPoints:-1},{monthlyPoints:178},{totalPoints:0.001},{rulesKey:''},{simulationOnly:1}])expect(()=>orderRankingPreview([{...a,...change} as typeof a])).toThrow()
+ for(const change of [{id:''},{rating:6},{rating:-1},{monthlyPoints:-1},{monthlyPoints:178},{totalPoints:-0.001},{rulesKey:''},{simulationOnly:1}])expect(()=>orderRankingPreview([{...a,...change} as typeof a])).toThrow()
  expect(()=>orderRankingPreview(new Array(2))).toThrow()
  expect(orderRankingPreview([])).toEqual([])
 })
@@ -66,4 +66,12 @@ it('free beginner starts with six and real zero rating remains zero',()=>{
  const beginner={...facts,multiplier:0,rating:5,seniorityMonths:0,previousPoints:0}
  expect(calc(policy,beginner)).toMatchObject({monthlyPoints:6,totalPoints:6,eligibleForCashback:false})
  expect(calc(policy,{...beginner,rating:0}).monthlyPoints).toBe(1)
+})
+
+it('approved Wellness rating preserves decimal and repeating averages even with an old rounded draft',()=>{
+ for(const rating of [3.8,4.2,13/3,0]){
+ const row=calculateWellnessRankingPreview({version:'mean-v1',referrals:'minimum_one',rating:'rounded'},{...facts,multiplier:0,rating,seniorityMonths:24,previousPoints:10})
+ expect(row.monthlyPoints).toBe(24+rating);expect(row.totalPoints).toBeCloseTo(34+rating,12);expect(row.rating).toBe(rating)
+ expect(orderRankingPreview([row])[0].position).toBe(1)
+ }
 })

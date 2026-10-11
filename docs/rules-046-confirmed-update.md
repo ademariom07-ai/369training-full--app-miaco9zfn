@@ -2,6 +2,12 @@
 
 Fonte: respostas diretas do usuário após a análise da ATUALIZAÇÃO 0.46. Este registro prevalece sobre a interpretação anterior de que Grátis não pontua/não aparece e sobre qualquer posição financeira por ordem de entrada.
 
+## Média das avaliações — confirmação de 11/10/2026
+
+Avaliação = soma de todas as notas recebidas / quantidade de avaliações, para cliente e parceiro. Zero participa da média. Somente sem avaliações usa 5 inicial. Não arredondar para estrelas inteiras; preservar decimais no cálculo. Hook de criação agora percorre todo o histórico por páginas de 500 e não corta a média em duas casas. Motor de simulação WELLNESS fixa avaliação exata mesmo ao receber um rascunho histórico arredondado. Valores de pontos usam precisão numérica JavaScript; valores financeiros continuam em centavos inteiros.
+
+Pendente: homologação PocketBase real, revisão de edição/exclusão de avaliações e recálculo dos históricos já armazenados; não foi executada migração nem recálculo de produção.
+
 ## Antiguidade e avaliação confirmadas em 11/10/2026
 
 Antiguidade = máximo(1, meses), sem teto de 10. Confirmação expressa do usuário: remover o teto. Avaliação de 0 a 5 estrelas; quem ainda não recebeu avaliação começa com 5. Grátis usa multiplicador 0 e soma apenas avaliação + antiguidade: iniciante = 6; com nota 5 e 24 meses = 29. Zero real não pode virar cinco. Pontos anteriores continuam acumulados separadamente.
@@ -55,7 +61,7 @@ Arredondamento da redução agregada uma única vez, ao centavo mais próximo (m
 
 `calculateMonthlyEsgPreview` implementa a regra somente como simulação. Quantidade cumprida deverá vir de registros de aprovação confiáveis do servidor, nunca de um número enviado pelo cliente para resgate. Critérios de aprovação, categorias distintas/validade e destino dos valores reduzidos continuam pendentes; não há redistribuição automática, transferência ou receita apropriada ao admin.
 
-Zero indicações, validação de indicações, precisão de avaliação, escala de antiguidade, estornos e instante/fuso de corte continuam sem nova decisão explícita. Não usar as opções atuais de simulação como política financeira automaticamente aprovada.
+Zero indicações, validação de indicações, estornos e instante/fuso de corte continuam sem nova decisão explícita. Não usar as opções atuais de simulação como política financeira automaticamente aprovada.
 
 ## Verificação da referência jurídica
 

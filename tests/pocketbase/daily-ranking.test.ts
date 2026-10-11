@@ -21,3 +21,5 @@ it('last day daily run does not close the month or create financial records',()=
 it('daily ranking preserves zero rating',()=>{expect(run(0).find(row=>row.values.user==='a-free')?.values).toMatchObject({stars:0,points:22})})
 
 it('daily ranking rejects invalid ratings',()=>{for(const rating of [-1,5.01,NaN,Infinity,'4' as unknown as number])expect(()=>run(rating)).toThrow('Avaliação fora do intervalo permitido')})
+
+it('daily ranking retains decimal averages',()=>{expect(run(3.8).find(r=>r.values.user==='a-free')?.values).toMatchObject({stars:3.8,points:25.8})})
