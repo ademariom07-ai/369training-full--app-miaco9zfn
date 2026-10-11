@@ -194,7 +194,7 @@ routerAdd(
         const indicacoesCount = monthRefCounts[u.id] || 0
         const totalIndicacoes = allRefCounts[u.id] || 0
 
-        const avaliacao = Math.round(Number(u.rating_avg) || 5)
+        const avaliacao = Math.round(Number(u.rating_avg ?? 5))
 
         const createdDate = u.created ? new Date(u.created.replace(' ', 'T')) : new Date()
         const diffMonths = Math.max(

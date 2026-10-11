@@ -12,7 +12,7 @@ onRecordAfterCreateSuccess((e) => {
   const serviceId = review.get('service')
   const reviewerId = review.get('reviewer')
   const revieweeId = review.get('reviewee')
-  const rating = Number(review.get('rating') || 5)
+  const rating = Number(review.get('rating') ?? 5)
 
   if (!serviceId) return
 
@@ -60,7 +60,7 @@ onRecordAfterCreateSuccess((e) => {
       if (allReviewsForReviewee && allReviewsForReviewee.length > 0) {
         let sum = 0
         for (const r of allReviewsForReviewee) {
-          sum += Number(r.get('rating') || 5)
+          sum += Number(r.get('rating') ?? 5)
         }
         const avg = parseFloat((sum / allReviewsForReviewee.length).toFixed(2))
         const revieweeUser = $app.findRecordById('users', revieweeId)
@@ -187,7 +187,7 @@ onRecordAfterCreateSuccess((e) => {
       const indicacoesCount = referralsThisMonth.length
       const totalIndicacoes = allReferrals.length
 
-      const avaliacao = Math.round(Number(u.get('rating_avg') || 5))
+      const avaliacao = Math.round(Number(u.get('rating_avg') ?? 5))
       const createdDate = u.get('created') ? new Date(u.get('created')) : new Date()
       const diffMonths = Math.max(
         1,

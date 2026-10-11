@@ -2,8 +2,8 @@ import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
 import {createHash} from 'node:crypto'
 import {it,expect} from 'vitest'
-function run(role:string|null='admin',failure:string|boolean=false){
- const users=[['z-free','profissional','gratis'],['a-free','aluno','gratis'],['p-paid','aluno','pro'],['cap','profissional','pro_parceiro']].map(([id,role,plan])=>({id,role,plan,subscription_status:'ativa',linked_professional:'p-paid',rating_avg:4,created:'2025-01-01T00:00:00Z'}))
+function run(role:string|null='admin',failure:string|boolean=false,rating=4){
+ const users=[['z-free','profissional','gratis'],['a-free','aluno','gratis'],['p-paid','aluno','pro'],['cap','profissional','pro_parceiro']].map(([id,role,plan])=>({id,role,plan,subscription_status:'ativa',linked_professional:'p-paid',rating_avg:rating,created:'2025-01-01T00:00:00Z'}))
  const writes:Record<string,unknown>[]=[],queries:string[]=[];let response:{status:number;body:Record<string,unknown>}|undefined,inTransaction=false,committed=false,attempted=0
  const old={user:'previous',points:99};let persisted:Record<string,unknown>[]=[old]
  class FixedDate extends Date{constructor(value?:string|number){super(value??'2026-10-09T12:00:00Z')}}
@@ -38,3 +38,5 @@ it('manual recalc aborts before ranking writes when service aggregation fails',(
 it('query failures preserve prior ranking and return no database details',()=>{for(const failure of ['monthly-referrals','all-referrals','snapshots','users','existing']){const r=run('admin',failure);expect(r.response?.status).toBe(500);expect(r.persisted).toEqual([{user:'previous',points:99}]);expect(r.committed).toBe(false);expect(JSON.stringify(r.response)).not.toContain('SQL private')}})
 it('delete partial write and commit failures rollback the entire simulated transaction',()=>{for(const failure of ['delete','second-write','commit']){const r=run('admin',failure);expect(r.response?.status).toBe(500);expect(r.persisted).toEqual([{user:'previous',points:99}]);expect(r.writes).toEqual([]);expect(r.committed).toBe(false);if(failure==='second-write')expect(r.attempted).toBe(2)}})
 it('successful response is emitted only after transaction commit',()=>{const r=run();expect(r.committed).toBe(true);expect(r.persisted).toHaveLength(4);expect(r.response?.status).toBe(200)})
+
+it('manual ranking keeps a zero rating instead of substituting five',()=>{const r=run('admin',false,0);expect(r.response?.status).toBe(200);expect(r.writes.find(row=>row.user==='a-free')).toMatchObject({stars:0,points:20})})

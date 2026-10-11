@@ -115,7 +115,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     const indicacoesCount = referralsThisMonth.length
     const totalIndicacoes = allReferrals.length
 
-    const avaliacao = Math.round(Number(u.get('rating_avg') || 5))
+    const avaliacao = Math.round(Number(u.get('rating_avg') ?? 5))
     const createdDate = u.get('created') ? new Date(u.get('created')) : new Date()
     const diffMonths = Math.max(
       1,
