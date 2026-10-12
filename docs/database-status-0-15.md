@@ -1,7 +1,13 @@
 # 369 WELLNESS — banco e pacotes 0–15
 
-Atualizado em 11/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
+Atualizado em 12/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
+
+## Cashback vigente — Pareto 80/20 com 10× (12/10)
+
+Fórmula substituída no calculador de conferência compartilhado pelo administrativo e prévia HTML. N considera apenas elegíveis, mantendo posições gerais de todos no ranking. K=ceil(N/5); 80% para os K primeiros, pesos lineares 10→1; 20% para os demais, pesos M→1. Zero e um elegível tratados explicitamente. Montante variável em centavos com BigInt, conciliação por maiores restos, grupo superior arredondado e restante complementar. ESG mensal permanece após a distribuição bruta, sem redistribuir reduções. Nenhuma alteração de ranking, planos, split interno ou permissões.
+
+Resultados incompatíveis com valores decrescentes são bloqueados integralmente: exemplo N=6 ou certas combinações de poucos centavos. A fórmula não é anunciada como universal sem restrições. Prévia oferece mensagem e permite recuperar por novo exemplo/montante/quantidade. Aplicação em código; não há publicação, migração ou pagamento real. Pacotes 0–15 permanecem parciais.
 
 ## Decisão vigente do PRO PARCEIRO
 
@@ -13,7 +19,7 @@ Grátis ganha avaliação e antiguidade, participa do ranking por pontos e fica 
 
 ## Estado consolidado atual
 
-Quinze migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso, conclusão informada pelo aluno, carteira/reserva própria, rascunhos administrativos de ranking/cashback, disponibilidade profissional por dia, condições versionadas de atendimento cotação de horário validada no servidor, teto aprovado de serviços PRO PARCEIRO, cadastro/análise de projetos ESG e visão administrativa dos participantes. Na branch, /conta-supabase contém acesso preparado, próprio perfil, vínculo, candidaturas, treino textual/aviso/conclusão, carteira/reserva/cancelamento, revisão de regras em rascunho, calendário mensal/Liberar Dia, configuração de preço/sinal/cancelamento, conferência de um horário pelo aluno, envio/análise ESG e consulta administrativa de participantes. 285 testes locais aprovados em 11/10: 277 Vitest (incluindo mocks de SDK, regras e hooks em VM), 4 interações da prévia HTML com DOM simulado e 4 consultas de serviços em SQLite. TypeScript/build e lint dos módulos novos aprovados; carteira legada mantém avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
+Quinze migrations Supabase aplicadas: perfis, vínculo com aceite, catálogo mínimo aprovado, nomes dos participantes, solicitação/análise profissional, treino protegido com aviso, conclusão informada pelo aluno, carteira/reserva própria, rascunhos administrativos de ranking/cashback, disponibilidade profissional por dia, condições versionadas de atendimento cotação de horário validada no servidor, teto aprovado de serviços PRO PARCEIRO, cadastro/análise de projetos ESG e visão administrativa dos participantes. Na branch, /conta-supabase contém acesso preparado, próprio perfil, vínculo, candidaturas, treino textual/aviso/conclusão, carteira/reserva/cancelamento, revisão de regras em rascunho, calendário mensal/Liberar Dia, configuração de preço/sinal/cancelamento, conferência de um horário pelo aluno, envio/análise ESG e consulta administrativa de participantes. 288 testes locais aprovados em 12/10: 279 Vitest (incluindo mocks de SDK, regras e hooks em VM), 5 interações da prévia HTML com DOM simulado e 4 consultas de serviços em SQLite. TypeScript/build e lint dos módulos novos aprovados; carteira legada mantém avisos anteriores. Zero contas reais; emails, navegador e concorrência entre sessões continuam sem homologação. Prévia demonstrativa sem estas alterações. Todos os pacotes permanecem parciais, zero completos.
 
 ## Média variável das avaliações — 11/10
 

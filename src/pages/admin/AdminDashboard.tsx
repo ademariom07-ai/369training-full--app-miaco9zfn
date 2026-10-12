@@ -541,7 +541,7 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <p className="lg:col-span-2 rounded-xl border border-amber-300 bg-amber-50 p-4">Distribuição vigente: fórmula linear global com ESG mensal. Os valores por níveis abaixo são do modelo legado e não representam a distribuição padrão atual. Fechamento financeiro indisponível nesta tela.</p>
+        <p className="lg:col-span-2 rounded-xl border border-amber-300 bg-amber-50 p-4">Distribuição vigente: Pareto 80/20 com 10× no grupo superior com ESG mensal. Os valores por níveis abaixo são do modelo legado e não representam a distribuição padrão atual. Fechamento financeiro indisponível nesta tela.</p>
         {/* Histórico do backend legado */}
         <Card className="lg:col-span-2 bg-white border border-[#E4E2DC] p-6 rounded-2xl shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">

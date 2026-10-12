@@ -1,24 +1,36 @@
 import {calculateMonthlyEsgPreview} from './monthlyEsg'
 import {orderRankingPreview,type calculateRankingPreview} from './rankingRules'
 type RankingRow=ReturnType<typeof calculateRankingPreview>
-export const APPROVED_CASHBACK_POLICY = 'global-linear-v1' as const
-/** Global linear equalization approved 2026-10-09. Financial execution is not active.
- * The server must supply the authorized pool and verified eligibility at closing.
- * Client flags/points are simulation inputs only and never authorize payments.
+export const APPROVED_CASHBACK_POLICY = 'pareto-80-20-linear-10x-v1' as const
+/** Approved 2026-10-12. Compatibility function names retained for existing callers.
+ * Server-authorized pool and eligibility remain required before financial execution.
+ * Ranking positions are unchanged; only eligible order defines the Pareto groups.
  */
 export function calculateLinearCashbackPreview(poolCents:number,ranking:RankingRow[]){
  if(!Number.isSafeInteger(poolCents)||poolCents<0)throw Error('Pool inválido: informe centavos inteiros não negativos.')
- const ordered=orderRankingPreview(ranking),n=ordered.length
- const rows=ordered.map(row=>({...row,weight:row.eligibleForCashback?BigInt(n-row.position+1):0n,cashbackCents:0n,remainder:0n}))
- const sum=rows.reduce((s,r)=>s+r.weight,0n),pool=BigInt(poolCents)
- if(sum>0n){
-  for(const row of rows){row.cashbackCents=pool*row.weight/sum;row.remainder=pool*row.weight%sum}
-  let remaining=pool-rows.reduce((s,r)=>s+r.cashbackCents,0n)
-  const priority=rows.filter(r=>r.weight>0n).sort((a,b)=>a.remainder===b.remainder?a.position-b.position:a.remainder>b.remainder?-1:1)
-  for(let i=0;remaining>0n;i++,remaining--)priority[i].cashbackCents++
+ const ordered=orderRankingPreview(ranking)
+ const rows=ordered.map(row=>({...row,eligiblePosition:0,group:'ineligible' as 'ineligible'|'top'|'remaining'|'sole',cashbackCents:0n,remainder:0n,weight:0n}))
+ const eligible=rows.filter(row=>row.eligibleForCashback),n=eligible.length,k=Math.ceil(n/5),pool=BigInt(poolCents)
+ eligible.forEach((row,i)=>{row.eligiblePosition=i+1})
+ // The group split is rounded to the nearest cent; the other group receives the complement.
+ const topPool=n===0?0n:n===1?pool:(pool*4n+2n)/5n
+ const remainingPool=n>1?pool-topPool:0n
+ function allocate(group:typeof rows,amount:bigint){
+  const sum=group.reduce((s,row)=>s+row.weight,0n)
+  if(sum===0n)return
+  for(const row of group){row.cashbackCents=amount*row.weight/sum;row.remainder=amount*row.weight%sum}
+  let rest=amount-group.reduce((s,row)=>s+row.cashbackCents,0n)
+  const priority=[...group].sort((a,b)=>a.remainder===b.remainder?a.position-b.position:a.remainder>b.remainder?-1:1)
+  for(let i=0;rest>0n;i++,rest--)priority[i].cashbackCents++
  }
- const distributed=rows.reduce((s,r)=>s+r.cashbackCents,0n)
- return {simulationOnly:true as const,rulesVersion:APPROVED_CASHBACK_POLICY,poolCents,distributedCents:Number(distributed),unallocatedCents:Number(pool-distributed),participants:rows.map(({id,position,eligibleForCashback,cashbackCents})=>({id,position,eligibleForCashback,cashbackCents:Number(cashbackCents)}))}
+ const top=eligible.slice(0,k),remaining=eligible.slice(k),m=remaining.length
+ top.forEach((row,i)=>{row.group=n===1?'sole':'top';row.weight=k===1?1n:10n*BigInt(k-1)-9n*BigInt(i)})
+ remaining.forEach((row,i)=>{row.group='remaining';row.weight=BigInt(m-i)})
+ allocate(top,topPool);allocate(remaining,remainingPool)
+ // No silent ratio changes or payouts which reverse the approved ranking order.
+ if(eligible.some((row,i)=>i>0&&eligible[i-1].cashbackCents<row.cashbackCents))throw Error('Distribuição incompatível: esta combinação de montante e elegíveis inverte valores entre posições. Nenhum pagamento autorizado; revise a configuração.')
+ const distributed=rows.reduce((s,row)=>s+row.cashbackCents,0n)
+ return {simulationOnly:true as const,rulesVersion:APPROVED_CASHBACK_POLICY,poolCents,eligibleCount:n,topCount:k,topPoolCents:Number(topPool),remainingPoolCents:Number(remainingPool),distributedCents:Number(distributed),unallocatedCents:Number(pool-distributed),participants:rows.map(({id,position,eligiblePosition,group,eligibleForCashback,cashbackCents})=>({id,position,eligiblePosition,group,eligibleForCashback,cashbackCents:Number(cashbackCents)}))}
 }
 export {getEsgGuidance,calculateMonthlyEsgPreview} from './monthlyEsg'
 

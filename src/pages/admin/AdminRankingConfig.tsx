@@ -1197,7 +1197,7 @@ export default function AdminRankingConfig() {
           </div>
         </div>
 
-        <p className="rounded-xl border border-lime-300 bg-lime-50 p-4 text-slate-900">Padrão vigente: distribuição linear global com ESG mensal. Use Cashback linear padrão para conferência fictícia. Painéis de níveis, parâmetros e exportações do backend legado são históricos e não autorizam novos créditos. Fechamento no servidor ainda pendente.</p>
+        <p className="rounded-xl border border-lime-300 bg-lime-50 p-4 text-slate-900">Padrão vigente: Pareto 80/20 com 10× no grupo superior com ESG mensal. Use Cashback Pareto 80/20 · 10× para conferência fictícia. Painéis de níveis, parâmetros e exportações do backend legado são históricos e não autorizam novos créditos. Fechamento no servidor ainda pendente.</p>
         {/* MODELO HÍBRIDO EXPLAINER BANNER */}
         <Card className="bg-gradient-to-r from-[#181424] via-[#14101f] to-[#181424] border border-[#6A00FF]/40 p-5 rounded-2xl shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1446,7 +1446,7 @@ export default function AdminRankingConfig() {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Sparkles className="w-4 h-4 text-[#22C55E]" /> Cashback linear padrão
+            <Sparkles className="w-4 h-4 text-[#22C55E]" /> Cashback Pareto 80/20 · 10×
           </button>
         </div>
 
@@ -3104,7 +3104,7 @@ export default function AdminRankingConfig() {
                     usuário em <code>monthly_rank_snapshots</code>.
                   </li>
                   <li>
-                    <strong>Regra vigente:</strong> distribuição linear global, com ESG mensal.
+                    <strong>Regra vigente:</strong> Pareto 80/20 com 10× no grupo superior, com ESG mensal.
                     O fechamento legado por níveis foi substituído e não pode ser acionado nesta tela.
                   </li>
                   <li>

@@ -1,6 +1,18 @@
-# 369 WELLNESS — decisões atualizadas em 08/10/2026
+# 369 WELLNESS — decisões atualizadas em 12/10/2026
 
 Fonte: respostas diretas do usuário após a análise da ATUALIZAÇÃO 0.46. Este registro prevalece sobre a interpretação anterior de que Grátis não pontua/não aparece e sobre qualquer posição financeira por ordem de entrada.
+
+## Padrão vigente aprovado em 12/10/2026 — Pareto 80/20, progressão linear 10×
+
+Esta decisão substitui a distribuição linear global aprovada em 09/10, descrita abaixo como histórico. Mantém ranking por pontos, avaliação média, antiguidade, teto de serviços, Grátis sem cashback e ESG mensal. Não adota regras do ERP LavaCar nem cria posição de rede por entrada.
+
+N é o número de elegíveis, na ordem do ranking; K = ceil(N/5). Primeiro grupo recebe 80% e usa pesos inteiros 10(K−1)−9i, i=0..K−1 (equivalentes a progressão de 10 até 1). Segundo grupo recebe 20%, com pesos M..1, M=N−K. Grátis mantém sua posição geral e fica fora de N; a ordem entre elegíveis serve somente ao cálculo. Nenhum elegível: reserva não distribuída; um: 100% para ele. Quando K=1, seu peso é 1 e não existe razão interna de 10×.
+
+Montante em centavos inteiros seguros. Grupo superior arredondado ao centavo mais próximo; inferior recebe o complemento. Maiores restos por grupo, desempate pela posição no ranking. A proporção 10× vale antes do arredondamento. Split não reaplicado; reduções ESG não redistribuídas. Política versionada `pareto-80-20-linear-10x-v1`.
+
+Limitação matemática explícita: não é universal para toda combinação de N e montante. Com N=6, K=2, o 2º recebe 80%/11 e o 3º recebe 20%×4/10, invertendo posições. Montantes de poucos centavos também podem inverter a fronteira após arredondamento. A implementação rejeita o resultado inteiro se qualquer elegível posterior receber mais, em vez de alterar silenciosamente Pareto, 10× ou o ranking. São necessárias decisões futuras para liberar essas combinações; nenhuma fórmula alternativa foi aplicada.
+
+Implementado no motor de conferência e telas que o utilizam. Não é fechamento financeiro ativo: backend, autorização e elegibilidade reais continuam pendentes de integração/homologação. Migrações e carteiras não foram alteradas.
 
 ## Média das avaliações — confirmação de 11/10/2026
 
