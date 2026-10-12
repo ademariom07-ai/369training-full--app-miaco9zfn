@@ -3,6 +3,10 @@
 Atualizado em 12/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
+## Prévia visual Pareto — 12/10, revisão 2
+
+Novo arquivo `docs/previews/369-wellness-pareto-80-20-10x-v2.html`, com padrão R$ 200.000 / 500 elegíveis e cartões dinâmicos dos montantes dos grupos e extremos 10×. Nome anterior mantido como cópia idêntica para compatibilidade. Seis testes de interação com DOM simulado passaram; não houve publicação do aplicativo nem alteração da fórmula.
+
 ## Cashback vigente — Pareto 80/20 com 10× (12/10)
 
 Fórmula substituída no calculador de conferência compartilhado pelo administrativo e prévia HTML. N considera apenas elegíveis, mantendo posições gerais de todos no ranking. K=ceil(N/5); 80% para os K primeiros, pesos lineares 10→1; 20% para os demais, pesos M→1. Zero e um elegível tratados explicitamente. Montante variável em centavos com BigInt, conciliação por maiores restos, grupo superior arredondado e restante complementar. ESG mensal permanece após a distribuição bruta, sem redistribuir reduções. Nenhuma alteração de ranking, planos, split interno ou permissões.

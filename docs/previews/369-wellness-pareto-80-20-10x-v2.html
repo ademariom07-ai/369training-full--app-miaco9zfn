@@ -1,0 +1,145 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>369 WELLNESS — Pareto 80/20 — 10x — prévia 12-10</title><style>body{font:17px system-ui;background:#f6faf4;color:#173524;margin:0}main{max-width:1100px;margin:auto;padding:28px}header{background:#d5ff56;padding:24px;border-radius:18px}input,button,select{font:inherit;padding:10px;border:1px solid #789885;border-radius:8px}label{display:inline-block;margin:18px 12px 18px 0}table{width:100%;border-collapse:collapse;background:white}td,th{padding:10px;text-align:right;border-bottom:1px solid #dce8dd}th:first-child,td:first-child{text-align:left}button{cursor:pointer;background:#e2efff}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:20px 0}.card{padding:20px;border-radius:14px;background:#dff2ff;border:1px solid #7ac9ff}.card:last-child{background:#eee4ff;border-color:#bca1ee}.card strong{display:block;font-size:24px;margin-top:8px}table{font-size:14px}.tablewrap{overflow-x:auto}#error{color:#a01b1b}.note{font-size:14px}</style><main><header><h1>369 WELLNESS</h1><h2>PARETO 80/20 — PROGRESSÃO 10×</h2><p><strong>PRÉVIA ATUALIZADA · 12/10/2026 · versão visual 2</strong></p><p>Avaliação: média de todas as notas (0 a 5), mantendo decimais; sem avaliações, nota inicial 5. Ranking: antiguidade mínima de 1 mês, sem teto. Grátis iniciante com nota 5 = 6 pontos; sem cashback.</p><p>Regra aprovada em 12/10/2026 · prévia local</p></header><p>Participantes fictícios com plano e metas editáveis por pessoa. Valores brutos e após metas ESG do mês simulado. Não movimenta contas nem transmite dados.</p><p>Primeiros 20% dos elegíveis (arredondados para cima): 80% do montante, com pesos de 10 até 1. Restante: 20% com pesos decrescentes. Um único elegível recebe 100%. Combinações que invertam valores entre posições são bloqueadas.</p><div class="cards"><section class="card">Primeiro grupo · 80%<strong id="topbudget">R$ 160.000,00 / 100 elegíveis</strong></section><section class="card">Segundo grupo · 20%<strong id="lowerbudget">R$ 40.000,00 / 400 elegíveis</strong></section><section class="card">Primeiro e último do grupo superior<strong id="ratio">R$ 2.909,09 → R$ 290,91</strong><span>Proporção 10× antes dos centavos</span></section></div><noscript>Para recalcular, abra este HTML em um navegador com JavaScript. Os cartões iniciais representam R$ 200.000 para 500 elegíveis.</noscript><button id="a">R$ 10 mil / 20 pessoas</button> <button id="b">R$ 200 mil / 500 pessoas</button> <button id="c">R$ 200 mil / 10 pessoas — ESG</button><form id="form"><label>Cashback disponível (R$)<br><input id="pool" value="200000,00" inputmode="decimal" maxlength="32"></label><label>Participantes (1–5.000)<br><input id="count" value="500" inputmode="numeric" maxlength="4"></label><label>Metas iniciais (sem ajuste individual)<br><select id="goals"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label><button>Calcular</button></form><p class="note">Use vírgula para centavos, sem separador de milhar. O montante já é o cashback disponível; não há reaplicação de split. Grátis mantém posição e recebe peso zero no modelo real.</p><p id="error" role="alert"></p><p id="summary" aria-live="polite"></p><div class="tablewrap"><table><thead><tr><th>Posição</th><th>Plano simulado</th><th>Grupo</th><th>Metas cumpridas</th><th>Cashback bruto</th><th>Metas exigidas</th><th>Redução ESG</th><th>Após metas</th></tr></thead><tbody id="rows"></tbody></table></div><p><button id="prev">Anterior</button> <span id="page"></span> <button id="next">Próxima</button></p><p class="note">Divisão dos grupos arredondada ao centavo. Centavos por maiores restos, desempate pela melhor posição. Esta prévia não valida contas, assinaturas ou projetos. Reduções ESG não são redistribuídas. Metas não alteram bruto nem ranking; elegibilidade recalcula a distribuição. Trocar exemplo ou quantidade reinicia ajustes individuais. Não é uma versão publicada do app.</p></main><script>"use strict";
+/** Explicit simulation policies. No active production policy or ledger writes. */
+const APPROVED_SENIORITY_RULE = 'months-min-one-no-cap-2026-10-11';
+const APPROVED_PARTNER_SERVICES = 'cap_150';
+const PARTNER_SERVICE_CAP = 150;
+function countedRankingServices(completed, partnerPro) { integer(completed); if (typeof partnerPro !== 'boolean')
+    throw Error('Plano inválido.'); return partnerPro ? Math.min(completed, PARTNER_SERVICE_CAP) : completed; }
+function integer(value, max = Number.MAX_SAFE_INTEGER) { if (!Number.isSafeInteger(value) || value < 0 || value > max)
+    throw Error('Contagem inválida.'); return value; }
+// Ranking points retain fractional averages; currency uses separate cent-based helpers.
+function pointValue(value) {
+    if (!Number.isFinite(value) || value < 0 || value > Number.MAX_SAFE_INTEGER / 100)
+        throw Error('Pontuação fora dos limites.');
+    return value;
+}
+function policyKey(policy) { return JSON.stringify(['rating-mean-v1', APPROVED_SENIORITY_RULE, policy.version, policy.referrals, policy.partnerServices, policy.rating]); }
+function calculateRankingPreview(policy, facts) {
+    if (!policy || typeof policy.version !== 'string' || !policy.version.trim() || policy.version.length > 80 || !['minimum_one', 'plus_one', 'legacy_divisor_18'].includes(policy.referrals) || !['actual', 'floor_150', 'cap_150'].includes(policy.partnerServices) || !['rounded', 'exact'].includes(policy.rating))
+        throw Error('Defina uma versão completa das regras.');
+    if (!facts || typeof facts.id !== 'string' || !facts.id.trim() || !Number.isFinite(Date.parse(facts.joinedAt)) || !Number.isFinite(facts.rating) || facts.rating < 0 || facts.rating > 5)
+        throw Error('Participante inválido.');
+    const multiplier = integer(facts.multiplier, 3), services = integer(facts.completedEligibleServices), referrals = integer(facts.validatedReferrals), age = integer(facts.seniorityMonths), previous = pointValue(facts.previousPoints);
+    if (typeof facts.partnerPro !== 'boolean')
+        throw Error('Plano inválido.');
+    const effectiveServices = facts.partnerPro ? policy.partnerServices === 'floor_150' ? Math.max(services, 150) : policy.partnerServices === 'cap_150' ? countedRankingServices(services, true) : services : services;
+    const factor = policy.referrals === 'minimum_one' ? Math.max(referrals, 1) : policy.referrals === 'plus_one' ? referrals + 1 : referrals / 18 + 1;
+    const rating = policy.rating === 'rounded' ? Math.round(facts.rating) : facts.rating;
+    const monthly = Math.round(multiplier * effectiveServices * factor) + rating + Math.max(age, 1);
+    const monthlyPoints = pointValue(monthly), totalPoints = pointValue(previous + monthlyPoints);
+    return { simulationOnly: true, rulesVersion: policy.version, rulesKey: policyKey(policy), eligibleForCashback: multiplier > 0, id: facts.id, monthlyPoints, totalPoints, rating, joinedAt: facts.joinedAt };
+}
+function orderRankingPreview(rows) {
+    if (!Array.isArray(rows) || rows.length > 500000)
+        throw Error('Ranking inválido ou regras misturadas.');
+    const ids = new Set(), versions = new Set(), keys = new Set();
+    // Iteration includes sparse entries; Array.some/map would silently skip them.
+    for (const row of rows) {
+        if (!row || row.simulationOnly !== true || typeof row.eligibleForCashback !== 'boolean' || typeof row.id !== 'string' || !row.id.trim() || ids.has(row.id) || typeof row.rulesVersion !== 'string' || !row.rulesVersion.trim() || typeof row.rulesKey !== 'string' || !row.rulesKey || !Number.isFinite(row.rating) || row.rating < 0 || row.rating > 5 || typeof row.joinedAt !== 'string' || !Number.isFinite(Date.parse(row.joinedAt)))
+            throw Error('Ranking inválido ou regras misturadas.');
+        const monthly = pointValue(row.monthlyPoints), total = pointValue(row.totalPoints);
+        if (total < monthly)
+            throw Error('Ranking inválido ou regras misturadas.');
+        ids.add(row.id);
+        versions.add(row.rulesVersion);
+        keys.add(row.rulesKey);
+    }
+    if (versions.size > 1 || keys.size > 1)
+        throw Error('Ranking inválido ou regras misturadas.');
+    return rows.map(r => ({ ...r })).sort((a, b) => b.totalPoints - a.totalPoints || b.rating - a.rating || Date.parse(a.joinedAt) - Date.parse(b.joinedAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map((r, i) => ({ ...r, position: i + 1 }));
+}
+/** Current WELLNESS decision; other policy fields still require explicit selection. */
+function calculateWellnessRankingPreview(policy, facts) { return calculateRankingPreview({ ...policy, rating: 'exact', partnerServices: APPROVED_PARTNER_SERVICES }, facts); }
+
+"use strict";
+/** Confirmed monthly ESG thresholds. Guidance does not approve projects. */
+function getEsgGuidance(cashbackCents, basis = 'monthly') {
+    if (!Number.isSafeInteger(cashbackCents) || cashbackCents < 0 || basis !== 'monthly')
+        throw Error('Base ESG inválida.');
+    return { guidanceOnly: true, basis, cashbackCents, projects: cashbackCents >= 2000000 ? 3 : cashbackCents >= 1500000 ? 2 : cashbackCents >= 1000000 ? 1 : 0 };
+}
+/** Confirmed business rule, simulation only: 15 percentage points of gross
+ * monthly cashback per unmet required project. No ledger writes or redistribution.
+ * Production must derive fulfilledProjects from trusted approval records.
+ */
+function calculateMonthlyEsgPreview(grossMonthlyCents, fulfilledProjects) {
+    const { projects: requiredProjects } = getEsgGuidance(grossMonthlyCents);
+    if (!Number.isSafeInteger(fulfilledProjects) || fulfilledProjects < 0 || fulfilledProjects > 3)
+        throw Error('Quantidade de projetos inválida.');
+    const unmetProjects = Math.max(0, requiredProjects - fulfilledProjects), reductionPercent = 15 * unmetProjects;
+    // Round the aggregate reduction once; derive payable as the exact remainder.
+    const reductionCents = Number((BigInt(grossMonthlyCents) * BigInt(reductionPercent) + 50n) / 100n);
+    return { simulationOnly: true, rulesVersion: 'wellness-esg-monthly-15-per-missing-v1', basis: 'monthly', grossMonthlyCents, requiredProjects, fulfilledProjects, unmetProjects, reductionPercent, payablePercent: 100 - reductionPercent, reductionCents, payableCents: grossMonthlyCents - reductionCents };
+}
+/** Strict pt-BR amount without thousands separators; no float parsing. */
+function parseMonthlyCashbackInput(raw) {
+    if (typeof raw !== 'string' || raw.length > 32 || !/^\d+(?:,\d{1,2})?$/.test(raw))
+        throw Error('Informe reais sem separador de milhar, por exemplo 20000,00.');
+    const [whole, fraction = ''] = raw.split(',');
+    const cents = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+    if (cents > BigInt(Number.MAX_SAFE_INTEGER))
+        throw Error('Valor acima do limite da simulação.');
+    return Number(cents);
+}
+
+"use strict";
+const APPROVED_CASHBACK_POLICY = 'pareto-80-20-linear-10x-v1';
+/** Approved 2026-10-12. Compatibility function names retained for existing callers.
+ * Server-authorized pool and eligibility remain required before financial execution.
+ * Ranking positions are unchanged; only eligible order defines the Pareto groups.
+ */
+function calculateLinearCashbackPreview(poolCents, ranking) {
+    if (!Number.isSafeInteger(poolCents) || poolCents < 0)
+        throw Error('Pool inválido: informe centavos inteiros não negativos.');
+    const ordered = orderRankingPreview(ranking);
+    const rows = ordered.map(row => ({ ...row, eligiblePosition: 0, group: 'ineligible', cashbackCents: 0n, remainder: 0n, weight: 0n }));
+    const eligible = rows.filter(row => row.eligibleForCashback), n = eligible.length, k = Math.ceil(n / 5), pool = BigInt(poolCents);
+    eligible.forEach((row, i) => { row.eligiblePosition = i + 1; });
+    // The group split is rounded to the nearest cent; the other group receives the complement.
+    const topPool = n === 0 ? 0n : n === 1 ? pool : (pool * 4n + 2n) / 5n;
+    const remainingPool = n > 1 ? pool - topPool : 0n;
+    function allocate(group, amount) {
+        const sum = group.reduce((s, row) => s + row.weight, 0n);
+        if (sum === 0n)
+            return;
+        for (const row of group) {
+            row.cashbackCents = amount * row.weight / sum;
+            row.remainder = amount * row.weight % sum;
+        }
+        let rest = amount - group.reduce((s, row) => s + row.cashbackCents, 0n);
+        const priority = [...group].sort((a, b) => a.remainder === b.remainder ? a.position - b.position : a.remainder > b.remainder ? -1 : 1);
+        for (let i = 0; rest > 0n; i++, rest--)
+            priority[i].cashbackCents++;
+    }
+    const top = eligible.slice(0, k), remaining = eligible.slice(k), m = remaining.length;
+    top.forEach((row, i) => { row.group = n === 1 ? 'sole' : 'top'; row.weight = k === 1 ? 1n : 10n * BigInt(k - 1) - 9n * BigInt(i); });
+    remaining.forEach((row, i) => { row.group = 'remaining'; row.weight = BigInt(m - i); });
+    allocate(top, topPool);
+    allocate(remaining, remainingPool);
+    // No silent ratio changes or payouts which reverse the approved ranking order.
+    if (eligible.some((row, i) => i > 0 && eligible[i - 1].cashbackCents < row.cashbackCents))
+        throw Error('Distribuição incompatível: esta combinação de montante e elegíveis inverte valores entre posições. Nenhum pagamento autorizado; revise a configuração.');
+    const distributed = rows.reduce((s, row) => s + row.cashbackCents, 0n);
+    return { simulationOnly: true, rulesVersion: APPROVED_CASHBACK_POLICY, poolCents, eligibleCount: n, topCount: k, topPoolCents: Number(topPool), remainingPoolCents: Number(remainingPool), distributedCents: Number(distributed), unallocatedCents: Number(pool - distributed), participants: rows.map(({ id, position, eligiblePosition, group, eligibleForCashback, cashbackCents }) => ({ id, position, eligiblePosition, group, eligibleForCashback, cashbackCents: Number(cashbackCents) })) };
+}
+/** Monthly simulation: explicit goals per identity; never derives financial approval
+ * from project registration alone. Reduced amounts are not redistributed. */
+function calculateLinearMonthlyCashbackPreview(poolCents, ranking, goals) {
+    const distribution = calculateLinearCashbackPreview(poolCents, ranking);
+    if (!Array.isArray(goals) || goals.length !== distribution.participants.length)
+        throw Error('Informe metas para cada participante.');
+    const byId = new Map(), ids = new Set(distribution.participants.map(row => row.id));
+    for (const goal of goals) {
+        if (!goal || typeof goal.id !== 'string' || !ids.has(goal.id) || byId.has(goal.id) || !Number.isSafeInteger(goal.fulfilledProjects) || goal.fulfilledProjects < 0 || goal.fulfilledProjects > 3)
+            throw Error('Metas inválidas, ausentes ou duplicadas.');
+        byId.set(goal.id, goal.fulfilledProjects);
+    }
+    const participants = distribution.participants.map(row => ({ ...row, esg: calculateMonthlyEsgPreview(row.cashbackCents, byId.get(row.id)) }));
+    const payable = participants.reduce((sum, row) => sum + BigInt(row.esg.payableCents), 0n), reduction = participants.reduce((sum, row) => sum + BigInt(row.esg.reductionCents), 0n);
+    return { ...distribution, participants, payableCents: Number(payable), reductionCents: Number(reduction) };
+}
+
+const el=id=>document.getElementById(id),money=n=>(n/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let result=null,page=1;const overrides=new Map();let previousCount=null;
+function render(){const body=el('rows');body.replaceChildren();if(!result){for(const id of ['topbudget','lowerbudget','ratio'])el(id).textContent='—';el('summary').textContent='';el('page').textContent='';el('prev').disabled=true;el('next').disabled=true;return}el('topbudget').textContent=money(result.topPoolCents)+' / '+result.topCount+' elegíveis';el('lowerbudget').textContent=money(result.remainingPoolCents)+' / '+(result.eligibleCount-result.topCount)+' elegíveis';const top=result.participants.filter(r=>r.group==='top'||r.group==='sole');el('ratio').textContent=top.length?money(top[0].cashbackCents)+' → '+money(top[top.length-1].cashbackCents):'Sem elegíveis';const pages=Math.ceil(result.participants.length/20);for(const r of result.participants.slice((page-1)*20,page*20)){const tr=document.createElement('tr');function cell(value){const td=document.createElement('td');td.textContent=value;tr.append(td)}function choice(label,values,selected,disabled,onchange){const td=document.createElement('td'),select=document.createElement('select');select.setAttribute('aria-label',label);for(const [value,text] of values){const option=document.createElement('option');option.value=value;option.textContent=text;select.append(option)}select.value=selected;select.disabled=disabled;select.onchange=()=>onchange(select.value);td.append(select);tr.append(td)}cell(r.position+'º');choice('Plano da posição '+r.position,[['paid','Pago elegível'],['free','Grátis']],r.eligibleForCashback?'paid':'free',false,value=>{overrides.set(r.id,{...overrides.get(r.id),free:value==='free'});calculate(true)});cell(r.group==='top'?'80%':r.group==='remaining'?'20%':r.group==='sole'?'Único':'Grátis');choice('Metas da posição '+r.position,[['0','0'],['1','1'],['2','2'],['3','3']],String(r.esg.fulfilledProjects),!r.eligibleForCashback,value=>{overrides.set(r.id,{...overrides.get(r.id),goals:Number(value)});calculate(true)});for(const value of [money(r.cashbackCents),r.esg.requiredProjects,money(r.esg.reductionCents),money(r.esg.payableCents)])cell(value);body.append(tr)}el('summary').textContent=result.eligibleCount+' elegíveis · '+result.topCount+' no grupo superior: '+money(result.topPoolCents)+' · Restante: '+money(result.remainingPoolCents)+' · Total distribuído: '+money(result.distributedCents)+' · Após metas: '+money(result.payableCents)+' · Redução ESG: '+money(result.reductionCents)+' · Não distribuído: '+money(result.unallocatedCents);el('page').textContent=page+' / '+pages;el('prev').disabled=page===1;el('next').disabled=page===pages}
+function calculate(keepPage=false){try{const count=el('count').value;if(!/^\d{1,4}$/.test(count)||+count<1||+count>5000)throw Error('Informe de 1 a 5.000 participantes.');if(previousCount!==count){overrides.clear();previousCount=count}const n=+count,ranking=Array.from({length:n},(_,i)=>({simulationOnly:true,rulesVersion:'synthetic',rulesKey:'synthetic',eligibleForCashback:!overrides.get(String(i+1))?.free,id:String(i+1),monthlyPoints:0,totalPoints:n-i,rating:0,joinedAt:'2026-01-01T00:00:00Z'}));result=calculateLinearMonthlyCashbackPreview(parseMonthlyCashbackInput(el('pool').value),ranking,ranking.map(row=>({id:row.id,fulfilledProjects:overrides.get(row.id)?.goals??Number(el('goals').value)})));if(!keepPage)page=1;el('error').textContent=''}catch(e){result=null;el('error').textContent=e.message}render()}
+el('form').onsubmit=e=>{e.preventDefault();calculate()};el('a').onclick=()=>{overrides.clear();el('goals').value='0';el('pool').value='10000,00';el('count').value='20';calculate()};el('b').onclick=()=>{overrides.clear();el('goals').value='0';el('pool').value='200000,00';el('count').value='500';calculate()};el('c').onclick=()=>{overrides.clear();el('goals').value='0';el('pool').value='200000,00';el('count').value='10';calculate()};el('goals').onchange=()=>calculate(true);el('prev').onclick=()=>{page--;render()};el('next').onclick=()=>{page++;render()};calculate();</script></html>

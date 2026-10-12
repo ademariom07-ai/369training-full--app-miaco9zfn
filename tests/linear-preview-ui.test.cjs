@@ -2,7 +2,7 @@ const {test}=require('node:test');const assert=require('node:assert/strict');con
 function setup(){
  const html=fs.readFileSync('docs/previews/369-wellness-cashback-linear.html','utf8');
  const node=()=>({value:'',textContent:'',children:[],attrs:{},setAttribute(k,v){this.attrs[k]=v},replaceChildren(){this.children=[]},append(x){this.children.push(x)}});
- const nodes=new Map();for(const id of ['pool','count','goals','rows','summary','page','prev','next','error','form','a','b','c'])nodes.set(id,node());
+ const nodes=new Map();for(const id of ['pool','count','goals','rows','summary','page','prev','next','error','form','a','b','c','topbudget','lowerbudget','ratio'])nodes.set(id,node());
  nodes.get('pool').value='10000,00';nodes.get('count').value='20';nodes.get('goals').value='0';
  vm.runInNewContext(html.match(/<script>([\s\S]*)<\/script>/)[1],{document:{getElementById:id=>nodes.get(id),createElement:node}});
  const get=id=>nodes.get(id),row=i=>get('rows').children[i].children;
@@ -15,3 +15,5 @@ test('row changes preserve pagination and examples reset individual overrides',(
 test('invalid counts remove stale money and count changes clear overrides',()=>{const {get,row,select}=setup();select(0,1,'free');get('count').value='0';get('form').onsubmit({preventDefault(){}});assert.ok(get('error').textContent);assert.equal(get('rows').children.length,0);assert.equal(get('summary').textContent,'');get('count').value='10';get('form').onsubmit({preventDefault(){}});assert.equal(row(0)[1].children[0].value,'paid')});
 
 test('incompatible Pareto inputs clear stale totals and recover on a valid example',()=>{const {get}=setup();get('count').value='6';get('form').onsubmit({preventDefault(){}});assert.match(get('error').textContent,/Distribuição incompatível/);assert.equal(get('summary').textContent,'');assert.equal(get('rows').children.length,0);get('b').onclick();assert.equal(get('error').textContent,'');assert.equal(get('rows').children.length,20)});
+
+test('Pareto versioned preview matches generated output and shows both budgets and 10x endpoints',()=>{assert.equal(fs.readFileSync('docs/previews/369-wellness-pareto-80-20-10x-v2.html','utf8'),fs.readFileSync('docs/previews/369-wellness-cashback-linear.html','utf8'));const {get}=setup();get('b').onclick();assert.match(get('topbudget').textContent,/160\.000,00 \/ 100 elegíveis/);assert.match(get('lowerbudget').textContent,/40\.000,00 \/ 400 elegíveis/);assert.match(get('ratio').textContent,/2\.909,09.*290,91/)});
