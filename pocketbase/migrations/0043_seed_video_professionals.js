@@ -104,7 +104,7 @@ migrate(
         if (!rec) {
           rec = new Record(usersCol)
           rec.setEmail(pro.email)
-          rec.setPassword('Skip@Pass')
+          rec.setPassword($security.randomString(32))
           rec.setVerified(true)
         }
 

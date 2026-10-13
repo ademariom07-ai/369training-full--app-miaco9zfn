@@ -371,7 +371,7 @@ export function Agente369Section() {
               <span className="text-white font-bold">
                 {isProOrPremium
                   ? 'Ilimitado no plano Pro'
-                  : `${agentStatus?.usage.workouts_generated ?? 0} de ${agentStatus?.limits.workouts_per_month ?? 5} usadas`}
+                  : `${agentStatus?.usage?.workouts_generated ?? 0} de ${agentStatus?.limits?.workouts_per_month ?? 5} usadas`}
               </span>
             </div>
 
@@ -380,22 +380,22 @@ export function Agente369Section() {
                 <Bot className="w-3.5 h-3.5 text-[#00E5FF]" /> Mensagens Chat:
               </span>
               <span className="text-white font-bold">
-                {agentStatus?.usage.chat_messages} / {agentStatus?.limits.messages_per_month}
+                {agentStatus?.usage?.chat_messages} / {agentStatus?.limits?.messages_per_month}
               </span>
             </div>
 
             <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[11px] text-white/80">
               <span className="text-white/90 font-medium">Excedente Carteira:</span>
               <span className="text-[#00E5FF] font-semibold">
-                R$ {agentStatus?.overage_costs.workout_cost.toFixed(2)}/treino • R${' '}
-                {agentStatus?.overage_costs.message_cost.toFixed(2)}/msg
+                R$ {agentStatus?.overage_costs?.workout_cost?.toFixed(2)}/treino • R${' '}
+                {agentStatus?.overage_costs?.message_cost?.toFixed(2)}/msg
               </span>
             </div>
           </div>
         </div>
 
         {/* ALERTA PAR-Q+ CASO NÃO PREENCHIDO */}
-        {!agentStatus?.parq.completed && (
+        {!agentStatus?.parq?.completed && (
           <div className="mt-6 bg-black/40 border border-[#D4AF37]/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/25 flex items-center justify-center text-[#D4AF37] shrink-0">
@@ -425,7 +425,7 @@ export function Agente369Section() {
           <div className="flex flex-col gap-1.5">
             <Button
               onClick={() => {
-                if (!agentStatus?.parq.completed) {
+                if (!agentStatus?.parq?.completed) {
                   setParqOpen(true)
                 } else {
                   setWorkoutModalOpen(true)
@@ -441,7 +441,7 @@ export function Agente369Section() {
               <Sparkles className="w-3 h-3 text-[#D4AF37]" />
               {isProOrPremium
                 ? 'Ilimitado no plano Pro'
-                : `${agentStatus?.usage.workouts_generated ?? 0} de ${agentStatus?.limits.workouts_per_month ?? 5} gerações grátis usadas este mês`}
+                : `${agentStatus?.usage?.workouts_generated ?? 0} de ${agentStatus?.limits?.workouts_per_month ?? 5} gerações grátis usadas este mês`}
             </span>
           </div>
 
@@ -451,10 +451,10 @@ export function Agente369Section() {
             className="border-white/30 hover:border-white text-white hover:text-white bg-black/40 hover:bg-black/60 text-xs px-4 py-5 rounded-xl flex items-center gap-2"
           >
             <Bot className="w-4 h-4 text-[#00E5FF]" />
-            Conversar com o Agente ({agentStatus?.usage.messages_remaining} msgs restantes)
+            Conversar com o Agente ({agentStatus?.usage?.messages_remaining} msgs restantes)
           </Button>
 
-          {agentStatus?.limits.menstrual_cycle_module && (
+          {agentStatus?.limits?.menstrual_cycle_module && (
             <Button
               onClick={() => setCycleModalOpen(true)}
               variant="outline"
@@ -465,7 +465,7 @@ export function Agente369Section() {
             </Button>
           )}
 
-          {agentStatus?.parq.completed && (
+          {agentStatus?.parq?.completed && (
             <button
               type="button"
               onClick={() => setParqOpen(true)}
@@ -662,7 +662,7 @@ export function Agente369Section() {
             </div>
 
             {/* Smartwatch Sono Info */}
-            {agentStatus?.limits.smartwatch_sleep_adjustment && agentStatus?.recent_sleep && (
+            {agentStatus?.limits?.smartwatch_sleep_adjustment && agentStatus?.recent_sleep && (
               <div className="bg-[#151D24] border border-[#00E5FF]/30 p-3 rounded-xl flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <Moon className="w-4 h-4 text-[#00E5FF]" />
@@ -682,7 +682,7 @@ export function Agente369Section() {
             )}
 
             {/* Check Ciclo Menstrual caso Premium */}
-            {agentStatus?.limits.menstrual_cycle_module && (
+            {agentStatus?.limits?.menstrual_cycle_module && (
               <div>
                 <label className="text-xs font-semibold text-gray-300 block mb-1">
                   Sintoma Menstrual no Dia (Ajuste Individual — Evidência Clínica):
@@ -809,7 +809,7 @@ export function Agente369Section() {
                 Agente 369 — Copiloto Interativo
               </span>
               <Badge variant="outline" className="border-[#00E5FF]/40 text-[#00E5FF] text-[10px]">
-                {agentStatus?.usage.messages_remaining} msgs restantes
+                {agentStatus?.usage?.messages_remaining} msgs restantes
               </Badge>
             </DialogTitle>
           </DialogHeader>

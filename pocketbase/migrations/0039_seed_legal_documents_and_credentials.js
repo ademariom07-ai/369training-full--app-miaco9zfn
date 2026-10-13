@@ -270,7 +270,7 @@ Solicitações realizadas em até 7 dias corridos após a contratação de plano
         if (!uRec) {
           uRec = new Record(usersCol)
           uRec.setEmail(tp.email)
-          uRec.setPassword('Skip@Pass')
+          uRec.setPassword($security.randomString(32))
           uRec.setVerified(true)
         }
 

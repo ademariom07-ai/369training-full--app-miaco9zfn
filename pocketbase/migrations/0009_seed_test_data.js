@@ -44,7 +44,7 @@ migrate(
         role: 'aluno',
         plan: 'gratis',
         plan_type: 'aluno',
-        password: 'Teste@123',
+        password: $security.randomString(32),
         referral_code: 'PEDRO369',
       },
       {
@@ -53,7 +53,7 @@ migrate(
         role: 'aluno',
         plan: 'gratis',
         plan_type: 'aluno',
-        password: 'Teste@123',
+        password: $security.randomString(32),
         referral_code: 'ANA369',
       },
       {
@@ -62,7 +62,7 @@ migrate(
         role: 'aluno',
         plan: 'gratis',
         plan_type: 'aluno',
-        password: 'Teste@123',
+        password: $security.randomString(32),
         referral_code: 'COMBAT369',
       },
     ]

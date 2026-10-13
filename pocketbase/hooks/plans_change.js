@@ -103,32 +103,63 @@ routerAdd(
         planPrice = billingPeriod === 'annual' ? annual : monthly
       }
 
-      // Atualizar plano do usuário
-      authUser.set('plan', targetPlan)
-      authUser.set('plan_upgraded_at', now.toISOString().replace('T', ' '))
-      authUser.set('subscription_status', 'ativa')
+      // Cobrança: o plano pago só é ativado se o saldo da carteira cobrir o valor.
+      // O saldo entra por depósito PIX aprovado pelo admin (wallet_deposit + admin_approve_deposit).
+      if (planPrice > 0) {
+        const userTxs = $app.findRecordsByFilter(
+          'wallet_transactions',
+          `user = '${authUser.id}' && (status = 'concluido' || status = 'aprovado' || (type = 'saque' && status = 'pendente'))`,
+          '-created',
+          5000,
+          0,
+        )
+        let saldoReal = 0.0
+        for (const t of userTxs) {
+          const amt = Number(t.get('amount')) || 0.0
+          const txType = (t.get('type') || '').toLowerCase()
+          if (txType === 'deposito' || txType === 'cashback' || txType === 'bonus_indicacao') {
+            saldoReal += amt
+          } else if (
+            txType === 'saque' ||
+            txType === 'tarifa' ||
+            txType === 'pagamento' ||
+            txType === 'servico' ||
+            txType === 'mensalidade'
+          ) {
+            saldoReal -= Math.abs(amt)
+          }
+        }
 
-      // Definir expiração: 30 dias para mensal ou 365 para anual
+        if (saldoReal < planPrice) {
+          return e.json(402, {
+            success: false,
+            code: 'INSUFFICIENT_BALANCE',
+            message:
+              `Saldo insuficiente para ativar o plano ${targetPlan.toUpperCase()} (R$ ${planPrice.toFixed(2)}). ` +
+              `Saldo disponível: R$ ${saldoReal.toFixed(2)}. Faça um depósito PIX na sua carteira e tente novamente.`,
+            price: planPrice,
+            saldo_disponivel: saldoReal,
+          })
+        }
+      }
+
       const expires = new Date(now)
       if (billingPeriod === 'annual') {
         expires.setDate(expires.getDate() + 365)
       } else {
         expires.setDate(expires.getDate() + 30)
       }
-      authUser.set('subscription_expires_at', expires.toISOString().replace('T', ' '))
 
-      $app.save(authUser)
-
-      // Registrar transação se houver valor financeiro
+      // Débito e troca de plano na mesma transação: ou ambos acontecem, ou nenhum.
       let txRecordId = ''
-      if (planPrice > 0) {
-        try {
-          const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
+      $app.runInTransaction((txApp) => {
+        if (planPrice > 0) {
+          const walletCol = txApp.findCollectionByNameOrId('wallet_transactions')
           const tx = new Record(walletCol)
           tx.set('user', authUser.id)
           tx.set('type', 'mensalidade')
-          tx.set('amount', planPrice)
-          tx.set('status', 'pendente') // Aguarda validação ou gateway de pagamento
+          tx.set('amount', -planPrice)
+          tx.set('status', 'concluido')
           tx.set('reference_type', 'subscription')
           tx.set('reference_id', `${targetPlan}_${billingPeriod}`)
           tx.set(
@@ -137,12 +168,17 @@ routerAdd(
               billingPeriod === 'annual' ? 'Anual 10x' : 'Mensal'
             }) - R$ ${planPrice.toFixed(2)}`,
           )
-          $app.save(tx)
+          txApp.save(tx)
           txRecordId = tx.id
-        } catch (txErr) {
-          console.error('Erro ao registrar transação de mensalidade:', txErr)
         }
-      }
+
+        const userRec = txApp.findRecordById('users', authUser.id)
+        userRec.set('plan', targetPlan)
+        userRec.set('plan_upgraded_at', now.toISOString().replace('T', ' '))
+        userRec.set('subscription_status', 'ativa')
+        userRec.set('subscription_expires_at', expires.toISOString().replace('T', ' '))
+        txApp.save(userRec)
+      })
 
       // Registrar auditoria
       try {

@@ -14,6 +14,10 @@ import RouteFallback from '@/components/RouteFallback'
 const Index = lazy(() => import('@/pages/Index'))
 const Login = lazy(() => import('@/pages/Login'))
 const Cadastro = lazy(() => import('@/pages/Cadastro'))
+const EsqueciSenha = lazy(() => import('@/pages/EsqueciSenha'))
+const RedefinirSenha = lazy(() => import('@/pages/RedefinirSenha'))
+const ConfirmarVerificacaoEmail = lazy(() => import('@/pages/ConfirmarVerificacaoEmail'))
+const VerificacaoPendente = lazy(() => import('@/pages/VerificacaoPendente'))
 const TermosDeUso = lazy(() => import('@/pages/TermosDeUso'))
 const PoliticaDePrivacidade = lazy(() => import('@/pages/PoliticaDePrivacidade'))
 const LgpdConsentimentos = lazy(() => import('@/pages/LgpdConsentimentos'))
@@ -66,6 +70,12 @@ export default function App() {
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/cadastro" element={<Cadastro />} />
+              <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+              <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+              <Route path="/redefinir-senha/:token" element={<RedefinirSenha />} />
+              <Route path="/verificar-email" element={<ConfirmarVerificacaoEmail />} />
+              <Route path="/verificar-email/:token" element={<ConfirmarVerificacaoEmail />} />
+              <Route path="/verificacao-pendente" element={<VerificacaoPendente />} />
               <Route
                 path="/conteudos"
                 element={

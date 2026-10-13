@@ -441,6 +441,13 @@ export default function Cadastro() {
 
       setCreatedSuccess(true)
       toast.success('Cadastro realizado com sucesso!')
+      if (selectedPlan && selectedPlan !== 'gratis') {
+        // O servidor cria toda conta no plano Grátis; planos pagos são ativados após o pagamento.
+        toast.info(
+          `Sua conta começa no plano Grátis. Para ativar o plano ${String(selectedPlan).toUpperCase()}, deposite o valor na sua Carteira e confirme em "Meu Plano".`,
+          { duration: 10000 },
+        )
+      }
 
       // Se for aluno, abrir questionário referente ao seu objetivo
       if (role === 'aluno' && createdUser?.id) {
