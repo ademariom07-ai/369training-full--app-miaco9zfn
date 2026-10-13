@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react'
 import pb from '@/lib/pocketbase/client'
-import {calculateFeeCashbackPool} from '@/lib/feeCashbackPool'
-type Source={period:string;studentFeeCents:number;partnerFeeCents:number;totalFeeCents:number;indicativePoolCents:number;acceptedRecords:number;excludedRecords:number}
+import {validateRegisteredFeeSource,type RegisteredFeeSource as Source} from '@/lib/registeredFeeSource'
+
 const money=(cents:number)=>(cents/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
 export default function RegisteredFeeSource(){
  const [period,setPeriod]=useState(()=>new Date().toISOString().slice(0,7)),[result,setResult]=useState<Source|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[,refresh]=useState(0)
@@ -17,10 +17,8 @@ export default function RegisteredFeeSource(){
   try{
    const r=await pb.send('/backend/v1/admin/fee_source',{method:'POST',body:{period}})
    if(!mounted.current||ticket!==sequence.current||token!==pb.authStore.token||pb.authStore.record?.role!=='admin')return
-   if(!r||r.period!==period||r.source!=='pocketbase-wallet-registered-fees'||r.complete!==true||r.settlementVerified!==false||r.usableForClosing!==false||r.simulationOnly!==true)throw Error('invalid')
-   const expected=calculateFeeCashbackPool(r.studentFeeCents,r.partnerFeeCents)
-   if(r.percent!==38||r.totalFeeCents!==expected.totalFeeCents||r.indicativePoolCents!==expected.poolCents||![r.acceptedRecords,r.excludedRecords].every(n=>Number.isSafeInteger(n)&&n>=0))throw Error('invalid')
-   setResult(r)
+   const validated=validateRegisteredFeeSource(r,period)
+   setResult(validated)
   }catch{if(mounted.current&&ticket===sequence.current)setError('Consulta indisponível ou tarifas não conciliadas. Nenhum valor foi importado para distribuição.')}
   finally{if(mounted.current&&ticket===sequence.current)setBusy(false)}
  }

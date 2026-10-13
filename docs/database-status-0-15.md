@@ -3,6 +3,12 @@
 Atualizado em 13/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
+## Validação da fonte registrada — 13/10, etapa seguinte
+
+Conferidos os campos da consulta contra `src/lib/pocketbase/schema.json` local (não contra schema de produção). Consulta SQL extraída do próprio hook e executada em SQLite em memória: fronteiras do mês com intervalo semiaberto, exclusão de depósitos, aluno e parceiro no mesmo serviço, pagador desconhecido preservado para rejeição e paginação de 501 registros com timestamps iguais.
+
+Novo decodificador na tela verifica período e janela, fonte, flags de inventário indicativo, 38%, soma dos totais, contagens processadas e teto da consulta; rejeita resposta inconsistente antes de exibir. Retém somente campos agregados permitidos, descartando dados extras. Não promove registros a liquidação comprovada. Validação: 16 testes Vitest da fonte/contrato/hook e 3 testes SQLite; TypeScript e build aprovados. Sem alterações nas fórmulas, publicação, migração ou acesso ao banco real. Prévia v4 permanece manual; pacotes 0–15 continuam parciais.
+
 ## Consulta administrativa das tarifas registradas — 13/10
 
 Preparado endpoint somente leitura `POST /backend/v1/admin/fee_source` e cartão `RegisteredFeeSource` no administrativo, aba de conferência. Autenticação e papel admin exigidos antes de consultar. Paginação em lotes de 500 dentro da mesma transação; máximo conservador de 100.000 registros, sem retornar parcial. Consulta parametrizada por janela mensal explícita (registro em UTC−03), sem definir regra definitiva de competência/fechamento. Soma alunos/profissionais por papel atual; classificação histórica do pagador continua pendente.
