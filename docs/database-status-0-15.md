@@ -3,6 +3,12 @@
 Atualizado em 13/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
+## Painel consolidado de evolução — 13/10
+
+Arquivo único `docs/previews/369-wellness-evolucao-completa-2026-10-13.html`: simulador v4 incorporado em iframe isolado, sete módulos, regras atuais, pacotes 0–15, histórico pesquisável e próximos marcos com critérios de conclusão. Gerado por `scripts/build-evolution-report.py`. Não é o aplicativo completo publicado; não usa banco real. Relatório distingue evidência local e registro histórico de banco, e não atesta disponibilidade do antigo link hospedado.
+
+Reexecutados 295 testes Vitest + 9 interações em DOM simulado + 7 testes SQLite = 311 aprovados. Verificados links internos, IDs únicos, cópia exata do simulador incorporado e sandbox do iframe. Sem alteração nas fórmulas, publicação ou migração. Pacotes permanecem parciais.
+
 ## Validação da fonte registrada — 13/10, etapa seguinte
 
 Conferidos os campos da consulta contra `src/lib/pocketbase/schema.json` local (não contra schema de produção). Consulta SQL extraída do próprio hook e executada em SQLite em memória: fronteiras do mês com intervalo semiaberto, exclusão de depósitos, aluno e parceiro no mesmo serviço, pagador desconhecido preservado para rejeição e paginação de 501 registros com timestamps iguais.
