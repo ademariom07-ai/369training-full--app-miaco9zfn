@@ -19,9 +19,6 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [quickLoadingRole, setQuickLoadingRole] = useState<
-    'admin' | 'profissional' | 'aluno' | null
-  >(null)
   const [success, setSuccess] = useState(false)
 
   const executeLogin = async (loginEmail: string, loginPass: string) => {
@@ -51,31 +48,7 @@ export default function Login() {
       const detailedMessage = getErrorMessage(err)
       toast.error(detailedMessage || 'Falha ao autenticar. Verifique seus dados de acesso.')
       setLoading(false)
-      setQuickLoadingRole(null)
     }
-  }
-
-  // Quick fill helper for user convenience (pre-fills email/role only, never hardcodes passwords)
-  const handleQuickLogin = async (targetRole: 'admin' | 'profissional' | 'aluno') => {
-    if (loading) return
-
-    setQuickLoadingRole(targetRole)
-
-    let targetEmail = ''
-
-    if (targetRole === 'admin') {
-      targetEmail = 'ademariom07@gmail.com'
-    } else if (targetRole === 'profissional') {
-      targetEmail = 'lais.personal@gemail.com'
-      setRoleSelection('profissional')
-    } else {
-      targetEmail = 'aluno.lucas@369training.com'
-      setRoleSelection('aluno')
-    }
-
-    setEmail(targetEmail)
-    setPassword('')
-    setQuickLoadingRole(null)
   }
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -204,47 +177,6 @@ export default function Login() {
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Entrar na Plataforma'}
                 </Button>
               </form>
-              {/* Preenchimento Rápido de E-mail */}
-              <div className="mt-6 pt-4 border-t border-[#E5E3DC]">
-                <p className="text-[11px] text-gray-500 uppercase font-semibold text-center mb-2 font-montserrat">
-                  Preenchimento Rápido de E-mail
-                </p>
-                <div className="flex justify-center gap-2">
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleQuickLogin('admin')}
-                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-white border border-[#E5E3DC] text-gray-700 hover:border-[#D4AF37] hover:text-[#B8962E] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
-                  >
-                    {quickLoadingRole === 'admin' ? (
-                      <Loader2 className="w-3 h-3 animate-spin text-[#D4AF37]" />
-                    ) : null}
-                    Admin
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleQuickLogin('profissional')}
-                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-white border border-[#E5E3DC] text-gray-700 hover:border-[#D4AF37] hover:text-[#B8962E] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
-                  >
-                    {quickLoadingRole === 'profissional' ? (
-                      <Loader2 className="w-3 h-3 animate-spin text-[#D4AF37]" />
-                    ) : null}
-                    Profissional
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleQuickLogin('aluno')}
-                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-white border border-[#E5E3DC] text-gray-700 hover:border-[#0057FF] hover:text-[#0057FF] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
-                  >
-                    {quickLoadingRole === 'aluno' ? (
-                      <Loader2 className="w-3 h-3 animate-spin text-[#0057FF]" />
-                    ) : null}
-                    Aluno
-                  </button>
-                </div>
-              </div>{' '}
             </>
           )}
         </Card>
