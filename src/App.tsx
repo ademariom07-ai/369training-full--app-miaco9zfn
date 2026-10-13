@@ -9,6 +9,7 @@ import { ClinicalAreaGuard } from '@/components/ClinicalAreaGuard'
 import CookieConsentBanner from '@/components/CookieConsentBanner'
 import ReacceptanceModal from '@/components/ReacceptanceModal'
 import RouteFallback from '@/components/RouteFallback'
+import InstallAppBanner from '@/components/InstallAppBanner'
 
 // Public Pages (Lazy)
 const Index = lazy(() => import('@/pages/Index'))
@@ -502,6 +503,7 @@ export default function App() {
           </Suspense>
           <CookieConsentBanner />
           <ReacceptanceModal />
+          <InstallAppBanner />
           <Toaster richColors position="top-right" />
         </Router>
       </AuthProvider>

@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-10-13T19:24:56.502Z",
+  "generatedAt": "2026-10-13T19:45:04.016Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && role = 'profissional') || (@request.auth.role = 'profissional' && role = 'aluno')",
-        "view": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && role = 'profissional') || (@request.auth.role = 'profissional' && role = 'aluno')",
+        "list": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && role = 'profissional') || (@request.auth.role = 'profissional' && role = 'aluno' && (linked_professional = @request.auth.id || appointments_via_aluno.profissional ?= @request.auth.id || services_via_student.professional ?= @request.auth.id || workouts_via_student.professional ?= @request.auth.id || diets_via_student.professional ?= @request.auth.id || messages_via_sender.receiver ?= @request.auth.id || messages_via_receiver.sender ?= @request.auth.id || challenge_participants_via_aluno_id.challenge_id.professional_id ?= @request.auth.id || group_session_participants_via_student.session.professional ?= @request.auth.id))",
+        "view": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && role = 'profissional') || (@request.auth.role = 'profissional' && role = 'aluno' && (linked_professional = @request.auth.id || appointments_via_aluno.profissional ?= @request.auth.id || services_via_student.professional ?= @request.auth.id || workouts_via_student.professional ?= @request.auth.id || diets_via_student.professional ?= @request.auth.id || messages_via_sender.receiver ?= @request.auth.id || messages_via_receiver.sender ?= @request.auth.id || challenge_participants_via_aluno_id.challenge_id.professional_id ?= @request.auth.id || group_session_participants_via_student.session.professional ?= @request.auth.id))",
         "create": "@request.body.role != 'admin'",
-        "update": "@request.auth.role = 'admin' || (id = @request.auth.id && @request.body.plan:isset = false && @request.body.role:isset = false && @request.body.approved:isset = false && @request.body.tree_position:isset = false && @request.body.tree_level:isset = false && @request.body.verified:isset = false && @request.body.rating_avg:isset = false && @request.body.subscription_status:isset = false && @request.body.subscription_expires_at:isset = false && @request.body.linked_professional:isset = false && @request.body.linked_prof_fee_mode:isset = false)",
+        "update": "@request.auth.role = 'admin' || (id = @request.auth.id && @request.body.plan:isset = false && @request.body.plan_type:isset = false && @request.body.plan_upgraded_at:isset = false && @request.body.role:isset = false && @request.body.approved:isset = false && @request.body.tree_position:isset = false && @request.body.tree_level:isset = false && @request.body.verified:isset = false && @request.body.rating_avg:isset = false && @request.body.subscription_status:isset = false && @request.body.subscription_expires_at:isset = false && @request.body.linked_professional:isset = false && @request.body.linked_prof_fee_mode:isset = false && (@request.body.cpf:isset = false || cpf = ''))",
         "delete": "id = @request.auth.id"
       },
       "fields": [
@@ -50,7 +50,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["gratis", "basico", "pro", "premium"]
+          "selectValues": ["gratis", "basico", "pro", "premium", "pro_parceiro"]
         },
         {
           "name": "plan_type",
@@ -207,12 +207,6 @@
           "system": false
         },
         {
-          "name": "birth_date",
-          "type": "date",
-          "required": false,
-          "system": false
-        },
-        {
           "name": "guardian_id",
           "type": "relation",
           "required": false,
@@ -220,26 +214,8 @@
           "collectionRef": "users"
         },
         {
-          "name": "guardian_name",
-          "type": "text",
-          "required": false,
-          "system": false
-        },
-        {
-          "name": "guardian_cpf",
-          "type": "text",
-          "required": false,
-          "system": false
-        },
-        {
           "name": "guardian_consent",
           "type": "bool",
-          "required": false,
-          "system": false
-        },
-        {
-          "name": "cpf",
-          "type": "text",
           "required": false,
           "system": false
         },
@@ -327,11 +303,11 @@
       "name": "referrals",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (referrer = @request.auth.id || referred = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (referrer = @request.auth.id || referred = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.body.referred = @request.auth.id && @request.body.referrer != @request.auth.id && (@request.body.status:isset = false || @request.body.status = 'pending') && (@request.body.referral_bonus_paid:isset = false || @request.body.referral_bonus_paid = false) && (@request.body.services_count:isset = false || @request.body.services_count = 0) && @request.body.validated_at:isset = false))",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
       },
       "fields": [
         {
@@ -412,7 +388,7 @@
         "list": "@request.auth.id != '' && (professional = @request.auth.id || student = @request.auth.id || @request.auth.role = 'admin')",
         "view": "@request.auth.id != '' && (professional = @request.auth.id || student = @request.auth.id || @request.auth.role = 'admin')",
         "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id) || @request.body.student = @request.auth.id)",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && professional = @request.auth.id))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && professional = @request.auth.id && @request.body.professional:isset = false && @request.body.validation_status:isset = false && @request.body.validated:isset = false && @request.body.validated_at:isset = false))",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.auth.role = 'profissional' && professional = @request.auth.id))"
       },
       "fields": [
@@ -445,7 +421,7 @@
         {
           "name": "value",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -517,11 +493,11 @@
       "name": "workouts",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.body.student = @request.auth.id && (@request.body.professional:isset = false || @request.body.professional = '')) || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || ((student = @request.auth.id || professional = @request.auth.id) && @request.body.student:isset = false && @request.body.professional:isset = false))",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || professional = @request.auth.id || (student = @request.auth.id && professional = ''))"
       },
       "fields": [
         {
@@ -605,11 +581,11 @@
       "name": "diets",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.body.student = @request.auth.id && (@request.body.professional:isset = false || @request.body.professional = '')) || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || ((student = @request.auth.id || professional = @request.auth.id) && @request.body.student:isset = false && @request.body.professional:isset = false))",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || professional = @request.auth.id || (student = @request.auth.id && professional = ''))"
       },
       "fields": [
         {
@@ -677,11 +653,11 @@
       "name": "protocols",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.body.student = @request.auth.id && (@request.body.professional:isset = false || @request.body.professional = '')) || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || ((student = @request.auth.id || professional = @request.auth.id) && @request.body.student:isset = false && @request.body.professional:isset = false))",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || professional = @request.auth.id || (student = @request.auth.id && professional = ''))"
       },
       "fields": [
         {
@@ -743,11 +719,11 @@
       "name": "martial_arts_sessions",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || (@request.body.student = @request.auth.id && (@request.body.professional:isset = false || @request.body.professional = '')) || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || ((student = @request.auth.id || professional = @request.auth.id) && @request.body.student:isset = false && @request.body.professional:isset = false))",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || professional = @request.auth.id || (student = @request.auth.id && professional = ''))"
       },
       "fields": [
         {
@@ -834,7 +810,7 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["deposito", "saque", "cashback", "tarifa", "servico"]
+          "selectValues": ["deposito", "saque", "cashback", "tarifa", "servico", "mensalidade"]
         },
         {
           "name": "amount",
@@ -1101,11 +1077,11 @@
       "name": "expert_interactions",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (professional = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (professional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && @request.body.professional = @request.auth.id",
+        "update": null,
+        "delete": "@request.auth.role = 'admin'"
       },
       "fields": [
         {
@@ -1246,7 +1222,7 @@
         "list": "sender = @request.auth.id || receiver = @request.auth.id || (@request.auth.role = \"admin\" && reported = true)",
         "view": "sender = @request.auth.id || receiver = @request.auth.id || (@request.auth.role = \"admin\" && reported = true)",
         "create": "@request.body.sender = @request.auth.id && @request.body.receiver != @request.auth.id",
-        "update": "sender = @request.auth.id || receiver = @request.auth.id || (@request.auth.role = \"admin\" && reported = true)",
+        "update": "@request.body.sender:isset = false && @request.body.receiver:isset = false && (sender = @request.auth.id || (receiver = @request.auth.id && @request.body.content:isset = false))",
         "delete": "sender = @request.auth.id || (@request.auth.role = \"admin\" && reported = true)"
       },
       "fields": [
@@ -1314,9 +1290,9 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "@request.auth.id != '' && @request.body.user = @request.auth.id",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || (user = @request.auth.id && @request.body.user:isset = false))",
+        "delete": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')"
       },
       "fields": [
         {
@@ -1371,11 +1347,11 @@
       "name": "achievements",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
       },
       "fields": [
         {
@@ -1443,11 +1419,11 @@
       "name": "audits",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.role = 'admin'",
+        "view": "@request.auth.role = 'admin'",
+        "create": "@request.auth.id != '' && @request.body.actor = @request.auth.id",
+        "update": null,
+        "delete": null
       },
       "fields": [
         {
@@ -1745,8 +1721,8 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (profissional = @request.auth.id || aluno = @request.auth.id || @request.auth.role = 'admin')",
         "view": "@request.auth.id != '' && (profissional = @request.auth.id || aluno = @request.auth.id || @request.auth.role = 'admin')",
-        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.body.aluno = @request.auth.id || @request.body.profissional = @request.auth.id)",
-        "update": "@request.auth.id != '' && (aluno = @request.auth.id || profissional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.body.profissional = @request.auth.id || (@request.body.aluno = @request.auth.id && @request.body.status != 'concluído' && @request.body.advance_paid:isset = false && @request.body.service_record:isset = false))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || profissional = @request.auth.id || (aluno = @request.auth.id && @request.body.status = 'cancelado' && @request.body.valor:isset = false && @request.body.taxa_extra:isset = false && @request.body.advance_paid:isset = false && @request.body.service_record:isset = false && @request.body.profissional:isset = false && @request.body.aluno:isset = false))",
         "delete": "@request.auth.id != '' && (aluno = @request.auth.id || profissional = @request.auth.id || @request.auth.role = 'admin')"
       },
       "fields": [
@@ -1848,11 +1824,11 @@
       "name": "chat_terms_acceptances",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && @request.body.user = @request.auth.id",
+        "update": null,
+        "delete": "@request.auth.role = 'admin'"
       },
       "fields": [
         {
@@ -2007,11 +1983,11 @@
       "name": "content_purchases",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
       },
       "fields": [
         {
@@ -2737,7 +2713,7 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (professional = @request.auth.id || @request.auth.role = 'admin')",
         "view": "@request.auth.id != '' && (professional = @request.auth.id || @request.auth.role = 'admin')",
-        "create": "@request.auth.id != '' || @request.body.professional != ''",
+        "create": "@request.auth.id != '' && @request.body.professional = @request.auth.id && (@request.body.status:isset = false || @request.body.status = 'pendente') && @request.body.reviewed_by:isset = false && @request.body.reviewed_at:isset = false && @request.body.review_notes:isset = false",
         "update": "@request.auth.role = 'admin' || (@request.auth.id = professional && status = 'pendente')",
         "delete": "@request.auth.role = 'admin'"
       },
@@ -2832,7 +2808,7 @@
       "apiRules": {
         "list": "@request.auth.role = 'admin'",
         "view": "@request.auth.role = 'admin'",
-        "create": "@request.auth.id != '' || @request.body.path != ''",
+        "create": "@request.auth.id != '' && @request.body.user = @request.auth.id",
         "update": null,
         "delete": "@request.auth.role = 'admin'"
       },
@@ -3621,8 +3597,8 @@
       "name": "clinical_session_logs",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'profissional' || student = @request.auth.id)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'profissional' || student = @request.auth.id)",
+        "list": "@request.auth.id != '' && (professional = @request.auth.id || student = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (professional = @request.auth.id || student = @request.auth.id || @request.auth.role = 'admin')",
         "create": "@request.auth.id != '' && @request.auth.role = 'profissional' && @request.body.professional = @request.auth.id",
         "update": "@request.auth.id != '' && @request.auth.role = 'profissional' && professional = @request.auth.id",
         "delete": "@request.auth.id != '' && @request.auth.role = 'profissional' && professional = @request.auth.id"
@@ -3787,7 +3763,7 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
         "view": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
-        "create": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.body.user = @request.auth.id || @request.auth.role = 'admin')",
         "update": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
         "delete": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')"
       },
@@ -3850,7 +3826,7 @@
         "list": "@request.auth.id != \"\" && (@request.auth.id = reviewer || @request.auth.id = reviewee || @request.auth.role = \"admin\")",
         "view": "@request.auth.id != \"\" && (@request.auth.id = reviewer || @request.auth.id = reviewee || @request.auth.role = \"admin\")",
         "create": "@request.auth.id != '' && @request.body.reviewer = @request.auth.id",
-        "update": "@request.auth.id != '' && (reviewer = @request.auth.id || @request.auth.role = 'admin')",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || (reviewer = @request.auth.id && @request.body.service:isset = false && @request.body.reviewer:isset = false && @request.body.reviewee:isset = false))",
         "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
       },
       "fields": [
