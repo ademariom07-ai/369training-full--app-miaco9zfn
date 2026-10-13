@@ -1,7 +1,15 @@
 # 369 WELLNESS — banco e pacotes 0–15
 
-Atualizado em 12/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
+Atualizado em 13/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
+
+## Alimentação por tarifas de alunos e parceiros — 13/10
+
+Preparado `feeCashbackPool.ts`: 38% da soma das tarifas, aritmética BigInt, arredondamento agregado, contrato mensal de lançamentos com bloqueio de duplicidade/incompletude/estorno pendente. Integração de conferência com Pareto e ESG aplica percentual somente uma vez. Modo administrativo manual separa tarifas de alunos e parceiros; entrada de cashback já disponível preservada.
+
+Prévia atual: `docs/previews/369-wellness-pareto-tarifas-38-v4.html`. Fontes manuais são explicitamente identificadas como simulação. Nenhuma conexão de cobranças reais, migração, publicação ou movimentação financeira. Próximo marco depende do adaptador de leitura administrativa de lançamentos conciliados e da cobertura de tarifas dos alunos, ausente no débito legado examinado. Critério: competência e autorização no servidor, origem única por cobrança, total completo e conciliado por pagador, estornos tratados antes de fechar.
+
+Validação desta etapa: 24 testes direcionados de fonte/Pareto/ESG e 9 de interação em DOM simulado; TypeScript/build aprovados. Pacotes 0–15 seguem parciais. Contagens históricas abaixo não indicam reexecução integral nesta etapa.
 
 ## Recuperação de cálculo bloqueado — 12/10, prévia 3
 

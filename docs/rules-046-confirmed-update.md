@@ -2,6 +2,14 @@
 
 Fonte: respostas diretas do usuário após a análise da ATUALIZAÇÃO 0.46. Este registro prevalece sobre a interpretação anterior de que Grátis não pontua/não aparece e sobre qualquer posição financeira por ordem de entrada.
 
+## Fonte do cashback — 13/10/2026
+
+Confirmado pelo usuário: inicialmente 38% de todas as tarifas de alunos e parceiros. Base não é o preço integral do serviço nem saldo da carteira. O motor recebe centavos das tarifas, soma alunos + parceiros e arredonda uma única vez 38% do total; Pareto distribui esse montante sem reaplicar percentual. ESG permanece sobre o bruto individual mensal. Os outros 62% não recebem destino definido nesta implementação; split interno permanece administrativo.
+
+Preparado contrato de entrada por cobrança (identificador único, pagador, tipo aluno/parceiro, competência, valor, estorno e status) para futura alimentação real. Somente registros conciliados entram na conferência; pendentes/anulados ficam fora. Duplicidades, conjunto incompleto, valores inválidos e cobranças liquidadas com estornos ainda não conciliados bloqueiam o cálculo. Isso não define uma nova política de estorno. Não inferir tarifas atuais pelo plano nem incluir mensalidades sem classificação financeira conciliada como tarifa.
+
+Este contrato e os sinalizadores locais não provam autorização ou liquidação. Integração real exige consulta administrativa no servidor, evidência da cobrança, competência/fuso, completude da paginação e origem única. O débito legado examinado em `on_service_completed.js` registra apenas o profissional e verifica duplicidade por serviço sem separar pagador; não deve ser usado como fonte completa para ambas as partes. Não alterado nesta etapa. Nenhum dado real foi importado ou cobrança disparada.
+
 ## Padrão vigente aprovado em 12/10/2026 — Pareto 80/20, progressão linear 10×
 
 Esta decisão substitui a distribuição linear global aprovada em 09/10, descrita abaixo como histórico. Mantém ranking por pontos, avaliação média, antiguidade, teto de serviços, Grátis sem cashback e ESG mensal. Não adota regras do ERP LavaCar nem cria posição de rede por entrada.
