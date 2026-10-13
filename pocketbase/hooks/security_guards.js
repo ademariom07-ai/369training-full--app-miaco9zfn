@@ -166,3 +166,84 @@ onRecordCreateRequest((e) => {
   e.record.set('confirmed_at', '')
   return e.next()
 }, 'group_session_participants')
+
+// ---------------------------------------------------------------------------
+// Notificações: profissional só notifica alunos com quem tem relação (evita golpes
+// com notificações falsas enviadas a qualquer usuário).
+// ---------------------------------------------------------------------------
+onRecordCreateRequest((e) => {
+  if (e.hasSuperuserAuth() || (e.auth && e.auth.getString('role') === 'admin')) return e.next()
+
+  const authId = e.auth ? e.auth.id : ''
+  if (!authId) throw new UnauthorizedError('Autenticação necessária.')
+
+  const targetId = e.record.getString('user')
+  if (targetId === authId) return e.next()
+
+  // A regra de listagem de users (0075) já define "aluno relacionado ao profissional".
+  let visible = false
+  try {
+    visible = $app.canAccessRecord(
+      $app.findRecordById('users', targetId),
+      e.requestInfo(),
+      $app.findCollectionByNameOrId('users').viewRule,
+    )
+  } catch (_) {}
+
+  if (e.auth.getString('role') !== 'profissional' || !visible) {
+    throw new ForbiddenError('Você não pode enviar notificações para este usuário.')
+  }
+  return e.next()
+}, 'notifications')
+
+// ---------------------------------------------------------------------------
+// Indicações: só no cadastro (até 1 hora após criar a conta) e uma por pessoa indicada.
+// ---------------------------------------------------------------------------
+onRecordCreateRequest((e) => {
+  if (e.hasSuperuserAuth() || (e.auth && e.auth.getString('role') === 'admin')) return e.next()
+
+  const authId = e.auth ? e.auth.id : ''
+  if (!authId) throw new UnauthorizedError('Autenticação necessária.')
+
+  const createdAt = new Date(e.auth.getString('created').replace(' ', 'T'))
+  if (isNaN(createdAt.getTime()) || Date.now() - createdAt.getTime() > 60 * 60 * 1000) {
+    throw new ForbiddenError('O código de indicação só pode ser usado no cadastro.')
+  }
+
+  try {
+    $app.findFirstRecordByFilter('referrals', 'referred = {:id}', { id: authId })
+    throw new BadRequestError('Esta conta já possui uma indicação registrada.')
+  } catch (err) {
+    if (err instanceof BadRequestError) throw err
+  }
+  return e.next()
+}, 'referrals')
+
+// ---------------------------------------------------------------------------
+// Login: bloqueia a conta por 15 minutos após 10 senhas erradas seguidas (anti força bruta).
+// O controle é por e-mail, não por IP, porque o servidor pode estar atrás de um proxy.
+// ---------------------------------------------------------------------------
+onRecordAuthWithPasswordRequest((e) => {
+  const identity = String(e.identity || '')
+    .trim()
+    .toLowerCase()
+  const key = 'login_fail:' + identity
+  const windowMs = 15 * 60 * 1000
+  const now = Date.now()
+
+  const state = $app.store().get(key)
+  if (state && state.count >= 10 && now - state.first < windowMs) {
+    throw new TooManyRequestsError(
+      'Muitas tentativas de login. Aguarde 15 minutos ou use "Esqueceu a senha?".',
+    )
+  }
+
+  try {
+    e.next()
+  } catch (err) {
+    const fresh = state && now - state.first < windowMs ? state : { count: 0, first: now }
+    $app.store().set(key, { count: fresh.count + 1, first: fresh.first })
+    throw err
+  }
+  $app.store().remove(key)
+}, 'users')
