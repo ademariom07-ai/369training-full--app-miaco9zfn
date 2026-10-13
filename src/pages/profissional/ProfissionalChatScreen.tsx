@@ -94,9 +94,14 @@ export default function ProfissionalChatScreen() {
     setLoadingStudents(true)
     const fetchStudentsAndUnread = async () => {
       try {
+        const studentFilter =
+          user.role === 'admin'
+            ? 'role = "aluno"'
+            : `role = "aluno" && linked_professional = "${user.id}"`
+
         const [usersRes, unreadRes] = await Promise.all([
           pb.collection('users').getList<StudentContact>(1, 100, {
-            filter: 'role = "aluno"',
+            filter: studentFilter,
             sort: 'name',
           }),
           pb.collection('messages').getList<MessageRecord>(1, 200, {

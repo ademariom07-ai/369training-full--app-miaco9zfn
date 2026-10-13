@@ -191,23 +191,35 @@ export default function AgendaServicos() {
       }
       setServicesMap(sMap)
 
-      // 4. Carregar todas as reviews visíveis ao profissional (como reviewer ou reviewee)
-      const revRes = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 500, {
-        filter: `reviewer = "${user.id}" || reviewee = "${user.id}"`,
-        sort: '-created',
-        expand: 'reviewer,reviewee',
-      })
+      // 4. Carregar reviews visíveis ao profissional com paginação incremental
       const rMap: Record<string, ServiceReviewRecord> = {}
       const allMap: Record<string, ServiceReviewRecord[]> = {}
-      for (const r of revRes.items) {
-        if (r.reviewer === user.id) {
-          rMap[r.service] = r
+
+      const pageSize = 50
+      let page = 1
+      let totalPages = 1
+
+      do {
+        const revRes = await pb
+          .collection('service_reviews')
+          .getList<ServiceReviewRecord>(page, pageSize, {
+            filter: `reviewer = "${user.id}" || reviewee = "${user.id}"`,
+            sort: '-created',
+            expand: 'reviewer,reviewee',
+          })
+        for (const r of revRes.items) {
+          if (r.reviewer === user.id) {
+            rMap[r.service] = r
+          }
+          if (!allMap[r.service]) {
+            allMap[r.service] = []
+          }
+          allMap[r.service].push(r)
         }
-        if (!allMap[r.service]) {
-          allMap[r.service] = []
-        }
-        allMap[r.service].push(r)
-      }
+        totalPages = revRes.totalPages || 1
+        page += 1
+      } while (page <= totalPages)
+
       setMyReviewsMap(rMap)
       setAllReviewsByServiceMap(allMap)
     } catch (err) {
@@ -219,14 +231,19 @@ export default function AgendaServicos() {
 
   // Initial load & students load
   useEffect(() => {
+    if (!user) return
+    const studentFilter =
+      user.role === 'admin'
+        ? 'role = "aluno"'
+        : `role = "aluno" && linked_professional = "${user.id}"`
     pb.collection('users')
-      .getList<UserProfile>(1, 50, { filter: 'role = "aluno"' })
+      .getList<UserProfile>(1, 50, { filter: studentFilter })
       .then((res) => {
         setStudents(res.items)
         if (res.items.length > 0) setSelectedStudentId(res.items[0].id)
       })
       .catch(() => {})
-  }, [])
+  }, [user])
 
   useEffect(() => {
     loadData()
