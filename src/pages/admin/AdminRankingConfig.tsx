@@ -55,6 +55,7 @@ import {
   calculateHybridPositionParams,
 } from '@/lib/binaryTreeHybrid'
 import LinearCashbackSimulator from '@/components/LinearCashbackSimulator'
+import RegisteredFeeSource from '@/components/RegisteredFeeSource'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface RankItem {
@@ -2752,7 +2753,7 @@ export default function AdminRankingConfig() {
         )}
 
         {/* Regra padrão; valores simulados, sem acionamento financeiro. */}
-        {activeTab === 'caminhoC' && <LinearCashbackSimulator />}
+        {activeTab === 'caminhoC' && <><RegisteredFeeSource /><LinearCashbackSimulator /></>}
 
         {/* TAB HISTÓRICO DE CICLOS (Opção A) */}
         {activeTab === 'historicoCiclos' && (

@@ -3,6 +3,14 @@
 Atualizado em 13/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
+## Consulta administrativa das tarifas registradas — 13/10
+
+Preparado endpoint somente leitura `POST /backend/v1/admin/fee_source` e cartão `RegisteredFeeSource` no administrativo, aba de conferência. Autenticação e papel admin exigidos antes de consultar. Paginação em lotes de 500 dentro da mesma transação; máximo conservador de 100.000 registros, sem retornar parcial. Consulta parametrizada por janela mensal explícita (registro em UTC−03), sem definir regra definitiva de competência/fechamento. Soma alunos/profissionais por papel atual; classificação histórica do pagador continua pendente.
+
+A fonte lê apenas `type=tarifa`; status concluído compõe montante indicativo. Pendentes/cancelados/estornados são contados como excluídos. Valores positivos ou fracionários de centavo, pagador desconhecido e duplicidades por ID ou pagador/referência bloqueiam resultado. Retorna somente agregados e marcadores `settlementVerified=false`, `usableForClosing=false`; não comprova liquidação nem detecta automaticamente estornos em outros lançamentos. Não alimenta distribuição sem conciliação. Mensalidades e cobranças registradas sob outro tipo ficam fora desta consulta e precisam de mapeamento explícito.
+
+Tela limpa dados ao mudar sessão/mês e descarta respostas atrasadas; falhas exibem mensagem genérica. Seis testes de hook em VM aprovados (papéis, período, duas origens, paginação, estados e falhas sem valores parciais). Endpoint não instalado nem testado no PocketBase real. Próximo marco: homologar schema/permissões, conciliar cobrança dos alunos, correspondência de serviços/agendamentos, histórico do pagador e prova de liquidação. Sem migração, publicação ou pagamento. Pacotes 0–15 parciais.
+
 ## Alimentação por tarifas de alunos e parceiros — 13/10
 
 Preparado `feeCashbackPool.ts`: 38% da soma das tarifas, aritmética BigInt, arredondamento agregado, contrato mensal de lançamentos com bloqueio de duplicidade/incompletude/estorno pendente. Integração de conferência com Pareto e ESG aplica percentual somente uma vez. Modo administrativo manual separa tarifas de alunos e parceiros; entrada de cashback já disponível preservada.
