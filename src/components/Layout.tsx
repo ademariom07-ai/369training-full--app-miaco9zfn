@@ -26,6 +26,7 @@ import {
   History,
 } from 'lucide-react'
 import type { NotificationRecord } from '@/services/api'
+import { UserAvatar } from '@/components/UserAvatar'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -208,10 +209,10 @@ export default function Layout({ children }: LayoutProps) {
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-2 p-1.5 rounded-xl bg-white border border-[#E5E3DC] hover:border-[#D4AF37] transition-all shadow-xs"
             >
-              <img
-                src="https://img.usecurling.com/ppl/medium?gender=male&seed=1"
-                alt="Avatar"
-                className="w-7 h-7 rounded-lg object-cover border border-[#D4AF37]"
+              <UserAvatar
+                user={user}
+                thumb="64x64"
+                className="w-7 h-7 rounded-lg border border-[#D4AF37] text-[11px]"
               />
               <span className="hidden md:inline-block text-xs font-bold font-montserrat text-[#1A1A1A] max-w-[110px] truncate">
                 {user?.name?.split(' ')[0] || 'Usuário'}

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { PlanChangeSection } from '@/components/PlanChangeSection'
 import { toast } from 'sonner'
+import { AvatarUploader } from '@/components/AvatarUploader'
 
 export default function ProfissionalPerfil() {
   const { user, refreshUser } = useAuth()
@@ -172,11 +173,7 @@ export default function ProfissionalPerfil() {
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#1C1A14] via-[#141414] to-[#1C1A14] border border-[#D4AF37]/50 p-6 sm:p-8 shadow-2xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <img
-              src="https://img.usecurling.com/ppl/large?gender=male&seed=2"
-              alt={user?.name}
-              className="w-24 h-24 rounded-2xl object-cover border-2 border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.3)]"
-            />
+            <AvatarUploader className="w-24 h-24 rounded-2xl border-2 border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.3)] text-3xl" />
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 {user?.plan === 'pro_parceiro' ? (

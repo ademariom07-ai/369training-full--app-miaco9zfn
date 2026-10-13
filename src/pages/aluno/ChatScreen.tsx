@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
-import type { MessageRecord } from '@/services/api'
+import { useChatMessages, type ChatMessage } from '@/hooks/use-chat-messages'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,7 +39,6 @@ export default function ChatScreen() {
 
   const [professionals, setProfessionals] = useState<ProfessionalContact[]>([])
   const [activeProf, setActiveProf] = useState<ProfessionalContact | null>(null)
-  const [messages, setMessages] = useState<MessageRecord[]>([])
   const [inputText, setInputText] = useState('')
   const [sending, setSending] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -86,20 +85,22 @@ export default function ChatScreen() {
 
         const allProfs = profsRes.items
 
-        // Find linked professional via appointments or services
-        let linkedProfId: string | null = null
+        // Find linked professional: formal link first, then appointments or services
+        let linkedProfId: string | null = user.linked_professional || null
 
         // Try appointments sorted by updated/created descending
-        try {
-          const appRes = await pb.collection('appointments').getList(1, 1, {
-            filter: `aluno = "${user.id}"`,
-            sort: '-updated,-created',
-          })
-          if (appRes.items.length > 0 && appRes.items[0].profissional) {
-            linkedProfId = appRes.items[0].profissional
+        if (!linkedProfId) {
+          try {
+            const appRes = await pb.collection('appointments').getList(1, 1, {
+              filter: `aluno = "${user.id}"`,
+              sort: '-updated,-created',
+            })
+            if (appRes.items.length > 0 && appRes.items[0].profissional) {
+              linkedProfId = appRes.items[0].profissional
+            }
+          } catch {
+            // Ignora se não houver appointments
           }
-        } catch {
-          // Ignora se não houver appointments
         }
 
         // Try services sorted by updated/created descending
@@ -165,66 +166,8 @@ export default function ChatScreen() {
     }
   }, [user, profId])
 
-  // 3. Load active chat messages & subscribe to realtime
-  useEffect(() => {
-    if (!user || !activeProf) {
-      setMessages([])
-      return
-    }
-
-    pb.collection('messages')
-      .getList<MessageRecord>(1, 100, {
-        filter: `(sender = "${user.id}" && receiver = "${activeProf.id}") || (sender = "${activeProf.id}" && receiver = "${user.id}")`,
-        sort: 'created',
-      })
-      .then((res) => {
-        setMessages(res.items)
-      })
-      .catch(() => {
-        setMessages([])
-      })
-
-    let unsubscribeFn: (() => Promise<void>) | undefined
-    let cancelled = false
-
-    // Realtime subscription
-    pb.collection('messages')
-      .subscribe('*', (e) => {
-        if (e.action === 'create') {
-          const newMsg = e.record as unknown as MessageRecord
-          if (
-            (newMsg.sender === user.id && newMsg.receiver === activeProf.id) ||
-            (newMsg.sender === activeProf.id && newMsg.receiver === user.id)
-          ) {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === newMsg.id)) return prev
-              return [...prev, newMsg]
-            })
-          }
-        }
-      })
-      .then((fn) => {
-        if (cancelled) {
-          fn().catch(() => {})
-        } else {
-          unsubscribeFn = fn
-        }
-      })
-      .catch((err) => {
-        console.warn('[Realtime messages] Ignorando erro silenciosamente:', err?.message || err)
-      })
-
-    return () => {
-      cancelled = true
-      if (unsubscribeFn) {
-        unsubscribeFn().catch(() => {})
-      } else {
-        pb.collection('messages')
-          .unsubscribe('*')
-          .catch(() => {})
-      }
-    }
-  }, [user, activeProf])
+  // 3. Mensagens da conversa ativa (histórico, tempo real e checagem de reserva)
+  const { messages, addMessage } = useChatMessages(user?.id, activeProf?.id)
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -242,12 +185,13 @@ export default function ChatScreen() {
 
     setSending(true)
     try {
-      await pb.collection('messages').create({
+      const sent = await pb.collection('messages').create<ChatMessage>({
         sender: user.id,
         receiver: activeProf.id,
         content: inputText,
         read: false,
       })
+      addMessage(sent)
       setInputText('')
     } catch (err: unknown) {
       const error = err as Error

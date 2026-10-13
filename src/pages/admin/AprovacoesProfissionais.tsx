@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import type { UserProfile } from '@/contexts/AuthContext'
 import { CredentialVerificationRecord } from '@/services/api'
 import { PresentationVideoPlayer } from '@/components/PresentationVideoPlayer'
+import { UserAvatar } from '@/components/UserAvatar'
 
 export default function AprovacoesProfissionais() {
   const [pendingList, setPendingList] = useState<UserProfile[]>([])
@@ -490,10 +491,9 @@ export default function AprovacoesProfissionais() {
                 >
                   <div className="flex flex-col lg:flex-row items-start justify-between gap-6">
                     <div className="flex items-start gap-4">
-                      <img
-                        src="https://img.usecurling.com/ppl/medium?gender=male&seed=3"
-                        alt={prof.name}
-                        className="w-16 h-16 rounded-xl object-cover border-2 border-amber-500"
+                      <UserAvatar
+                        user={prof}
+                        className="w-16 h-16 rounded-xl border-2 border-amber-500 text-xl"
                       />
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
