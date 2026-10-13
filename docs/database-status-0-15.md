@@ -3,6 +3,12 @@
 Atualizado em 12/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
+## Recuperação de cálculo bloqueado — 12/10, prévia 3
+
+Tela administrativa de conferência e prévia HTML agora mantêm os controles de planos/metas quando a quantidade é válida e a distribuição ou o montante é rejeitado. Totais, grupos financeiros e valores individuais ficam ocultos (travessão), sem reapresentar dinheiro de cálculo anterior. Corrigir os dados recalcula mantendo os ajustes individuais. Quantidade inválida ainda limpa a lista; exemplos e troca de quantidade reiniciam ajustes como antes. Elegibilidade é exclusivamente fictícia nesta tela, não altera cadastros reais.
+
+Prévia atual: `docs/previews/369-wellness-pareto-80-20-10x-v3.html`. O arquivo v2 permanece como versão anterior. Oito testes de interação em DOM simulado aprovados, incluindo bloquear em seis elegíveis, restaurar sete pela própria lista e corrigir montante inválido. Fórmula, ranking e ESG inalterados; fechamento real continua pendente. Nenhum pacote 0–15 concluído por esta alteração.
+
 ## Prévia visual Pareto — 12/10, revisão 2
 
 Novo arquivo `docs/previews/369-wellness-pareto-80-20-10x-v2.html`, com padrão R$ 200.000 / 500 elegíveis e cartões dinâmicos dos montantes dos grupos e extremos 10×. Nome anterior mantido como cópia idêntica para compatibilidade. Seis testes de interação com DOM simulado passaram; não houve publicação do aplicativo nem alteração da fórmula.
