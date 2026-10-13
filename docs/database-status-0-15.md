@@ -3,6 +3,14 @@
 Atualizado em 13/10/2026; banco verificado na etapa de 08/10/2026. Projeto: `369wellness` / `elahjmtboqhqqxmoaths`.
 Branch: `prep/supabase-vite`. Sem merge na main ou publicação do aplicativo.
 
+## Navegação demonstrativa dos três perfis — 13/10
+
+Nova prévia única `docs/previews/369-wellness-tres-perfis-navegavel-2026-10-13.html`, gerada por `scripts/build-three-profiles.py` a partir de `docs/demo/three-profiles.js`. Reúne 21 destinos de navegação de Aluno, Profissional e Administrativo, simulador v4 e relatório consolidado incorporados. Compartilha estado fictício em memória: liberação de dia, bloqueio de horários 05h–00h, reserva aguardando sinal, confirmação de pagamento simulado, conclusão informada pelo aluno, aprovação fictícia e conteúdo do profissional no feed.
+
+É uma demonstração isolada, não as telas autenticadas completas com banco real. Não altera AuthProvider/RoleGuard, não cria usuário admin nem contorna permissões. Sem rede, armazenamento persistente ou movimentos financeiros; CSP bloqueia conexões. IA, wearable, prescrições, chat e cancelamentos pagos completos continuam pendentes ou apenas explicados na navegação. A marca em texto usa WELLNESS; assets originais não foram alterados.
+
+Seis testes automatizados de navegação/lógica em VM passaram, cobrindo todos os menus, ordem liberação/reserva/sinal, duplicidade, cancelamento sem pagamento, termos retidos na reserva e sincronização de conteúdo/aprovação/conclusão entre perfis. Não houve verificação em navegador real. Nenhuma publicação ou mudança de audiência. Pacotes 0–15 permanecem parciais.
+
 ## Painel consolidado de evolução — 13/10
 
 Arquivo único `docs/previews/369-wellness-evolucao-completa-2026-10-13.html`: simulador v4 incorporado em iframe isolado, sete módulos, regras atuais, pacotes 0–15, histórico pesquisável e próximos marcos com critérios de conclusão. Gerado por `scripts/build-evolution-report.py`. Não é o aplicativo completo publicado; não usa banco real. Relatório distingue evidência local e registro histórico de banco, e não atesta disponibilidade do antigo link hospedado.
