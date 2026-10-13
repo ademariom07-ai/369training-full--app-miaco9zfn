@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ClinicalAreaGuard } from '@/components/ClinicalAreaGuard'
 import CookieConsentBanner from '@/components/CookieConsentBanner'
+import InstallAppBanner from '@/components/InstallAppBanner'
 import ReacceptanceModal from '@/components/ReacceptanceModal'
 import RouteFallback from '@/components/RouteFallback'
 
@@ -477,6 +478,7 @@ export default function App() {
             </Routes>
           </Suspense>
           <CookieConsentBanner />
+          <InstallAppBanner />
           <ReacceptanceModal />
           <Toaster richColors position="top-right" />
         </Router>
