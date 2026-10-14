@@ -30,6 +30,7 @@ const SmartwatchPage = lazy(() => import('@/pages/SmartwatchPage'))
 const AlunoHome = lazy(() => import('@/pages/aluno/AlunoHome'))
 const AlunoCarteira = lazy(() => import('@/pages/aluno/AlunoCarteira'))
 const MonteSeuTreino = lazy(() => import('@/pages/aluno/MonteSeuTreino'))
+const ExecucaoTreino = lazy(() => import('@/pages/aluno/ExecucaoTreino'))
 const EncontrarProfissional = lazy(() => import('@/pages/aluno/EncontrarProfissional'))
 const Nutricao = lazy(() => import('@/pages/aluno/Nutricao'))
 const Fisioterapia = lazy(() => import('@/pages/aluno/Fisioterapia'))
@@ -189,6 +190,30 @@ export default function App() {
                     <Layout>
                       <ClinicalAreaGuard areaName="Treinamento & Biomecânica">
                         <MonteSeuTreino />
+                      </ClinicalAreaGuard>
+                    </Layout>
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/aluno/treino/execucao"
+                element={
+                  <RoleGuard allowedRoles={['aluno']}>
+                    <Layout>
+                      <ClinicalAreaGuard areaName="Execução do Treino">
+                        <ExecucaoTreino />
+                      </ClinicalAreaGuard>
+                    </Layout>
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/aluno/treino/execucao/:workoutId"
+                element={
+                  <RoleGuard allowedRoles={['aluno']}>
+                    <Layout>
+                      <ClinicalAreaGuard areaName="Execução do Treino">
+                        <ExecucaoTreino />
                       </ClinicalAreaGuard>
                     </Layout>
                   </RoleGuard>

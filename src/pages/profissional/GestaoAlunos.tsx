@@ -23,6 +23,7 @@ import {
   Users,
   Search,
   Plus,
+  Dumbbell,
   CheckCircle2,
   FileText,
   Activity,
@@ -77,7 +78,11 @@ export default function GestaoAlunos() {
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [studentHistory, setStudentHistory] = useState<ClinicalRecordModel[]>([])
   const [studentMaHistory, setStudentMaHistory] = useState<MartialArtsProgressRecord[]>([])
+  const [studentWorkoutLogs, setStudentWorkoutLogs] = useState<any[]>([])
+  const [studentWorkouts, setStudentWorkouts] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [savingFeedbackId, setSavingFeedbackId] = useState<string | null>(null)
+  const [feedbackTextMap, setFeedbackTextMap] = useState<Record<string, string>>({})
 
   // Formulário dinâmico por especialidade
   const [recordCategory, setRecordCategory] = useState<ClinicalCategory>('geral')
@@ -297,6 +302,21 @@ export default function GestaoAlunos() {
           expand: 'professional',
         })
       setStudentMaHistory(maRes.items)
+
+      // 3. Carregar fichas de treino e séries executadas salvas pelo aluno (com cargas, reps, sugestão IA)
+      const [wLogsRes, wRes] = await Promise.all([
+        pb.collection('workout_logs').getList(1, 100, {
+          filter: `student = "${student.id}"`,
+          sort: '-created',
+          expand: 'workout',
+        }),
+        pb.collection('workouts').getList(1, 30, {
+          filter: `student = "${student.id}"`,
+          sort: '-created',
+        }),
+      ])
+      setStudentWorkoutLogs(wLogsRes.items)
+      setStudentWorkouts(wRes.items)
     } catch (err) {
       console.error('Erro ao carregar prontuário do aluno:', err)
       toast.error('Erro ao ler prontuário confidencial.')
@@ -322,6 +342,30 @@ export default function GestaoAlunos() {
     if (!maTechniqueInput.trim()) return
     setMaTechniquesList([...maTechniquesList, maTechniqueInput.trim()])
     setMaTechniqueInput('')
+  }
+
+  // Salvar feedback/avaliação do profissional sobre a série executada pelo aluno
+  const handleSaveProfessionalFeedback = async (logId: string) => {
+    const feedback = feedbackTextMap[logId]
+    if (!feedback || !feedback.trim()) {
+      toast.error('Digite a avaliação antes de salvar.')
+      return
+    }
+    setSavingFeedbackId(logId)
+    try {
+      await pb.collection('workout_logs').update(logId, {
+        professional_feedback: feedback.trim(),
+      })
+      setStudentWorkoutLogs((prev) =>
+        prev.map((l) => (l.id === logId ? { ...l, professional_feedback: feedback.trim() } : l)),
+      )
+      toast.success('Feedback do profissional registrado com sucesso!')
+    } catch (err) {
+      console.error('Erro ao salvar feedback do profissional:', err)
+      toast.error('Não foi possível gravar a avaliação.')
+    } finally {
+      setSavingFeedbackId(null)
+    }
   }
 
   // Salvar registro de prontuário com persistência real no banco
@@ -1225,6 +1269,140 @@ export default function GestaoAlunos() {
                   </div>
                 </div>
               )}
+
+              {/* SEÇÃO 2.5: EXECUÇÕES DE TREINO & DESEMPENHO REAL REGISTRADO PELO ALUNO */}
+              <div className="p-4 rounded-xl bg-[#181818] border border-[#0057FF]/40 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold font-montserrat text-white uppercase">
+                    <Dumbbell className="w-4 h-4 text-[#0057FF]" />
+                    Execução do Treino da Semana & Séries Registradas ({studentWorkoutLogs.length})
+                  </div>
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-[#0057FF]/15 border border-[#0057FF]/30 text-[#0057FF] font-mono">
+                    Ciclos de Semanas
+                  </span>
+                </div>
+
+                {/* Ciclos e Fichas Ativas do Aluno */}
+                {studentWorkouts.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {studentWorkouts.slice(0, 4).map((sw) => (
+                      <div
+                        key={sw.id}
+                        className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white font-montserrat truncate">
+                            {sw.title}
+                          </span>
+                          <span className="text-[10px] font-mono font-bold text-[#D4AF37] px-1.5 py-0.2 rounded bg-[#D4AF37]/10 border border-[#D4AF37]/30">
+                            Semana {sw.week_number || 1}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-400">
+                          Foco:{' '}
+                          <strong className="text-gray-200">{sw.week_focus || 'Adaptação'}</strong>{' '}
+                          • {sw.day || 'Geral'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Séries Executadas com Cargas, Repetições e Avaliação do Treinador */}
+                {studentWorkoutLogs.length === 0 ? (
+                  <p className="text-xs text-gray-500 font-inter py-2">
+                    Nenhuma série executada registrada pelo aluno ainda. Ao realizar o treino no
+                    celular, as séries, repetições e cargas aparecerão aqui para sua avaliação.
+                  </p>
+                ) : (
+                  <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                    {studentWorkoutLogs.slice(0, 15).map((log) => {
+                      const logId = log.id
+                      const hasFeedback = !!log.professional_feedback
+                      return (
+                        <div
+                          key={logId}
+                          className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-2 text-xs"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <div>
+                              <span className="font-bold text-white font-montserrat">
+                                {log.exercise_name} (Série {log.set_index})
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-mono ml-2">
+                                Semana {log.week_number || 1}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono text-gray-500">
+                              {new Date(log.created).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+                            <span className="px-2 py-0.5 rounded bg-[#1f1f1f] border border-[#333] text-white">
+                              Carga:{' '}
+                              <strong className="text-[#D4AF37]">{log.weight_used || 0} kg</strong>
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-[#1f1f1f] border border-[#333] text-white">
+                              Reps: <strong className="text-white">{log.reps_done || 0}</strong>
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-[#1f1f1f] border border-[#333] text-white">
+                              RPE:{' '}
+                              <strong className="text-[#22C55E]">
+                                {log.rpe_difficulty || 5}/10
+                              </strong>
+                            </span>
+                          </div>
+
+                          {log.suggested_progression && (
+                            <div className="text-[11px] text-gray-300 bg-[#181818] p-2 rounded-lg border border-[#D4AF37]/30">
+                              <span className="text-[#D4AF37] font-bold">Sugestão IA 369:</span>{' '}
+                              {log.suggested_progression}
+                            </div>
+                          )}
+
+                          {/* Avaliação do Treinador */}
+                          <div className="pt-1.5 border-t border-[#222] space-y-1.5">
+                            {hasFeedback ? (
+                              <div className="p-2 rounded-lg bg-blue-950/20 border border-blue-500/30 text-[11px] text-blue-200">
+                                <strong>Avaliação do Profissional:</strong>{' '}
+                                {log.professional_feedback}
+                              </div>
+                            ) : (
+                              <div className="flex gap-2 items-center">
+                                <Input
+                                  value={feedbackTextMap[logId] || ''}
+                                  onChange={(e) =>
+                                    setFeedbackTextMap((prev) => ({
+                                      ...prev,
+                                      [logId]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="Avaliar execução / Orientar ajuste de carga para a próxima semana..."
+                                  className="h-8 bg-[#181818] border-[#2A2A2A] rounded-lg text-[11px] text-white"
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSaveProfessionalFeedback(logId)}
+                                  disabled={savingFeedbackId === logId}
+                                  className="h-8 bg-[#0057FF] hover:bg-blue-600 text-white font-bold text-[11px] px-3 shrink-0"
+                                >
+                                  {savingFeedbackId === logId ? 'Salvando...' : 'Avaliar'}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
 
               {/* SEÇÃO 3: LINHA DO TEMPO COMPLETA (TIMELINE) */}
               <div className="space-y-4">

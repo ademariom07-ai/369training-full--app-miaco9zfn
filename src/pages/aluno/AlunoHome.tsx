@@ -211,8 +211,13 @@ export default function AlunoHome() {
                   ? `${activeWorkout.exercises.length} exercícios prescritos com controle de carga e vídeo.`
                   : 'Gere treinos estruturados com IA ou consulte a ficha do seu Personal.'}
               </p>
-              <div className="flex items-center text-xs font-semibold text-[#D4AF37] mt-4 group-hover:translate-x-1 transition-transform">
-                Acessar Treino <ChevronRight className="w-4 h-4 ml-1" />
+              <div className="flex items-center justify-between text-xs font-semibold text-[#D4AF37] mt-4">
+                <span className="flex items-center group-hover:translate-x-1 transition-transform">
+                  Ver Ficha <ChevronRight className="w-4 h-4 ml-1" />
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-[#0057FF] text-white font-bold uppercase text-[10px] tracking-wider shadow-md hover:bg-[#1e69ff] transition-colors">
+                  Iniciar Treino ▶
+                </span>
               </div>
             </Card>
           </Link>

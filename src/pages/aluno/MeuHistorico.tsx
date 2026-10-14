@@ -39,6 +39,7 @@ import {
   Activity,
   Award,
   Star,
+  Plus,
 } from 'lucide-react'
 import type {
   WorkoutRecord,
@@ -538,9 +539,14 @@ export default function MeuHistorico() {
             />
             Atualizar Dados
           </Button>
+          <Link to="/aluno/treino/execucao">
+            <Button className="bg-[#0057FF] hover:bg-[#1e69ff] text-white font-extrabold text-xs uppercase px-4 py-2 rounded-xl shadow-md flex items-center gap-2">
+              <Dumbbell className="w-4 h-4 text-[#D4AF37]" /> Executar Treino
+            </Button>
+          </Link>
           <Link to="/aluno/treino">
             <Button className="bg-[#D4AF37] hover:bg-[#E6C65C] text-black font-extrabold text-xs uppercase px-4 py-2 rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.25)] flex items-center gap-2">
-              <Dumbbell className="w-4 h-4" /> Novo Treino
+              <Plus className="w-4 h-4" /> Monte Seu Treino
             </Button>
           </Link>
         </div>

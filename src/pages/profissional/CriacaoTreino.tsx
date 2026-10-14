@@ -6,9 +6,20 @@ import { api } from '@/services/api'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dumbbell, Sparkles, Plus, Trash2, Save, Loader2, ArrowLeft } from 'lucide-react'
+import {
+  Dumbbell,
+  Sparkles,
+  Plus,
+  Trash2,
+  Save,
+  Loader2,
+  ArrowLeft,
+  Calendar,
+  Send,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import type { UserProfile } from '@/contexts/AuthContext'
+import { STANDARD_WEEK_CYCLES } from '@/services/workoutExecution'
 
 interface ExerciseItem {
   id: string
@@ -30,6 +41,9 @@ export default function CriacaoTreino() {
   const [title, setTitle] = useState('Treino A - Hipertrofia & Força')
   const [objective, setObjective] = useState('Hipertrofia')
   const [day, setDay] = useState('Segunda-feira')
+  const [weekNumber, setWeekNumber] = useState<number>(1)
+  const [weekFocus, setWeekFocus] = useState<string>('Adaptação Anatômica')
+  const [cycleName, setCycleName] = useState<string>('Ciclo 1 - Hipertrofia')
   const [exercises, setExercises] = useState<ExerciseItem[]>([
     {
       id: 'ex_1',
@@ -153,20 +167,23 @@ export default function CriacaoTreino() {
         status: 'ativo',
         exercises,
         ai_generated: false,
+        week_number: weekNumber,
+        week_focus: weekFocus,
+        cycle_name: cycleName,
       })
 
-      // Send notification to student
+      // Send notification to student with direct link to execution
       await pb.collection('notifications').create({
         user: selectedStudentId,
         type: 'new_workout',
-        title: `Novo Treino: ${title}`,
-        body: `Seu profissional prescreveu um novo treino (${day}). Confira já no app!`,
+        title: `Novo Treino Prescrito: ${title} (Semana ${weekNumber})`,
+        body: `Seu profissional prescreveu uma nova rotina (${day} • ${weekFocus}). Acesse a tela de execução guiada!`,
         read: false,
-        action_url: '/aluno/treino',
+        action_url: '/aluno/treino/execucao',
       })
 
-      toast.success('Treino salvo e aluno notificado com sucesso!')
-      navigate('/profissional/dashboard')
+      toast.success('Treino enviado ao aluno com sucesso! Pronto para execução.')
+      navigate('/profissional/alunos')
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao salvar treino.')
@@ -255,6 +272,84 @@ export default function CriacaoTreino() {
               placeholder="Ex: Segunda-feira"
               className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white"
             />
+          </div>
+        </Card>
+
+        {/* PERIODIZAÇÃO SEMANAL (TREINO DA SEMANA) */}
+        <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#D4AF37]" />
+              <h3 className="font-bold font-montserrat text-white text-sm uppercase">
+                Periodização: Treino da Semana
+              </h3>
+            </div>
+            <span className="text-xs text-[#D4AF37] font-mono font-bold">
+              Semana {weekNumber} do Ciclo
+            </span>
+          </div>
+
+          <p className="text-xs text-gray-400 font-inter">
+            Periodize o treino do aluno semana a semana com objetivos progressivos claros. O aluno
+            visualiza em qual semana do ciclo está ao executar.
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            {STANDARD_WEEK_CYCLES.map((cycle) => {
+              const active = weekNumber === cycle.weekNumber
+              return (
+                <button
+                  key={cycle.weekNumber}
+                  type="button"
+                  onClick={() => {
+                    setWeekNumber(cycle.weekNumber)
+                    setWeekFocus(cycle.focus)
+                  }}
+                  className={`p-3 rounded-xl text-left border transition-all ${
+                    active
+                      ? 'bg-[#0057FF] border-white/30 text-white shadow-md'
+                      : 'bg-[#141414] border-[#2A2A2A] text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span className="text-xs font-black font-montserrat uppercase block">
+                    Semana {cycle.weekNumber}
+                  </span>
+                  <span className="text-[10px] font-bold block mt-1 line-clamp-1">
+                    {cycle.focus}
+                  </span>
+                  <span className="text-[9px] text-gray-300 block mt-1 font-mono">
+                    {cycle.loadModifierPct >= 0
+                      ? `+${cycle.loadModifierPct}%`
+                      : `${cycle.loadModifierPct}%`}{' '}
+                    carga
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div>
+              <label className="block text-[10px] uppercase text-gray-400 font-semibold mb-1">
+                Foco Específico da Semana
+              </label>
+              <Input
+                value={weekFocus}
+                onChange={(e) => setWeekFocus(e.target.value)}
+                className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase text-gray-400 font-semibold mb-1">
+                Nome do Macrociclo / Mesociclo
+              </label>
+              <Input
+                value={cycleName}
+                onChange={(e) => setCycleName(e.target.value)}
+                placeholder="Ex: Ciclo 1 - Hipertrofia & Força"
+                className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white"
+              />
+            </div>
           </div>
         </Card>
 
@@ -365,13 +460,13 @@ export default function CriacaoTreino() {
         <Button
           type="submit"
           disabled={saving}
-          className="w-full bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-sm uppercase py-6 rounded-xl shadow-xl flex items-center justify-center gap-2"
+          className="w-full bg-[#0057FF] hover:bg-[#1e69ff] text-white font-extrabold text-sm uppercase py-6 rounded-xl shadow-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
         >
           {saving ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <>
-              <Save className="w-5 h-5" /> Salvar Treino & Notificar Aluno
+              <Send className="w-5 h-5 text-[#D4AF37]" /> Salvar e Enviar Treino para o Aluno
             </>
           )}
         </Button>

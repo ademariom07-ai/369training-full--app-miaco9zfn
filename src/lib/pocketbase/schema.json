@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T16:22:08.362Z",
+  "generatedAt": "2026-10-14T21:08:18.530Z",
   "collections": [
     {
       "name": "users",
@@ -571,6 +571,24 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "week_number",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "week_focus",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cycle_name",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -3961,6 +3979,132 @@
         }
       ],
       "indexes": ["CREATE INDEX `idx_matching_profiles_user` ON `matching_profiles` (user)"]
+    },
+    {
+      "name": "workout_logs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (student = @request.auth.id || professional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.body.student = @request.auth.id || (@request.auth.role = 'profissional' && @request.body.professional = @request.auth.id))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || student = @request.auth.id || professional = @request.auth.id)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || student = @request.auth.id || professional = @request.auth.id)"
+      },
+      "fields": [
+        {
+          "name": "workout",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "workouts"
+        },
+        {
+          "name": "student",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "exercise_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "exercise_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "set_index",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "reps_done",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_used",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rpe_difficulty",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "duration_seconds",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "week_number",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "suggested_progression",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "professional_feedback",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_wlogs_workout ON workout_logs (workout)",
+        "CREATE INDEX idx_wlogs_student ON workout_logs (student)",
+        "CREATE INDEX idx_wlogs_prof ON workout_logs (professional)",
+        "CREATE INDEX idx_wlogs_created ON workout_logs (created)"
+      ]
     }
   ]
 }

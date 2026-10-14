@@ -145,6 +145,16 @@ export default function MonteSeuTreino() {
     }
   }
 
+  // Iniciar Modo Execução Guiada do Treino
+  const handleStartWorkoutExecution = (id?: string) => {
+    const targetId = id || currentWorkout?.id
+    if (targetId) {
+      window.location.href = `/aluno/treino/execucao/${targetId}`
+    } else {
+      window.location.href = '/aluno/treino/execucao'
+    }
+  }
+
   // Open Load Feedback Modal on Clicking "Concluir"
   const handleOpenExerciseFeedback = (index: number) => {
     if (!currentWorkout || !currentWorkout.exercises) return
@@ -432,23 +442,32 @@ export default function MonteSeuTreino() {
       {/* CURRENT WORKOUT DISPLAY */}
       {currentWorkout && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-[#0057FF]/15 via-[#181818] to-[#D4AF37]/15 border border-[#2A2A2A]">
             <div>
-              <span className="text-xs font-bold text-[#D4AF37] uppercase font-montserrat">
-                Plano Ativo
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#D4AF37] uppercase font-montserrat">
+                  Plano Ativo
+                </span>
+                {currentWorkout.ai_generated && (
+                  <span className="px-2 py-0.5 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[10px] font-bold text-[#D4AF37] flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    IA
+                  </span>
+                )}
+              </div>
               <h3 className="text-2xl font-bold font-montserrat text-white">
                 {currentWorkout.title}
               </h3>
             </div>
-            {currentWorkout.ai_generated && (
-              <span className="px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                Gerado por IA
-              </span>
-            )}
-          </div>
 
+            <Button
+              onClick={() => handleStartWorkoutExecution(currentWorkout.id)}
+              className="bg-[#0057FF] hover:bg-[#1e69ff] text-white font-extrabold text-xs uppercase px-6 py-5 rounded-xl shadow-lg flex items-center justify-center gap-2"
+            >
+              <PlayCircle className="w-5 h-5 text-[#D4AF37]" />
+              Iniciar Modo Execução
+            </Button>
+          </div>
           {/* Exercise List */}
           <div className="grid grid-cols-1 gap-4">
             {currentWorkout.exercises?.map((exercise, idx) => {
