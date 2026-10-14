@@ -25,3 +25,17 @@ históricos de plano/vínculo; garantir unicidade transacional persistente entre
 lotes; autorizar acesso administrativo no servidor; conectar UI à fonte;
 homologar estornos, reconexão e fechamento mensal. Flags recebidas pelo módulo
 não comprovam autenticidade. Não há alegação de atualização em tempo real.
+
+## Integração de cálculo — 14/10/2026
+
+`projectWellnessMonth` reúne tarifas confirmadas, resolução do plano por vínculo,
+pontuação, ordenação, elegibilidade, Pareto e ESG. Retorna pontos e valores por
+identidade, serviços reais preservados, totais conciliáveis e indicação explícita
+de simulação sem autorização de pagamento. Rejeita snapshots de participantes
+fora do mês, duplicidades, plano anterior ausente e combinações Pareto que
+invertem pagamentos. A UI e os handlers legados ainda não chamam esse fluxo.
+
+Validação local: 19 testes passaram (projeção mensal + regras comerciais + pool),
+verificação TypeScript sem erros. Não há evidência de homologação no banco real.
+Próximo marco: adapter autenticado com snapshots históricos e unicidade no banco,
+seguido de conexão do painel somente leitura. Sem migrations ou deploy executados.
