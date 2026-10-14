@@ -33,7 +33,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { fetchExerciseGif } from '@/lib/exerciseDb'
+import { fetchExerciseReference, ExerciseReferenceInfo } from '@/lib/exerciseDb'
 
 export default function MonteSeuTreino() {
   const { user } = useAuth()
@@ -51,8 +51,9 @@ export default function MonteSeuTreino() {
   const [currentWorkout, setCurrentWorkout] = useState<WorkoutRecord | null>(null)
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutRecord[]>([])
 
-  // Exercise GIFs cache state
-  const [exerciseGifs, setExerciseGifs] = useState<Record<string, string>>({})
+  // Exercise real reference images cache state
+  const [exerciseRefs, setExerciseRefs] = useState<Record<string, ExerciseReferenceInfo | null>>({})
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({})
 
   // RECURSO 3: Modal de Feedback de Carga com IA
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
@@ -93,23 +94,21 @@ export default function MonteSeuTreino() {
     loadWorkouts()
   }, [user])
 
-  // Load Exercise GIFs when currentWorkout changes (Pro/Premium)
+  // Load Exercise real references when currentWorkout changes
   useEffect(() => {
     if (!currentWorkout?.exercises) return
 
-    const loadGifs = async () => {
-      const gifs: Record<string, string> = {}
+    const loadReferences = async () => {
+      const refs: Record<string, ExerciseReferenceInfo | null> = {}
       for (const ex of currentWorkout.exercises || []) {
         if (!ex?.name || typeof ex.name !== 'string') continue
-        const url = await fetchExerciseGif(ex.name)
-        if (url) {
-          gifs[ex.name] = url
-        }
+        const ref = await fetchExerciseReference(ex.name)
+        refs[ex.name] = ref
       }
-      setExerciseGifs(gifs)
+      setExerciseRefs(refs)
     }
 
-    loadGifs()
+    loadReferences()
   }, [currentWorkout])
 
   // Handle AI Workout Generation
@@ -453,7 +452,9 @@ export default function MonteSeuTreino() {
           {/* Exercise List */}
           <div className="grid grid-cols-1 gap-4">
             {currentWorkout.exercises?.map((exercise, idx) => {
-              const gifUrl = exercise?.name ? exerciseGifs[exercise.name] : undefined
+              const refInfo = exercise?.name ? exerciseRefs[exercise.name] : null
+              const isImageFailed = exercise?.name ? !!failedImages[exercise.name] : false
+              const hasValidRealImage = refInfo?.imageUrl && !isImageFailed
               const hasVideoLink = !!exercise?.video
 
               return (
@@ -467,28 +468,43 @@ export default function MonteSeuTreino() {
                 >
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-                      {/* RECURSO 2: ExerciseDB GIF or Video Embed Gate */}
-                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-center shrink-0 relative overflow-hidden group">
+                      {/* Referência Real do Exercício / Fallback Limpo de Biomecânica */}
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-center shrink-0 relative overflow-hidden group shadow-inner">
                         {isProOrPremium ? (
-                          gifUrl ? (
-                            <img
-                              src={gifUrl}
-                              alt={exercise?.name || 'Exercício'}
-                              className="w-full h-full object-cover rounded-xl"
-                              loading="lazy"
-                            />
+                          hasValidRealImage ? (
+                            <div className="relative w-full h-full">
+                              <img
+                                src={refInfo.imageUrl}
+                                alt={`Execução correta: ${exercise?.name || 'Exercício'}`}
+                                className="w-full h-full object-cover rounded-xl transition-transform duration-300 group-hover:scale-105"
+                                loading="lazy"
+                                onError={() => {
+                                  if (exercise?.name) {
+                                    setFailedImages((prev) => ({ ...prev, [exercise.name]: true }))
+                                  }
+                                }}
+                              />
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-xs text-[9px] font-bold text-[#D4AF37] border border-[#D4AF37]/40 uppercase tracking-tighter">
+                                Ref Real
+                              </span>
+                            </div>
                           ) : (
-                            <div className="flex flex-col items-center justify-center p-2 text-center text-gray-500">
-                              <Dumbbell className="w-6 h-6 text-[#D4AF37]" />
-                              <span className="text-[9px] uppercase font-bold mt-1 text-gray-400">
-                                ExerciseDB
+                            <div className="flex flex-col items-center justify-center p-2 text-center text-gray-500 w-full h-full bg-gradient-to-b from-[#181818] to-[#121212]">
+                              <div className="w-10 h-10 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center mb-1">
+                                <Dumbbell className="w-5 h-5 text-[#D4AF37]" />
+                              </div>
+                              <span className="text-[9px] uppercase font-bold text-gray-300 line-clamp-1 px-1">
+                                {exercise?.name?.split(' ')[0] || 'Exercício'}
+                              </span>
+                              <span className="text-[8px] text-gray-500 uppercase tracking-wider font-mono">
+                                369 BIOMECÂNICA
                               </span>
                             </div>
                           )
                         ) : (
-                          <div className="flex flex-col items-center justify-center p-2 text-center text-gray-500">
-                            <Lock className="w-6 h-6 text-[#D4AF37]" />
-                            <span className="text-[9px] uppercase font-bold mt-1 text-[#D4AF37]">
+                          <div className="flex flex-col items-center justify-center p-2 text-center text-gray-500 w-full h-full">
+                            <Lock className="w-6 h-6 text-[#D4AF37] mb-1" />
+                            <span className="text-[9px] uppercase font-bold text-[#D4AF37]">
                               Pro/Premium
                             </span>
                           </div>
