@@ -256,6 +256,9 @@ export const api = {
     experience: string
     daysAvailable: number
     restrictions: string
+    age: number
+    equipment: string
+    reviewedAnamnesis: true
     notes?: string
   }) => {
     return pb.send<{
