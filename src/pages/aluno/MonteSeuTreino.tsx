@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { api, type WorkoutRecord } from '@/services/api'
@@ -33,6 +33,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { buildWorkoutDraftRequest } from '@/lib/workoutDraftRequest'
 import { fetchExerciseGif } from '@/lib/exerciseDb'
 
 export default function MonteSeuTreino() {
@@ -41,10 +42,21 @@ export default function MonteSeuTreino() {
 
   // Anamnese Form State
   const [objective, setObjective] = useState(user?.objective || 'Hipertrofia')
-  const [experience, setExperience] = useState('Intermediário')
+  const [experience, setExperience] = useState('')
   const [daysAvailable, setDaysAvailable] = useState(4)
-  const [restrictions, setRestrictions] = useState('Nenhuma lesão atual')
-  const [notes, setNotes] = useState('')
+  const [restrictions, setRestrictions] = useState('')
+  const [age, setAge] = useState('')
+  const [equipment, setEquipment] = useState('')
+  const [anamnesisChecked, setAnamnesisChecked] = useState(false)
+  const [draft, setDraft] = useState<Awaited<ReturnType<typeof api.generateWorkout>> | null>(null)
+  const generationVersion = useRef(0)
+
+  useEffect(() => {
+    generationVersion.current++
+    setDraft(null)
+    setAnamnesisChecked(false)
+  }, [user?.id, objective, experience, daysAvailable, restrictions, age, equipment])
+  useEffect(() => () => { generationVersion.current++ }, [])
 
   // AI Generation State
   const [generating, setGenerating] = useState(false)
@@ -112,35 +124,22 @@ export default function MonteSeuTreino() {
     loadGifs()
   }, [currentWorkout])
 
-  // Handle AI Workout Generation
+  // A generated proposal is not an executable or approved workout.
   const handleGenerateAI = async () => {
+    if (!user || generating) return
+    const ticket = ++generationVersion.current
     setGenerating(true)
+    setDraft(null)
     try {
-      const generated = await api.generateWorkout({
-        objective,
-        experience,
-        daysAvailable,
-        restrictions,
-        notes,
-      })
-
-      // Persist to PocketBase workouts collection
-      const newRec = await pb.collection('workouts').create<WorkoutRecord>({
-        student: user?.id,
-        title: generated.title || `Treino IA - ${objective}`,
-        objective: generated.objective || objective,
-        exercises: generated.exercises || [],
-        day: 'Personalizado',
-        status: 'ativo',
-        ai_generated: true,
-      })
-
-      setCurrentWorkout(newRec)
-      setWorkoutHistory((prev) => [newRec, ...prev])
-      toast.success('Treino gerado com sucesso pelo algoritmo 369!')
+      const request = buildWorkoutDraftRequest({ objective, experience, days: String(daysAvailable), age, restrictions, equipment, reviewedAnamnesis: anamnesisChecked })
+      const generated = await api.generateWorkout(request)
+      if (ticket !== generationVersion.current) return
+      setDraft(generated)
+      toast.info('Rascunho gerado. Ainda não foi liberado para execução.')
     } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Falha ao gerar treino com IA. Tente novamente.')
+      if (ticket === generationVersion.current) {
+        toast.error(err instanceof Error ? err.message : 'Falha ao gerar rascunho.')
+      }
     } finally {
       setGenerating(false)
     }
@@ -341,10 +340,10 @@ export default function MonteSeuTreino() {
               onChange={(e) => setExperience(e.target.value)}
               className="w-full h-10 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
             >
-              <option value="Iniciante (0-6 meses)">Iniciante (0-6 meses)</option>
-              <option value="Intermediário (6m-2 anos)">Intermediário (6m-2 anos)</option>
-              <option value="Avançado (2+ anos)">Avançado (2+ anos)</option>
-              <option value="Atleta de Alto Rendimento">Atleta de Alto Rendimento</option>
+              <option value="">Selecione a experiência</option>
+              <option value="Iniciante">Iniciante (0-6 meses)</option>
+              <option value="Intermediário">Intermediário (6m-2 anos)</option>
+              <option value="Avançado">Avançado (2+ anos)</option>
             </select>
           </div>
 
@@ -380,10 +379,23 @@ export default function MonteSeuTreino() {
           </div>
         </div>
 
+        <div className="grid sm:grid-cols-2 gap-4 mb-4">
+          <label className="text-sm text-gray-300">Idade em anos
+            <Input value={age} onChange={e => setAge(e.target.value)} inputMode="numeric" placeholder="Informe a idade" />
+          </label>
+          <label className="text-sm text-gray-300">Equipamentos disponíveis
+            <Input value={equipment} onChange={e => setEquipment(e.target.value)} maxLength={500} placeholder="Ex.: halteres ou sem equipamentos" />
+          </label>
+        </div>
+        <label className="flex items-start gap-2 text-sm text-gray-300 mb-4">
+          <input type="checkbox" checked={anamnesisChecked} onChange={e => setAnamnesisChecked(e.target.checked)} />
+          Conferi os dados informados. Entendo que este rascunho não substitui avaliação profissional.
+        </label>
+        <p className="text-xs text-amber-200 mb-4">O fluxo para menores aguarda verificação do responsável e revisão profissional específica.</p>
         {/* Generate Button */}
         <Button
           onClick={handleGenerateAI}
-          disabled={generating}
+          disabled={generating || !anamnesisChecked}
           className="w-full sm:w-auto px-8 py-6 bg-gradient-to-r from-[#D4AF37] to-[#F4D77A] text-black font-extrabold text-sm uppercase rounded-xl shadow-[0_0_25px_rgba(212,175,55,0.3)] hover:scale-102 transition-all flex items-center justify-center gap-2"
         >
           {generating ? (
@@ -394,11 +406,24 @@ export default function MonteSeuTreino() {
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              Gerar Treino com IA
+              Gerar rascunho com IA
             </>
           )}
         </Button>
       </Card>
+
+      {draft && (
+        <Card className="p-6 border-amber-500/40 bg-[#181818] text-gray-200" aria-live="polite">
+          <h2 className="font-bold text-lg">Rascunho — aguardando revisão profissional</h2>
+          <p className="mt-2">{draft.title}</p>
+          <p className="text-sm text-amber-200 mt-2">{draft.disclaimer}</p>
+          <p className="text-sm mt-2">Esta proposta não foi salva como treino ativo e não gera pontuação. O envio ao profissional ainda está em preparação. Ao sair desta tela, o rascunho será descartado.</p>
+          <ul className="mt-4 space-y-2">
+            {draft.exercises?.map(exercise => <li key={exercise.id}>{exercise.name} — {exercise.sets} séries · {exercise.reps} · pausa: {exercise.rest}<p className="text-xs text-gray-400">{exercise.tips}</p></li>)}
+          </ul>
+          <Button variant="outline" className="mt-4" onClick={() => setDraft(null)}>Descartar rascunho</Button>
+        </Card>
+      )}
 
       {/* RECURSO 5: BANNER DE TREINO 100% CONCLUÍDO */}
       {allExercisesCompleted && currentWorkout?.status !== 'concluido' && (

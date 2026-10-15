@@ -205,3 +205,10 @@ não foi atualizado nesta etapa; mudanças são da tela React na branch.
 - Resposta validada por lista explícita de campos, limites de tamanho e quantidade; IDs e estado de conclusão definidos pelo servidor. Links sugeridos pelo modelo são descartados até existir catálogo de vídeos verificados.
 - Testes locais: 15 cenários do endpoint em VM, mais 13 de política de acesso e formulário. Isso valida contrato, não qualidade clínica nem execução em PocketBase real.
 - Pendências: aluno ainda persiste resultado como ativo; revisão/autorização profissional, anamnese estruturada no servidor, cotas e fluxo de menores precisam ser integrados antes de operação real. A validação estrutural não resolve essas autorizações. Prévia HTML não alterada nesta etapa.
+
+### Continuação: rascunho do aluno separado do treino ativo
+
+- MonteSeuTreino deixa de criar registro ativo ao receber resposta da IA. Mostra proposta temporária separada do treino atual, sem conclusão, ajuste de carga ou pontuação; informa que não persiste e que envio/revisão ainda estão em preparação.
+- Reutiliza validação de idade, equipamentos e conferência da anamnese; remove a ausência de lesões presumida e corrige os valores de experiência enviados ao endpoint. Alterar dados invalida a conferência e descarta respostas antigas.
+- Validação: 28 testes existentes de contrato/política/formulário passaram; TypeScript do aplicativo verificado com tsconfig.app.json. Sem teste de navegador nem integração real nesta etapa.
+- Limite: contenção na interface, não autorização de banco. Regras de escrita/leitura da coleção, revisão autenticada e registro persistente de aprovação ainda precisam de implementação e testes integrados. Registros legados não foram alterados; prévia HTML anterior permanece inalterada.
