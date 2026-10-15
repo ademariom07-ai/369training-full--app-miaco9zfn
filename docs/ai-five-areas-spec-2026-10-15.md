@@ -237,3 +237,12 @@ não foi atualizado nesta etapa; mudanças são da tela React na branch.
 - Isso NÃO verifica idade real, responsável, consentimento ou habilitação profissional. A confirmação do formulário é só conferência dos dados. Menores continuam aguardando fluxo próprio, sem conclusão de conformidade jurídica.
 - Testes locais: 57 passaram no conjunto IA/formulário/progresso/permissões, incluindo 12 novos casos de dados estruturados e bloqueio de menores. TypeScript do aplicativo passou. Não houve chamada real à IA, teste clínico, migração ou publicação; cliente e servidor devem ser entregues juntos porque o contrato agora rejeita chamadas antigas sem esses campos.
 - Pendências mantidas: autorização profissional por área, revisão persistida, cotas atômicas, consentimento/versionamento da anamnese, vídeos curados e verificação integrada. Prévia HTML anterior não atualizada nesta etapa.
+
+### Continuação: feedback de carga para revisão, sem progressão automática
+
+- Removidos os aumentos fixos de 1/2 kg usados como fallback e o preenchimento presumido de 20 kg na tela. Carga real é informada; zero é preservado, assim como esforço zero.
+- Endpoint exige campos tipados, objetivo/séries/repetições e respostas booleanas sobre dor e dificuldade técnica. Resposta positiva retorna 409 antes da IA, orientando revisão profissional. São autorrelatos, sem conclusão clínica.
+- IA passa a organizar relato para revisão; campos de carga/repetições e ação retornados pelo modelo são descartados. Servidor define action=review, requiresProfessionalReview=true e carga/repetições a definir pelo profissional. Textos livres gerados ainda precisam de revisão, pois validação estrutural não garante conteúdo clínico correto.
+- Resposta inválida retorna 502 sem fallback, falha do provedor 503 sem detalhes internos. Tela identifica análise provisória; resposta em trânsito é descartada se contexto/modal mudar. Nenhum ajuste de carga é salvo.
+- 73 testes locais passaram, incluindo 16 novos de feedback; TypeScript do aplicativo passou. Sem validação clínica, chamada real de IA ou teste de navegador. Contratos de cliente e servidor precisam ser entregues juntos.
+- Recurso de ajuste efetivo de carga permanece pendente de revisão autenticada, contexto completo e registro profissional; limites por plano/herança e persistência de feedback ainda precisam integração. Prévia HTML anterior permanece inalterada.

@@ -69,7 +69,9 @@ export default function MonteSeuTreino() {
   // RECURSO 3: Modal de Feedback de Carga com IA
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
   const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<number | null>(null)
-  const [weightUsed, setWeightUsed] = useState<string>('20')
+  const [weightUsed, setWeightUsed] = useState<string>('')
+  const [painReported, setPainReported] = useState('')
+  const [techniqueDifficulty, setTechniqueDifficulty] = useState('')
   const [difficulty, setDifficulty] = useState<number>(5)
   const [evaluatingLoad, setEvaluatingLoad] = useState(false)
   const [aiLoadResult, setAiLoadResult] = useState<{
@@ -77,8 +79,14 @@ export default function MonteSeuTreino() {
     suggestedLoad: string
     suggestedReps: string
     rationale: string
-    action: 'increase' | 'maintain' | 'decrease'
+    action: 'review'
   } | null>(null)
+
+  const feedbackVersion = useRef(0)
+  useEffect(() => {
+    feedbackVersion.current++
+    setAiLoadResult(null)
+  }, [weightUsed, difficulty, painReported, techniqueDifficulty, selectedExerciseIndex, feedbackModalOpen, user?.id])
 
   // RECURSO 5: Modal de Finalização do Treino do Dia
   const [finishModalOpen, setFinishModalOpen] = useState(false)
@@ -156,12 +164,9 @@ export default function MonteSeuTreino() {
       return
     }
 
-    // Extract initial load numeric if available
-    const matchLoad = ex.load?.match(/\d+/)
-    const initialWeight = matchLoad ? matchLoad[0] : '20'
-
     setSelectedExerciseIndex(index)
-    setWeightUsed(initialWeight)
+    setWeightUsed('')
+    setPainReported(''); setTechniqueDifficulty('')
     setDifficulty(5)
     setAiLoadResult(null)
     setFeedbackModalOpen(true)
@@ -172,18 +177,24 @@ export default function MonteSeuTreino() {
     if (selectedExerciseIndex === null || !currentWorkout?.exercises) return
     const ex = currentWorkout.exercises[selectedExerciseIndex]
 
+    if (!weightUsed.trim() || !painReported || !techniqueDifficulty) { toast.error('Informe carga real e respostas sobre dor e técnica.'); return }
+    const ticket = ++feedbackVersion.current
+    setAiLoadResult(null)
     setEvaluatingLoad(true)
     try {
       const res = await api.loadFeedback({
         exerciseName: ex.name,
-        weightUsed: Number(weightUsed) || 0,
+        weightUsed: Number(weightUsed),
+        painReported: painReported === 'yes',
+        techniqueDifficulty: techniqueDifficulty === 'yes',
         difficulty,
         objective: currentWorkout.objective || objective,
         reps: ex.reps,
         sets: ex.sets,
       })
+      if (ticket !== feedbackVersion.current) return
       setAiLoadResult(res)
-      toast.success('Análise de progressão de carga concluída!')
+      toast.info('Análise provisória para revisão profissional. Prescrição mantida.')
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao calcular feedback de carga.')
@@ -658,6 +669,18 @@ export default function MonteSeuTreino() {
                 </div>
               </div>
 
+              <div className="space-y-3 text-sm text-gray-300">
+                <label className="block">Sentiu dor durante o exercício?
+                  <select value={painReported} onChange={e => { setPainReported(e.target.value); setAiLoadResult(null) }} className="block w-full bg-[#181818] p-2">
+                    <option value="">Selecione</option><option value="yes">Sim</option><option value="no">Não</option>
+                  </select>
+                </label>
+                <label className="block">Teve dificuldade para manter a técnica?
+                  <select value={techniqueDifficulty} onChange={e => { setTechniqueDifficulty(e.target.value); setAiLoadResult(null) }} className="block w-full bg-[#181818] p-2">
+                    <option value="">Selecione</option><option value="yes">Sim</option><option value="no">Não</option>
+                  </select>
+                </label>
+              </div>
               {/* Botão de Calcular Progressão IA */}
               <Button
                 onClick={handleCalculateAiFeedback}
@@ -670,7 +693,7 @@ export default function MonteSeuTreino() {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" /> Calcular Sugestão de Carga
+                    <Sparkles className="w-4 h-4" /> Analisar relato para revisão
                   </>
                 )}
               </Button>
@@ -679,7 +702,7 @@ export default function MonteSeuTreino() {
               {aiLoadResult && (
                 <div className="p-4 rounded-xl bg-[#181818] border border-[#D4AF37] space-y-2 animate-in fade-in">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] uppercase font-montserrat">
-                    <TrendingUp className="w-4 h-4" /> Recomendação para a Próxima Sessão
+                    <TrendingUp className="w-4 h-4" /> Relato para revisão profissional
                   </div>
                   <p className="text-sm font-extrabold text-white font-montserrat">
                     {aiLoadResult.recommendation}
@@ -697,8 +720,7 @@ export default function MonteSeuTreino() {
                 Recurso Exclusivo Pro e Premium
               </h4>
               <p className="text-xs text-gray-400 font-inter">
-                O feedback de carga com IA analisa sua percepção de esforço e calcula a progressão
-                científica de peso.
+                A IA organiza seu relato de esforço para revisão profissional, sem alterar a prescrição.
               </p>
             </div>
           )}

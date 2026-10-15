@@ -326,16 +326,19 @@ export const api = {
     exerciseName: string
     weightUsed: number
     difficulty: number
-    objective?: string
-    reps?: string
-    sets?: string
+    painReported: boolean
+    techniqueDifficulty: boolean
+    objective: string
+    reps: string
+    sets: string
   }) => {
     return pb.send<{
       recommendation: string
       suggestedLoad: string
       suggestedReps: string
       rationale: string
-      action: 'increase' | 'maintain' | 'decrease'
+      action: 'review'
+      requiresProfessionalReview: true
     }>('/backend/v1/generate/load-feedback', {
       method: 'POST',
       body: JSON.stringify(params),
