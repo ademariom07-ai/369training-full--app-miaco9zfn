@@ -253,3 +253,10 @@ não foi atualizado nesta etapa; mudanças são da tela React na branch.
 - Iniciar/continuar, pausar e reiniciar; aviso visual ao término. Contagem por horário de término, recalculada ao retornar à aba, sem depender da quantidade de ticks. Não persiste dados nem altera prescrição, conclusão, serviços, tarifas ou pontos.
 - Reconhece apenas durações inequívocas em segundos, minutos ou mm:ss (1–3600 segundos). Texto livre, intervalos e ausência de unidade não geram duração presumida; usuário deve informar segundos conforme orientação. Trocar treino/exercício ou sair da tela descarta contagem. Não há notificação em segundo plano, som ou garantia de alerta com app fechado.
 - 15 testes de interpretação de duração passaram, incluindo valores ambíguos/inválidos; TypeScript do aplicativo passou. Pausa, retomada, fim, mudança de aba e acessibilidade ainda precisam de verificação no navegador. Alteração salva no código React, sem publicação; prévia HTML antiga não incorpora o cronômetro.
+
+### Continuação: vídeos demonstrativos indicados pelo profissional
+
+- Campo opcional de vídeo por exercício no formulário profissional. Antes de salvar, valida links HTTPS de vídeos YouTube (watch, youtu.be, shorts, embed); normaliza para watch com ID, removendo parâmetros adicionais. Alterar vídeo usa o mesmo fluxo que invalida a conferência do rascunho.
+- Tela do aluno revalida inclusive URLs legadas antes de renderizar link externo; usa noopener/noreferrer. Links não reconhecidos não aparecem como vídeos. IA continua sem inventar links.
+- Validação é de formato/domínio, não da existência do vídeo, autoria, qualidade técnica, direitos de uso ou adequação clínica. Profissional é instruído a conferir conteúdo. Biblioteca curada, registro de revisão e verificação no servidor ainda pendentes. Restrições antigas Pro/Premium do componente não foram alteradas; integração com benefícios herdados ainda necessária.
+- 37 testes locais passaram (17 novos de URL, 15 de descanso e 5 de anamnese), além do TypeScript do aplicativo. Sem abertura real de vídeo ou teste no navegador. Código na branch de desenvolvimento; prévia HTML antiga não atualizada.
