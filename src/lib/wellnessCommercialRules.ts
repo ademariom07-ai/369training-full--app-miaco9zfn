@@ -7,15 +7,19 @@ const studentFees={free:0,basic:1000,pro:2000,premium:3000}
 const partnerFees={free:0,basic:100,pro:200,premium:300,pro_partner:14900}
 const weights={free:0,basic:1,pro:2,premium:3,pro_partner:2}
 function validPlan(plan:WellnessPlan){if(!Object.hasOwn(weights,plan))throw Error('Plano inválido.')}
-export function resolveStudentPlan(own:WellnessPlan,linked:WellnessPlan|null,previous:WellnessPlan|null){
+/** Own plan is the preserved historical snapshot, never overwritten by a link.
+ * A linked student must have an explicit recorded scoring choice.
+ */
+export function resolveStudentPlan(own:WellnessPlan,linked:WellnessPlan|null,choice?:'keep'|'migrate'){
  validPlan(own);if(own==='pro_partner')throw Error('Plano exclusivo do profissional.')
  if(linked!==null)validPlan(linked)
- if(linked==='pro_partner'){
-  if(previous===null)throw Error('Plano anterior ausente: revisar vínculo antes do cálculo.')
-  validPlan(previous);if(previous==='pro_partner')throw Error('Plano anterior inválido para aluno.')
-  return {effectivePlan:previous,monthlyFeeCents:0}
- }
- return {effectivePlan:linked??own,monthlyFeeCents:linked===null?studentFees[own]:0}
+ if(choice!==undefined&&!['keep','migrate'].includes(choice))throw Error('Escolha de pontuação inválida.')
+ if(linked!==null&&choice===undefined)throw Error('Aluno vinculado exige escolha registrada: manter ou migrar coeficiente.')
+ if(linked===null&&choice==='migrate')throw Error('Migração exige vínculo ativo.')
+ const selected=choice==='migrate'&&linked!==null?linked:own
+ // Same coefficient as PRO, without borrowing professional-only fixed service volume.
+ const effectivePlan=selected==='pro_partner'?'pro':selected
+ return {effectivePlan,coefficient:weights[effectivePlan],benefitsPlan:linked??own,ownPlanPreserved:own,monthlyFeeCents:linked===null?studentFees[own]:0,monthlyFeeExempt:linked!==null,inheritFixed150Services:false as const}
 }
 export function cashbackEligibility(plan:WellnessPlan,averageRating:number){
  validPlan(plan)

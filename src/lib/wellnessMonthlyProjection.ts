@@ -5,6 +5,7 @@ import {calculateLinearMonthlyCashbackPreview} from './cashbackLinearPreview'
 export type MonthlyParticipant={
  period:string;kind:'student'|'partner';plan:WellnessPlan;
  linkedProfessionalPlan:WellnessPlan|null;previousStudentPlan:WellnessPlan|null;
+ scoringChoice?:'keep'|'migrate';
  facts:RankingFacts;fulfilledProjects:number
 }
 /** Read-only orchestration. Authentication, verified receipts, historical snapshots
@@ -17,8 +18,8 @@ export function projectWellnessMonth(input:{period:string;complete:boolean;event
  const ranking=input.participants.map(participant=>{
   if(!participant||participant.period!==input.period||!['student','partner'].includes(participant.kind)||!participant.facts||!Number.isSafeInteger(participant.facts.completedEligibleServices)||participant.facts.completedEligibleServices<0)throw Error('Dados de ranking inválidos ou de outro mês.')
   if(participant.kind==='partner'&&(participant.linkedProfessionalPlan!==null||participant.previousStudentPlan!==null))throw Error('Vínculo de aluno não se aplica ao parceiro.')
-  const plan=participant.kind==='student'?resolveStudentPlan(participant.plan,participant.linkedProfessionalPlan,participant.previousStudentPlan).effectivePlan:participant.plan
-  return confirmedRanking({version:'monthly-projection-v1',referrals:input.referrals},participant.facts,plan)
+  const plan=participant.kind==='student'?resolveStudentPlan(participant.plan,participant.linkedProfessionalPlan,participant.scoringChoice).effectivePlan:participant.plan
+  return confirmedRanking({version:'monthly-projection-v2-choice',referrals:input.referrals},participant.facts,plan)
  })
  const ordered=orderRankingPreview(ranking)
  const distribution=calculateLinearMonthlyCashbackPreview(source.poolCents,ordered,input.participants.map(p=>({id:p.facts.id,fulfilledProjects:p.fulfilledProjects})))

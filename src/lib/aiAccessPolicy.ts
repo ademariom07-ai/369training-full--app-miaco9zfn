@@ -1,4 +1,4 @@
-import type {WellnessPlan} from './wellnessCommercialRules'
+import {resolveStudentPlan,type WellnessPlan} from './wellnessCommercialRules'
 export type ConsultationLimits=Record<WellnessPlan,number|null>
 // null means unlimited. PRO PARCEIRO intentionally requires an administrator decision.
 export const CONFIRMED_AI_LIMITS={free:2,basic:5,pro:10,premium:null} as const
@@ -21,11 +21,7 @@ export function consultationAccess(limits:ConsultationLimits,plan:WellnessPlan,u
 /** Explicit recorded choice. Choosing a coefficient does not inherit the partner's
  * fictional service volume; 150 remains exclusive to the professional's score. */
 export function resolveStudentChoice(own:Exclude<WellnessPlan,'pro_partner'>,partner:WellnessPlan|null,choice:'keep'|'migrate'){
- const weights={free:0,basic:1,pro:2,premium:3,pro_partner:2}
- if(!Object.hasOwn(weights,own)||String(own)==='pro_partner'||!['keep','migrate'].includes(choice)||(partner!==null&&!Object.hasOwn(weights,partner)))throw Error('Escolha inválida.')
- if(partner===null&&choice==='migrate')throw Error('Migração exige vínculo ativo.')
- const coefficient=weights[choice==='migrate'&&partner!==null?partner:own]
- return {coefficient,benefitsPlan:partner??own,ownPlanPreserved:own,monthlyFeeExempt:partner!==null,inheritFixed150Services:false as const}
+ return resolveStudentPlan(own,partner,choice)
 }
 export type CareArea='physical_education'|'nutrition'|'physiotherapy'|'psychology'|'martial_arts'
 /** Product guardrail, not certification of legal compliance or clinical suitability.
