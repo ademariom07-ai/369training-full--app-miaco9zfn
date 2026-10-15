@@ -412,6 +412,12 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
         throw new Error(res.message || 'Erro ao evoluir plano.')
       }
 
+      if (res?.status === 'payment_pending') {
+        toast.info(res.message || 'Aguardando confirmação do pagamento. Plano atual mantido.')
+        setIsUpgradeModalOpen(false)
+        loadAllWalletData()
+        return
+      }
       await refreshUser()
       toast.success(
         res?.message ||

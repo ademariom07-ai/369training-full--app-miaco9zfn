@@ -1,183 +1,52 @@
-routerAdd(
-  'POST',
-  '/backend/v1/plans/change',
-  (e) => {
-    try {
-      const authUser = e.auth
-      if (!authUser) {
-        return e.json(401, { success: false, message: 'Autenticação necessária.' })
-      }
-
-      const info = e.requestInfo()
-      const body = info.body || {}
-      const targetPlan = (body.plan || '').toLowerCase()
-      const billingPeriod = (body.billing_period || 'monthly').toLowerCase() // 'monthly' | 'annual'
-
-      const allowedPlans = ['gratis', 'basico', 'pro', 'premium', 'pro_parceiro']
-      if (!allowedPlans.includes(targetPlan)) {
-        return e.json(400, {
-          success: false,
-          message: 'Plano inválido. Escolha entre: gratis, basico, pro, premium, pro_parceiro.',
-        })
-      }
-
-      const currentPlan = (authUser.getString('plan') || 'gratis').toLowerCase()
-      if (targetPlan === currentPlan) {
-        return e.json(400, {
-          success: false,
-          message: 'Você já possui o plano selecionado ativo.',
-        })
-      }
-
-      const role = authUser.getString('role') || 'aluno'
-
-      // HOTFIX 369: Se o aluno vinculado tentar trocar de plano, bloquear com 409
-      if (role === 'aluno' && !!authUser.getString('linked_professional')) {
-        return e.json(409, {
-          success: false,
-          message:
-            'Você está vinculado a um profissional e pontua no plano dele. Para escolher um plano próprio, desvincule primeiro.',
-        })
-      }
-
-      const now = new Date()
-      const dayOfMonth = now.getDate()
-      const isFromGratis = currentPlan === 'gratis'
-      const isGoingToGratis = targetPlan === 'gratis'
-      const isWindowOpen = dayOfMonth >= 1 && dayOfMonth <= 3
-
-      // Alunos podem mudar a qualquer momento no primeiro upgrade ou troca;
-      // Vindo de pago para grátis é permitido a qualquer momento;
-      // Vindo de grátis para qualquer plano é permitido a qualquer momento;
-      // Apenas transição ENTRE planos pagos para profissionais requer janela de dias 1 a 3
-      if (role === 'profissional' && !isFromGratis && !isGoingToGratis && !isWindowOpen) {
-        return e.json(403, {
-          success: false,
-          message:
-            'A alteração de plano entre planos pagos só é permitida entre os dias 1 e 3 de cada mês.',
-        })
-      }
-
-      // Preços de mensalidades / anuidades conforme platform_config
-      const studentMonthlyPrices = {
-        gratis: 0,
-        basico: 10,
-        pro: 20,
-        premium: 30,
-      }
-      const studentAnnualPrices = {
-        gratis: 0,
-        basico: 100,
-        pro: 200,
-        premium: 300,
-      }
-
-      let planPrice = 0
-      if (role === 'aluno') {
-        const isLinked = !!authUser.getString('linked_professional')
-        if (isLinked) {
-          planPrice = 0 // Aluno vinculado não paga mensalidade
-        } else {
-          planPrice =
-            billingPeriod === 'annual'
-              ? (studentAnnualPrices[targetPlan] ?? 0)
-              : (studentMonthlyPrices[targetPlan] ?? 0)
+// Plan selection is not proof of payment. Paid subscriptions remain pending
+// until a server-authenticated payment adapter can settle and activate atomically.
+routerAdd('POST', '/backend/v1/plans/change', (e) => {
+  if (!e.auth) return e.json(401, {success:false,message:'Autenticação necessária.'})
+  const body = e.requestInfo().body || {}
+  if (typeof body.plan !== 'string' || (body.billing_period !== undefined && body.billing_period !== 'monthly')) {
+    return e.json(400,{success:false,message:'Informe um plano e cobrança mensal.'})
+  }
+  const targetPlan=body.plan.toLowerCase()
+  if (!['gratis','basico','pro','premium','pro_parceiro'].includes(targetPlan)) return e.json(400,{success:false,message:'Plano inválido.'})
+  try {
+    let response
+    $app.runInTransaction((txApp) => {
+      const user=txApp.findRecordById('users',e.auth.id)
+      const role=user.getString('role')
+      if (!['aluno','profissional'].includes(role) || user.get('approved') !== true) {response={code:403,body:{success:false,message:'Cadastro aprovado necessário.'}};return}
+      if (role==='aluno' && targetPlan==='pro_parceiro') {response={code:400,body:{success:false,message:'PRO PARCEIRO é exclusivo do profissional.'}};return}
+      if (role==='aluno' && user.getString('linked_professional')) {response={code:409,body:{success:false,message:'Aluno vinculado mantém isenção; alteração requer revisão do vínculo.'}};return}
+      const currentPlan=user.getString('plan') || 'gratis'
+      const now=new Date()
+      if (currentPlan===targetPlan) {response={code:409,body:{success:false,message:'Plano já selecionado. Renovação deve usar a cobrança da assinatura.'}};return}
+      // Preserve the existing commercial change window; no new billing at selection.
+      const localDay=new Date(now.getTime()-3*60*60*1000).getUTCDate()
+      if (role==='profissional' && currentPlan!=='gratis' && targetPlan!=='gratis' && localDay>3) {response={code:403,body:{success:false,message:'Troca entre planos pagos disponível nos dias 1 a 3.'}};return}
+      const price=role==='aluno'?({gratis:0,basico:10,pro:20,premium:30})[targetPlan]:(targetPlan==='pro_parceiro'?149:0)
+      if (price>0) {
+        const pending=txApp.findRecordsByFilter('wallet_transactions',"user = {:user} && type = 'mensalidade' && status = 'pendente' && reference_type = 'subscription'",'created,id',2,0,{user:user.id})
+        const reference=targetPlan+'_monthly'
+        if (pending.length>1 || (pending.length===1 && (pending[0].getString('reference_id')!==reference || pending[0].get('amount')!==price))) {response={code:409,body:{success:false,message:'Há uma cobrança pendente diferente. Concilie ou cancele antes de trocar.'}};return}
+        let tx=pending[0]
+        if (!tx) {
+          tx=new Record(txApp.findCollectionByNameOrId('wallet_transactions'))
+          tx.set('user',user.id);tx.set('type','mensalidade');tx.set('amount',price);tx.set('status','pendente')
+          tx.set('reference_type','subscription');tx.set('reference_id',reference)
+          tx.set('description','Solicitação de mensalidade '+targetPlan+'; aguarda pagamento confirmado. Não é crédito disponível.')
+          txApp.save(tx)
         }
-      } else if (targetPlan === 'pro_parceiro') {
-        let monthly = 149
-        let annual = 1490
-        try {
-          const mRec = $app.findFirstRecordByData(
-            'platform_config',
-            'key',
-            'pro_parceiro_price_monthly',
-          )
-          if (mRec) monthly = Number(mRec.get('value')) || 149
-          const aRec = $app.findFirstRecordByData(
-            'platform_config',
-            'key',
-            'pro_parceiro_price_annual',
-          )
-          if (aRec) annual = Number(aRec.get('value')) || monthly * 10
-        } catch (_) {}
-        planPrice = billingPeriod === 'annual' ? annual : monthly
+        // Deliberately do not mutate plan, expiration, badge or subscription status.
+        response={code:202,body:{success:true,status:'payment_pending',activated:false,payment_required:true,plan:currentPlan,requested_plan:targetPlan,price,transaction_id:tx.id,checkout_available:false,message:'Solicitação registrada. O plano atual foi mantido; a nova mensalidade depende de pagamento confirmado. Checkout ainda não integrado.'}}
+        return
       }
-
-      // Atualizar plano do usuário
-      authUser.set('plan', targetPlan)
-      authUser.set('plan_upgraded_at', now.toISOString().replace('T', ' '))
-      authUser.set('subscription_status', 'ativa')
-
-      // Definir expiração: 30 dias para mensal ou 365 para anual
-      const expires = new Date(now)
-      if (billingPeriod === 'annual') {
-        expires.setDate(expires.getDate() + 365)
-      } else {
-        expires.setDate(expires.getDate() + 30)
-      }
-      authUser.set('subscription_expires_at', expires.toISOString().replace('T', ' '))
-
-      $app.save(authUser)
-
-      // Registrar transação se houver valor financeiro
-      let txRecordId = ''
-      if (planPrice > 0) {
-        try {
-          const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
-          const tx = new Record(walletCol)
-          tx.set('user', authUser.id)
-          tx.set('type', 'mensalidade')
-          tx.set('amount', planPrice)
-          tx.set('status', 'pendente') // Aguarda validação ou gateway de pagamento
-          tx.set('reference_type', 'subscription')
-          tx.set('reference_id', `${targetPlan}_${billingPeriod}`)
-          tx.set(
-            'description',
-            `Assinatura Plano ${targetPlan.toUpperCase()} (${
-              billingPeriod === 'annual' ? 'Anual 10x' : 'Mensal'
-            }) - R$ ${planPrice.toFixed(2)}`,
-          )
-          $app.save(tx)
-          txRecordId = tx.id
-        } catch (txErr) {
-          console.error('Erro ao registrar transação de mensalidade:', txErr)
-        }
-      }
-
-      // Registrar auditoria
-      try {
-        const auditCol = $app.findCollectionByNameOrId('audits')
-        const auditRec = new Record(auditCol)
-        auditRec.set('actor', authUser.id)
-        auditRec.set('target_type', 'users')
-        auditRec.set('target_id', authUser.id)
-        auditRec.set('action', 'PLAN_CHANGED')
-        auditRec.set('details', {
-          previous_plan: currentPlan,
-          new_plan: targetPlan,
-          billing_period: billingPeriod,
-          price: planPrice,
-          day_of_month: dayOfMonth,
-          transaction_id: txRecordId,
-        })
-        $app.save(auditRec)
-      } catch (_) {}
-
-      return e.json(200, {
-        success: true,
-        message: `Plano atualizado com sucesso para ${targetPlan.toUpperCase()}!`,
-        plan: targetPlan,
-        billing_period: billingPeriod,
-        price: planPrice,
-        subscription_status: 'ativa',
-        subscription_expires_at: expires.toISOString(),
-      })
-    } catch (err) {
-      return e.json(500, {
-        success: false,
-        error: err ? err.message : 'Erro ao processar alteração de plano.',
-      })
-    }
-  },
-  $apis.requireAuth(),
-)
+      // Free plans and professional per-service plans have no monthly charge.
+      user.set('plan',targetPlan);user.set('plan_upgraded_at',now.toISOString().replace('T',' '))
+      user.set('subscription_status','ativa');user.set('subscription_expires_at','')
+      txApp.save(user)
+      response={code:200,body:{success:true,status:'active',activated:true,payment_required:false,plan:targetPlan,price:0,subscription_status:'ativa',message:role==='profissional'&&targetPlan!=='gratis'?'Plano selecionado sem mensalidade. Tarifa somente após validação do serviço.':'Plano gratuito selecionado.'}}
+    })
+    return e.json(response.code,response.body)
+  } catch (_) {
+    return e.json(500,{success:false,message:'Não foi possível registrar a solicitação de plano. Nenhuma ativação foi confirmada.'})
+  }
+},$apis.requireAuth())

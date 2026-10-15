@@ -1,7 +1,7 @@
 // Hook triggered whenever a service status changes to 'concluido' or is created already 'concluido'
 // HOTFIX 369 v2:
 // 1. Débito de tarifa: PRO PARCEIRO paga R$ 0 de tarifa por serviço (apenas o fixo de R$ 149/mês).
-//    Planos: basico R$ 1, pro R$ 2, premium R$ 3, pro_parceiro R$ 0, gratis R$ 1.
+//    Legacy immediate debits removed: settlement adapter must confirm all prerequisites.
 // 2. Anti-duplicidade na tarifa: wallet_transactions já com reference_id = service.id && type = 'tarifa'.
 // 3. Teto do PRO PARCEIRO: Math.min(realServicesCount, proParceiroCap) (teto de 150).
 // 4. Grátis retains rating/seniority with plan multiplier zero; no automatic inheritance.
@@ -18,71 +18,9 @@ onRecordAfterUpdateSuccess((e) => {
   const profId = service.get('professional')
   const studentId = service.get('student')
 
-  // Função interna de débito de tarifa com verificação anti-duplicidade e isenção do PRO PARCEIRO
-  const debitServiceFee = (svc, professionalId) => {
-    if (!professionalId) return
-    try {
-      // Blindagem anti-duplicidade via findRecordsByFilter (compatível com Goja sem erros de ponteiro)
-      let existingTxs = []
-      try {
-        existingTxs = $app.findRecordsByFilter(
-          'wallet_transactions',
-          `reference_id = '${svc.id}' && type = 'tarifa'`,
-          '-created',
-          1,
-          0,
-        )
-      } catch (checkErr) {
-        console.warn('Aviso ao verificar duplicidade de tarifa:', checkErr)
-      }
-
-      if (existingTxs && existingTxs.length > 0) {
-        return // Já debitado previamente (anti-duplicidade)
-      }
-
-      let prof = null
-      try {
-        prof = $app.findRecordById('users', professionalId)
-      } catch (profErr) {
-        console.warn('Aviso ao buscar profissional para tarifa:', profErr)
-      }
-
-      const profPlan = prof ? (prof.get('plan') || 'basico').toLowerCase() : 'basico'
-
-      // PRO PARCEIRO paga apenas o fixo de R$ 149/mês — SEM tarifa por serviço
-      if (profPlan === 'pro_parceiro') {
-        return
-      }
-
-      let rate = 1.0
-      if (profPlan === 'pro') rate = 2.0
-      if (profPlan === 'premium') rate = 3.0
-      if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
-
-      const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
-      const feeTx = new Record(walletCol)
-      feeTx.set('user', professionalId)
-      feeTx.set('type', 'tarifa')
-      feeTx.set('amount', -rate)
-      feeTx.set('status', 'concluido')
-      feeTx.set('reference_type', 'service')
-      feeTx.set('reference_id', svc.id)
-      feeTx.set(
-        'description',
-        `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${svc.id.slice(0, 6)}`,
-      )
-      $app.save(feeTx)
-    } catch (err) {
-      console.error('Erro ao debitar tarifa de serviço:', err)
-    }
-  }
-
-  // 1. DÉBITO DA TARIFA DE SERVIÇO
-  try {
-    debitServiceFee(service, profId)
-  } catch (errFee) {
-    console.error('Erro na etapa de débito de tarifa:', errFee)
-  }
+  // Financial release is deferred to authenticated settlement after payment,
+  // completion and mutual reviews. Status alone must never debit a tariff.
+  // No automatic service-fee writes until that adapter is homologated.
 
   // 2. VALIDAÇÃO DE INDICAÇÃO E BÔNUS DE REFERRAL
   try {
@@ -154,7 +92,7 @@ onRecordAfterUpdateSuccess((e) => {
     }
 
     const planTarifas = {
-      gratis: 1.0,
+      gratis: 0.0,
       basico: 1.0,
       pro: 2.0,
       premium: 3.0,
@@ -395,71 +333,9 @@ onRecordAfterCreateSuccess((e) => {
     return
   }
 
-  // Função interna de débito de tarifa com verificação anti-duplicidade e isenção do PRO PARCEIRO
-  const debitServiceFee = (svc, professionalId) => {
-    if (!professionalId) return
-    try {
-      // Blindagem anti-duplicidade via findRecordsByFilter (compatível com Goja sem erros de ponteiro)
-      let existingTxs = []
-      try {
-        existingTxs = $app.findRecordsByFilter(
-          'wallet_transactions',
-          `reference_id = '${svc.id}' && type = 'tarifa'`,
-          '-created',
-          1,
-          0,
-        )
-      } catch (checkErr) {
-        console.warn('Aviso ao verificar duplicidade de tarifa no create:', checkErr)
-      }
-
-      if (existingTxs && existingTxs.length > 0) {
-        return // Já debitado previamente (anti-duplicidade)
-      }
-
-      let prof = null
-      try {
-        prof = $app.findRecordById('users', professionalId)
-      } catch (profErr) {
-        console.warn('Aviso ao buscar profissional para tarifa no create:', profErr)
-      }
-
-      const profPlan = prof ? (prof.get('plan') || 'basico').toLowerCase() : 'basico'
-
-      // PRO PARCEIRO paga apenas o fixo de R$ 149/mês — SEM tarifa por serviço
-      if (profPlan === 'pro_parceiro') {
-        return
-      }
-
-      let rate = 1.0
-      if (profPlan === 'pro') rate = 2.0
-      if (profPlan === 'premium') rate = 3.0
-      if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
-
-      const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
-      const feeTx = new Record(walletCol)
-      feeTx.set('user', professionalId)
-      feeTx.set('type', 'tarifa')
-      feeTx.set('amount', -rate)
-      feeTx.set('status', 'concluido')
-      feeTx.set('reference_type', 'service')
-      feeTx.set('reference_id', svc.id)
-      feeTx.set(
-        'description',
-        `Tarifa de serviço 369 (R$ ${rate.toFixed(2)}) - Atendimento #${svc.id.slice(0, 6)}`,
-      )
-      $app.save(feeTx)
-    } catch (err) {
-      console.error('Erro ao debitar tarifa de serviço:', err)
-    }
-  }
-
-  // 1. DÉBITO DA TARIFA DE SERVIÇO
-  try {
-    debitServiceFee(service, profId)
-  } catch (errFee) {
-    console.error('Erro na etapa de débito de tarifa no create:', errFee)
-  }
+  // Financial release is deferred to authenticated settlement after payment,
+  // completion and mutual reviews. Status alone must never debit a tariff.
+  // No automatic service-fee writes until that adapter is homologated.
 
   // 2. RECÁLCULO INSTANTÂNEO DO RANKING APÓS SERVIÇO CRIADO COMO CONCLUÍDO
   try {
@@ -479,7 +355,7 @@ onRecordAfterCreateSuccess((e) => {
     }
 
     const planTarifas = {
-      gratis: 1.0,
+      gratis: 0.0,
       basico: 1.0,
       pro: 2.0,
       premium: 3.0,

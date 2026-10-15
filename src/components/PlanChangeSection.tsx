@@ -228,6 +228,12 @@ export function PlanChangeSection() {
         throw new Error(res.message || 'Falha ao alterar plano.')
       }
 
+      if (res?.status === 'payment_pending') {
+        toast.info(res.message || 'Aguardando confirmação do pagamento. Plano atual mantido.')
+        setConfirmModalOpen(false)
+        setSelectedPlanToChange(null)
+        return
+      }
       await refreshUser()
       toast.success(
         res?.message ||

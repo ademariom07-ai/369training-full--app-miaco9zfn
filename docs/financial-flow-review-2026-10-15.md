@@ -65,3 +65,26 @@ https://www.mercadopago.com.br/developers/en/docs/split-payments/split-1-1/integ
 Documentação sustenta validação de assinatura, retentativas, consulta do
 pagamento, separação cobrança/repasse e restrições de reembolso. Escolha do
 provedor depende do fluxo e recursos habilitados; não está definida nesta revisão.
+
+## Correção de ativação e contenção do débito antecipado
+
+A rota plans/change agora reconsulta usuário aprovado em transação. Mensalidades
+criam/reutilizam solicitação pendente, retornam 202 e preservam plano/status/
+expiração atuais. Flags de pagamento do cliente não ativam plano. Plano e valor
+diferentes de uma pendência exigem conciliação. Falha de gravação não ativa plano.
+Alunos não podem selecionar PRO PARCEIRO. Somente mensal está habilitado: anuidades
+anteriores precisam de aprovação comercial específica. Planos de profissional
+Básico/Pro/Premium não criam mensalidade nem vencimento mensal artificial.
+As duas telas de alteração exibem pendência, sem anunciar ativação.
+
+Removidos os dois débitos de tarifa disparados apenas pela conclusão do serviço.
+IMPORTANTE: essa contenção suspende a cobrança automática antiga por serviço;
+ainda não instala a cobrança posterior. O adapter autenticado de liquidação
+após pagamento e avaliação mútua permanece pendente. Também não há checkout ou
+handler de ativação pós-pagamento homologado. O financeiro NÃO está operacional.
+Outros caminhos legados (backfill, rotinas de carteira, permissões e PR #1) precisam
+convergir antes de qualquer publicação. Nenhuma alteração de saldos históricos.
+
+Validação: 46 testes locais passaram em seis arquivos e tsc --noEmit sem erros.
+Testes de hook usam VM e mocks, não comprovam isolamento concorrente no PocketBase
+real. Sem publicação, migrations ou testes reais de pagamento nesta etapa.
