@@ -114,6 +114,7 @@ export default function Layout({ children }: LayoutProps) {
     { label: 'BackOffice', path: '/profissional', icon: Home },
     { label: 'Smartwatch', path: '/smartwatch', icon: Activity },
     { label: 'Alunos', path: '/profissional/alunos', icon: Users },
+    { label: 'Chat', path: '/profissional/chat', icon: MessageSquare },
     { label: 'Conteúdos & Materiais', path: '/profissional/conteudos', icon: Award },
     { label: 'Agenda & Serviços', path: '/profissional/agenda', icon: Activity },
     { label: 'Financeiro & Carteira', path: '/profissional/carteira', icon: Wallet },
@@ -124,14 +125,14 @@ export default function Layout({ children }: LayoutProps) {
   const adminNav = [
     { label: 'Dashboard', path: '/admin', icon: Home },
     { label: 'Usuários', path: '/admin/usuarios', icon: Users },
-    { label: 'Aprovações', path: '/admin/aprovacoes', icon: FileCheck2 },
+    { label: 'Chat', path: '/admin/chat', icon: MessageSquare },
     { label: 'Moderação de Chat', path: '/admin/chat-moderacao', icon: ShieldAlert },
+    { label: 'Aprovações', path: '/admin/aprovacoes', icon: FileCheck2 },
     { label: 'Documentos Legais', path: '/admin/documentos-legais', icon: FileText },
     { label: 'Ranking & Cashback', path: '/admin/ranking', icon: Sliders },
     { label: 'Auditoria', path: '/admin/auditoria', icon: ShieldCheck },
     { label: 'Perfil', path: '/admin/perfil', icon: User },
-  ]
-  const currentNav =
+  ]  const currentNav =
     user?.role === 'admin' ? adminNav : user?.role === 'profissional' ? profissionalNav : alunoNav
 
   const handleLogout = () => {
@@ -384,13 +385,19 @@ export default function Layout({ children }: LayoutProps) {
         )}
 
         {/* MAIN CONTAINER */}
-        <main className="flex-1 min-w-0 max-w-7xl mx-auto px-4 sm:px-8 pt-6 pb-20 sm:pb-8">
+        <main
+          className={`flex-1 min-w-0 max-w-7xl mx-auto px-3 sm:px-8 pt-4 sm:pt-6 ${
+            location.pathname.includes('/chat')
+              ? 'pb-4 sm:pb-8'
+              : 'pb-20 sm:pb-8'
+          }`}
+        >
           {children}
         </main>
       </div>
 
-      {/* BOTTOM TAB BAR (Aluno Mobile Only: Home | Comunidade | Chat | Perfil) */}
-      {user?.role === 'aluno' && (
+      {/* BOTTOM TAB BAR (Aluno Mobile Only: Home | Comunidade | Chat | Perfil — escondida dentro da tela de chat para não sobrepor o input) */}
+      {user?.role === 'aluno' && !location.pathname.startsWith('/aluno/chat') && (
         <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-[#E5E3DC] px-2 py-2 flex items-center justify-around shadow-lg">
           <Link
             to="/aluno"
@@ -411,7 +418,7 @@ export default function Layout({ children }: LayoutProps) {
           <Link
             to="/aluno/chat"
             className={`flex flex-col items-center gap-0.5 text-[10px] font-bold font-montserrat uppercase ${
-              location.pathname === '/aluno/chat' ? 'text-[#B8962E]' : 'text-gray-500'
+              location.pathname.startsWith('/aluno/chat') ? 'text-[#B8962E]' : 'text-gray-500'
             }`}
           >
             <MessageSquare className="w-5 h-5" /> Chat

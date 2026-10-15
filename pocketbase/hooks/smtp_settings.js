@@ -7,7 +7,10 @@
 onBootstrap((e) => {
   e.next()
   try {
-    const rawPass = $os.getenv('SMTP_PASSWORD') || ''
+    let rawPass = $os.getenv('SMTP_PASSWORD') || ''
+    if (!rawPass && typeof $secrets !== 'undefined' && $secrets.has('SMTP_PASSWORD')) {
+      rawPass = $secrets.get('SMTP_PASSWORD') || ''
+    }
     const smtpPass = rawPass.trim()
     const settings = e.app.settings()
 
@@ -47,7 +50,10 @@ routerAdd(
         return c.json(403, { success: false, message: 'Acesso restrito ao administrador.' })
       }
 
-      const rawPass = $os.getenv('SMTP_PASSWORD') || ''
+      let rawPass = $os.getenv('SMTP_PASSWORD') || ''
+      if (!rawPass && typeof $secrets !== 'undefined' && $secrets.has('SMTP_PASSWORD')) {
+        rawPass = $secrets.get('SMTP_PASSWORD') || ''
+      }
       const smtpPass = rawPass.trim()
       const hasLeading = rawPass.length > 0 && rawPass[0] <= ' '
       const hasTrailing = rawPass.length > 0 && rawPass[rawPass.length - 1] <= ' '

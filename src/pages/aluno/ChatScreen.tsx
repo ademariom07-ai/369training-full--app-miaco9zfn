@@ -49,6 +49,7 @@ export default function ChatScreen() {
   const [exporting, setExporting] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [loadingProfs, setLoadingProfs] = useState(true)
+  const [mobileShowConversation, setMobileShowConversation] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Denúncia de mensagem
@@ -177,6 +178,7 @@ export default function ChatScreen() {
           const target = mappedProfs.find((p) => p.id === profId)
           if (target) {
             setActiveProf(target)
+            setMobileShowConversation(true)
           } else if (mappedProfs.length > 0) {
             setActiveProf(mappedProfs[0])
           }
@@ -300,8 +302,13 @@ export default function ChatScreen() {
 
   const handleSelectProf = (prof: ProfessionalContact) => {
     setActiveProf(prof)
+    setMobileShowConversation(true)
     navigate(`/aluno/chat/${prof.id}`)
     setProfessionals((prev) => prev.map((p) => (p.id === prof.id ? { ...p, unreadCount: 0 } : p)))
+  }
+
+  const handleBackToList = () => {
+    setMobileShowConversation(false)
   }
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -407,7 +414,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <div className="h-[calc(100vh-130px)] flex flex-col pb-2">
+    <div className="h-[calc(100vh-140px)] sm:h-[calc(100vh-130px)] flex flex-col pb-2">
       {/* Modal de Termos do Chat */}
       {user && !termsAccepted && (
         <ChatTermsModal
@@ -433,8 +440,12 @@ export default function ChatScreen() {
       {/* Main Container */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 h-full overflow-hidden">
         {/* Left Sidebar: Professionals List */}
-        <Card className="md:col-span-4 lg:col-span-3 bg-[#181818] border border-[#2A2A2A] rounded-2xl flex flex-col overflow-hidden h-full">
-          <div className="p-4 border-b border-[#2A2A2A] space-y-3">
+        <Card
+          className={`md:col-span-4 lg:col-span-3 bg-[#181818] border border-[#2A2A2A] rounded-2xl flex flex-col overflow-hidden h-full ${
+            mobileShowConversation ? 'hidden md:flex' : 'flex'
+          }`}
+        >
+          <div className="p-3 sm:p-4 border-b border-[#2A2A2A] space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold font-montserrat text-white uppercase flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-[#D4AF37]" /> Profissionais
@@ -514,27 +525,40 @@ export default function ChatScreen() {
         </Card>
 
         {/* Right Area: Active Chat */}
-        <Card className="md:col-span-8 lg:col-span-9 bg-[#181818] border border-[#2A2A2A] rounded-2xl flex flex-col overflow-hidden h-full shadow-2xl">
+        <Card
+          className={`md:col-span-8 lg:col-span-9 bg-[#181818] border border-[#2A2A2A] rounded-2xl flex flex-col overflow-hidden h-full shadow-2xl ${
+            mobileShowConversation ? 'flex' : 'hidden md:flex'
+          }`}
+        >
           {activeProf ? (
             <>
               {/* Chat Header */}
-              <div className="p-3.5 px-5 bg-[#181818] border-b border-[#2A2A2A] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#D4AF37] text-black font-bold flex items-center justify-center font-montserrat text-sm border-2 border-[#D4AF37]">
+              <div className="p-3 sm:p-3.5 sm:px-5 bg-[#181818] border-b border-[#2A2A2A] flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={handleBackToList}
+                    className="md:hidden p-1.5 rounded-lg bg-[#202020] text-gray-300 hover:text-white"
+                    aria-label="Voltar para lista de profissionais"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#D4AF37] text-black font-bold flex items-center justify-center font-montserrat text-xs sm:text-sm border-2 border-[#D4AF37] shrink-0">
                     {activeProf.name?.[0]?.toUpperCase() || 'P'}
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold font-montserrat text-white flex items-center gap-2">
-                      {activeProf.name}
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold font-montserrat text-white flex items-center gap-1.5 truncate">
+                      <span className="truncate">{activeProf.name}</span>
                       {activeProf.isLinked && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] flex items-center gap-1">
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] flex items-center gap-1 shrink-0">
                           <Sparkles className="w-2.5 h-2.5" /> Vinculado
                         </span>
                       )}
                     </h3>
-                    <p className="text-[11px] text-[#22C55E] flex items-center gap-1 font-inter">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
-                      Online • {getSpecialtyLabel(activeProf)}
+                    <p className="text-[10px] sm:text-[11px] text-[#22C55E] flex items-center gap-1 font-inter truncate">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] shrink-0" />
+                      <span className="truncate">Online • {getSpecialtyLabel(activeProf)}</span>
                     </p>
                   </div>
                 </div>
@@ -647,15 +671,15 @@ export default function ChatScreen() {
               </div>
 
               {/* Chat Input */}
-              <div className="p-3 bg-[#181818] border-t border-[#2A2A2A]">
+              <div className="p-2.5 sm:p-3 bg-[#181818] border-t border-[#2A2A2A]">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <Input
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
-                      placeholder={`Enviar mensagem para ${activeProf.name}... (máx. 2.000 caracteres)`}
+                      placeholder={`Enviar mensagem para ${activeProf.name}...`}
                       maxLength={2000}
-                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white pr-14"
+                      className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white pr-12 h-10"
                     />
                     {inputText.length > 1500 && (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono">
@@ -666,7 +690,7 @@ export default function ChatScreen() {
                   <Button
                     type="submit"
                     disabled={sending || !inputText.trim()}
-                    className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase px-5 rounded-xl shrink-0"
+                    className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase px-4 sm:px-5 h-10 rounded-xl shrink-0"
                   >
                     {sending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

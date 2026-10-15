@@ -60,6 +60,7 @@ const AprovacoesProfissionais = lazy(() => import('@/pages/admin/AprovacoesProfi
 const AdminRankingConfig = lazy(() => import('@/pages/admin/AdminRankingConfig'))
 const AdminAuditoria = lazy(() => import('@/pages/admin/AdminAuditoria'))
 const AdminDocumentosLegais = lazy(() => import('@/pages/admin/AdminDocumentosLegais'))
+const AdminChat = lazy(() => import('@/pages/admin/AdminChat'))
 const AdminChatModeracao = lazy(() => import('@/pages/admin/AdminChatModeracao'))
 const AdminPerfil = lazy(() => import('@/pages/admin/AdminPerfil'))
 
@@ -119,7 +120,6 @@ export default function App() {
                 element={<LegalDocViewer slugOverride="politica-reembolso" />}
               />
               <Route path="/documento/:slug" element={<LegalDocViewer />} />
-
               {/* Smartwatch Routes (Aluno & Profissional) */}
               <Route
                 path="/smartwatch"
@@ -151,7 +151,6 @@ export default function App() {
                   </RoleGuard>
                 }
               />
-
               {/* Aluno Routes */}
               <Route
                 path="/aluno"
@@ -313,7 +312,6 @@ export default function App() {
                   </RoleGuard>
                 }
               />
-
               {/* Profissional Routes */}
               <Route
                 path="/profissional"
@@ -439,7 +437,6 @@ export default function App() {
                   </RoleGuard>
                 }
               />
-
               {/* Admin Routes */}
               <Route
                 path="/admin"
@@ -502,15 +499,35 @@ export default function App() {
                 }
               />
               <Route
-                path="/admin/chat-moderacao"
+                path="/admin/chat"
                 element={
                   <RoleGuard allowedRoles={['admin']}>
-                    <Layout>
-                      <AdminChatModeracao />
-                    </Layout>
+                    <Suspense fallback={<RouteFallback />}>
+                      <AdminChat />
+                    </Suspense>
                   </RoleGuard>
                 }
               />
+              <Route
+                path="/admin/chat/:contactId"
+                element={
+                  <RoleGuard allowedRoles={['admin']}>
+                    <Suspense fallback={<RouteFallback />}>
+                      <AdminChat />
+                    </Suspense>
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/admin/chat-moderacao"
+                element={
+                  <RoleGuard allowedRoles={['admin']}>
+                    <Suspense fallback={<RouteFallback />}>
+                      <AdminChatModeracao />
+                    </Suspense>
+                  </RoleGuard>
+                }
+              />{' '}
               <Route
                 path="/admin/perfil"
                 element={
@@ -521,7 +538,6 @@ export default function App() {
                   </RoleGuard>
                 }
               />
-
               {/* 404 & Fallbacks */}
               <Route path="*" element={<NotFound />} />
             </Routes>
