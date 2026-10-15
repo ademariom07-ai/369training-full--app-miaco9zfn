@@ -137,3 +137,46 @@ aprovação. Não prometer diagnóstico, correção biomecânica por câmera ou 
 Referências adicionais de orientação e privacidade:
 https://site.cfp.org.br/publicacao/inteligencia-artificial-na-psicologia-guia-para-uma-pratica-etica-e-responsavel/
 https://www.gov.br/anpd/pt-br/documentos-e-publicacoes/glossario-anpd
+
+## Decisões recebidas e preparação técnica — 15/10/2026, atualização
+
+Esta seção prevalece sobre as perguntas anteriores:
+- Aluno vinculado escolhe manter coeficiente próprio ou migrar para o do parceiro.
+  Benefícios de IA herdados são separados desta escolha. Plano próprio preservado.
+- PRO PARCEIRO: peso 2 confirmado em 13/10 e presente em wellnessCommercialRules;
+  hooks antigos com peso 1 permanecem divergentes, não uma nova decisão. Migração
+  do aluno herda coeficiente 2, NUNCA os 150 serviços fixos do profissional.
+- Revisão profissional aprovada para dieta individualizada, reabilitação e risco.
+- Menores incluídos no escopo mediante adequação à legislação, sem liberação imediata.
+- Limites confirmados para aluno e profissional: Grátis 2, Básico 5, Pro 10,
+  Premium ilimitado; configuráveis no administrativo. Quota de PRO PARCEIRO,
+  periodicidade e unidade de consulta não foram especificadas: não inventar.
+
+Novo módulo aiAccessPolicy.ts prepara validação de configuração, consulta de saldo
+por plano, preservação do acesso a planos previamente autorizados, escolha de
+coeficiente e encaminhamento de menores/revisão. O contador deve vir do servidor;
+ainda faltam persistência, reserva atômica de quota, UI administrativa, seleção
+no vínculo e conexão aos endpoints de IA. O helper não concede acesso a documentos
+antes não autorizados e não cobra excedentes. Nenhuma quota nova está ativa no app.
+8 testes locais passaram; TypeScript sem erros. Não houve teste clínico/jurídico,
+chamada de IA real, migração ou publicação.
+
+Requisitos legais pesquisados em fontes oficiais:
+https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm
+https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm
+https://www.gov.br/mj/pt-br/assuntos/sua-protecao/sedigi/eca-digital/eca-digital-1
+
+Implementação a homologar: melhor interesse; minimização de dados; base legal
+por finalidade (incluindo dados sensíveis); informação acessível por idade;
+verificação etária proporcional; vínculo e autorização de responsável quando
+aplicáveis; privacidade por padrão; revisão do profissional e fluxo de denúncia.
+Não tratar um checkbox como comprovação de autorização nem entregar a todos os
+parceiros acesso ao prontuário. Consentimento não é a única hipótese legal possível;
+definir cada hipótese e o fluxo profissional com assessoria competente. O controle
+minorFlowVerified é contrato de servidor, não declaração que o navegador pode
+fornecer como prova. Não afirmar conformidade integral apenas com estes helpers.
+
+Proposta para confirmação: contar uma geração concluída de treino ou alimentação
+como consulta, em quota mensal compartilhada, sem descontar erro, retry, leitura
+ou revisão do profissional. Ainda não aprovada. Premium ilimitado não remove
+limites técnicos de concorrência/abuso ou segurança clínica.
