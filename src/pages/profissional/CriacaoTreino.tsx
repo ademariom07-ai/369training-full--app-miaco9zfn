@@ -1,3 +1,4 @@
+import {buildWorkoutDraftRequest} from '@/lib/workoutDraftRequest'
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -30,28 +31,23 @@ export default function CriacaoTreino() {
   const [title, setTitle] = useState('Treino A - Hipertrofia & Força')
   const [objective, setObjective] = useState('Hipertrofia')
   const [day, setDay] = useState('Segunda-feira')
-  const [exercises, setExercises] = useState<ExerciseItem[]>([
-    {
-      id: 'ex_1',
-      name: 'Supino Reto com Barra',
-      sets: '4',
-      reps: '8-10',
-      load: '30kg cada lado',
-      rest: '90s',
-      video: '',
-      tips: 'Adução escapular e pegada firme.',
-    },
-    {
-      id: 'ex_2',
-      name: 'Desenvolvimento Militar Halteres',
-      sets: '4',
-      reps: '10-12',
-      load: '18kg haltere',
-      rest: '60s',
-      video: '',
-      tips: 'Evitar hiperextensão lombar.',
-    },
-  ])
+  const [exercises, setExercises] = useState<ExerciseItem[]>([])
+  const [experience,setExperience]=useState('')
+  const [daysAvailable,setDaysAvailable]=useState('')
+  const [age,setAge]=useState('')
+  const [restrictions,setRestrictions]=useState('')
+  const [equipment,setEquipment]=useState('')
+  const [anamnesisChecked,setAnamnesisChecked]=useState(false)
+  const [aiGenerated,setAiGenerated]=useState(false)
+  const [draftReviewed,setDraftReviewed]=useState(false)
+  const generationVersion=React.useRef(0)
+  useEffect(()=>{
+    generationVersion.current++
+    setExercises([]);setAge('');setRestrictions('');setEquipment('');setExperience('');setDaysAvailable('')
+    setAnamnesisChecked(false);setDraftReviewed(false);setAiGenerated(false)
+  },[selectedStudentId])
+
+  useEffect(()=>{generationVersion.current++;setDraftReviewed(false)},[objective,experience,daysAvailable,age,restrictions,equipment])
 
   const [loadingAI, setLoadingAI] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -71,6 +67,7 @@ export default function CriacaoTreino() {
   }, [])
 
   const handleAddExercise = () => {
+    setDraftReviewed(false)
     setExercises([
       ...exercises,
       {
@@ -87,10 +84,12 @@ export default function CriacaoTreino() {
   }
 
   const handleRemoveExercise = (idx: number) => {
+    setDraftReviewed(false)
     setExercises(exercises.filter((_, i) => i !== idx))
   }
 
   const handleUpdateExercise = (idx: number, field: keyof ExerciseItem, val: string) => {
+    setDraftReviewed(false)
     const updated = [...exercises]
     updated[idx][field] = val
     setExercises(updated)
@@ -100,12 +99,13 @@ export default function CriacaoTreino() {
   const handleGenerateAI = async () => {
     setLoadingAI(true)
     try {
-      const res = await api.generateWorkout({
-        objective,
-        experience: 'Avançado',
-        daysAvailable: 5,
-        restrictions: 'Nenhuma',
-      })
+      if (!selectedStudentId) throw Error('Selecione o aluno.')
+      const request=buildWorkoutDraftRequest({objective,experience,days:daysAvailable,age,restrictions,equipment,reviewedAnamnesis:anamnesisChecked})
+      const ticket=++generationVersion.current
+      const res = await api.generateWorkout(request)
+      if(ticket!==generationVersion.current)return
+      setDraftReviewed(false)
+      setAiGenerated(true)
 
       if (res.exercises && res.exercises.length > 0) {
         setTitle(res.title || title)
@@ -121,7 +121,7 @@ export default function CriacaoTreino() {
             tips: e.tips || '',
           })),
         )
-        toast.success('Treino gerado com sucesso pela IA 369!')
+        toast.info('Rascunho gerado. Revise exercícios, restrições, cargas e vídeos antes de enviar.')
       }
     } catch (err: unknown) {
       const error = err as Error
@@ -133,6 +133,7 @@ export default function CriacaoTreino() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    if(loadingAI){toast.error('Aguarde a geração do rascunho.');return}
     if (!selectedStudentId) {
       toast.error('Selecione o aluno.')
       return
@@ -142,6 +143,7 @@ export default function CriacaoTreino() {
       return
     }
 
+    if(aiGenerated&&!draftReviewed){toast.error('Revise o rascunho antes de enviar ao aluno.');return}
     setSaving(true)
     try {
       await pb.collection('workouts').create({
@@ -152,7 +154,7 @@ export default function CriacaoTreino() {
         day,
         status: 'ativo',
         exercises,
-        ai_generated: false,
+        ai_generated: aiGenerated,
       })
 
       // Send notification to student
@@ -200,7 +202,7 @@ export default function CriacaoTreino() {
 
         <Button
           onClick={handleGenerateAI}
-          disabled={loadingAI}
+          disabled={loadingAI || !selectedStudentId}
           className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase flex items-center gap-2"
         >
           {loadingAI ? (
@@ -256,6 +258,20 @@ export default function CriacaoTreino() {
               className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white"
             />
           </div>
+        </Card>
+
+        <Card className="p-5 space-y-4 bg-sky-50 text-slate-900">
+          <h2 className="font-bold">Contexto do rascunho de IA</h2>
+          <p>Confira a anamnese do aluno. Estes campos não substituem a avaliação profissional. Não inclua nome, CPF ou contato nas restrições.</p>
+          <label className="block">Objetivo<Input value={objective} onChange={e=>{setObjective(e.target.value);setAnamnesisChecked(false)}} placeholder="Hipertrofia, força, resistência, corrida…"/></label>
+          <label className="block">Experiência<select value={experience} onChange={e=>{setExperience(e.target.value);setAnamnesisChecked(false)}}><option value="">Selecione</option>{['Iniciante','Intermediário','Avançado'].map(x=><option key={x}>{x}</option>)}</select></label>
+          <label className="block">Dias por semana<Input value={daysAvailable} inputMode="numeric" onChange={e=>{setDaysAvailable(e.target.value);setAnamnesisChecked(false)}}/></label>
+          <label className="block">Idade em anos<Input value={age} inputMode="numeric" onChange={e=>{setAge(e.target.value);setAnamnesisChecked(false)}}/></label>
+          <label className="block">Restrições e limitações informadas<textarea className="block w-full border rounded p-2" value={restrictions} maxLength={2000} onChange={e=>{setRestrictions(e.target.value);setAnamnesisChecked(false)}} placeholder="Descreva o que foi avaliado; não deixe em branco."/></label>
+          <label className="block">Equipamentos disponíveis<Input value={equipment} maxLength={500} onChange={e=>{setEquipment(e.target.value);setAnamnesisChecked(false)}}/></label>
+          <label className="block"><input type="checkbox" checked={anamnesisChecked} onChange={e=>setAnamnesisChecked(e.target.checked)}/> Conferi os dados e a anamnese atual do aluno.</label>
+          <p>Menores: geração aguarda verificação de responsável e fluxo específico. Rascunhos não representam liberação clínica.</p>
+          {aiGenerated&&<label className="block"><input type="checkbox" checked={draftReviewed} onChange={e=>setDraftReviewed(e.target.checked)}/> Revisei o rascunho, incluindo restrições, exercícios, cargas, pausas e demonstrações, para este aluno.</label>}
         </Card>
 
         {/* Exercises Editor List */}

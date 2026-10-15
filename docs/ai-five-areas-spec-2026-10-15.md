@@ -180,3 +180,20 @@ Proposta para confirmação: contar uma geração concluída de treino ou alimen
 como consulta, em quota mensal compartilhada, sem descontar erro, retry, leitura
 ou revisão do profissional. Ainda não aprovada. Premium ilimitado não remove
 limites técnicos de concorrência/abuso ou segurança clínica.
+
+## Formulário profissional — continuação
+
+CriacaoTreino agora solicita objetivo, experiência, frequência, idade, equipamentos
+ e restrições; retirados os parâmetros fixos Avançado/5 dias/Nenhuma e as cargas
+pré-preenchidas de exemplo. Geração identificada como rascunho; confirmação de
+revisão exigida na tela antes de enviar plano gerado, ai_generated preservado.
+Troca de aluno limpa contexto e descarta resultado antigo; alteração dos campos
+invalida resultado em voo e confirmação de revisão. Edição de exercício exige
+nova revisão. Geração de menores bloqueada nesta tela até fluxo verificado.
+
+13 testes de helpers passaram; TypeScript sem erros. Sem testes de navegador ou
+chamada real da IA. Isto NÃO implementa a aprovação clínica no servidor: endpoint
+legado continua exigindo migração, autorização por profissão, anamnese versionada,
+verificação etária, validação do resultado e trilha de aprovação persistente.
+Quotas/período/PRO PARCEIRO continuam sem ativação automática. O HTML independente
+não foi atualizado nesta etapa; mudanças são da tela React na branch.
