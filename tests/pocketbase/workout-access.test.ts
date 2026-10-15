@@ -20,7 +20,7 @@ describe('workout ownership migration', () => {
   const rules = migration()
   it.each(['listRule', 'viewRule', 'updateRule'])('%s denies unrelated accounts and anonymous requests', key => {
     for (const [id, role] of [['other', 'aluno'], ['other', 'profissional'], ['', 'admin']]) expect(allows(rules[key], id, role)).toBe(false)
-    expect(allows(rules[key], 'student-owner', 'aluno')).toBe(true)
+    expect(allows(rules[key], 'student-owner', 'aluno')).toBe(key !== 'updateRule')
     expect(allows(rules[key], 'professional-owner', 'profissional')).toBe(true)
     expect(allows(rules[key], 'administrator', 'admin')).toBe(true)
   })

@@ -192,77 +192,39 @@ export default function MonteSeuTreino() {
     }
   }
 
-  // Toggle Exercise status in PocketBase
-  const toggleExerciseStatus = async (index: number, completed: boolean, feedbackNote?: string) => {
-    if (!currentWorkout || !currentWorkout.exercises) return
-
-    const updatedExercises = [...currentWorkout.exercises]
-    const item = { ...updatedExercises[index], completed }
-    if (feedbackNote) {
-      item.load = `${weightUsed} kg (${feedbackNote})`
-    }
-    updatedExercises[index] = item
-
+  // Progress never changes the prescribed load or creates a billable service.
+  const toggleExerciseStatus = async (index: number, completed: boolean) => {
+    if (!currentWorkout?.exercises?.[index] || currentWorkout.status !== 'ativo') return
     try {
-      const updated = await pb.collection('workouts').update<WorkoutRecord>(currentWorkout.id, {
-        exercises: updatedExercises,
+      const progress = await pb.send<{ id: string; status: WorkoutRecord['status']; exercises: WorkoutRecord['exercises'] }>('/backend/v1/workouts/progress', {
+        method: 'POST', body: { workoutId: currentWorkout.id, action: 'exercise', exerciseId: currentWorkout.exercises[index].id, completed },
       })
-      setCurrentWorkout(updated)
-      toast.success(completed ? 'Exercício concluído com sucesso! 💪' : 'Exercício reaberto.')
+      setCurrentWorkout(previous => previous?.id === progress.id ? { ...previous, status: progress.status, exercises: progress.exercises } : previous)
+      toast.success(completed ? 'Exercício concluído. Prescrição mantida.' : 'Exercício reaberto.')
     } catch (_) {
-      toast.error('Erro ao atualizar exercício.')
+      toast.error('Não foi possível registrar o progresso.')
     }
   }
 
-  // Save feedback and mark exercise as completed
   const handleConfirmExerciseFeedback = async () => {
     if (selectedExerciseIndex === null) return
-    const note = aiLoadResult
-      ? aiLoadResult.suggestedLoad
-      : `${weightUsed}kg - RPE ${difficulty}/10`
-    await toggleExerciseStatus(selectedExerciseIndex, true, note)
+    await toggleExerciseStatus(selectedExerciseIndex, true)
     setFeedbackModalOpen(false)
   }
 
-  // RECURSO 5: Finalizar Treino do Dia e Criar Registro em `services` com type: treino_ia
   const handleFinalizeDailyWorkout = async () => {
-    if (!user || !currentWorkout) return
+    if (!user || !currentWorkout || finishingWorkout) return
     setFinishingWorkout(true)
-
     try {
-      const hasProfessional = !!currentWorkout.professional
-
-      // Criar registro na coleção services
-      await pb.collection('services').create({
-        student: user.id,
-        professional: currentWorkout.professional || null,
-        type: 'treino_ia',
-        title: `Treino do Dia: ${currentWorkout.title}`,
-        value: 0,
-        status: 'concluido',
-        completed_at: new Date().toISOString(),
-        notes: `Treino concluído com 100% dos exercícios finalizados via IA 369. Exercícios: ${currentWorkout.exercises?.length || 0}${hasProfessional ? ' (Com acompanhamento profissional)' : ' (Treino IA autônomo - sem pontuação de ranking)'}`,
+      const progress = await pb.send<{ id: string; status: WorkoutRecord['status']; exercises: WorkoutRecord['exercises'] }>('/backend/v1/workouts/progress', {
+        method: 'POST', body: { workoutId: currentWorkout.id, action: 'complete' },
       })
-
-      // Atualizar status do treino
-      await pb.collection('workouts').update(currentWorkout.id, {
-        status: 'concluido',
-      })
-
-      if (hasProfessional) {
-        toast.success(
-          '🏆 Treino Finalizado com Sucesso! 1 serviço com profissional computado para sua pontuação no ranking!',
-        )
-      } else {
-        toast.success(
-          '🏆 Treino Finalizado com Sucesso! Registrado no seu histórico (treinos sem acompanhamento profissional não pontuam no ranking).',
-        )
-      }
+      setCurrentWorkout(previous => previous?.id === progress.id ? { ...previous, status: progress.status, exercises: progress.exercises } : previous)
+      toast.success('Conclusão registrada no histórico pessoal. Serviços e pontos dependem da validação do atendimento.')
       setFinishModalOpen(false)
       loadWorkouts()
-    } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Erro ao registrar finalização do treino.')
+    } catch (_) {
+      toast.error('Não foi possível finalizar. Confira se todos os exercícios foram concluídos.')
     } finally {
       setFinishingWorkout(false)
     }
@@ -287,7 +249,7 @@ export default function MonteSeuTreino() {
         </h1>
         <p className="text-sm text-gray-400 font-inter mt-1">
           Demonstrações com GIFs animados ExerciseDB, feedback de progressão de carga inteligente e
-          validação de pontuação diária.
+          registro de progresso pessoal.
         </p>
       </div>
 
@@ -439,7 +401,7 @@ export default function MonteSeuTreino() {
                 </h3>
                 <p className="text-xs text-gray-300 font-inter">
                   {currentWorkout.professional
-                    ? 'Finalize seu treino para computar +1 serviço oficial com seu profissional e subir no Ranking!'
+                    ? 'Registre a conclusão pessoal. A validação do atendimento ocorre separadamente.'
                     : 'Finalize seu treino para registrar a conclusão no seu histórico de evolução pessoal.'}
                 </p>
               </div>
@@ -741,6 +703,7 @@ export default function MonteSeuTreino() {
             </div>
           )}
 
+          <p className="text-xs text-amber-200">O feedback é temporário. Registrar a conclusão não salva esse feedback nem altera a carga prescrita; ajustes precisam de revisão profissional.</p>
           <DialogFooter className="flex gap-2">
             <Button
               variant="outline"
@@ -750,10 +713,11 @@ export default function MonteSeuTreino() {
               Cancelar
             </Button>
             <Button
+              title="Registra apenas a conclusão; não salva o feedback nem altera a carga prescrita"
               onClick={handleConfirmExerciseFeedback}
               className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase rounded-xl"
             >
-              Salvar & Concluir Exercício
+              Registrar conclusão
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -773,19 +737,9 @@ export default function MonteSeuTreino() {
 
           <div className="p-4 rounded-xl bg-[#181818] border border-[#22C55E]/40 space-y-3 my-2 text-xs text-gray-300 font-inter">
             <p>
-              Ao confirmar a conclusão do treino, será registrado automaticamente um serviço do tipo{' '}
-              <strong className="text-white font-mono">treino_ia</strong> na sua conta.
+              A conclusão será registrada no histórico pessoal do treino. Ela não cria serviço,
+              cobrança, cashback ou pontuação automática. O atendimento segue sua validação própria.
             </p>
-            {currentWorkout?.professional ? (
-              <div className="p-2.5 rounded-lg bg-[#141414] border border-[#22C55E]/40 text-[11px] text-[#22C55E] font-bold font-mono">
-                ✓ +1 Serviço com acompanhamento profissional para o cálculo da Pontuação e Ranking!
-              </div>
-            ) : (
-              <div className="p-2.5 rounded-lg bg-[#141414] border border-amber-500/30 text-[11px] text-amber-300 font-medium font-inter">
-                ℹ️ Treino sem acompanhamento profissional: registrado no seu histórico, porém não
-                gera pontuação no Ranking oficial.
-              </div>
-            )}
           </div>
 
           <DialogFooter className="flex gap-2">
