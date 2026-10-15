@@ -443,7 +443,10 @@ export default function Cadastro() {
       }
 
       setCreatedSuccess(true)
-      toast.success('Cadastro realizado com sucesso!')
+      toast.success(
+        `Cadastro realizado! Enviamos um link de confirmação para ${email.trim().toLowerCase()}. Abra o e-mail para ativar sua conta.`,
+        { duration: 10000 },
+      )
 
       // Se for aluno, abrir questionário referente ao seu objetivo
       if (role === 'aluno' && createdUser?.id) {
