@@ -132,7 +132,9 @@ export default function Layout({ children }: LayoutProps) {
     { label: 'Ranking & Cashback', path: '/admin/ranking', icon: Sliders },
     { label: 'Auditoria', path: '/admin/auditoria', icon: ShieldCheck },
     { label: 'Perfil', path: '/admin/perfil', icon: User },
-  ]  const currentNav =
+  ]
+
+  const currentNav =
     user?.role === 'admin' ? adminNav : user?.role === 'profissional' ? profissionalNav : alunoNav
 
   const handleLogout = () => {
@@ -387,9 +389,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* MAIN CONTAINER */}
         <main
           className={`flex-1 min-w-0 max-w-7xl mx-auto px-3 sm:px-8 pt-4 sm:pt-6 ${
-            location.pathname.includes('/chat')
-              ? 'pb-4 sm:pb-8'
-              : 'pb-20 sm:pb-8'
+            location.pathname.includes('/chat') ? 'pb-4 sm:pb-8' : 'pb-20 sm:pb-8'
           }`}
         >
           {children}

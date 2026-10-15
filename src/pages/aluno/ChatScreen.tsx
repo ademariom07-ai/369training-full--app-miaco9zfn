@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Sparkles,
   Flag,
+  ChevronLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ChatTermsModal } from '@/components/ChatTermsModal'
