@@ -246,3 +246,10 @@ não foi atualizado nesta etapa; mudanças são da tela React na branch.
 - Resposta inválida retorna 502 sem fallback, falha do provedor 503 sem detalhes internos. Tela identifica análise provisória; resposta em trânsito é descartada se contexto/modal mudar. Nenhum ajuste de carga é salvo.
 - 73 testes locais passaram, incluindo 16 novos de feedback; TypeScript do aplicativo passou. Sem validação clínica, chamada real de IA ou teste de navegador. Contratos de cliente e servidor precisam ser entregues juntos.
 - Recurso de ajuste efetivo de carga permanece pendente de revisão autenticada, contexto completo e registro profissional; limites por plano/herança e persistência de feedback ainda precisam integração. Prévia HTML anterior permanece inalterada.
+
+### Continuação: cronômetro de descanso do aluno
+
+- Componente RestTimer adicionado à tela MonteSeuTreino, disponível em registros de status ativo; rascunhos da IA não recebem controles de execução. Um exercício por vez seleciona o cronômetro.
+- Iniciar/continuar, pausar e reiniciar; aviso visual ao término. Contagem por horário de término, recalculada ao retornar à aba, sem depender da quantidade de ticks. Não persiste dados nem altera prescrição, conclusão, serviços, tarifas ou pontos.
+- Reconhece apenas durações inequívocas em segundos, minutos ou mm:ss (1–3600 segundos). Texto livre, intervalos e ausência de unidade não geram duração presumida; usuário deve informar segundos conforme orientação. Trocar treino/exercício ou sair da tela descarta contagem. Não há notificação em segundo plano, som ou garantia de alerta com app fechado.
+- 15 testes de interpretação de duração passaram, incluindo valores ambíguos/inválidos; TypeScript do aplicativo passou. Pausa, retomada, fim, mudança de aba e acessibilidade ainda precisam de verificação no navegador. Alteração salva no código React, sem publicação; prévia HTML antiga não incorpora o cronômetro.

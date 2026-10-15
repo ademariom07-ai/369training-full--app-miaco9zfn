@@ -33,6 +33,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { RestTimer } from '@/components/workouts/RestTimer'
 import { buildWorkoutDraftRequest } from '@/lib/workoutDraftRequest'
 import { fetchExerciseGif } from '@/lib/exerciseDb'
 
@@ -62,6 +63,9 @@ export default function MonteSeuTreino() {
   const [generating, setGenerating] = useState(false)
   const [currentWorkout, setCurrentWorkout] = useState<WorkoutRecord | null>(null)
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutRecord[]>([])
+
+  const [restSelection, setRestSelection] = useState<{ id: string; name: string; rest: string } | null>(null)
+  useEffect(() => { setRestSelection(null) }, [currentWorkout?.id, user?.id])
 
   // Exercise GIFs cache state
   const [exerciseGifs, setExerciseGifs] = useState<Record<string, string>>({})
@@ -398,6 +402,10 @@ export default function MonteSeuTreino() {
         </Card>
       )}
 
+      {currentWorkout?.status === 'ativo' && restSelection && (
+        <RestTimer key={`${currentWorkout.id}:${restSelection.id}:${restSelection.rest}`} exercise={restSelection.name} prescribedRest={restSelection.rest} />
+      )}
+
       {/* RECURSO 5: BANNER DE TREINO 100% CONCLUÍDO */}
       {allExercisesCompleted && currentWorkout?.status !== 'concluido' && (
         <Card className="bg-gradient-to-r from-[#22C55E]/20 via-[#181818] to-[#D4AF37]/20 border-2 border-[#22C55E] p-6 rounded-2xl shadow-[0_0_30px_rgba(34,197,94,0.2)] animate-pulse">
@@ -551,6 +559,11 @@ export default function MonteSeuTreino() {
                       </div>
                     </div>
 
+                    {currentWorkout.status === 'ativo' && (
+                      <Button type="button" variant="outline" onClick={() => setRestSelection({ id: exercise.id, name: exercise.name, rest: exercise.rest || '' })}>
+                        Cronometrar descanso
+                      </Button>
+                    )}
                     {/* Toggle Button */}
                     <div className="flex flex-row md:flex-col items-center gap-2 w-full md:w-auto">
                       <Button
