@@ -25,9 +25,69 @@ onRecordCreateRequest((e) => {
     // Zerado para que on_user_create.js atribua a próxima posição global.
     e.record.set('tree_position', 0)
     e.record.set('tree_level', 0)
+    // O e-mail só fica confirmado pelo link enviado logo após o cadastro.
+    e.record.setVerified(false)
+  } else {
+    // Conta criada pelo admin: e-mail já considerado confirmado.
+    e.record.setVerified(true)
   }
   return e.next()
 }, 'users')
+
+// ---------------------------------------------------------------------------
+// Cadastro: envia o e-mail de confirmação assim que a conta é criada.
+// ---------------------------------------------------------------------------
+onRecordAfterCreateSuccess((e) => {
+  if (!e.record.verified()) {
+    try {
+      $mails.sendRecordVerification($app, e.record)
+    } catch (err) {
+      console.error('[cadastro] falha ao enviar e-mail de confirmação:', err)
+    }
+  }
+  return e.next()
+}, 'users')
+
+// ---------------------------------------------------------------------------
+// E-mail não confirmado: bloqueia as ações principais até a confirmação.
+// O fluxo de cadastro (aceite de termos, envio de credencial, questionário) continua liberado.
+// ---------------------------------------------------------------------------
+onRecordCreateRequest(
+  (e) => {
+    if (e.auth && !e.hasSuperuserAuth() && !e.auth.verified()) {
+      throw new ForbiddenError(
+        'Confirme seu e-mail para continuar. Enviamos um link para a sua caixa de entrada.',
+      )
+    }
+    return e.next()
+  },
+  'messages',
+  'appointments',
+  'services',
+  'service_reviews',
+  'community_posts',
+  'group_session_participants',
+  'challenge_participants',
+)
+
+routerUse((e) => {
+  const path = e.request.url.path
+  const allowed = ['/backend/v1/legal/', '/backend/v1/professional/submit-credential']
+  if (
+    path.startsWith('/backend/v1/') &&
+    !allowed.some((p) => path.startsWith(p)) &&
+    e.auth &&
+    e.auth.collection().name === 'users' &&
+    !e.auth.verified()
+  ) {
+    return e.json(403, {
+      success: false,
+      code: 'EMAIL_NOT_VERIFIED',
+      message: 'Confirme seu e-mail para continuar. Enviamos um link para a sua caixa de entrada.',
+    })
+  }
+  return e.next()
+})
 
 // ---------------------------------------------------------------------------
 // Serviços: a validação só acontece pela avaliação mútua, e um aluno só registra
