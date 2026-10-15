@@ -88,3 +88,16 @@ convergir antes de qualquer publicação. Nenhuma alteração de saldos históri
 Validação: 46 testes locais passaram em seis arquivos e tsc --noEmit sem erros.
 Testes de hook usam VM e mocks, não comprovam isolamento concorrente no PocketBase
 real. Sem publicação, migrations ou testes reais de pagamento nesta etapa.
+
+## Preparação sem API de pagamentos
+
+Implementada consulta administrativa somente leitura de mensalidades pendentes,
+filtrada por mês de registro UTC−03. Mostra quantidade, valor solicitado e
+referências repetidas; não expõe identidades nem autoriza ativação/pagamento.
+Pendências contribuem com zero para cashback. Nova seção junto à conferência
+de tarifas registradas. Troca de sessão limpa os dados e descarta respostas antigas.
+Backend paginado em transação, parâmetros SQL vinculados, erros sem totais parciais.
+19 testes locais passaram (pendências, bloqueio de ativação, fonte de tarifas),
+TypeScript sem erros. Não homologado em navegador/banco real, não publicado.
+API de pagamentos será inserida posteriormente pelo usuário; sua ausência não
+impede a consulta de registros, mas continua impedindo liquidação automática.
