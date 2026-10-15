@@ -12,6 +12,16 @@ onBootstrap((e) => {
       rawPass = $secrets.get('SMTP_PASSWORD') || ''
     }
     const smtpPass = rawPass.trim()
+
+    // Se o segredo SMTP_PASSWORD não existir no ambiente, NÃO tocar nas mailer settings
+    // existentes (nem apagar, nem sobrescrever com vazio) — preservar o que está salvo no painel.
+    if (!smtpPass) {
+      console.log(
+        '[SMTP_BOOT] Segredo SMTP_PASSWORD não configurado no ambiente. Preservando configurações SMTP existentes do painel.',
+      )
+      return
+    }
+
     const settings = e.app.settings()
 
     settings.smtp.enabled = true
@@ -20,9 +30,7 @@ onBootstrap((e) => {
     settings.smtp.authMethod = 'LOGIN'
     settings.smtp.tls = false // PocketBase usa STARTTLS na porta 587 quando tls é false
     settings.smtp.username = 'bd4b5d001@smtp-brevo.com'
-    if (smtpPass) {
-      settings.smtp.password = smtpPass
-    }
+    settings.smtp.password = smtpPass
     settings.meta.senderName = '369WELLNESS'
     settings.meta.senderAddress = 'wellness369@outlook.com'
 
