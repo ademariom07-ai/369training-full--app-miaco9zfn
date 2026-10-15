@@ -197,3 +197,11 @@ legado continua exigindo migração, autorização por profissão, anamnese vers
 verificação etária, validação do resultado e trilha de aprovação persistente.
 Quotas/período/PRO PARCEIRO continuam sem ativação automática. O HTML independente
 não foi atualizado nesta etapa; mudanças são da tela React na branch.
+
+### Continuação: contrato do gerador de treinos no servidor
+
+- Endpoint exige objetivo, experiência reconhecida, dias inteiros de 1 a 7 e restrições explícitas; limita tamanho das entradas antes de chamar IA.
+- JSON inválido, exercícios ausentes ou campos incompletos agora resultam em erro 502, sem criar treino genérico de substituição. Falha do provedor retorna 503 sem detalhes internos.
+- Resposta validada por lista explícita de campos, limites de tamanho e quantidade; IDs e estado de conclusão definidos pelo servidor. Links sugeridos pelo modelo são descartados até existir catálogo de vídeos verificados.
+- Testes locais: 15 cenários do endpoint em VM, mais 13 de política de acesso e formulário. Isso valida contrato, não qualidade clínica nem execução em PocketBase real.
+- Pendências: aluno ainda persiste resultado como ativo; revisão/autorização profissional, anamnese estruturada no servidor, cotas e fluxo de menores precisam ser integrados antes de operação real. A validação estrutural não resolve essas autorizações. Prévia HTML não alterada nesta etapa.
