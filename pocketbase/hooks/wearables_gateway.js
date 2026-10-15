@@ -3,7 +3,7 @@
 // Segredos necessários para ativação automática:
 // - TERRA_API_KEY (chave de API da Terra)
 // - TERRA_DEV_ID (ID de desenvolvedor da Terra)
-// - TERRA_WEBHOOK_SECRET (opcional para checagem de assinatura HMAC)
+// - TERRA_WEBHOOK_SECRET (obrigatório: sem ele o webhook fica desativado)
 // ou
 // - SPIKE_API_KEY (chave de API da Spike)
 //
@@ -138,7 +138,31 @@ routerAdd(
 // Endpoint 3: POST /backend/v1/wearables/webhook
 // Webhook para receber dados normalizados da API agregadora (Terra ou Spike)
 routerAdd('POST', '/backend/v1/wearables/webhook', (c) => {
-  const body = c.requestInfo().body || {}
+  // Endpoint público: só aceita eventos assinados pela Terra (HMAC-SHA256 com TERRA_WEBHOOK_SECRET).
+  // Sem o segredo configurado o webhook fica desativado, para ninguém gravar dados de saúde falsos.
+  const webhookSecret = $os.getenv('TERRA_WEBHOOK_SECRET') || ''
+  if (!webhookSecret) {
+    return c.json(503, { status: 'webhook_disabled' })
+  }
+
+  const rawBody = toString(c.request.body)
+  const signatureHeader = c.request.header.get('terra-signature') || ''
+  const sigParts = {}
+  for (const part of signatureHeader.split(',')) {
+    const idx = part.indexOf('=')
+    if (idx > 0) sigParts[part.slice(0, idx).trim()] = part.slice(idx + 1).trim()
+  }
+  const expectedSig = sigParts.t ? $security.hs256(`${sigParts.t}.${rawBody}`, webhookSecret) : ''
+  if (!sigParts.v1 || !expectedSig || !$security.equal(expectedSig, sigParts.v1)) {
+    return c.json(401, { status: 'invalid_signature' })
+  }
+
+  let body = {}
+  try {
+    body = JSON.parse(rawBody || '{}')
+  } catch (_) {
+    return c.json(400, { status: 'invalid_json' })
+  }
   const rawHeaders = c.requestInfo().headers || {}
 
   console.log('Wearable Webhook recebido:', JSON.stringify(body))

@@ -66,7 +66,7 @@ migrate(
       }
     }
 
-    // 2. Admin User (ademariom07@gmail.com / Skip@Pass)
+    // 2. Admin User (ademariom07@gmail.com)
     let adminUser
     try {
       adminUser = app.findAuthRecordByEmail('_pb_users_auth_', 'ademariom07@gmail.com')
@@ -78,7 +78,7 @@ migrate(
     } catch (_) {
       adminUser = new Record(users)
       adminUser.setEmail('ademariom07@gmail.com')
-      adminUser.setPassword('Skip@Pass')
+      adminUser.setPassword($security.randomString(32))
       adminUser.setVerified(true)
       adminUser.set('name', 'Ademario Master Admin')
       adminUser.set('role', 'admin')
@@ -91,14 +91,14 @@ migrate(
       app.save(adminUser)
     }
 
-    // 3. Approved Professional User (carlos.coach@369training.com / Skip@Pass)
+    // 3. Approved Professional User (carlos.coach@369training.com)
     let profUser
     try {
       profUser = app.findAuthRecordByEmail('_pb_users_auth_', 'carlos.coach@369training.com')
     } catch (_) {
       profUser = new Record(users)
       profUser.setEmail('carlos.coach@369training.com')
-      profUser.setPassword('Skip@Pass')
+      profUser.setPassword($security.randomString(32))
       profUser.setVerified(true)
       profUser.set('name', 'Prof. Carlos Silva')
       profUser.set('role', 'profissional')
@@ -123,14 +123,14 @@ migrate(
       app.save(profUser)
     }
 
-    // 4. Sample Aluno User (aluno.lucas@369training.com / Skip@Pass)
+    // 4. Sample Aluno User (aluno.lucas@369training.com)
     let alunoUser
     try {
       alunoUser = app.findAuthRecordByEmail('_pb_users_auth_', 'aluno.lucas@369training.com')
     } catch (_) {
       alunoUser = new Record(users)
       alunoUser.setEmail('aluno.lucas@369training.com')
-      alunoUser.setPassword('Skip@Pass')
+      alunoUser.setPassword($security.randomString(32))
       alunoUser.setVerified(true)
       alunoUser.set('name', 'Lucas Ferreira')
       alunoUser.set('role', 'aluno')
@@ -147,13 +147,13 @@ migrate(
       app.save(alunoUser)
     }
 
-    // 5. Sample Pending Professional User (marina.fisio@369training.com / Skip@Pass)
+    // 5. Sample Pending Professional User (marina.fisio@369training.com)
     try {
       app.findAuthRecordByEmail('_pb_users_auth_', 'marina.fisio@369training.com')
     } catch (_) {
       const pendProf = new Record(users)
       pendProf.setEmail('marina.fisio@369training.com')
-      pendProf.setPassword('Skip@Pass')
+      pendProf.setPassword($security.randomString(32))
       pendProf.setVerified(true)
       pendProf.set('name', 'Dra. Marina Santos')
       pendProf.set('role', 'profissional')

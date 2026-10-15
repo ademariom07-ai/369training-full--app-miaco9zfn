@@ -4,7 +4,7 @@ migrate((app) => {
   // 1. Configurar servidor SMTP e remetente em app.settings()
   // Host smtp-mail.outlook.com (ou smtp.office365.com), porta 587, STARTTLS, auth LOGIN
   // Remetente wellness369@outlook.com, exibição 369WELLNESS
-  const smtpPass = $os.getenv('SMTP_PASSWORD') || '369369@@aA3-36'
+  const smtpPass = $os.getenv('SMTP_PASSWORD') || ''
   const settings = app.settings()
 
   settings.smtp.enabled = true

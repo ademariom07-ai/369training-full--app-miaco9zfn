@@ -48,7 +48,8 @@ routerAdd(
       // 1. Validar saldo real: soma das transações concluídas do usuário no banco
       const userTxs = $app.findRecordsByFilter(
         'wallet_transactions',
-        `user = '${authUser.id}' && (status = 'concluido' || status = 'aprovado')`,
+        // Saques pendentes já comprometem o saldo (evita pedir vários saques acima do saldo)
+        `user = '${authUser.id}' && (status = 'concluido' || status = 'aprovado' || (type = 'saque' && status = 'pendente'))`,
         '-created',
         5000,
         0,
@@ -64,9 +65,10 @@ routerAdd(
           txType === 'saque' ||
           txType === 'tarifa' ||
           txType === 'pagamento' ||
-          txType === 'servico'
+          txType === 'servico' ||
+          txType === 'mensalidade'
         ) {
-          saldoReal += amt // amount já é negativo ou debitado
+          saldoReal -= Math.abs(amt) // débitos sempre reduzem o saldo
         }
       }
 

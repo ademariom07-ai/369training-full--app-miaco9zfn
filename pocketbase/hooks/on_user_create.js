@@ -1,11 +1,6 @@
-// Hook triggered on user creation to auto-verify and assign Global Unique Tree Position & Level (Spillover up to Level 36)
+// Hook triggered on user creation to assign Global Unique Tree Position & Level (Spillover up to Level 36)
+// A confirmação de e-mail é feita pelo link enviado no cadastro (security_guards.js).
 onRecordCreate((e) => {
-  try {
-    e.record.setVerified(true)
-  } catch (err) {
-    console.log('Error auto-verifying user in onRecordCreate:', err ? err.message : '')
-  }
-
   try {
     const existingPos = e.record.get('tree_position')
     if (!existingPos || Number(existingPos) <= 0) {

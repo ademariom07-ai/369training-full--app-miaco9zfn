@@ -4,7 +4,7 @@ migrate((app) => {
   // 1. Configurar servidor SMTP do Gmail e remetente em app.settings()
   // Host smtp.gmail.com, porta 587, STARTTLS, auth LOGIN
   // Usuário e Remetente: ademariom07@gmail.com, Nome de exibição: 369WELLNESS
-  const smtpPass = $os.getenv('SMTP_PASSWORD') || '369369@@aA3-36'
+  const smtpPass = $os.getenv('SMTP_PASSWORD') || ''
   const settings = app.settings()
 
   settings.smtp.enabled = true

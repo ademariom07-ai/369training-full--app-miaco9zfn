@@ -22,6 +22,7 @@ import {
   Phone,
   Video,
 } from 'lucide-react'
+import { UserAvatar } from '@/components/UserAvatar'
 
 // Haversine distance in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -276,14 +277,9 @@ export function AlunoProfissionaisFeed() {
             <div className="space-y-4">
               <DialogHeader>
                 <div className="flex items-center gap-3">
-                  <img
-                    src={
-                      selectedProfModal.avatar
-                        ? pb.files.getURL(selectedProfModal, selectedProfModal.avatar)
-                        : `https://img.usecurling.com/ppl/medium?gender=male&seed=${selectedProfModal.id}`
-                    }
-                    alt={selectedProfModal.name}
-                    className="w-16 h-16 rounded-2xl object-cover border-2 border-[#D4AF37]"
+                  <UserAvatar
+                    user={selectedProfModal}
+                    className="w-16 h-16 rounded-2xl border-2 border-[#D4AF37]"
                   />
                   <div>
                     <div className="flex items-center gap-2">
@@ -465,14 +461,9 @@ function VideoCardItem({
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent p-5 sm:p-6 text-white z-20 pointer-events-auto space-y-3">
         {/* Professional badge & name */}
         <div className="flex items-center gap-3">
-          <img
-            src={
-              prof.avatar
-                ? pb.files.getURL(prof, prof.avatar)
-                : `https://img.usecurling.com/ppl/medium?gender=male&seed=${prof.id}`
-            }
-            alt={prof.name}
-            className="w-12 h-12 rounded-xl object-cover border-2 border-[#D4AF37] shrink-0"
+          <UserAvatar
+            user={prof}
+            className="w-12 h-12 rounded-xl border-2 border-[#D4AF37] shrink-0"
           />
           <div>
             <div className="flex flex-wrap items-center gap-1.5">

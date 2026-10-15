@@ -31,6 +31,11 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
+  // E-mail ainda não confirmado: leva para a tela que explica e reenvia o link
+  if (user.verified === false && user.role !== 'admin') {
+    return <Navigate to="/verificacao-pendente" replace />
+  }
+
   // Role verification
   if (
     allowedRoles &&

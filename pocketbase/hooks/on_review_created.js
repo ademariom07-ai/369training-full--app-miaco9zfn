@@ -29,7 +29,11 @@ onRecordAfterCreateSuccess((e) => {
         0,
       )
 
-      const reviewCount = allReviewsForService.length
+      // Validação mútua exige uma avaliação do aluno E uma do profissional
+      const reviewerIds = allReviewsForService.map((r) => r.get('reviewer'))
+      const studentReviewed = reviewerIds.includes(service.get('student'))
+      const profReviewed = reviewerIds.includes(service.get('professional'))
+      const reviewCount = studentReviewed && profReviewed ? 2 : Math.min(reviewerIds.length, 1)
       if (!service.get('validated_at')) {
         service.set('validated_at', new Date().toISOString().replace('T', ' '))
       }
