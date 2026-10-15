@@ -101,3 +101,13 @@ Backend paginado em transação, parâmetros SQL vinculados, erros sem totais pa
 TypeScript sem erros. Não homologado em navegador/banco real, não publicado.
 API de pagamentos será inserida posteriormente pelo usuário; sua ausência não
 impede a consulta de registros, mas continua impedindo liquidação automática.
+
+## Continuação: conferência de liquidação mensal (15/10/2026)
+
+Implementado `subscriptionSettlementPreview.ts`, proposta pura para o futuro adaptador financeiro. Confere fatura histórica, pagador, moeda BRL, período, tarifa contratada e valor recebido. Alunos: Básico R$10, Pro R$20, Premium R$30; aluno vinculado não gera nova mensalidade. Profissional: somente PRO PARCEIRO R$149 mensal; Básico/Pro/Premium continuam por serviço validado.
+
+Pagamento pendente ou cancelado não propõe lançamento. Divergências, estornos e disputas bloqueiam a proposta. Reenvio do mesmo pagamento liquidado retorna já processado com tarifa adicional zero; reutilização de uma fatura com outro pagamento ou vice-versa exige conciliação. Chaves estáveis são fornecidas para futuras restrições únicas no banco.
+
+A proposta não autoriza ativação, débito nem pagamento (`activationAuthorized=false`, `paymentAuthorized=false`); flags recebidas não são evidência autenticada. Não foi ligada à API do app nem ao banco. Integração futura deve autenticar o provedor, vincular titular/conta, persistir liquidação e ativação na mesma transação, impor unicidade de fatura/pagamento e controlar a emissão de uma fatura por competência. Ainda faltam regras operacionais de renovação, mudança de plano/vínculo durante a competência e tratamento de estornos após ativação.
+
+Validação local: 47 testes financeiros passaram (19 novos de mensalidades, 28 existentes de serviço, regras comerciais, projeção e bloqueio de ativação). TypeScript do aplicativo passou. Teste conectado ao cálculo existente confirma que R$149 em tarifa mensal conciliada contribuem R$56,62 ao pool de 38%; a apuração final continua agregada por período, sem aplicar 38% novamente à distribuição. Não há teste real de gateway, concorrência ou banco nesta etapa; API de pagamentos permanece aguardando fornecimento posterior pelo usuário.
