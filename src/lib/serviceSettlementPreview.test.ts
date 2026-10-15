@@ -1,0 +1,9 @@
+import {it,expect} from 'vitest'
+import {previewServiceSettlement} from './serviceSettlementPreview'
+const base={serviceId:'svc1',paymentId:'pay1',plan:'premium' as const,agreedCents:20000,receivedCents:20000,gatewayFeeCents:500,gatewayFeeBearer:'partner' as const,completed:true,clientEvaluated:true,professionalEvaluated:true,paymentConfirmed:true,disputed:false,refundedCents:0}
+it('reconciles gross, fee, gateway and net without authorizing payment',()=>{const r=previewServiceSettlement(base);expect(r.partnerCreditCents).toBe(19200);expect(r.platformTariffCents).toBe(300);expect(r.partnerCreditCents!+r.platformNetBeforeCashbackCents!+r.gatewayCostCents!).toBe(20000);expect(r.paymentAuthorized).toBe(false)})
+it('requires paid service and both reviews regardless of event order',()=>{for(const field of ['paymentConfirmed','completed','clientEvaluated','professionalEvaluated'])expect(previewServiceSettlement({...base,[field]:false}).status).toBe('pending_requirements')})
+it('does not charge free or PRO PARCEIRO per service',()=>{for(const plan of ['free','pro_partner'] as const)expect(previewServiceSettlement({...base,plan}).platformTariffCents).toBe(0)})
+it('blocks mismatched amounts, refunds and disputes',()=>{expect(()=>previewServiceSettlement({...base,receivedCents:5000})).toThrow();expect(()=>previewServiceSettlement({...base,refundedCents:1})).toThrow();expect(()=>previewServiceSettlement({...base,disputed:true})).toThrow()})
+it('keeps one business key across different payment notifications',()=>{expect(previewServiceSettlement({...base,paymentId:'retry'}).settlementKey).toBe(previewServiceSettlement(base).settlementKey)})
+it('makes gateway cost explicit including a platform deficit',()=>{const r=previewServiceSettlement({...base,gatewayFeeBearer:'platform'});expect(r.partnerCreditCents).toBe(19700);expect(r.platformNetBeforeCashbackCents).toBe(-200)})

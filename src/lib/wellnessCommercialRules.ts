@@ -30,7 +30,7 @@ export function confirmedRanking(policy:Omit<RankingPolicy,'partnerServices'|'ra
 }
 export type ConfirmedFeeEvent=FeeLedgerRow & {
  plan:WellnessPlan;kind:'monthly'|'service';businessId:string;
- linkedStudent:boolean;serviceCompleted:boolean;clientEvaluated:boolean
+ linkedStudent:boolean;serviceCompleted:boolean;clientEvaluated:boolean;professionalEvaluated:boolean
 }
 /** Input must come from an authenticated payment adapter, not browser claims.
  * Business IDs identify the invoice or service, preventing duplicate webhook IDs.
@@ -40,7 +40,7 @@ export function prepareConfirmedFeePool(period:string,events:ConfirmedFeeEvent[]
  if(!Array.isArray(events))throw Error('Eventos inválidos.')
  const seen=new Set<string>()
  for(const event of events){
-  if(!event||typeof event.businessId!=='string'||!event.businessId.trim()||!['monthly','service'].includes(event.kind)||[event.linkedStudent,event.serviceCompleted,event.clientEvaluated].some(v=>typeof v!=='boolean'))throw Error('Evento incompleto.')
+  if(!event||typeof event.businessId!=='string'||!event.businessId.trim()||!['monthly','service'].includes(event.kind)||[event.linkedStudent,event.serviceCompleted,event.clientEvaluated,event.professionalEvaluated].some(v=>typeof v!=='boolean'))throw Error('Evento incompleto.')
   validPlan(event.plan)
   const key=JSON.stringify([event.payerType,event.payerId,event.kind,event.businessId])
   if(seen.has(key))throw Error('Evento financeiro duplicado.');seen.add(key)
@@ -52,7 +52,7 @@ export function prepareConfirmedFeePool(period:string,events:ConfirmedFeeEvent[]
    if(event.linkedStudent)throw Error('Vínculo de aluno não se aplica ao parceiro.')
    if(event.plan==='pro_partner'){
     if(event.kind!=='monthly')throw Error('PRO PARCEIRO não gera tarifa por serviço.')
-   }else if(event.kind!=='service'||!event.serviceCompleted||!event.clientEvaluated)throw Error('Serviço deve estar concluído e avaliado pelo cliente.')
+   }else if(event.kind!=='service'||!event.serviceCompleted||!event.clientEvaluated||!event.professionalEvaluated)throw Error('Serviço deve estar concluído e avaliado por cliente e profissional.')
    expected=partnerFees[event.plan]
   }else throw Error('Tipo de pagador inválido.')
   if(event.amountCents!==expected)throw Error('Valor diverge da tarifa confirmada.')

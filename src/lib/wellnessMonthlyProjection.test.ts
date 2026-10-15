@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest'
 import {projectWellnessMonth,type MonthlyParticipant} from './wellnessMonthlyProjection'
 import type {ConfirmedFeeEvent} from './wellnessCommercialRules'
-const event:ConfirmedFeeEvent={chargeId:'c',payerId:'payer',payerType:'partner',period:'2026-10',amountCents:14900,refundedCents:0,status:'settled',plan:'pro_partner',kind:'monthly',businessId:'invoice',linkedStudent:false,serviceCompleted:false,clientEvaluated:false}
+const event:ConfirmedFeeEvent={chargeId:'c',payerId:'payer',payerType:'partner',period:'2026-10',amountCents:14900,refundedCents:0,status:'settled',plan:'pro_partner',kind:'monthly',businessId:'invoice',linkedStudent:false,serviceCompleted:false,clientEvaluated:false,professionalEvaluated:false}
 const person=(id:string,rating=5):MonthlyParticipant=>({period:'2026-10',kind:'partner',plan:'pro_partner',linkedProfessionalPlan:null,previousStudentPlan:null,fulfilledProjects:0,facts:{id,multiplier:2,completedEligibleServices:10,validatedReferrals:1,rating,seniorityMonths:1,previousPoints:0,partnerPro:true,joinedAt:'2026-01-01'}})
 const input={period:'2026-10',complete:true,events:[event],referrals:'minimum_one' as const}
 describe('Full monthly projection',()=>{
