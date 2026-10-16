@@ -352,7 +352,7 @@ export default function Layout({ children }: LayoutProps) {
                 Navegação Principal
               </div>
 
-              <nav className="flex-1 overflow-y-auto space-y-1 pr-1">
+              <nav className="flex-1 overflow-y-auto space-y-1 pr-1 font-sans">
                 {currentNav.map((item) => {
                   const isActive = location.pathname === item.path
                   const Icon = item.icon
