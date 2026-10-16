@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { CrestLogo } from '@/components/CrestLogo'
+import { getAvatarUrl } from '@/components/UserAvatar'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { HidratacaoSection } from '@/components/HidratacaoSection'
@@ -73,14 +74,7 @@ export default function AlunoHome() {
         <div className="flex items-center gap-5">
           {/* Crest with student photo inside */}
           <div className="relative group">
-            <CrestLogo
-              size={76}
-              avatarUrl={
-                user?.avatar
-                  ? pb.files.getURL(user, user.avatar)
-                  : 'https://img.usecurling.com/ppl/medium?gender=male&seed=1'
-              }
-            />
+            <CrestLogo size={76} avatarUrl={getAvatarUrl(user)} />
           </div>
           <div>
             <div className="flex items-center gap-2">

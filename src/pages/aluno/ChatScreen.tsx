@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import type { MessageRecord } from '@/services/api'
+import { useChatMessages, type ChatMessage } from '@/hooks/use-chat-messages'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,7 +45,6 @@ export default function ChatScreen() {
 
   const [professionals, setProfessionals] = useState<ProfessionalContact[]>([])
   const [activeProf, setActiveProf] = useState<ProfessionalContact | null>(null)
-  const [messages, setMessages] = useState<MessageRecord[]>([])
   const [inputText, setInputText] = useState('')
   const [sending, setSending] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -204,97 +204,8 @@ export default function ChatScreen() {
     }
   }, [user, profId])
 
-  // 3. Load active chat messages & subscribe to realtime
-  useEffect(() => {
-    if (!user || !activeProf) {
-      setMessages([])
-      return
-    }
-
-    // Função auxiliar para marcar mensagens recebidas como lidas
-    const markIncomingAsRead = (list: MessageRecord[]) => {
-      const unreadIncoming = list.filter((m) => m.receiver === user.id && !m.read)
-      unreadIncoming.forEach((m) => {
-        pb.collection('messages')
-          .update(m.id, { read: true })
-          .catch(() => {})
-      })
-      if (unreadIncoming.length > 0) {
-        setProfessionals((prev) =>
-          prev.map((p) => (p.id === activeProf.id ? { ...p, unreadCount: 0 } : p)),
-        )
-      }
-    }
-
-    pb.collection('messages')
-      .getList<MessageRecord>(1, 100, {
-        filter: `(sender = "${user.id}" && receiver = "${activeProf.id}") || (sender = "${activeProf.id}" && receiver = "${user.id}")`,
-        sort: 'created',
-      })
-      .then((res) => {
-        setMessages(res.items)
-        markIncomingAsRead(res.items)
-      })
-      .catch(() => {
-        setMessages([])
-      })
-
-    let unsubscribeFn: (() => Promise<void>) | undefined
-    let cancelled = false
-
-    // Realtime subscription
-    pb.collection('messages')
-      .subscribe('*', (e) => {
-        const changedMsg = e.record as unknown as MessageRecord
-        const isCurrentConv =
-          (changedMsg.sender === user.id && changedMsg.receiver === activeProf.id) ||
-          (changedMsg.sender === activeProf.id && changedMsg.receiver === user.id)
-
-        if (e.action === 'create') {
-          if (isCurrentConv) {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === changedMsg.id)) return prev
-              return [...prev, changedMsg]
-            })
-            if (changedMsg.receiver === user.id) {
-              pb.collection('messages')
-                .update(changedMsg.id, { read: true })
-                .catch(() => {})
-            }
-          } else if (changedMsg.receiver === user.id) {
-            // Incrementa badge de não lidas de outro profissional
-            setProfessionals((prev) =>
-              prev.map((p) =>
-                p.id === changedMsg.sender ? { ...p, unreadCount: (p.unreadCount || 0) + 1 } : p,
-              ),
-            )
-          }
-        } else if (e.action === 'update' && isCurrentConv) {
-          setMessages((prev) => prev.map((m) => (m.id === changedMsg.id ? changedMsg : m)))
-        }
-      })
-      .then((fn) => {
-        if (cancelled) {
-          fn().catch(() => {})
-        } else {
-          unsubscribeFn = fn
-        }
-      })
-      .catch((err) => {
-        console.warn('[Realtime messages] Ignorando erro silenciosamente:', err?.message || err)
-      })
-
-    return () => {
-      cancelled = true
-      if (unsubscribeFn) {
-        unsubscribeFn().catch(() => {})
-      } else {
-        pb.collection('messages')
-          .unsubscribe('*')
-          .catch(() => {})
-      }
-    }
-  }, [user, activeProf])
+  // 3. Mensagens da conversa ativa (histórico, tempo real e checagem de reserva)
+  const { messages, setMessages, addMessage } = useChatMessages(user?.id, activeProf?.id)
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -324,12 +235,13 @@ export default function ChatScreen() {
 
     setSending(true)
     try {
-      await pb.collection('messages').create({
+      const sent = await pb.collection('messages').create<ChatMessage>({
         sender: user.id,
         receiver: activeProf.id,
-        content: trimmed,
+        content: inputText,
         read: false,
       })
+      addMessage(sent)
       setInputText('')
     } catch (err: unknown) {
       const error = err as Error

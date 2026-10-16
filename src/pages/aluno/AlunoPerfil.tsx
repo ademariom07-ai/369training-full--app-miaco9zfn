@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
+import { AvatarUploader } from '@/components/AvatarUploader'
 import type { WalletTransactionRecord, AchievementRecord } from '@/services/api'
-import { CrestLogo } from '@/components/CrestLogo'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -210,14 +210,7 @@ export default function AlunoPerfil() {
       {/* Profile Header */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-[#181818] via-[#141414] to-[#181818] border border-[#2A2A2A] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-xl">
         <div className="flex items-center gap-5">
-          <CrestLogo
-            size={80}
-            avatarUrl={
-              user?.avatar
-                ? pb.files.getURL(user, user.avatar)
-                : 'https://img.usecurling.com/ppl/medium?gender=male&seed=1'
-            }
-          />
+          <AvatarUploader className="w-20 h-20 rounded-2xl border-2 border-[#D4AF37] text-2xl" />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-[#D4AF37] uppercase font-montserrat">

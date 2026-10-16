@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import type { UserProfile } from '@/contexts/AuthContext'
 import type { ServiceRecord } from '@/services/api'
+import { UserAvatar } from '@/components/UserAvatar'
 
 export default function ProfissionalDashboard() {
   const { user } = useAuth()
@@ -68,15 +69,7 @@ export default function ProfissionalDashboard() {
         {/* Header Profile Info & Action Pills */}
         <div className="p-6 rounded-2xl bg-gradient-to-r from-[#181818] via-[#141414] to-[#181818] border border-[#2A2A2A] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-xl">
           <div className="flex items-center gap-4">
-            <img
-              src={
-                user?.avatar
-                  ? pb.files.getURL(user, user.avatar)
-                  : 'https://img.usecurling.com/ppl/medium?gender=male&seed=2'
-              }
-              alt={user?.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-[#D4AF37]"
-            />
+            <UserAvatar user={user} className="w-16 h-16 rounded-2xl border-2 border-[#D4AF37]" />
             <div>
               <div className="flex items-center gap-2">
                 {user?.plan === 'pro_parceiro' ? (
@@ -253,10 +246,9 @@ export default function ProfissionalDashboard() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <img
-                      src="https://img.usecurling.com/ppl/medium?gender=male&seed=1"
-                      alt={student.name}
-                      className="w-12 h-12 rounded-xl object-cover border border-[#2A2A2A]"
+                    <UserAvatar
+                      user={student}
+                      className="w-12 h-12 rounded-xl border border-[#2A2A2A] text-base"
                     />
                     <div>
                       <h3 className="font-bold font-montserrat text-white text-sm">

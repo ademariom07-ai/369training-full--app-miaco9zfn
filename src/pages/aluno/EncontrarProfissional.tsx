@@ -48,6 +48,7 @@ import {
   Compass,
   ArrowUpDown,
 } from 'lucide-react'
+import { UserAvatar } from '@/components/UserAvatar'
 
 // Haversine formula to compute distance in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -874,7 +875,7 @@ export default function EncontrarProfissional() {
         ) : (
           /* Vertical Timeline List with continuous scroll */
           <div className="relative border-l-2 border-[#2A2A2A] ml-4 sm:ml-6 pl-4 sm:pl-8 space-y-6">
-            {processedProfessionals.map((prof, index) => {
+            {processedProfessionals.map((prof) => {
               const hasVideo = Boolean(
                 prof.video_enabled && prof.video_url && prof.video_url.trim(),
               )
@@ -895,14 +896,9 @@ export default function EncontrarProfissional() {
                     <div className="flex items-start sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-3.5">
                         <div className="relative shrink-0">
-                          <img
-                            src={
-                              prof.avatar
-                                ? pb.files.getURL(prof, prof.avatar)
-                                : `https://img.usecurling.com/ppl/medium?gender=${index % 2 === 0 ? 'male' : 'female'}&seed=${index + 1}`
-                            }
-                            alt={prof.name}
-                            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-[#D4AF37] group-hover/card:scale-105 transition-transform shadow-md"
+                          <UserAvatar
+                            user={prof}
+                            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-[#D4AF37] group-hover/card:scale-105 transition-transform shadow-md"
                           />
                           {hasVideo && (
                             <span
@@ -1091,14 +1087,9 @@ export default function EncontrarProfissional() {
             <div className="space-y-6">
               <DialogHeader>
                 <div className="flex items-start gap-4">
-                  <img
-                    src={
-                      selectedProf.avatar
-                        ? pb.files.getURL(selectedProf, selectedProf.avatar)
-                        : 'https://img.usecurling.com/ppl/large?gender=male&seed=2'
-                    }
-                    alt={selectedProf.name}
-                    className="w-20 h-20 rounded-2xl object-cover border-2 border-[#D4AF37] shrink-0"
+                  <UserAvatar
+                    user={selectedProf}
+                    className="w-20 h-20 rounded-2xl border-2 border-[#D4AF37] shrink-0"
                   />
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -1284,14 +1275,9 @@ export default function EncontrarProfissional() {
             <div className="space-y-6">
               <DialogHeader>
                 <div className="flex items-center gap-3">
-                  <img
-                    src={
-                      selectedProf.avatar
-                        ? pb.files.getURL(selectedProf, selectedProf.avatar)
-                        : 'https://img.usecurling.com/ppl/medium?gender=male&seed=2'
-                    }
-                    alt={selectedProf.name}
-                    className="w-14 h-14 rounded-xl object-cover border-2 border-[#D4AF37]"
+                  <UserAvatar
+                    user={selectedProf}
+                    className="w-14 h-14 rounded-xl border-2 border-[#D4AF37]"
                   />
                   <div>
                     <DialogTitle className="text-xl font-bold font-montserrat text-white uppercase">

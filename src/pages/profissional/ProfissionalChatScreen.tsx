@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import type { MessageRecord } from '@/services/api'
+import { useChatMessages, type ChatMessage } from '@/hooks/use-chat-messages'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -41,7 +42,6 @@ export default function ProfissionalChatScreen() {
 
   const [students, setStudents] = useState<StudentContact[]>([])
   const [activeStudent, setActiveStudent] = useState<StudentContact | null>(null)
-  const [messages, setMessages] = useState<MessageRecord[]>([])
   const [inputText, setInputText] = useState('')
   const [sending, setSending] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -143,95 +143,8 @@ export default function ProfissionalChatScreen() {
     fetchStudentsAndUnread()
   }, [user, alunoId])
 
-  // 3. Load Active Chat Messages & Subscribe to Realtime
-  useEffect(() => {
-    if (!user || !activeStudent) return
-
-    // Marcar mensagens recebidas como lidas
-    const markIncomingAsRead = (list: MessageRecord[]) => {
-      const unreadIncoming = list.filter((m) => m.receiver === user.id && !m.read)
-      unreadIncoming.forEach((m) => {
-        pb.collection('messages')
-          .update(m.id, { read: true })
-          .catch(() => {})
-      })
-      if (unreadIncoming.length > 0) {
-        setStudents((prev) =>
-          prev.map((s) => (s.id === activeStudent.id ? { ...s, unreadCount: 0 } : s)),
-        )
-      }
-    }
-
-    // Fetch message history between prof and selected student
-    pb.collection('messages')
-      .getList<MessageRecord>(1, 100, {
-        filter: `(sender = "${user.id}" && receiver = "${activeStudent.id}") || (sender = "${activeStudent.id}" && receiver = "${user.id}")`,
-        sort: 'created',
-      })
-      .then((res) => {
-        setMessages(res.items)
-        markIncomingAsRead(res.items)
-      })
-      .catch(() => {
-        setMessages([])
-      })
-
-    let unsubscribeFn: (() => Promise<void>) | undefined
-    let cancelled = false
-
-    // Realtime subscription
-    pb.collection('messages')
-      .subscribe('*', (e) => {
-        const changedMsg = e.record as unknown as MessageRecord
-        const isCurrentConv =
-          (changedMsg.sender === user.id && changedMsg.receiver === activeStudent.id) ||
-          (changedMsg.sender === activeStudent.id && changedMsg.receiver === user.id)
-
-        if (e.action === 'create') {
-          if (isCurrentConv) {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === changedMsg.id)) return prev
-              return [...prev, changedMsg]
-            })
-            if (changedMsg.receiver === user.id) {
-              pb.collection('messages')
-                .update(changedMsg.id, { read: true })
-                .catch(() => {})
-            }
-          } else if (changedMsg.receiver === user.id) {
-            setStudents((prev) =>
-              prev.map((s) =>
-                s.id === changedMsg.sender ? { ...s, unreadCount: (s.unreadCount || 0) + 1 } : s,
-              ),
-            )
-          }
-        } else if (e.action === 'update' && isCurrentConv) {
-          setMessages((prev) => prev.map((m) => (m.id === changedMsg.id ? changedMsg : m)))
-        }
-      })
-      .then((fn) => {
-        if (cancelled) {
-          fn().catch(() => {})
-        } else {
-          unsubscribeFn = fn
-        }
-      })
-      .catch((err) => {
-        console.warn('[Realtime messages] Ignorando erro silenciosamente:', err?.message || err)
-      })
-
-    return () => {
-      cancelled = true
-      if (unsubscribeFn) {
-        unsubscribeFn().catch(() => {})
-      } else {
-        pb.collection('messages')
-          .unsubscribe('*')
-          .catch(() => {})
-      }
-    }
-  }, [user, activeStudent])
-
+  // 3. Mensagens da conversa ativa (histórico, tempo real e checagem de reserva)
+  const { messages, setMessages, addMessage } = useChatMessages(user?.id, activeStudent?.id)
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -260,12 +173,13 @@ export default function ProfissionalChatScreen() {
 
     setSending(true)
     try {
-      await pb.collection('messages').create({
+      const sent = await pb.collection('messages').create<ChatMessage>({
         sender: user.id,
         receiver: activeStudent.id,
-        content: trimmed,
+        content: inputText,
         read: false,
       })
+      addMessage(sent)
       setInputText('')
     } catch (err: unknown) {
       const error = err as Error
