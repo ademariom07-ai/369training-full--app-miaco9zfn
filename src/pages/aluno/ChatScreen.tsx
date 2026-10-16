@@ -20,6 +20,8 @@ import {
   Sparkles,
   Flag,
   ChevronLeft,
+  Headphones,
+  Shield,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ChatTermsModal } from '@/components/ChatTermsModal'
@@ -34,6 +36,7 @@ interface ProfessionalContact {
   avatar?: string
   specialties?: string[] | string
   plan?: string
+  isSupport?: boolean
   isLinked?: boolean
   unreadCount?: number
 }
@@ -100,7 +103,27 @@ export default function ChatScreen() {
 
     const fetchAllData = async () => {
       try {
-        // Fetch all approved professionals
+        // 1. Fetch Admin Support User
+        let supportContact: ProfessionalContact | null = null
+        try {
+          const adminRes = await pb.collection('users').getList<ProfessionalContact>(1, 1, {
+            filter: 'role = "admin"',
+            sort: 'created',
+          })
+          if (adminRes.items.length > 0) {
+            const adminUser = adminRes.items[0]
+            supportContact = {
+              ...adminUser,
+              name: 'Suporte (Central 369WELLNESS)',
+              specialties: ['Atendimento Oficial', 'Suporte & Dúvidas'],
+              isSupport: true,
+            }
+          }
+        } catch (errAdmin) {
+          console.warn('Não foi possível carregar contato de Suporte:', errAdmin)
+        }
+
+        // 2. Fetch all approved professionals
         const profsRes = await pb.collection('users').getList<ProfessionalContact>(1, 100, {
           filter: 'role = "profissional" && approved = true',
           sort: 'name',
@@ -168,26 +191,40 @@ export default function ChatScreen() {
           return a.name.localeCompare(b.name)
         })
 
+        // Lista final: Suporte sempre no topo, seguido dos profissionais
+        const finalContacts: ProfessionalContact[] = []
+        if (supportContact) {
+          finalContacts.push({
+            ...supportContact,
+            unreadCount: unreadCountsBySender[supportContact.id] || 0,
+          })
+        }
+        finalContacts.push(...mappedProfs)
+
         if (!isMounted) return
-        setProfessionals(mappedProfs)
+        setProfessionals(finalContacts)
 
         // Select active professional:
         // Priority 1: profId from URL params
         // Priority 2: linked professional (if user has a linked one)
         // Priority 3: none (show list to let student choose)
         if (profId) {
-          const target = mappedProfs.find((p) => p.id === profId)
+          const target = finalContacts.find((p) => p.id === profId)
           if (target) {
             setActiveProf(target)
             setMobileShowConversation(true)
-          } else if (mappedProfs.length > 0) {
-            setActiveProf(mappedProfs[0])
+          } else if (finalContacts.length > 0) {
+            setActiveProf(finalContacts[0])
           }
         } else if (linkedProfId) {
           const linked = mappedProfs.find((p) => p.id === linkedProfId)
           if (linked) {
             setActiveProf(linked)
+          } else if (finalContacts.length > 0) {
+            setActiveProf(finalContacts[0])
           }
+        } else if (finalContacts.length > 0) {
+          setActiveProf(finalContacts[0])
         }
       } catch (err) {
         console.error('Erro ao buscar profissionais:', err)
@@ -309,6 +346,9 @@ export default function ChatScreen() {
   })
 
   const getSpecialtyLabel = (prof: ProfessionalContact) => {
+    if (prof.isSupport) {
+      return 'Suporte Oficial 369WELLNESS'
+    }
     if (Array.isArray(prof.specialties) && prof.specialties.length > 0) {
       return prof.specialties.join(', ')
     }
@@ -405,16 +445,31 @@ export default function ChatScreen() {
                         : 'bg-[#141414]/60 border border-transparent hover:border-[#2A2A2A] text-gray-300'
                     }`}
                   >
-                    <div className="w-9 h-9 rounded-xl bg-[#202020] border border-[#2A2A2A] flex items-center justify-center font-bold text-xs text-[#D4AF37] font-montserrat shrink-0">
-                      {prof.name?.[0]?.toUpperCase() || 'P'}
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs font-montserrat shrink-0 border ${
+                        prof.isSupport
+                          ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#D4AF37]'
+                          : 'bg-[#202020] border-[#2A2A2A] text-[#D4AF37]'
+                      }`}
+                    >
+                      {prof.isSupport ? (
+                        <Headphones className="w-4 h-4 text-[#D4AF37]" />
+                      ) : (
+                        prof.name?.[0]?.toUpperCase() || 'P'
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold font-montserrat truncate text-white">
+                        <span className="text-xs font-bold font-montserrat truncate text-white flex items-center gap-1.5">
                           {prof.name}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {prof.isLinked && (
+                          {prof.isSupport && (
+                            <span className="text-[9px] bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5">
+                              <Shield className="w-2.5 h-2.5" /> Suporte
+                            </span>
+                          )}
+                          {prof.isLinked && !prof.isSupport && (
                             <span className="text-[9px] bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 px-1.5 py-0.2 rounded font-mono font-medium">
                               Seu Profissional
                             </span>
@@ -458,16 +513,24 @@ export default function ChatScreen() {
                   </button>
 
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#D4AF37] text-black font-bold flex items-center justify-center font-montserrat text-xs sm:text-sm border-2 border-[#D4AF37] shrink-0">
-                    {activeProf.name?.[0]?.toUpperCase() || 'P'}
+                    {activeProf.isSupport ? (
+                      <Headphones className="w-4 h-4 text-black" />
+                    ) : (
+                      activeProf.name?.[0]?.toUpperCase() || 'P'
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold font-montserrat text-white flex items-center gap-1.5 truncate">
                       <span className="truncate">{activeProf.name}</span>
-                      {activeProf.isLinked && (
+                      {activeProf.isSupport ? (
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] flex items-center gap-1 shrink-0 font-bold">
+                          <Shield className="w-2.5 h-2.5" /> Suporte Oficial
+                        </span>
+                      ) : activeProf.isLinked ? (
                         <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] flex items-center gap-1 shrink-0">
                           <Sparkles className="w-2.5 h-2.5" /> Vinculado
                         </span>
-                      )}
+                      ) : null}
                     </h3>
                     <p className="text-[10px] sm:text-[11px] text-[#22C55E] flex items-center gap-1 font-inter truncate">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] shrink-0" />
@@ -516,7 +579,9 @@ export default function ChatScreen() {
                       Início da conversa com {activeProf.name}
                     </p>
                     <p className="font-inter max-w-sm">
-                      Tire dúvidas sobre seus treinos, cargas ou planejamento nutricional.
+                      {activeProf.isSupport
+                        ? 'Envie sua dúvida ou solicitação ao time de Suporte da 369WELLNESS. Responderemos o mais breve possível.'
+                        : 'Tire dúvidas sobre seus treinos, cargas ou planejamento nutricional.'}
                     </p>
                   </div>
                 ) : (

@@ -327,26 +327,42 @@ export default function ProfissionalChatScreen() {
                         : 'bg-[#141414]/60 border border-transparent hover:border-[#2A2A2A] text-gray-300'
                     }`}
                   >
-                    <div className="w-9 h-9 rounded-xl bg-[#202020] border border-[#2A2A2A] flex items-center justify-center font-bold text-xs text-[#D4AF37] font-montserrat shrink-0">
-                      {student.name[0]?.toUpperCase() || 'A'}
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs font-montserrat shrink-0 border ${
+                        aluno.isSupport
+                          ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#D4AF37]'
+                          : 'bg-[#202020] border-[#2A2A2A] text-[#D4AF37]'
+                      }`}
+                    >
+                      {aluno.isSupport ? (
+                        <Headphones className="w-4 h-4 text-[#D4AF37]" />
+                      ) : (
+                        aluno.name?.[0]?.toUpperCase() || 'A'
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold font-montserrat truncate text-white">
-                          {student.name}
+                        <span className="text-xs font-bold font-montserrat truncate text-white flex items-center gap-1.5">
+                          {aluno.name}
                         </span>
-                        {(student.unreadCount || 0) > 0 && (
-                          <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center font-mono animate-pulse shadow-sm shrink-0">
-                            {student.unreadCount}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {aluno.isSupport && (
+                            <span className="text-[9px] bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5">
+                              <Shield className="w-2.5 h-2.5" /> Suporte
+                            </span>
+                          )}
+                          {(aluno.unreadCount || 0) > 0 && (
+                            <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center font-mono animate-pulse shadow-sm shrink-0">
+                              {aluno.unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-[10px] text-gray-400 truncate font-mono">
-                        {student.email}
+                      <p className="text-[10px] text-gray-400 truncate font-inter">
+                        {aluno.isSupport ? 'Central Oficial 369WELLNESS' : `Plano: ${aluno.plan || 'Free'}`}
                       </p>
                     </div>
-                  </button>
-                )
+                  </button>                )
               })
             )}
           </div>
@@ -373,21 +389,34 @@ export default function ProfissionalChatScreen() {
                   </button>
 
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#D4AF37] text-black font-bold flex items-center justify-center font-montserrat text-xs sm:text-sm border-2 border-[#D4AF37] shrink-0">
-                    {activeStudent.name[0]?.toUpperCase() || 'A'}
+                    {activeAluno.isSupport ? (
+                      <Headphones className="w-4 h-4 text-black" />
+                    ) : (
+                      activeAluno.name?.[0]?.toUpperCase() || 'A'
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold font-montserrat text-white flex items-center gap-1.5 truncate">
-                      <span className="truncate">{activeStudent.name}</span>
-                      <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#0057FF]/15 border border-[#0057FF]/40 text-[#0057FF] shrink-0">
-                        Aluno
-                      </span>
+                      <span className="truncate">{activeAluno.name}</span>
+                      {activeAluno.isSupport ? (
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] flex items-center gap-1 shrink-0 font-bold">
+                          <Shield className="w-2.5 h-2.5" /> Suporte Oficial
+                        </span>
+                      ) : (
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] flex items-center gap-1 shrink-0">
+                          <Sparkles className="w-2.5 h-2.5" /> Aluno
+                        </span>
+                      )}
                     </h3>
                     <p className="text-[10px] sm:text-[11px] text-[#22C55E] flex items-center gap-1 font-inter truncate">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] shrink-0" />
-                      <span className="truncate">Atendimento Ativo • {activeStudent.email}</span>
+                      <span className="truncate">
+                        {activeAluno.isSupport
+                          ? 'Online • Canal Administrativo 369WELLNESS'
+                          : `Online • Plano ${activeAluno.plan || 'Free'}`}
+                      </span>
                     </p>
-                  </div>
-                </div>
+                  </div>                </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">

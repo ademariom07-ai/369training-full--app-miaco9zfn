@@ -48,6 +48,48 @@ onBootstrap((e) => {
   }
 })
 
+// Intercepta o envio de e-mails de recuperação de senha e de verificação
+// para garantir que NUNCA apareça texto puro com o token fora do botão/link HTML
+if (typeof onMailerRecordPasswordResetSend !== 'undefined') {
+  onMailerRecordPasswordResetSend((e) => {
+    try {
+      if (e && e.message) {
+        // Remove qualquer fallback de texto puro que possa vazar o token no corpo
+        e.message.text = ''
+      }
+    } catch (err) {
+      console.warn('[onMailerRecordPasswordResetSend] Falha ao sanitizar plain-text:', err)
+    }
+    return e.next()
+  })
+}
+
+if (typeof onMailerRecordVerificationSend !== 'undefined') {
+  onMailerRecordVerificationSend((e) => {
+    try {
+      if (e && e.message) {
+        e.message.text = ''
+      }
+    } catch (err) {
+      console.warn('[onMailerRecordVerificationSend] Falha ao sanitizar plain-text:', err)
+    }
+    return e.next()
+  })
+}
+
+if (typeof onMailerRecordEmailChangeSend !== 'undefined') {
+  onMailerRecordEmailChangeSend((e) => {
+    try {
+      if (e && e.message) {
+        e.message.text = ''
+      }
+    } catch (err) {
+      console.warn('[onMailerRecordEmailChangeSend] Falha ao sanitizar plain-text:', err)
+    }
+    return e.next()
+  })
+}
+
 routerAdd(
   'POST',
   '/backend/v1/auth/test-smtp',
@@ -99,7 +141,7 @@ routerAdd(
       if (usersCol) {
         usersCol.verificationTemplate = {
           subject: 'Verificação de E-mail • 369WELLNESS',
-          body: `
+          body: `<div style="display:none;font-size:1px;color:#0A0A0A;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">Confirmação de cadastro na plataforma 369WELLNESS. Clique para ativar sua conta.</div>
 <div style="font-family: Arial, sans-serif; background-color: #0A0A0A; color: #FFFFFF; padding: 40px 20px; text-align: center;">
   <div style="max-width: 500px; margin: 0 auto; background: #141414; border: 1px solid #D4AF37; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
     <h1 style="color: #D4AF37; font-size: 24px; margin-bottom: 8px; letter-spacing: 2px;">369WELLNESS</h1>
@@ -120,7 +162,7 @@ routerAdd(
 
         usersCol.resetPasswordTemplate = {
           subject: 'Redefinição de Senha • 369WELLNESS',
-          body: `
+          body: `<div style="display:none;font-size:1px;color:#0A0A0A;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">Redefinição de senha da sua conta 369WELLNESS. Clique no botão abaixo para definir sua nova credencial.</div>
 <div style="font-family: Arial, sans-serif; background-color: #0A0A0A; color: #FFFFFF; padding: 40px 20px; text-align: center;">
   <div style="max-width: 500px; margin: 0 auto; background: #141414; border: 1px solid #D4AF37; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
     <h1 style="color: #D4AF37; font-size: 24px; margin-bottom: 8px; letter-spacing: 2px;">369WELLNESS</h1>
@@ -141,7 +183,7 @@ routerAdd(
 
         usersCol.confirmEmailChangeTemplate = {
           subject: 'Confirmação de Troca de E-mail • 369WELLNESS',
-          body: `
+          body: `<div style="display:none;font-size:1px;color:#0A0A0A;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">Confirmação de alteração de e-mail na sua conta 369WELLNESS.</div>
 <div style="font-family: Arial, sans-serif; background-color: #0A0A0A; color: #FFFFFF; padding: 40px 20px; text-align: center;">
   <div style="max-width: 500px; margin: 0 auto; background: #141414; border: 1px solid #D4AF37; border-radius: 16px; padding: 32px;">
     <h1 style="color: #D4AF37; font-size: 24px; margin-bottom: 8px;">369WELLNESS</h1>
