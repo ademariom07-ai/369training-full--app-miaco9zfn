@@ -1,9 +1,10 @@
-/** Administrative pilot. Does not certify video safety or select a video with AI. */
+/** Administrative pilot. AI metadata selection does not certify video safety. */
 export type Candidate = { id: string; title: string; channel: string; url: string }
 export interface Dependencies {
   authenticate: (token: string) => Promise<'admin' | 'user' | null>
   apiKey: () => string | undefined
   fetch: typeof fetch
+  select?: (exercise: string, candidates: Candidate[]) => Promise<string | null>
   reserve: () => boolean
 }
 export function createHandler(deps: Dependencies) {
@@ -57,6 +58,7 @@ export function createHandler(deps: Dependencies) {
         return reply(400, { code: 'INVALID_EXERCISE' })
       const key = deps.apiKey()
       if (!key) return reply(503, { code: 'YOUTUBE_NOT_CONFIGURED' })
+      if (!deps.select) return reply(503, { code: 'OPENAI_NOT_CONFIGURED' })
       if (!deps.reserve()) return reply(429, { code: 'RATE_LIMITED' })
       const get = async (resource: string, params: Record<string, string>) => {
         const url =
@@ -121,11 +123,15 @@ export function createHandler(deps: Dependencies) {
           channel: String(v.snippet.channelTitle || '').slice(0, 160),
           url: 'https://www.youtube.com/watch?v=' + v.id,
         }))
+      if (!deps.select) return reply(503, { code: 'OPENAI_NOT_CONFIGURED' })
+      const selectedId = candidates.length ? await deps.select(exercise.trim(), candidates) : null
+      const video = selectedId === null ? null : candidates.find((c) => c.id === selectedId)
+      if (selectedId !== null && !video) throw Error('invalid selection')
       return reply(200, {
-        candidates,
-        selectionStatus: 'pending_ai_review',
-        message:
-          'Candidatos por metadados. Não selecionados pela IA nem revisados pelo profissional.',
+        video: video ? { ...video, checkedAt: new Date().toISOString() } : null,
+        message: video
+          ? 'Sugestão automática por metadados; não revisada pelo profissional.'
+          : 'Nenhuma demonstração correspondente encontrada.',
       })
     } catch {
       return reply(503, { code: 'VIDEO_SEARCH_UNAVAILABLE' })
