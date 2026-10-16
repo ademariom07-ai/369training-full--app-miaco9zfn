@@ -20,6 +20,10 @@ Como as chaves já foram devidamente revogadas no painel da Brevo, o método mai
 4. **Commits `88a817f` e `531849b` (`.env` e `pocketbase/hooks/smtp_settings.js`)**:
    👉 [Desbloquear segredo 4](https://github.com/ademariom07-ai/369training-full--app-miaco9zfn/security/secret-scanning/unblock-secret/3KkT9XW0iwEezzhKI5tFwKHAJV2)
 
+### Status da Sincronização
+
+Última checagem de sincronização e integridade realizada para a versão v0.0.164.
+
 ### Instruções para desbloquear:
 
 1. Abra cada um dos 4 links acima no seu navegador (conectado à sua conta `ademariom07-ai`).
