@@ -317,3 +317,37 @@ button.bg-red-600,
 .animate-crest-pulse {
   animation: crest-pulse 4s ease-in-out 1 forwards;
 }
+
+/* ------------------------------------------------------------- */
+/* ACESSIBILIDADE GLOBAL (AUMENTAR FONTE & NEGRITO)              */
+/* ------------------------------------------------------------- */
+html.a11y-font-large {
+  font-size: 115% !important;
+}
+
+html.a11y-font-xlarge {
+  font-size: 130% !important;
+}
+
+html.a11y-bold body,
+html.a11y-bold p,
+html.a11y-bold span,
+html.a11y-bold a,
+html.a11y-bold button,
+html.a11y-bold input,
+html.a11y-bold textarea,
+html.a11y-bold label,
+html.a11y-bold li {
+  font-weight: 600 !important;
+}
+
+html.a11y-bold h1,
+html.a11y-bold h2,
+html.a11y-bold h3,
+html.a11y-bold h4,
+html.a11y-bold h5,
+html.a11y-bold h6,
+html.a11y-bold strong,
+html.a11y-bold b {
+  font-weight: 800 !important;
+}

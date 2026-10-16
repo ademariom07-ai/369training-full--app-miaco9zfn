@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { AccessibilityProvider } from '@/contexts/AccessibilityContext'
 import { RoleGuard } from '@/components/RoleGuard'
 import Layout from '@/components/Layout'
 import { Toaster } from '@/components/ui/sonner'
@@ -68,485 +69,487 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router>
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              {/* Public Landing & Auth & Legal */}
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/cadastro" element={<Cadastro />} />
-              <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-              <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-              <Route path="/redefinir-senha/:token" element={<RedefinirSenha />} />
-              <Route path="/confirmar-email" element={<ConfirmarVerificacaoEmail />} />
-              <Route path="/confirmar-email/:token" element={<ConfirmarVerificacaoEmail />} />
-              <Route path="/verificar-email" element={<ConfirmarVerificacaoEmail />} />
-              <Route path="/verificar-email/:token" element={<ConfirmarVerificacaoEmail />} />
-              <Route path="/verificacao-pendente" element={<VerificacaoPendente />} />
-              <Route
-                path="/conteudos"
-                element={
-                  <Layout>
-                    <ConteudosEmDestaque />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/termos-de-uso"
-                element={<LegalDocViewer slugOverride="termos-aluno" />}
-              />
-              <Route
-                path="/politica-de-privacidade"
-                element={<LegalDocViewer slugOverride="politica-privacidade" />}
-              />
-              <Route
-                path="/lgpd-consentimentos"
-                element={<LegalDocViewer slugOverride="lgpd-consentimentos" />}
-              />
-              <Route
-                path="/contrato-parceria"
-                element={<LegalDocViewer slugOverride="contrato-parceria-profissional" />}
-              />
-              <Route
-                path="/regulamento-cashback"
-                element={<LegalDocViewer slugOverride="regulamento-cashback" />}
-              />
-              <Route
-                path="/regulamento-planos-mensalidades"
-                element={<LegalDocViewer slugOverride="regulamento-planos-mensalidades" />}
-              />
-              <Route
-                path="/politica-reembolso"
-                element={<LegalDocViewer slugOverride="politica-reembolso" />}
-              />
-              <Route path="/documento/:slug" element={<LegalDocViewer />} />
-              {/* Smartwatch Routes (Aluno & Profissional) */}
-              <Route
-                path="/smartwatch"
-                element={
-                  <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
-                    <Layout>
-                      <SmartwatchPage />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/smartwatch"
-                element={
-                  <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
-                    <Layout>
-                      <SmartwatchPage />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/smartwatch"
-                element={
-                  <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
-                    <Layout>
-                      <SmartwatchPage />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              {/* Aluno Routes */}
-              <Route
-                path="/aluno"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <AlunoHome />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/historico"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <MeuHistorico />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/carteira"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <AlunoCarteira />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/treino"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <ClinicalAreaGuard areaName="Treinamento & Biomecânica">
-                        <MonteSeuTreino />
-                      </ClinicalAreaGuard>
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/treino/execucao"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <ClinicalAreaGuard areaName="Execução do Treino">
-                        <ExecucaoTreino />
-                      </ClinicalAreaGuard>
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/treino/execucao/:workoutId"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <ClinicalAreaGuard areaName="Execução do Treino">
-                        <ExecucaoTreino />
-                      </ClinicalAreaGuard>
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/profissionais"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <EncontrarProfissional />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/conteudos"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
+        <AccessibilityProvider>
+          <Router>
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                {/* Public Landing & Auth & Legal */}
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/cadastro" element={<Cadastro />} />
+                <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+                <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+                <Route path="/redefinir-senha/:token" element={<RedefinirSenha />} />
+                <Route path="/confirmar-email" element={<ConfirmarVerificacaoEmail />} />
+                <Route path="/confirmar-email/:token" element={<ConfirmarVerificacaoEmail />} />
+                <Route path="/verificar-email" element={<ConfirmarVerificacaoEmail />} />
+                <Route path="/verificar-email/:token" element={<ConfirmarVerificacaoEmail />} />
+                <Route path="/verificacao-pendente" element={<VerificacaoPendente />} />
+                <Route
+                  path="/conteudos"
+                  element={
                     <Layout>
                       <ConteudosEmDestaque />
                     </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/nutricao"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <ClinicalAreaGuard areaName="Nutrição & Dieta">
-                        <Nutricao />
-                      </ClinicalAreaGuard>
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/fisioterapia"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <ClinicalAreaGuard areaName="Fisioterapia & Reabilitação">
-                        <Fisioterapia />
-                      </ClinicalAreaGuard>
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/artes-marciais"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <ArtesMarciais />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/comunidade"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <Comunidade />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/chat"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <ChatScreen />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/chat/:profId"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <ChatScreen />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/aluno/perfil"
-                element={
-                  <RoleGuard allowedRoles={['aluno']}>
-                    <Layout>
-                      <AlunoPerfil />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              {/* Profissional Routes */}
-              <Route
-                path="/profissional"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ProfissionalDashboard />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/dashboard"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ProfissionalDashboard />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/alunos"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <GestaoAlunos />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/chat"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ProfissionalChatScreen />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/chat/:alunoId"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ProfissionalChatScreen />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/conteudos"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ProfissionalConteudos />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/treinos/novo"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ClinicalAreaGuard areaName="Prescrição de Treinos">
-                        <CriacaoTreino />
-                      </ClinicalAreaGuard>
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/dietas/nova"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ClinicalAreaGuard areaName="Prescrição Nutricional">
-                        <CriacaoDieta />
-                      </ClinicalAreaGuard>
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/agenda"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <AgendaServicos />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/carteira"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ProfissionalCarteira />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/perfil"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ProfissionalPerfil />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/profissional/experts/:slug"
-                element={
-                  <RoleGuard allowedRoles={['profissional']}>
-                    <Layout>
-                      <ExpertChatPage />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              {/* Admin Routes */}
-              <Route
-                path="/admin"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Layout>
-                      <AdminDashboard />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/admin/usuarios"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Layout>
-                      <GestaoUsuarios />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/admin/aprovacoes"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Layout>
-                      <AprovacoesProfissionais />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/admin/ranking"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Layout>
-                      <AdminRankingConfig />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/admin/auditoria"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Layout>
-                      <AdminAuditoria />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/admin/documentos-legais"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Layout>
-                      <AdminDocumentosLegais />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/admin/chat"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Suspense fallback={<RouteFallback />}>
-                      <AdminChat />
-                    </Suspense>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/admin/chat/:contactId"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Suspense fallback={<RouteFallback />}>
-                      <AdminChat />
-                    </Suspense>
-                  </RoleGuard>
-                }
-              />
-              <Route
-                path="/admin/chat-moderacao"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Suspense fallback={<RouteFallback />}>
-                      <AdminChatModeracao />
-                    </Suspense>
-                  </RoleGuard>
-                }
-              />{' '}
-              <Route
-                path="/admin/perfil"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <Layout>
-                      <AdminPerfil />
-                    </Layout>
-                  </RoleGuard>
-                }
-              />
-              {/* 404 & Fallbacks */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-          <CookieConsentBanner />
-          <ReacceptanceModal />
-          <InstallAppBanner />
-          <Toaster richColors position="top-right" />
-        </Router>
+                  }
+                />
+                <Route
+                  path="/termos-de-uso"
+                  element={<LegalDocViewer slugOverride="termos-aluno" />}
+                />
+                <Route
+                  path="/politica-de-privacidade"
+                  element={<LegalDocViewer slugOverride="politica-privacidade" />}
+                />
+                <Route
+                  path="/lgpd-consentimentos"
+                  element={<LegalDocViewer slugOverride="lgpd-consentimentos" />}
+                />
+                <Route
+                  path="/contrato-parceria"
+                  element={<LegalDocViewer slugOverride="contrato-parceria-profissional" />}
+                />
+                <Route
+                  path="/regulamento-cashback"
+                  element={<LegalDocViewer slugOverride="regulamento-cashback" />}
+                />
+                <Route
+                  path="/regulamento-planos-mensalidades"
+                  element={<LegalDocViewer slugOverride="regulamento-planos-mensalidades" />}
+                />
+                <Route
+                  path="/politica-reembolso"
+                  element={<LegalDocViewer slugOverride="politica-reembolso" />}
+                />
+                <Route path="/documento/:slug" element={<LegalDocViewer />} />
+                {/* Smartwatch Routes (Aluno & Profissional) */}
+                <Route
+                  path="/smartwatch"
+                  element={
+                    <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
+                      <Layout>
+                        <SmartwatchPage />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/smartwatch"
+                  element={
+                    <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
+                      <Layout>
+                        <SmartwatchPage />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/smartwatch"
+                  element={
+                    <RoleGuard allowedRoles={['aluno', 'profissional', 'admin']}>
+                      <Layout>
+                        <SmartwatchPage />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                {/* Aluno Routes */}
+                <Route
+                  path="/aluno"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <AlunoHome />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/historico"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <MeuHistorico />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/carteira"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <AlunoCarteira />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/treino"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ClinicalAreaGuard areaName="Treinamento & Biomecânica">
+                          <MonteSeuTreino />
+                        </ClinicalAreaGuard>
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/treino/execucao"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ClinicalAreaGuard areaName="Execução do Treino">
+                          <ExecucaoTreino />
+                        </ClinicalAreaGuard>
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/treino/execucao/:workoutId"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ClinicalAreaGuard areaName="Execução do Treino">
+                          <ExecucaoTreino />
+                        </ClinicalAreaGuard>
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/profissionais"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <EncontrarProfissional />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/conteudos"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ConteudosEmDestaque />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/nutricao"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ClinicalAreaGuard areaName="Nutrição & Dieta">
+                          <Nutricao />
+                        </ClinicalAreaGuard>
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/fisioterapia"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ClinicalAreaGuard areaName="Fisioterapia & Reabilitação">
+                          <Fisioterapia />
+                        </ClinicalAreaGuard>
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/artes-marciais"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ArtesMarciais />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/comunidade"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <Comunidade />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/chat"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ChatScreen />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/chat/:profId"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ChatScreen />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/perfil"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <AlunoPerfil />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                {/* Profissional Routes */}
+                <Route
+                  path="/profissional"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ProfissionalDashboard />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/dashboard"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ProfissionalDashboard />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/alunos"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <GestaoAlunos />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/chat"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ProfissionalChatScreen />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/chat/:alunoId"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ProfissionalChatScreen />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/conteudos"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ProfissionalConteudos />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/treinos/novo"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ClinicalAreaGuard areaName="Prescrição de Treinos">
+                          <CriacaoTreino />
+                        </ClinicalAreaGuard>
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/dietas/nova"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ClinicalAreaGuard areaName="Prescrição Nutricional">
+                          <CriacaoDieta />
+                        </ClinicalAreaGuard>
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/agenda"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <AgendaServicos />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/carteira"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ProfissionalCarteira />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/perfil"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ProfissionalPerfil />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/profissional/experts/:slug"
+                  element={
+                    <RoleGuard allowedRoles={['profissional']}>
+                      <Layout>
+                        <ExpertChatPage />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                {/* Admin Routes */}
+                <Route
+                  path="/admin"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Layout>
+                        <AdminDashboard />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/admin/usuarios"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Layout>
+                        <GestaoUsuarios />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/admin/aprovacoes"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Layout>
+                        <AprovacoesProfissionais />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/admin/ranking"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Layout>
+                        <AdminRankingConfig />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/admin/auditoria"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Layout>
+                        <AdminAuditoria />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/admin/documentos-legais"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Layout>
+                        <AdminDocumentosLegais />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/admin/chat"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Suspense fallback={<RouteFallback />}>
+                        <AdminChat />
+                      </Suspense>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/admin/chat/:contactId"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Suspense fallback={<RouteFallback />}>
+                        <AdminChat />
+                      </Suspense>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/admin/chat-moderacao"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Suspense fallback={<RouteFallback />}>
+                        <AdminChatModeracao />
+                      </Suspense>
+                    </RoleGuard>
+                  }
+                />{' '}
+                <Route
+                  path="/admin/perfil"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <Layout>
+                        <AdminPerfil />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                {/* 404 & Fallbacks */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+            <CookieConsentBanner />
+            <ReacceptanceModal />
+            <InstallAppBanner />
+            <Toaster richColors position="top-right" />
+          </Router>
+        </AccessibilityProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

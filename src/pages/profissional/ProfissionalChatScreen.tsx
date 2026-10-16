@@ -19,6 +19,9 @@ import {
   MessageSquare,
   ChevronLeft,
   Flag,
+  Headphones,
+  Shield,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ChatTermsModal } from '@/components/ChatTermsModal'
@@ -30,9 +33,12 @@ interface StudentContact {
   name: string
   email: string
   avatar?: string
+  role?: string
+  plan?: string
   lastMessage?: string
   lastMessageTime?: string
   unreadCount?: number
+  isSupport?: boolean
 }
 
 export default function ProfissionalChatScreen() {
@@ -92,9 +98,34 @@ export default function ProfissionalChatScreen() {
   useEffect(() => {
     if (!user) return
 
+    let isMounted = true
     setLoadingStudents(true)
     const fetchStudentsAndUnread = async () => {
       try {
+        // 1. Carregar contato de Suporte (Admin titular ou admins)
+        let supportContact: StudentContact | null = null
+        try {
+          const adminRes = await pb.collection('users').getList<StudentContact>(1, 5, {
+            filter: 'role = "admin"',
+            sort: 'created',
+          })
+          if (adminRes.items.length > 0) {
+            const mainAdmin =
+              adminRes.items.find((a) => a.email === 'ademariom07@gmail.com') || adminRes.items[0]
+            supportContact = {
+              ...mainAdmin,
+              name: 'Suporte',
+              isSupport: true,
+              role: 'admin',
+            }
+          }
+        } catch (errAdmin) {
+          console.warn(
+            'Não foi possível carregar contato de Suporte para o profissional:',
+            errAdmin,
+          )
+        }
+
         const studentFilter =
           user.role === 'admin'
             ? 'role = "aluno"'
@@ -120,27 +151,42 @@ export default function ProfissionalChatScreen() {
           unreadCount: unreadCountsBySender[s.id] || 0,
         }))
 
-        setStudents(mappedStudents)
+        // Lista final: Suporte sempre no topo, seguido dos alunos
+        const finalContacts: StudentContact[] = []
+        if (supportContact) {
+          finalContacts.push({
+            ...supportContact,
+            unreadCount: unreadCountsBySender[supportContact.id] || 0,
+          })
+        }
+        finalContacts.push(...mappedStudents)
+
+        if (!isMounted) return
+        setStudents(finalContacts)
 
         if (alunoId) {
-          const target = mappedStudents.find((s) => s.id === alunoId)
+          const target = finalContacts.find((s) => s.id === alunoId)
           if (target) {
             setActiveStudent(target)
             setMobileShowConversation(true)
-          } else if (mappedStudents.length > 0) {
-            setActiveStudent(mappedStudents[0])
+          } else if (finalContacts.length > 0) {
+            setActiveStudent(finalContacts[0])
           }
-        } else if (mappedStudents.length > 0) {
-          setActiveStudent(mappedStudents[0])
+        } else if (finalContacts.length > 0) {
+          setActiveStudent(finalContacts[0])
         }
       } catch {
-        setStudents([])
+        if (isMounted) setStudents([])
       } finally {
-        setLoadingStudents(false)
+        if (isMounted) setLoadingStudents(false)
       }
     }
 
     fetchStudentsAndUnread()
+
+    return () => {
+      isMounted = false
+    }
   }, [user, alunoId])
 
   // 3. Mensagens da conversa ativa (histórico, tempo real e checagem de reserva)
@@ -329,40 +375,43 @@ export default function ProfissionalChatScreen() {
                   >
                     <div
                       className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs font-montserrat shrink-0 border ${
-                        aluno.isSupport
+                        student.isSupport
                           ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#D4AF37]'
                           : 'bg-[#202020] border-[#2A2A2A] text-[#D4AF37]'
                       }`}
                     >
-                      {aluno.isSupport ? (
+                      {student.isSupport ? (
                         <Headphones className="w-4 h-4 text-[#D4AF37]" />
                       ) : (
-                        aluno.name?.[0]?.toUpperCase() || 'A'
+                        student.name?.[0]?.toUpperCase() || 'A'
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-xs font-bold font-montserrat truncate text-white flex items-center gap-1.5">
-                          {aluno.name}
+                          {student.name}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {aluno.isSupport && (
+                          {student.isSupport && (
                             <span className="text-[9px] bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5">
                               <Shield className="w-2.5 h-2.5" /> Suporte
                             </span>
                           )}
-                          {(aluno.unreadCount || 0) > 0 && (
+                          {(student.unreadCount || 0) > 0 && (
                             <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center font-mono animate-pulse shadow-sm shrink-0">
-                              {aluno.unreadCount}
+                              {student.unreadCount}
                             </span>
                           )}
                         </div>
                       </div>
                       <p className="text-[10px] text-gray-400 truncate font-inter">
-                        {aluno.isSupport ? 'Central Oficial 369WELLNESS' : `Plano: ${aluno.plan || 'Free'}`}
+                        {student.isSupport
+                          ? 'Central Oficial 369WELLNESS'
+                          : `Plano: ${student.plan || 'Free'}`}
                       </p>
                     </div>
-                  </button>                )
+                  </button>
+                )
               })
             )}
           </div>
@@ -389,18 +438,18 @@ export default function ProfissionalChatScreen() {
                   </button>
 
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#D4AF37] text-black font-bold flex items-center justify-center font-montserrat text-xs sm:text-sm border-2 border-[#D4AF37] shrink-0">
-                    {activeAluno.isSupport ? (
+                    {activeStudent.isSupport ? (
                       <Headphones className="w-4 h-4 text-black" />
                     ) : (
-                      activeAluno.name?.[0]?.toUpperCase() || 'A'
+                      activeStudent.name?.[0]?.toUpperCase() || 'A'
                     )}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold font-montserrat text-white flex items-center gap-1.5 truncate">
-                      <span className="truncate">{activeAluno.name}</span>
-                      {activeAluno.isSupport ? (
+                      <span className="truncate">{activeStudent.name}</span>
+                      {activeStudent.isSupport ? (
                         <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] flex items-center gap-1 shrink-0 font-bold">
-                          <Shield className="w-2.5 h-2.5" /> Suporte Oficial
+                          <Shield className="w-2.5 h-2.5" /> Suporte
                         </span>
                       ) : (
                         <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] flex items-center gap-1 shrink-0">
@@ -411,12 +460,13 @@ export default function ProfissionalChatScreen() {
                     <p className="text-[10px] sm:text-[11px] text-[#22C55E] flex items-center gap-1 font-inter truncate">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] shrink-0" />
                       <span className="truncate">
-                        {activeAluno.isSupport
-                          ? 'Online • Canal Administrativo 369WELLNESS'
-                          : `Online • Plano ${activeAluno.plan || 'Free'}`}
+                        {activeStudent.isSupport
+                          ? 'Online • Central Oficial 369WELLNESS'
+                          : `Online • Plano ${activeStudent.plan || 'Free'}`}
                       </span>
                     </p>
-                  </div>                </div>
+                  </div>
+                </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
@@ -457,9 +507,10 @@ export default function ProfissionalChatScreen() {
                     <p className="font-montserrat font-bold text-gray-300 mb-1">
                       Início da conversa com {activeStudent.name}
                     </p>
-                    <p className="font-inter max-w-sm">
-                      Envie orientações de treino, tire dúvidas nutricionais ou alinhe a evolução do
-                      aluno.
+                    <p className="font-inter max-w-sm text-gray-400">
+                      {activeStudent.isSupport
+                        ? 'Envie sua mensagem para o Suporte da 369WELLNESS. Tire dúvidas sobre repasses, parcerias ou plataforma.'
+                        : 'Envie orientações de treino, tire dúvidas nutricionais ou alinhe a evolução do aluno.'}
                     </p>
                   </div>
                 ) : (

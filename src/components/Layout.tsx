@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import type { NotificationRecord } from '@/services/api'
 import { UserAvatar } from '@/components/UserAvatar'
+import { AccessibilityControls } from '@/components/AccessibilityControls'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -195,6 +196,9 @@ export default function Layout({ children }: LayoutProps) {
               Plano {user?.plan?.toUpperCase() || 'BASICO'}
             </span>
           )}
+
+          {/* Botão de Acessibilidade (Fonte Maior e Negrito) */}
+          <AccessibilityControls />
 
           {/* Real-time Notification Bell */}
           <Link

@@ -103,19 +103,21 @@ export default function ChatScreen() {
 
     const fetchAllData = async () => {
       try {
-        // 1. Fetch Admin Support User
+        // 1. Fetch Admin Support User (Ademario / Superadmin)
         let supportContact: ProfessionalContact | null = null
         try {
-          const adminRes = await pb.collection('users').getList<ProfessionalContact>(1, 1, {
+          const adminRes = await pb.collection('users').getList<ProfessionalContact>(1, 5, {
             filter: 'role = "admin"',
             sort: 'created',
           })
           if (adminRes.items.length > 0) {
-            const adminUser = adminRes.items[0]
+            // Prioriza Ademario se existir na lista, senão o primeiro admin
+            const mainAdmin =
+              adminRes.items.find((a) => a.email === 'ademariom07@gmail.com') || adminRes.items[0]
             supportContact = {
-              ...adminUser,
-              name: 'Suporte (Central 369WELLNESS)',
-              specialties: ['Atendimento Oficial', 'Suporte & Dúvidas'],
+              ...mainAdmin,
+              name: 'Suporte',
+              specialties: ['Central Oficial 369WELLNESS', 'Atendimento & Dúvidas'],
               isSupport: true,
             }
           }
@@ -347,7 +349,7 @@ export default function ChatScreen() {
 
   const getSpecialtyLabel = (prof: ProfessionalContact) => {
     if (prof.isSupport) {
-      return 'Suporte Oficial 369WELLNESS'
+      return 'Central Oficial 369WELLNESS'
     }
     if (Array.isArray(prof.specialties) && prof.specialties.length > 0) {
       return prof.specialties.join(', ')
@@ -524,7 +526,7 @@ export default function ChatScreen() {
                       <span className="truncate">{activeProf.name}</span>
                       {activeProf.isSupport ? (
                         <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] flex items-center gap-1 shrink-0 font-bold">
-                          <Shield className="w-2.5 h-2.5" /> Suporte Oficial
+                          <Shield className="w-2.5 h-2.5" /> Suporte
                         </span>
                       ) : activeProf.isLinked ? (
                         <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E] flex items-center gap-1 shrink-0">
@@ -580,7 +582,7 @@ export default function ChatScreen() {
                     </p>
                     <p className="font-inter max-w-sm">
                       {activeProf.isSupport
-                        ? 'Envie sua dúvida ou solicitação ao time de Suporte da 369WELLNESS. Responderemos o mais breve possível.'
+                        ? 'Envie sua mensagem para o Suporte da 369WELLNESS. O atendimento é direto entre você e o admin.'
                         : 'Tire dúvidas sobre seus treinos, cargas ou planejamento nutricional.'}
                     </p>
                   </div>

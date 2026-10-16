@@ -18,6 +18,10 @@ import {
   ChevronLeft,
   Flag,
   ShieldAlert,
+  Minimize2,
+  Maximize2,
+  X,
+  LogOut,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { exportChatToPdf } from '@/lib/chatExport'
@@ -53,6 +57,9 @@ export default function AdminChat() {
   // Denúncia / Moderação rápida
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportingMsg, setReportingMsg] = useState<MessageRecord | null>(null)
+
+  // Estado de minimizar/fechar o chat
+  const [isMinimized, setIsMinimized] = useState(false)
 
   // 1. Carregar lista de usuários (alunos e profissionais) com quem o admin pode conversar
   useEffect(() => {
@@ -207,6 +214,10 @@ export default function AdminChat() {
     setMobileShowConversation(false)
   }
 
+  const handleExitChat = () => {
+    navigate('/admin')
+  }
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = inputText.trim()
@@ -288,6 +299,49 @@ export default function AdminChat() {
     return matchesSearch && matchesRole
   })
 
+  // Se minimizado: exibe barra flutuante recolhida no canto inferior direito
+  if (isMinimized) {
+    const unreadTotal = contacts.reduce((acc, c) => acc + (c.unreadCount || 0), 0)
+    return (
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setIsMinimized(false)}
+          className="flex items-center gap-3 bg-[#181818] border-2 border-[#D4AF37] text-white px-4 py-3 rounded-2xl shadow-2xl hover:bg-[#202020] transition-all group"
+          title="Clique para reabrir o chat admin"
+        >
+          <div className="relative">
+            <MessageSquare className="w-5 h-5 text-[#D4AF37]" />
+            {unreadTotal > 0 && (
+              <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-red-600 text-white font-bold text-[9px] flex items-center justify-center font-mono">
+                {unreadTotal}
+              </span>
+            )}
+          </div>
+          <div className="text-left font-montserrat">
+            <p className="text-xs font-bold text-white flex items-center gap-1.5">
+              Chat Admin <span className="text-[10px] text-[#D4AF37] font-mono">(Minimizado)</span>
+            </p>
+            <p className="text-[10px] text-gray-400">
+              {activeContact
+                ? `Conversando com: ${activeContact.name}`
+                : `${contacts.length} usuários`}
+            </p>
+          </div>
+          <Maximize2 className="w-4 h-4 text-gray-400 group-hover:text-[#D4AF37] ml-2" />
+        </button>
+        <button
+          type="button"
+          onClick={handleExitChat}
+          className="p-3 bg-[#181818] border border-[#2A2A2A] hover:border-red-500 text-gray-400 hover:text-red-400 rounded-2xl shadow-xl transition-all"
+          title="Sair do Chat"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="h-[calc(100vh-140px)] sm:h-[calc(100vh-130px)] flex flex-col pb-2">
       <ReportMessageModal
@@ -311,12 +365,33 @@ export default function AdminChat() {
         >
           <div className="p-3 sm:p-4 border-b border-[#2A2A2A] space-y-2.5">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold font-montserrat text-white uppercase flex items-center gap-1.5 sm:gap-2">
-                <MessageSquare className="w-4 h-4 text-[#D4AF37]" /> Chat Direto
+              <h2 className="text-xs sm:text-sm font-bold font-montserrat text-white uppercase flex items-center gap-1.5 sm:gap-2 truncate">
+                <MessageSquare className="w-4 h-4 text-[#D4AF37] shrink-0" />{' '}
+                <span className="truncate">Chat Direto</span>
               </h2>
-              <span className="text-[10px] bg-[#2A2A2A] text-gray-300 px-2 py-0.5 rounded-full font-mono">
-                {filteredContacts.length}
-              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsMinimized(true)}
+                  className="p-1.5 rounded-lg bg-[#202020] text-gray-400 hover:text-[#D4AF37] transition-colors"
+                  title="Minimizar chat"
+                  aria-label="Minimizar chat"
+                >
+                  <Minimize2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExitChat}
+                  className="p-1.5 rounded-lg bg-[#202020] text-gray-400 hover:text-red-400 transition-colors"
+                  title="Sair do chat (voltar ao Dashboard)"
+                  aria-label="Sair do chat"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[10px] bg-[#2A2A2A] text-gray-300 px-1.5 py-0.5 rounded-full font-mono ml-0.5">
+                  {filteredContacts.length}
+                </span>
+              </div>
             </div>
 
             {/* Filter buttons */}
@@ -484,6 +559,30 @@ export default function AdminChat() {
                     <ShieldAlert className="w-3.5 h-3.5" />
                     <span>Moderação</span>
                   </Button>
+
+                  {/* Botões Minimizar e Sair do Chat */}
+                  <div className="flex items-center gap-1 pl-1 border-l border-[#2A2A2A]">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsMinimized(true)}
+                      className="text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 h-8 w-8 p-0"
+                      title="Minimizar Chat"
+                      aria-label="Minimizar Chat"
+                    >
+                      <Minimize2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleExitChat}
+                      className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0"
+                      title="Sair do Chat"
+                      aria-label="Sair do Chat"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -596,6 +695,26 @@ export default function AdminChat() {
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-400">
+              <div className="absolute top-3 right-3 flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsMinimized(true)}
+                  className="text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 h-8 w-8 p-0"
+                  title="Minimizar Chat"
+                >
+                  <Minimize2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleExitChat}
+                  className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0"
+                  title="Sair do Chat"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
               <Users className="w-12 h-12 text-gray-600 mb-3" />
               <h3 className="font-montserrat font-bold text-white text-base">
                 Nenhum usuário selecionado
