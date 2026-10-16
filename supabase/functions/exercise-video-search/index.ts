@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
+import { selectVideo } from './openai.ts'
 import { createHandler } from './handler.ts'
 
 // Pilot ceiling per isolate only. Distributed quota is required before student rollout.
@@ -20,6 +21,9 @@ const handler = createHandler({
     return profile?.role === 'admin' ? 'admin' : 'user'
   },
   apiKey: () => Deno.env.get('YOUTUBE_DATA_API_KEY'),
+  select: Deno.env.get('OPENAI_API_KEY')
+    ? (exercise, candidates) => selectVideo(exercise, candidates, Deno.env.get('OPENAI_API_KEY')!)
+    : undefined,
   fetch,
   reserve: () => {
     if (used >= 3) return false
