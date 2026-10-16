@@ -16,10 +16,19 @@ routerAdd(
       })
     }
     const exercise = body.exercise.trim().replace(/\s+/g, ' ')
+    const verifyLive = body.verifyLive === true
+    if (verifyLive && e.auth.getString('role') !== 'admin')
+      return e.json(403, { code: 'FORBIDDEN' })
     const apiKey = $os.getenv('YOUTUBE_DATA_API_KEY')
-    if (!apiKey) return e.json(503, { error: 'Busca de vídeos ainda não configurada.' })
+    if (!apiKey)
+      return e.json(503, {
+        code: 'YOUTUBE_NOT_CONFIGURED',
+        error: 'Busca de vídeos ainda não configurada.',
+      })
+    let providerCode = 'VIDEO_SEARCH_UNAVAILABLE'
     const unavailable = () =>
       e.json(503, {
+        code: providerCode,
         error: 'Busca de vídeos temporariamente indisponível. Tente novamente mais tarde.',
       })
     try {
@@ -30,7 +39,7 @@ routerAdd(
       let cache = JSON.parse(store.get('wellness.exerciseVideos.v1') || '[]')
       cache = cache.filter((item) => item.expires > now).slice(-255)
       const hit = cache.find((item) => item.key === cacheKey)
-      if (hit) return e.json(200, hit.result)
+      if (hit && !verifyLive) return e.json(200, hit.result)
       const get = (resource, params) => {
         const query = Object.keys(params)
           .map((key) => encodeURIComponent(key) + '=' + encodeURIComponent(params[key]))
@@ -42,8 +51,25 @@ routerAdd(
           timeout: 12,
         })
         // Provider payloads/errors may contain credentials. Never log or return them.
-        if (res.statusCode !== 200 || !Array.isArray(res.json?.items))
+        if (res.statusCode !== 200) {
+          const reasons = (res.json?.error?.errors || []).map((item) => item.reason)
+          if (
+            res.statusCode === 429 ||
+            reasons.some((reason) =>
+              ['quotaExceeded', 'dailyLimitExceeded', 'rateLimitExceeded'].includes(reason),
+            )
+          ) {
+            providerCode = 'YOUTUBE_QUOTA_EXCEEDED'
+          } else if (
+            reasons.some((reason) =>
+              ['keyInvalid', 'accessNotConfigured', 'ipRefererBlocked'].includes(reason),
+            )
+          ) {
+            providerCode = 'YOUTUBE_NOT_CONFIGURED'
+          }
           throw Error('provider unavailable')
+        }
+        if (!Array.isArray(res.json?.items)) throw Error('provider unavailable')
         return res.json.items
       }
       const found = get('search', {

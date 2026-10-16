@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchExerciseVideo, type ExerciseVideoResult } from '@/lib/exerciseVideoSearch'
+import {
+  searchExerciseVideo,
+  exerciseVideoErrorMessage,
+  type ExerciseVideoResult,
+} from '@/lib/exerciseVideoSearch'
 
 export function ExerciseVideoSuggestion({ exercise }: { exercise: string }) {
   const root = useRef<HTMLDivElement>(null)
@@ -33,11 +37,11 @@ export function ExerciseVideoSuggestion({ exercise }: { exercise: string }) {
         .then((result) => {
           if (active) setState({ exercise, result })
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           if (active)
             setState({
               exercise,
-              error: 'Busca indisponível. Verifique a conexão ou tente mais tarde.',
+              error: exerciseVideoErrorMessage(error),
             })
         })
     }, 700)

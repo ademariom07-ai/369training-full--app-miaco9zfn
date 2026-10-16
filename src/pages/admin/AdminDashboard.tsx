@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { ExerciseVideoAgentStatus } from '@/components/admin/ExerciseVideoAgentStatus'
 import { Link } from 'react-router-dom'
 import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
@@ -187,6 +188,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 pb-12 font-inter text-[#1A1A1A]">
+      <ExerciseVideoAgentStatus />
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>

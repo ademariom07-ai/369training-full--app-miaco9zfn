@@ -6,6 +6,19 @@ export interface ExerciseVideoResult {
   message: string
 }
 
+/** Only allowlisted messages; provider errors and raw API payloads stay out of the UI. */
+export function exerciseVideoErrorMessage(error: unknown): string {
+  const failure = error as { status?: number; response?: { code?: string } } | null
+  if (failure?.status === 401) return 'Entre novamente para buscar vídeos.'
+  if (failure?.status === 429)
+    return 'Limite temporário de buscas atingido. Aguarde antes de tentar novamente.'
+  if (failure?.response?.code === 'YOUTUBE_NOT_CONFIGURED')
+    return 'Busca de vídeos aguardando configuração pelo administrador.'
+  if (failure?.response?.code === 'YOUTUBE_QUOTA_EXCEEDED')
+    return 'O limite de buscas do YouTube foi atingido. Tente novamente mais tarde.'
+  return 'Busca indisponível. Verifique a conexão ou tente mais tarde.'
+}
+
 // Deduplicate cards and serialize searches to avoid a burst for a whole workout.
 let queue: Promise<unknown> = Promise.resolve()
 const requests = new Map<string, { expires: number; promise: Promise<ExerciseVideoResult> }>()

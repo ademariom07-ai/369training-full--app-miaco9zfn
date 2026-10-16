@@ -70,3 +70,11 @@ it('rejects missing authentication and invalid input before sending', async () =
   await expect(searchExerciseVideo('Agachamento')).rejects.toThrow()
   expect(client.send).not.toHaveBeenCalled()
 })
+it('maps only safe error codes to user-facing messages', async () => {
+  const { exerciseVideoErrorMessage: message } = await import('./exerciseVideoSearch')
+  expect(message({ status: 401 })).toContain('Entre novamente')
+  expect(message({ status: 429 })).toContain('Limite temporário')
+  expect(message({ response: { code: 'YOUTUBE_NOT_CONFIGURED' } })).toContain('administrador')
+  expect(message({ response: { code: 'YOUTUBE_QUOTA_EXCEEDED' } })).toContain('YouTube')
+  expect(message({ response: { code: 'SECRET', error: 'private-key' } })).not.toContain('private-key')
+})

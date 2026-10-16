@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 const source = readFileSync('pocketbase/hooks/exercise_video_search.js', 'utf8')
 const id = 'AbCdEf12_-3'
 const detail = { id, status: { privacyStatus: 'public', embeddable: true, uploadStatus: 'processed' }, snippet: { title: 'Agachamento com halteres', channelTitle: 'Canal', description: 'Demonstração', liveBroadcastContent: 'none' }, contentDetails: { duration: 'PT2M' } }
-function setup(options: { details?: unknown[]; choice?: string; key?: string; fail?: boolean; found?: unknown[] } = {}) {
+function setup(options: { details?: unknown[]; choice?: string; key?: string; fail?: boolean; found?: unknown[]; upstreamStatus?: number; reason?: string; role?: string } = {}) {
   let handler: any
   const requests: any[] = [], prompts: any[] = []
   const store = new Map()
@@ -15,11 +15,11 @@ function setup(options: { details?: unknown[]; choice?: string; key?: string; fa
     $http: { send: (request: any) => {
       requests.push(request)
       if (options.fail) throw Error('private-key-provider-error')
-      return { statusCode: 200, json: { items: request.url.includes('/search?') ? (options.found ?? [{ id: { videoId: id } }]) : (options.details ?? [detail]) } }
+      return { statusCode: options.upstreamStatus ?? 200, json: { error: { errors: [{ reason: options.reason ?? '' }] }, items: request.url.includes('/search?') ? (options.found ?? [{ id: { videoId: id } }]) : (options.details ?? [detail]) } }
     } },
     $ai: { chat: (request: any) => { prompts.push(request); return { choices: [{ message: { content: options.choice ?? JSON.stringify({ videoId: id }) } }] } } },
   })
-  return { requests, prompts, call: (body: unknown = { exercise: 'Agachamento com halteres' }, auth = true) => handler({ auth: auth ? { id: 'student-private-id' } : null, requestInfo: () => ({ body }), json: (status: number, data: unknown) => ({ status, data }) }) }
+  return { requests, prompts, call: (body: unknown = { exercise: 'Agachamento com halteres' }, auth = true) => handler({ auth: auth ? { id: 'student-private-id', getString: () => options.role ?? 'admin' } : null, requestInfo: () => ({ body }), json: (status: number, data: unknown) => ({ status, data }) }) }
 }
 describe('automatic YouTube exercise agent', () => {
   it('authenticates and validates before contacting providers', () => {
@@ -65,4 +65,22 @@ describe('automatic YouTube exercise agent', () => {
     const result = setup({ fail: true }).call()
     expect(result.status).toBe(503); expect(JSON.stringify(result)).not.toContain('private-key')
   })
+})
+
+it('allows an administrator to bypass cached results for an explicit live check', () => {
+  const s = setup(); s.call(); s.call({exercise:'Agachamento com halteres',verifyLive:true})
+  expect(s.requests).toHaveLength(4)
+})
+it.each([{upstreamStatus:403,reason:'quotaExceeded',code:'YOUTUBE_QUOTA_EXCEEDED'},{upstreamStatus:429,code:'YOUTUBE_QUOTA_EXCEEDED'},{upstreamStatus:403,reason:'accessNotConfigured',code:'YOUTUBE_NOT_CONFIGURED'},{upstreamStatus:500,code:'VIDEO_SEARCH_UNAVAILABLE'}])('classifies provider failures without leaking payloads %j', ({code,...options}) => {
+  const result = setup(options).call()
+  expect(result).toMatchObject({status:503,data:{code}})
+  expect(JSON.stringify(result)).not.toContain('private-key')
+})
+
+it('refuses cache bypass for students and professionals', () => {
+  for (const role of ['aluno','profissional']) {
+    const s=setup({role})
+    expect(s.call({exercise:'Agachamento com halteres',verifyLive:true}).status).toBe(403)
+    expect(s.requests).toHaveLength(0)
+  }
 })
