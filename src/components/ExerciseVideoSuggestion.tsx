@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ExerciseYouTubePlayer } from '@/components/ExerciseYouTubePlayer'
 import {
   searchExerciseVideo,
   exerciseVideoErrorMessage,
@@ -72,15 +73,9 @@ export function ExerciseVideoSuggestion({ exercise }: { exercise: string }) {
         </>
       ) : video ? (
         <>
-          <a
-            href={video.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-sky-400 underline"
-          >
-            ▶ {video.title}
-          </a>
+          <p className="font-semibold text-gray-200">{video.title}</p>
           <p>Canal: {video.channel} • YouTube</p>
+          <ExerciseYouTubePlayer key={video.url} url={video.url} title={video.title} />
           <p>
             Sugestão automática por título e descrição. Técnica e adequação individual não
             verificadas.

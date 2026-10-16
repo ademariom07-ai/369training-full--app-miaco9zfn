@@ -46,3 +46,9 @@ Essa regra usa o limitador nativo do PocketBase; não é quota de consultas do p
 Depois de configurar chave, provedor de IA e limite de buscas, o botão **Testar busca no YouTube** envia uma consulta real por “Agachamento com halteres”. A opção `verifyLive=true`, restrita ao administrador, ignora o cache do servidor. O teste consome quota e não salva/ativa treino. Resposta sem correspondência não comprova que o modelo chegou a ser chamado, pois não há seleção da IA quando o YouTube não retorna candidatos válidos. O resultado do teste vale para aquele momento e não certifica o conteúdo do vídeo.
 
 O aplicativo diferencia ausência de configuração, quota/limite e falha temporária por códigos permitidos. Não exibe payloads brutos dos provedores. Nenhum destes passos configura automaticamente o ambiente Skip ou publica a aplicação.
+
+## Reprodução no cartão
+
+Os cartões do aluno e do profissional incluem **Assistir aqui**, **Fechar vídeo** e **Abrir no YouTube**. O player só é montado após escolha do usuário, usa o domínio de privacidade aprimorada `youtube-nocookie.com`, sem autoplay, e mantém título/canal visíveis. Fechar o vídeo remove o iframe e encerra a reprodução; mudar exercício ou vídeo desmonta o player anterior. A URL é novamente validada por lista de hosts e ID antes da incorporação. O player preserva `strict-origin-when-cross-origin` para identificação de origem exigida pelo YouTube. Restrições ou remoções posteriores à busca continuam sujeitas ao YouTube; o link externo fica disponível.
+
+Referências: https://support.google.com/youtube/answer/171780 e https://developers.google.com/youtube/terms/required-minimum-functionality#embedded-player-api-client-identity.
