@@ -51,7 +51,44 @@ routerUse((e) => {
     return e.next()
   }
 
-  // Tentativa 1: Servir o index.html dos diretórios públicos se existir
+  // Determina o endereço da interface (frontend SPA) lido dos segredos/env
+  let appUrl = ''
+  try {
+    const rawSite = $os.getenv('SITE_URL') || ''
+    const rawApp = $os.getenv('APP_URL') || ''
+    appUrl = (rawSite || rawApp).trim()
+    if (!appUrl && typeof $secrets !== 'undefined') {
+      if ($secrets.has('SITE_URL')) {
+        appUrl = ($secrets.get('SITE_URL') || '').trim()
+      } else if ($secrets.has('APP_URL')) {
+        appUrl = ($secrets.get('APP_URL') || '').trim()
+      }
+    }
+  } catch (_) {}
+
+  // Se o segredo apontar para a interface web, REDIRECIONA (302) para o mesmo caminho + query
+  if (appUrl) {
+    const cleanBase = appUrl.replace(/\/+$/, '')
+    let rawQuery = ''
+    try {
+      if (e.request && e.request.url && e.request.url.rawQuery) {
+        rawQuery = e.request.url.rawQuery
+      }
+    } catch (_) {}
+
+    const targetUrl = cleanBase + path + (rawQuery ? '?' + rawQuery : '')
+    try {
+      return e.redirect(302, targetUrl)
+    } catch (_) {
+      try {
+        e.response.header().set('Location', targetUrl)
+        return e.noContent(302)
+      } catch (_) {}
+    }
+  }
+
+  // Fallback seguro: se nenhum segredo de interface estiver configurado,
+  // tenta servir o index.html local se existir
   const publicDirs = ['./pb_public', 'pb_public', '../pb_public', '/pb_public', './dist', 'dist']
   for (let i = 0; i < publicDirs.length; i++) {
     try {
@@ -64,7 +101,7 @@ routerUse((e) => {
     } catch (_) {}
   }
 
-  // Tentativa 2: HTML com bootstrap que faz fetch do index.html da raiz
+  // HTML com bootstrap que faz fetch do index.html da raiz
   const spaBootstrap = `<!doctype html>
 <html lang="pt-BR">
   <head>
