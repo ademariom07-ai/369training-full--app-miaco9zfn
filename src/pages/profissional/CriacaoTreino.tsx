@@ -1,4 +1,4 @@
-import { normalizeExerciseVideo } from '@/lib/exerciseVideo'
+import { ExerciseVideoSuggestion } from '@/components/ExerciseVideoSuggestion'
 import {buildWorkoutDraftRequest} from '@/lib/workoutDraftRequest'
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -145,8 +145,7 @@ export default function CriacaoTreino() {
     }
 
     if(aiGenerated&&!draftReviewed){toast.error('Revise o rascunho antes de enviar ao aluno.');return}
-    if (exercises.some(ex => ex.video.trim() && !normalizeExerciseVideo(ex.video))) { toast.error('Revise os vídeos: informe um link HTTPS válido de vídeo do YouTube.'); return }
-    const reviewedExercises = exercises.map(ex => ({ ...ex, video: normalizeExerciseVideo(ex.video) || '' }))
+    const reviewedExercises = exercises.map(ex => ({ ...ex, video: '' }))
     setSaving(true)
     try {
       await pb.collection('workouts').create({
@@ -362,11 +361,7 @@ export default function CriacaoTreino() {
                 </div>
               </div>
 
-              <label className="block text-xs text-gray-300">
-                Vídeo demonstrativo do YouTube (opcional)
-                <Input value={ex.video} maxLength={2048} onChange={e => handleUpdateExercise(idx, 'video', e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="mt-1 bg-[#141414] text-white" />
-                <span className="block mt-1 text-gray-400">Confira o vídeo e sua adequação ao aluno antes de enviar. A validação do link não verifica o conteúdo.</span>
-              </label>
+              <ExerciseVideoSuggestion exercise={ex.name} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <Input
                   value={ex.rest}

@@ -28,12 +28,11 @@ import {
   Lock,
   Flame,
   Award,
-  Video,
   ChevronRight,
   TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { normalizeExerciseVideo } from '@/lib/exerciseVideo'
+import { ExerciseVideoSuggestion } from '@/components/ExerciseVideoSuggestion'
 import { RestTimer } from '@/components/workouts/RestTimer'
 import { buildWorkoutDraftRequest } from '@/lib/workoutDraftRequest'
 import { fetchExerciseGif } from '@/lib/exerciseDb'
@@ -461,7 +460,6 @@ export default function MonteSeuTreino() {
           <div className="grid grid-cols-1 gap-4">
             {currentWorkout.exercises?.map((exercise, idx) => {
               const gifUrl = exercise?.name ? exerciseGifs[exercise.name] : undefined
-              const videoUrl = normalizeExerciseVideo(exercise?.video)
 
               return (
                 <Card
@@ -543,19 +541,8 @@ export default function MonteSeuTreino() {
                           </p>
                         )}
 
-                        {/* RECURSO 2: Fallback Video Player Embed se disponível */}
-                        {isProOrPremium && videoUrl && (
-                          <div className="pt-1">
-                            <a
-                              href={videoUrl!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-[#0057FF] hover:underline font-montserrat font-bold"
-                            >
-                              <Video className="w-3.5 h-3.5" />
-                              Ver Vídeo Demonstrativo no YouTube
-                            </a>
-                          </div>
+                        {isProOrPremium && exercise?.name && (
+                          <ExerciseVideoSuggestion exercise={exercise.name} />
                         )}
                       </div>
                     </div>
