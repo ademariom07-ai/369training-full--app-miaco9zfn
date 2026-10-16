@@ -149,11 +149,11 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
       let calcCashDisponivel = 0
       txRes.items.forEach((t) => {
         const amt = Number(t.amount) || 0
-        const status = String(t.status || '')
-        const txType = String(t.type || '')
+        const status = String(t.status || '').toLowerCase()
+        const txType = String(t.type || '').toLowerCase()
         if (status === 'concluido' || status === 'aprovado') {
           if (txType === 'deposito' || txType === 'cashback' || txType === 'bonus_indicacao') {
-            calcSaldo += amt
+            calcSaldo += Math.abs(amt)
           } else if (
             txType === 'saque' ||
             txType === 'tarifa' ||
@@ -161,15 +161,15 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
             txType === 'servico' ||
             txType === 'mensalidade'
           ) {
-            calcSaldo += amt // amount já pode vir negativo
+            calcSaldo -= Math.abs(amt)
           }
-          if (txType === 'cashback' || txType === 'bonus_indicacao') {
-            calcCashDisponivel += Math.max(0, amt)
+          if (txType === 'cashback') {
+            calcCashDisponivel += Math.abs(amt)
           }
         }
       })
       setSaldoDisponivel(calcSaldo > 0 ? calcSaldo : 0)
-      setCashbackDisponivel(calcCashDisponivel)
+      setCashbackDisponivel(calcCashDisponivel > 0 ? calcCashDisponivel : 0)
 
       // 2. Snapshots Mensais Fechados Anteriores (Bloco 1: Pontuação Atual)
       let pastPointsSum = 0

@@ -34,9 +34,9 @@ export default function AlunoPerfil() {
   const [linkedProfName, setLinkedProfName] = useState<string | null>(null)
   const [unlinkingProf, setUnlinkingProf] = useState<boolean>(false)
 
-  // Wallet State
-  const [balance, setBalance] = useState<number>(300.0)
-  const [cashbackBalance, setCashbackBalance] = useState<number>(45.8)
+  // Wallet State — valores reais da carteira calculados a partir de wallet_transactions
+  const [balance, setBalance] = useState<number>(0.0)
+  const [cashbackBalance, setCashbackBalance] = useState<number>(0.0)
   const [transactions, setTransactions] = useState<WalletTransactionRecord[]>([])
 
   // PIX Deposit State
@@ -123,28 +123,48 @@ export default function AlunoPerfil() {
       })
   }, [user])
 
-  // Load Wallet Transactions
+  // Load Wallet Transactions — cálculo real com saldo = (depósitos + cashback - saques - tarifas - serviços) e cashback = soma das transações de cashback
   const loadWalletData = () => {
     if (!user) return
     pb.collection('wallet_transactions')
-      .getList<WalletTransactionRecord>(1, 20, {
+      .getList<WalletTransactionRecord>(1, 500, {
         filter: `user = "${user.id}"`,
         sort: '-created',
       })
       .then((res) => {
         setTransactions(res.items)
-        let calculated = 0
-        let cb = 0
+        let calculatedSaldo = 0
+        let calculatedCashback = 0
         res.items.forEach((tx) => {
-          if (tx.status === 'concluido') {
-            calculated += tx.amount
-            if (tx.type === 'cashback') cb += tx.amount
+          const status = String(tx.status || '').toLowerCase()
+          if (status === 'concluido' || status === 'aprovado') {
+            const amt = Number(tx.amount) || 0
+            const txType = String(tx.type || '').toLowerCase()
+
+            if (txType === 'deposito' || txType === 'cashback' || txType === 'bonus_indicacao') {
+              calculatedSaldo += Math.abs(amt)
+            } else if (
+              txType === 'saque' ||
+              txType === 'tarifa' ||
+              txType === 'pagamento' ||
+              txType === 'servico' ||
+              txType === 'mensalidade'
+            ) {
+              calculatedSaldo -= Math.abs(amt)
+            }
+
+            if (txType === 'cashback') {
+              calculatedCashback += Math.abs(amt)
+            }
           }
         })
-        if (calculated > 0) setBalance(calculated)
-        if (cb > 0) setCashbackBalance(cb)
+        setBalance(calculatedSaldo > 0 ? calculatedSaldo : 0)
+        setCashbackBalance(calculatedCashback > 0 ? calculatedCashback : 0)
       })
-      .catch(() => {})
+      .catch(() => {
+        setBalance(0)
+        setCashbackBalance(0)
+      })
   }
 
   useEffect(() => {
