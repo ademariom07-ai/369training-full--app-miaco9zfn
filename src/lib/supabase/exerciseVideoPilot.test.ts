@@ -7,6 +7,7 @@ function setup(role: 'admin' | 'user' | null = 'admin') {
   const deps: Dependencies = {
     authenticate: vi.fn(async () => role),
     apiKey: () => 'test-key',
+    select: async (_exercise, candidates) => candidates[0]?.id ?? null,
     fetch: vi.fn(),
     reserve: vi.fn(() => true),
   }
@@ -77,8 +78,8 @@ describe('Supabase video search administrative pilot', () => {
         }),
       )
     const result = await (await handle(request())).json()
-    expect(result.candidates).toHaveLength(1)
-    expect(result.selectionStatus).toBe('pending_ai_review')
+    expect(result.video.id).toBe('abcdefghijk')
+    expect(result.message).toContain('metadados')
     expect(String(vi.mocked(deps.fetch).mock.calls[0][0])).not.toContain('test-key')
   })
 })
