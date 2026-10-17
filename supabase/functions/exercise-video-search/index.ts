@@ -5,6 +5,19 @@ import { createHandler } from './handler.ts'
 // Pilot ceiling per isolate only. Distributed quota is required before student rollout.
 let used = 0
 const handler = createHandler({
+  allowedOrigins: (
+    Deno.env.get('VIDEO_ALLOWED_ORIGINS') || 'https://wellness-369-demo.ademariom07.chatgpt.site'
+  )
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => {
+      try {
+        const u = new URL(v)
+        return u.protocol === 'https:' && u.origin === v
+      } catch {
+        return false
+      }
+    }),
   authenticate: async (token) => {
     const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: `Bearer ${token}` } },
