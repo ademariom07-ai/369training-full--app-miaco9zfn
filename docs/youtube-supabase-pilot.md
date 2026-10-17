@@ -33,3 +33,13 @@ A nova função `supabase/functions/exercise-video-search` é um piloto administ
 20 testes simulados passaram (incluindo seleção válida/null, IDs inventados, JSON inválido, resposta incompleta/recusa e erros do provedor). TypeScript do aplicativo aprovado. Os testes iniciais cobrem: ausência/invalidez de autenticação, usuário sem papel administrativo, parâmetros inválidos, corpo excessivo, chave ausente, limite atingido, erro de provedor sem vazamento e filtragem dos candidatos. Não comprovam Deno/Edge runtime, RLS real, sessão real, quota global ou conexão ao YouTube.
 
 Referências: https://supabase.com/docs/guides/functions/auth e https://supabase.com/docs/guides/functions/secrets.
+
+## Continuidade — painel autenticado e navegador
+
+Consulta agregada ao banco confirmou zero usuários Auth, zero perfis e zero administradores. É necessário cadastrar e identificar a conta responsável antes da homologação; nenhuma conta foi criada ou promovida automaticamente.
+
+Painel `SupabaseVideoPilot` preparado em `/conta-supabase`, visível somente para admin, usando a sessão Supabase existente. Descarte de resposta após mudança de sessão, bloqueio local de duplicação, validação do ID/URL e iframe somente após clique. Nenhuma chamada automática aos provedores.
+
+CORS por lista exata de origens HTTPS em `VIDEO_ALLOWED_ORIGINS` (separadas por vírgula), padrão somente `https://wellness-369-demo.ademariom07.chatgpt.site`. Isso não dispensa login ou autorização. Uma futura publicação da tela React em outra origem requer configurar sua origem exata. Não usar wildcard. Painel React somente na branch; a prévia estática continua demonstrativa.
+
+26 testes locais simulados e TypeScript aprovados. Nenhuma busca real autenticada foi executada. Limite por instância continua insuficiente para liberação geral.
