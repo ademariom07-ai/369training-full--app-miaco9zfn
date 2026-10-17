@@ -83,3 +83,30 @@ describe('Supabase video search administrative pilot', () => {
     expect(String(vi.mocked(deps.fetch).mock.calls[0][0])).not.toContain('test-key')
   })
 })
+
+describe('browser origin policy', () => {
+  it('allows only exact configured origins without exposing credentials', async () => {
+    const { deps } = setup()
+    deps.allowedOrigins = ['https://wellness.example']
+    const h = createHandler(deps)
+    const ok = await h(
+      new Request('https://function.example', {
+        method: 'OPTIONS',
+        headers: { origin: 'https://wellness.example' },
+      }),
+    )
+    expect(ok.status).toBe(204)
+    expect(ok.headers.get('Access-Control-Allow-Origin')).toBe('https://wellness.example')
+    expect(deps.authenticate).not.toHaveBeenCalled()
+    const bad = await h(
+      new Request('https://function.example', {
+        method: 'POST',
+        headers: { origin: 'https://evil.example' },
+        body: '{}',
+      }),
+    )
+    expect(bad.status).toBe(403)
+    expect(bad.headers.get('Access-Control-Allow-Origin')).toBeNull()
+    expect(deps.fetch).not.toHaveBeenCalled()
+  })
+})
