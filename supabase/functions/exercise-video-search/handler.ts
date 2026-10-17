@@ -1,6 +1,7 @@
 /** Administrative pilot. AI metadata selection does not certify video safety. */
 export type Candidate = { id: string; title: string; channel: string; url: string }
 export interface Dependencies {
+  allowedOrigins?: string[]
   authenticate: (token: string) => Promise<'admin' | 'user' | null>
   apiKey: () => string | undefined
   fetch: typeof fetch
@@ -9,11 +10,24 @@ export interface Dependencies {
 }
 export function createHandler(deps: Dependencies) {
   return async (req: Request): Promise<Response> => {
+    const origin = req.headers.get('origin')
+    const allowed = !!origin && (deps.allowedOrigins || []).includes(origin)
+    const cors: Record<string, string> = allowed
+      ? {
+          'Access-Control-Allow-Origin': origin!,
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
+          Vary: 'Origin',
+        }
+      : { Vary: 'Origin' }
     const reply = (status: number, body: unknown) =>
       Response.json(body, {
         status,
-        headers: { 'Cache-Control': 'no-store' },
+        headers: { 'Cache-Control': 'no-store', ...cors },
       })
+    if (origin && !allowed) return reply(403, { code: 'ORIGIN_NOT_ALLOWED' })
+    if (req.method === 'OPTIONS')
+      return new Response(null, { status: allowed ? 204 : 403, headers: cors })
     if (req.method !== 'POST') return reply(405, { code: 'METHOD_NOT_ALLOWED' })
     const bearer = /^Bearer (\S+)$/.exec(req.headers.get('authorization') || '')
     if (!bearer) return reply(401, { code: 'UNAUTHENTICATED' })
