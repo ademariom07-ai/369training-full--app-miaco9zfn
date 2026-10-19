@@ -45,6 +45,7 @@ import {
   Apple,
   Brain,
   Shield,
+  TrendingUp,
 } from 'lucide-react'
 import type {
   WorkoutRecord,
@@ -678,6 +679,11 @@ export default function MeuHistorico() {
           <Link to="/aluno/treino/execucao">
             <Button className="bg-[#0057FF] hover:bg-[#1e69ff] text-white font-extrabold text-xs uppercase px-4 py-2 rounded-xl shadow-md flex items-center gap-2">
               <Dumbbell className="w-4 h-4 text-[#D4AF37]" /> Executar Treino
+            </Button>
+          </Link>
+          <Link to="/aluno/evolucao">
+            <Button className="bg-[#181818] hover:bg-[#222222] border border-[#D4AF37]/50 text-[#D4AF37] hover:text-white font-extrabold text-xs uppercase px-4 py-2 rounded-xl shadow-md flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-[#D4AF37]" /> Gráfico de Evolução
             </Button>
           </Link>
           <Link to="/aluno/treino">

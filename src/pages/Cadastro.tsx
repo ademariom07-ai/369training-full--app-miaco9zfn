@@ -33,10 +33,67 @@ export default function Cadastro() {
   // Referral code from URL param ?ref= or typed
   const urlRef = searchParams.get('ref') || ''
   const [referralCodeInput, setReferralCodeInput] = useState(urlRef)
+  const [referralValidating, setReferralValidating] = useState(false)
   const [referralValidationMsg, setReferralValidationMsg] = useState<{
     text: string
     type: 'success' | 'warning' | 'idle'
   }>({ text: '', type: 'idle' })
+
+  // Validar código de indicação via endpoint público
+  React.useEffect(() => {
+    const cleanCode = referralCodeInput.trim().toUpperCase()
+    if (!cleanCode) {
+      setReferralValidationMsg({ text: '', type: 'idle' })
+      setReferralValidating(false)
+      return
+    }
+
+    if (cleanCode.length < 3) {
+      setReferralValidationMsg({
+        text: 'Código muito curto (mínimo 3 caracteres).',
+        type: 'warning',
+      })
+      setReferralValidating(false)
+      return
+    }
+
+    let isMounted = true
+    setReferralValidating(true)
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await pb.send<{ valid: boolean; message?: string }>(
+          `/backend/v1/referrals/validate?code=${encodeURIComponent(cleanCode)}`,
+          { method: 'GET' },
+        )
+        if (!isMounted) return
+        if (res && res.valid) {
+          setReferralValidationMsg({
+            text: res.message || 'Código de indicação válido e ativo!',
+            type: 'success',
+          })
+        } else {
+          setReferralValidationMsg({
+            text: res?.message || `Código "${cleanCode}" não foi localizado ou é inválido.`,
+            type: 'warning',
+          })
+        }
+      } catch (err: any) {
+        if (!isMounted) return
+        setReferralValidationMsg({
+          text: 'Não foi possível validar o código no momento.',
+          type: 'warning',
+        })
+      } finally {
+        if (isMounted) setReferralValidating(false)
+      }
+    }, 450)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
+  }, [referralCodeInput])
 
   // Common Fields
   const [name, setName] = useState('')
@@ -280,20 +337,23 @@ export default function Cadastro() {
         payload.sub_specialties = subSpecialties
       }
 
-      // Validar código de indicação antes de criar o usuário e o vínculo
-      let referrerUser: any = null
+      // Validar código de indicação via endpoint público antes de prosseguir
       const cleanRefInput = referralCodeInput.trim().toUpperCase()
-      if (cleanRefInput) {
+      let isReferralValid = false
+      if (cleanRefInput && cleanRefInput.length >= 3) {
         try {
-          const found = await pb
-            .collection('users')
-            .getFirstListItem(`referral_code = "${cleanRefInput}"`)
-          referrerUser = found
-        } catch (_) {
-          // Código não encontrado - permitir continuar conforme spec, apenas alertar
-          toast.warning(
-            `Código de indicação "${cleanRefInput}" não foi localizado. O cadastro continuará normalmente.`,
+          const valRes = await pb.send<{ valid: boolean; message?: string }>(
+            `/backend/v1/referrals/validate?code=${encodeURIComponent(cleanRefInput)}`,
+            { method: 'GET' },
           )
+          isReferralValid = !!valRes?.valid
+          if (!isReferralValid) {
+            toast.warning(
+              `Código de indicação "${cleanRefInput}" não foi localizado. O cadastro continuará sem vínculo.`,
+            )
+          }
+        } catch (_) {
+          // Se falhar o endpoint, continua cadastro normalmente sem travar
         }
       }
 
@@ -425,19 +485,28 @@ export default function Cadastro() {
         }
       }
 
-      // Se código de indicação existir e for válido, criar vínculo na tabela referrals
-      if (referrerUser && createdUser?.id) {
+      // Se código de indicação existir e for válido, criar vínculo via endpoint público (/backend/v1/referrals/attach)
+      if (cleanRefInput && isReferralValid && createdUser?.id) {
         try {
-          await pb.collection('referrals').create({
-            referrer: referrerUser.id,
-            referred: createdUser.id,
-            code: cleanRefInput,
-            level: 1,
-            status: 'pending',
-            services_count: 0,
-            referral_bonus_paid: false,
-          })
-        } catch (_) {
+          // Garantir autenticação antes de anexar o vínculo
+          if (!pb.authStore.isValid) {
+            try {
+              await pb.collection('users').authWithPassword(email.trim().toLowerCase(), password)
+            } catch {
+              /* intentionally ignored */
+            }
+          }
+
+          if (pb.authStore.isValid) {
+            await pb.send('/backend/v1/referrals/attach', {
+              method: 'POST',
+              body: {
+                code: cleanRefInput,
+              },
+            })
+          }
+        } catch (attachErr: any) {
+          console.warn('Aviso: vínculo de indicação não pôde ser gravado:', attachErr)
           /* Ignora erro no vínculo secundário para não travar o cadastro */
         }
       }
@@ -826,7 +895,7 @@ export default function Cadastro() {
                   </div>
                 </div>
 
-                {/* RECURSO 1: Campo Código de Indicação */}
+                {/* RECURSO 1: Campo Código de Indicação com validação pública */}
                 <div className="p-3.5 rounded-xl bg-[#F7F5F0] border border-[#E4E2DC] space-y-1.5">
                   <div className="flex justify-between items-center">
                     <label className="block text-xs font-semibold text-[#374151] uppercase tracking-wider font-montserrat">
@@ -839,16 +908,38 @@ export default function Cadastro() {
                       </span>
                     )}
                   </div>
-                  <Input
-                    value={referralCodeInput}
-                    onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
-                    placeholder="Ex: SILV369"
-                    className="bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] font-mono uppercase tracking-wider text-xs focus-visible:ring-[#D4AF37]"
-                  />
-                  <p className="text-[11px] text-[#6B7280] font-inter">
-                    Se você foi indicado por um amigo ou profissional, insira o código para vincular
-                    benefícios e bônus de rede.
-                  </p>
+                  <div className="relative">
+                    <Input
+                      value={referralCodeInput}
+                      onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                      placeholder="Ex: SILV369"
+                      className="bg-white border-[#E4E2DC] rounded-xl text-[#1A1A1A] font-mono uppercase tracking-wider text-xs focus-visible:ring-[#D4AF37] pr-8"
+                    />
+                    {referralValidating && (
+                      <Loader2 className="w-4 h-4 text-[#B8962E] animate-spin absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    )}
+                  </div>
+
+                  {referralValidationMsg.type === 'success' && (
+                    <p className="text-[11px] text-emerald-700 font-semibold font-inter flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      {referralValidationMsg.text}
+                    </p>
+                  )}
+
+                  {referralValidationMsg.type === 'warning' && (
+                    <p className="text-[11px] text-amber-700 font-inter flex items-center gap-1.5">
+                      <span className="text-amber-600 font-bold">⚠️</span>
+                      {referralValidationMsg.text}
+                    </p>
+                  )}
+
+                  {referralValidationMsg.type === 'idle' && (
+                    <p className="text-[11px] text-[#6B7280] font-inter">
+                      Se você foi indicado por um amigo ou profissional, insira o código para
+                      vincular benefícios e bônus de rede.
+                    </p>
+                  )}
                 </div>
 
                 {/* ALUNO SPECIFIC: Objetivo */}
