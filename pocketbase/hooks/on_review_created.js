@@ -1,11 +1,6 @@
-// Hook triggered whenever a service review is submitted
-// Regras de Produto:
-// 1. Quando uma avaliação mútua é criada (service_reviews):
-//    - O serviço correspondente tem o estado de validação atualizado:
-//      * 1ª avaliação recebida: valida o serviço (validated = true, validation_status = 'validada', validated_at = now)
-//      * Se já houver 2 avaliações (profissional e aluno): validation_status = 'totalmente_validada'
-//    - Atualiza rating_avg do usuário avaliado (reviewee)
-//    - Dispara recálculo instantâneo do ranking (já que a aula agora está validada para efeito de coeficiente de pontuação!)
+// Service eligibility requires reciprocal reviews by the actual participants.
+// One review, duplicate authors or unrelated reviewers never validate the service.
+// This validation does not confirm payment or authorize a financial credit.
 
 onRecordAfterCreateSuccess((e) => {
   const review = e.record
@@ -20,31 +15,45 @@ onRecordAfterCreateSuccess((e) => {
   try {
     const service = $app.findRecordById('services', serviceId)
     if (service) {
-      // Contar avaliações deste serviço
-      const allReviewsForService = $app.findRecordsByFilter(
-        'service_reviews',
-        `service = '${serviceId}'`,
-        '-created',
-        10,
-        0,
-      )
-
-      const reviewCount = allReviewsForService.length
-      service.set('validated', true)
-      if (!service.get('validated_at')) {
-        service.set('validated_at', new Date().toISOString().replace('T', ' '))
+      const studentId = service.get('student')
+      const professionalId = service.get('professional')
+      let studentReviewed = false
+      let professionalReviewed = false
+      if (studentId && professionalId && studentId !== professionalId) {
+        const pageSize = 500
+        for (let offset = 0; ; offset += pageSize) {
+          const reviews = $app.findRecordsByFilter(
+            'service_reviews',
+            `service = '${serviceId}'`,
+            'created,id',
+            pageSize,
+            offset,
+          )
+          for (const candidate of reviews) {
+            const score = candidate.get('rating')
+            if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > 5) continue
+            const author = candidate.get('reviewer')
+            const target = candidate.get('reviewee')
+            if (author === studentId && target === professionalId) studentReviewed = true
+            if (author === professionalId && target === studentId) professionalReviewed = true
+          }
+          if ((studentReviewed && professionalReviewed) || reviews.length < pageSize) break
+        }
       }
-
-      if (reviewCount >= 2) {
-        service.set('validation_status', 'totalmente_validada')
+      const mutuallyReviewed = studentReviewed && professionalReviewed
+      service.set('validated', mutuallyReviewed)
+      service.set('validation_status', mutuallyReviewed ? 'totalmente_validada' : 'validada')
+      if (mutuallyReviewed) {
+        if (!service.get('validated_at')) service.set('validated_at', new Date().toISOString().replace('T', ' '))
       } else {
-        service.set('validation_status', 'validada')
+        service.set('validated_at', '')
       }
 
       $app.save(service)
     }
   } catch (errService) {
     console.error('Erro ao atualizar validação do serviço pós-avaliação:', errService)
+    return // Never recalculate from a validation update that failed.
   }
 
   // 2. Atualizar rating_avg do reviewee
