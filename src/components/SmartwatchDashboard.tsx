@@ -322,33 +322,31 @@ export const SmartwatchDashboard: React.FC<SmartwatchDashboardProps> = ({ userRo
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30 text-[10px] font-montserrat uppercase font-bold">
-                    Integração Preparada — Em Breve Ativação Oficial
+                    Integração Futura — Conexões de Smartwatch Desabilitadas
                   </Badge>
                 </div>
                 <h3 className="text-lg font-bold font-montserrat text-white">
-                  Estrutura Pronta para Sincronização em Tempo Real
+                  Monitoramento & Biometria Inteligente
                 </h3>
                 <p className="text-xs text-gray-300 font-inter max-w-2xl leading-relaxed">
-                  Toda a arquitetura de conexão, processamento de métricas (passos, batimentos,
-                  sono, calorias e treinos) e webhooks está finalizada. A ativação dos relógios
-                  entrará em vigor instantaneamente assim que as credenciais do agregador (Terra ou
-                  Spike API) forem registradas no painel.
+                  O painel de métricas biométricas e monitoramento está pronto no ecossistema
+                  369WELLNESS. Conforme diretriz da plataforma, a integração direta via APIs
+                  externas de relógios encontra-se desabilitada temporariamente, preservando a
+                  estabilidade e a entrada de dados guiada pelos especialistas.
                 </p>
               </div>
             </div>
 
             <div className="shrink-0 w-full md:w-auto">
-              <div className="p-3 rounded-2xl bg-[#111111] border border-[#2A2A2A] text-left text-[11px] font-mono space-y-1">
-                <div className="text-gray-400 font-bold uppercase text-[10px]">
-                  Configuração Backend:
+              <div className="p-3.5 rounded-2xl bg-[#111111] border border-[#2A2A2A] text-left text-[11px] space-y-1">
+                <div className="text-[#D4AF37] font-bold font-montserrat uppercase text-[10px] flex items-center gap-1.5">
+                  <Lock className="w-3 h-3" /> Status do Módulo
                 </div>
-                <div className="text-gray-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                  Segredo: <code className="text-[#D4AF37]">TERRA_API_KEY</code>
+                <div className="text-gray-300 text-xs font-inter">
+                  Conexões de API desabilitadas
                 </div>
-                <div className="text-gray-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                  Webhook: <code className="text-[#0057FF]">/backend/v1/wearables/webhook</code>
+                <div className="text-gray-400 text-[10px] font-inter">
+                  Área em modo demonstrativo / placeholder oficial
                 </div>
               </div>
             </div>
@@ -519,16 +517,16 @@ export const SmartwatchDashboard: React.FC<SmartwatchDashboardProps> = ({ userRo
                 <div className="pt-2 border-t border-[#2A2A2A]">
                   <Button
                     onClick={() => handleConnect(device.id)}
-                    disabled={connecting}
+                    disabled={true}
                     size="sm"
                     className={`w-full text-xs font-bold font-montserrat uppercase rounded-xl transition-all ${
                       isConnected
-                        ? 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/40 hover:bg-[#22C55E]/30'
-                        : 'bg-[#1e1e1e] hover:bg-[#D4AF37] hover:text-black text-white border border-[#333]'
+                        ? 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/40 opacity-70 cursor-not-allowed'
+                        : 'bg-[#181818] text-gray-400 border border-[#2A2A2A] opacity-70 cursor-not-allowed'
                     }`}
                   >
-                    {isConnected ? 'Sincronizado' : 'Conectar Relógio'}
-                  </Button>
+                    {isConnected ? 'Sincronizado' : 'Conexão Desabilitada • Em Breve'}
+                  </Button>{' '}
                 </div>
               </Card>
             )

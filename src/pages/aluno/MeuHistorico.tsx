@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
@@ -40,6 +40,11 @@ import {
   Award,
   Star,
   Plus,
+  Play,
+  RotateCcw,
+  Apple,
+  Brain,
+  Shield,
 } from 'lucide-react'
 import type {
   WorkoutRecord,
@@ -49,6 +54,7 @@ import type {
   ClinicalSessionLogRecord,
   MartialArtsProgressRecord,
   ProtocolRecord,
+  DietRecord,
 } from '@/services/api'
 import type { ContentItem } from '@/pages/profissional/ProfissionalConteudos'
 import ReviewModal from '@/components/ReviewModal'
@@ -83,18 +89,26 @@ interface ProfessionalOption {
 export default function MeuHistorico() {
   const { user } = useAuth()
 
+  const navigate = useNavigate()
+
   // Tabs de navegação interna do Meu Histórico
   const [activeTab, setActiveTab] = useState<
     'todos' | 'ia' | 'profissionais' | 'fichas' | 'compras'
   >('todos')
 
+  // Filtro por Categoria das 5 Especialidades
+  const [selectedSpecialtyFilter, setSelectedSpecialtyFilter] = useState<
+    'todas' | 'educacao_fisica' | 'nutricao' | 'fisioterapia' | 'psicologia' | 'artes_marciais'
+  >('todas')
+
   // Loading state
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  // Dados das 4 categorias
+  // Dados das categorias
   const [iaWorkouts, setIaWorkouts] = useState<WorkoutRecord[]>([])
   const [profWorkouts, setProfWorkouts] = useState<WorkoutRecord[]>([])
+  const [diets, setDiets] = useState<DietRecord[]>([])
   const [profServices, setProfServices] = useState<ServiceRecord[]>([])
   const [clinicalRecords, setClinicalRecords] = useState<ClinicalRecordModel[]>([])
   const [sessionLogs, setSessionLogs] = useState<ClinicalSessionLogRecord[]>([])
@@ -111,6 +125,7 @@ export default function MeuHistorico() {
 
   // Modal para detalhe de treino ou ficha
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutRecord | null>(null)
+  const [selectedDiet, setSelectedDiet] = useState<DietRecord | null>(null)
   const [selectedMartialArts, setSelectedMartialArts] = useState<MartialArtsProgressRecord | null>(
     null,
   )
@@ -159,7 +174,17 @@ export default function MeuHistorico() {
         })
         .catch(() => [] as WorkoutRecord[])
 
-      // 2b. Serviços concluídos do aluno (coleção services)
+      // 2b. Dietas / Nutrição do aluno
+      const dietsPromise = pb
+        .collection('diets')
+        .getFullList<DietRecord>({
+          filter: `student = "${user.id}"`,
+          sort: '-created',
+          expand: 'professional',
+        })
+        .catch(() => [] as DietRecord[])
+
+      // 2c. Serviços concluídos do aluno (coleção services)
       const profServicesPromise = pb
         .collection('services')
         .getFullList<ServiceRecord>({
@@ -223,6 +248,7 @@ export default function MeuHistorico() {
       const [
         resIaWorkouts,
         resProfWorkouts,
+        resDiets,
         resProfServices,
         resClinical,
         resSessionLogs,
@@ -232,6 +258,7 @@ export default function MeuHistorico() {
       ] = await Promise.all([
         iaWorkoutsPromise,
         profWorkoutsPromise,
+        dietsPromise,
         profServicesPromise,
         clinicalPromise,
         sessionLogsPromise,
@@ -252,6 +279,7 @@ export default function MeuHistorico() {
 
       setIaWorkouts(dedupeById(resIaWorkouts))
       setProfWorkouts(dedupeById(resProfWorkouts))
+      setDiets(dedupeById(resDiets))
       setProfServices(dedupeById(resProfServices))
       setClinicalRecords(dedupeById(resClinical))
       setSessionLogs(dedupeById(resSessionLogs))
@@ -310,6 +338,7 @@ export default function MeuHistorico() {
     }
 
     profWorkouts.forEach((w) => checkAndAdd(w.professional, w.expand?.professional?.name))
+    diets.forEach((d) => checkAndAdd(d.professional, (d.expand?.professional as any)?.name))
     profServices.forEach((s) => checkAndAdd(s.professional, s.expand?.professional?.name))
     clinicalRecords.forEach((c) =>
       checkAndAdd(c.professional, (c.expand?.professional as any)?.name),
@@ -333,6 +362,7 @@ export default function MeuHistorico() {
     return list.sort((a, b) => a.name.localeCompare(b.name))
   }, [
     profWorkouts,
+    diets,
     profServices,
     clinicalRecords,
     sessionLogs,
@@ -365,8 +395,49 @@ export default function MeuHistorico() {
     return text.toLowerCase().includes(searchTerm.toLowerCase().trim())
   }
 
-  // 1. Filtragem Treinos IA
+  // Determina a especialidade de um serviço (services)
+  const getServiceSpecialty = (
+    svc: ServiceRecord,
+  ): 'educacao_fisica' | 'nutricao' | 'fisioterapia' | 'psicologia' | 'artes_marciais' => {
+    const type = (svc.type || '').toLowerCase()
+    const title = (svc.title || '').toLowerCase()
+    const notes = (svc.notes || '').toLowerCase()
+    const combo = `${type} ${title} ${notes}`
+
+    if (combo.includes('nutri') || combo.includes('dieta') || combo.includes('aliment'))
+      return 'nutricao'
+    if (
+      combo.includes('fisio') ||
+      combo.includes('reabilita') ||
+      combo.includes('lesao') ||
+      combo.includes('osteopatia')
+    )
+      return 'fisioterapia'
+    if (
+      combo.includes('psico') ||
+      combo.includes('mente') ||
+      combo.includes('mindset') ||
+      combo.includes('terapia')
+    )
+      return 'psicologia'
+    if (
+      combo.includes('artes_marciais') ||
+      combo.includes('luta') ||
+      combo.includes('jiu') ||
+      combo.includes('muay') ||
+      combo.includes('boxe') ||
+      combo.includes('karate') ||
+      combo.includes('judo')
+    )
+      return 'artes_marciais'
+    return 'educacao_fisica'
+  }
+
+  // 1. Filtragem Treinos IA (sempre Educação Física)
   const filteredIaWorkouts = useMemo(() => {
+    if (selectedSpecialtyFilter !== 'todas' && selectedSpecialtyFilter !== 'educacao_fisica') {
+      return []
+    }
     return iaWorkouts.filter((w) => {
       if (!matchesPeriod(w.created)) return false
       // IA não tem profissional, portanto se o filtro de profissional estiver ativo em um prof específico, não exibe
@@ -374,21 +445,13 @@ export default function MeuHistorico() {
       const textToSearch = `${w.title || ''} ${w.objective || ''} ${JSON.stringify(w.exercises || '')}`
       return matchesSearch(textToSearch)
     })
-  }, [iaWorkouts, selectedProfId, periodoFilter, searchTerm])
+  }, [iaWorkouts, selectedProfId, periodoFilter, searchTerm, selectedSpecialtyFilter])
 
-  // 2. Filtragem Treinos & Serviços Ministrados por Profissionais (agrupados por profissional)
-  const filteredProfServices = useMemo(() => {
-    return profServices.filter((s) => {
-      const dateToCheck = s.completed_at || s.created
-      if (!matchesPeriod(dateToCheck)) return false
-      if (selectedProfId !== 'todos' && s.professional !== selectedProfId) return false
-      const profName = s.expand?.professional?.name || ''
-      const textToSearch = `${s.title || ''} ${s.type || ''} ${s.notes || ''} ${profName}`
-      return matchesSearch(textToSearch)
-    })
-  }, [profServices, selectedProfId, periodoFilter, searchTerm])
-
+  // 2. Filtragem Treinos de Profissionais (Educação Física)
   const filteredProfWorkouts = useMemo(() => {
+    if (selectedSpecialtyFilter !== 'todas' && selectedSpecialtyFilter !== 'educacao_fisica') {
+      return []
+    }
     return profWorkouts.filter((w) => {
       if (!matchesPeriod(w.created)) return false
       if (selectedProfId !== 'todos' && w.professional !== selectedProfId) return false
@@ -396,7 +459,37 @@ export default function MeuHistorico() {
       const textToSearch = `${w.title || ''} ${w.objective || ''} ${profName}`
       return matchesSearch(textToSearch)
     })
-  }, [profWorkouts, selectedProfId, periodoFilter, searchTerm])
+  }, [profWorkouts, selectedProfId, periodoFilter, searchTerm, selectedSpecialtyFilter])
+
+  // 2b. Filtragem Dietas (Nutrição)
+  const filteredDiets = useMemo(() => {
+    if (selectedSpecialtyFilter !== 'todas' && selectedSpecialtyFilter !== 'nutricao') {
+      return []
+    }
+    return diets.filter((d) => {
+      if (!matchesPeriod(d.created)) return false
+      if (selectedProfId !== 'todos' && d.professional !== selectedProfId) return false
+      const profName = (d.expand?.professional as any)?.name || ''
+      const textToSearch = `${d.title || ''} ${profName}`
+      return matchesSearch(textToSearch)
+    })
+  }, [diets, selectedProfId, periodoFilter, searchTerm, selectedSpecialtyFilter])
+
+  // 2c. Filtragem Serviços de Profissionais (classificados por especialidade)
+  const filteredProfServices = useMemo(() => {
+    return profServices.filter((s) => {
+      if (selectedSpecialtyFilter !== 'todas') {
+        const spec = getServiceSpecialty(s)
+        if (spec !== selectedSpecialtyFilter) return false
+      }
+      const dateToCheck = s.completed_at || s.created
+      if (!matchesPeriod(dateToCheck)) return false
+      if (selectedProfId !== 'todos' && s.professional !== selectedProfId) return false
+      const profName = s.expand?.professional?.name || ''
+      const textToSearch = `${s.title || ''} ${s.type || ''} ${s.notes || ''} ${profName}`
+      return matchesSearch(textToSearch)
+    })
+  }, [profServices, selectedProfId, periodoFilter, searchTerm, selectedSpecialtyFilter])
 
   // Agrupamento dos itens de profissionais por profissional
   const groupedProfessionalActivities = useMemo(() => {
@@ -406,6 +499,7 @@ export default function MeuHistorico() {
         profId: string
         profName: string
         workouts: WorkoutRecord[]
+        diets: DietRecord[]
         services: ServiceRecord[]
       }
     > = {}
@@ -414,30 +508,46 @@ export default function MeuHistorico() {
       const pid = w.professional || 'sem_id'
       const pname = w.expand?.professional?.name || 'Profissional Credenciado'
       if (!groups[pid]) {
-        groups[pid] = { profId: pid, profName: pname, workouts: [], services: [] }
+        groups[pid] = { profId: pid, profName: pname, workouts: [], diets: [], services: [] }
       }
       groups[pid].workouts.push(w)
+    })
+
+    filteredDiets.forEach((d) => {
+      const pid = d.professional || 'sem_id'
+      const pname = (d.expand?.professional as any)?.name || 'Nutricionista Credenciado'
+      if (!groups[pid]) {
+        groups[pid] = { profId: pid, profName: pname, workouts: [], diets: [], services: [] }
+      }
+      groups[pid].diets.push(d)
     })
 
     filteredProfServices.forEach((s) => {
       const pid = s.professional || 'sem_id'
       const pname = s.expand?.professional?.name || 'Profissional Credenciado'
       if (!groups[pid]) {
-        groups[pid] = { profId: pid, profName: pname, workouts: [], services: [] }
+        groups[pid] = { profId: pid, profName: pname, workouts: [], diets: [], services: [] }
       }
       groups[pid].services.push(s)
     })
 
     return Object.values(groups)
-  }, [filteredProfWorkouts, filteredProfServices])
+  }, [filteredProfWorkouts, filteredDiets, filteredProfServices])
 
-  // 3. Filtragem Fichas de Acompanhamento (respeitando sigilo estrito)
-  // - clinical_session_logs para Psicologia e Fisioterapia (exibição apenas: "Sessão realizada em {data} com {profissional}")
-  // - clinicalRecords para Educacao Fisica e Geral (com detalhes)
-  // - martialArtsProgress (com detalhes de graduação e técnicas)
-  // - protocols (com detalhes de reabilitação/passos)
+  // 3. Filtragem Fichas de Acompanhamento (respeitando sigilo estrito e especialidades)
+  // - clinical_session_logs para Psicologia e Fisioterapia
+  // - clinicalRecords para Educacao Fisica e Geral
+  // - martialArtsProgress (Artes Marciais)
+  // - protocols (Fisioterapia / Reabilitação)
   const filteredSessionLogs = useMemo(() => {
     return sessionLogs.filter((l) => {
+      const cat = (l.category || '').toLowerCase()
+      if (selectedSpecialtyFilter !== 'todas') {
+        if (selectedSpecialtyFilter === 'psicologia' && cat !== 'psicologia') return false
+        if (selectedSpecialtyFilter === 'fisioterapia' && cat !== 'fisioterapia') return false
+        if (selectedSpecialtyFilter !== 'psicologia' && selectedSpecialtyFilter !== 'fisioterapia')
+          return false
+      }
       const date = l.session_date || l.created
       if (!matchesPeriod(date)) return false
       if (selectedProfId !== 'todos' && l.professional !== selectedProfId) return false
@@ -445,12 +555,15 @@ export default function MeuHistorico() {
       const text = `${l.category} ${l.public_status || ''} ${profName}`
       return matchesSearch(text)
     })
-  }, [sessionLogs, selectedProfId, periodoFilter, searchTerm])
+  }, [sessionLogs, selectedProfId, periodoFilter, searchTerm, selectedSpecialtyFilter])
 
   const filteredClinicalRecords = useMemo(() => {
     return clinicalRecords.filter((c) => {
       // Dupla garantia no client para reforçar o sigilo caso algo vazasse
       if (c.category === 'psicologia' || c.category === 'fisioterapia') {
+        return false
+      }
+      if (selectedSpecialtyFilter !== 'todas' && selectedSpecialtyFilter !== 'educacao_fisica') {
         return false
       }
       if (!matchesPeriod(c.created)) return false
@@ -459,9 +572,12 @@ export default function MeuHistorico() {
       const text = `${c.title} ${c.category} ${c.summary || ''} ${profName}`
       return matchesSearch(text)
     })
-  }, [clinicalRecords, selectedProfId, periodoFilter, searchTerm])
+  }, [clinicalRecords, selectedProfId, periodoFilter, searchTerm, selectedSpecialtyFilter])
 
   const filteredMartialArts = useMemo(() => {
+    if (selectedSpecialtyFilter !== 'todas' && selectedSpecialtyFilter !== 'artes_marciais') {
+      return []
+    }
     return martialArtsProgress.filter((m) => {
       if (!matchesPeriod(m.created)) return false
       if (selectedProfId !== 'todos' && m.professional !== selectedProfId) return false
@@ -469,9 +585,12 @@ export default function MeuHistorico() {
       const text = `${m.modality} ${m.current_belt} ${m.next_belt || ''} ${profName}`
       return matchesSearch(text)
     })
-  }, [martialArtsProgress, selectedProfId, periodoFilter, searchTerm])
+  }, [martialArtsProgress, selectedProfId, periodoFilter, searchTerm, selectedSpecialtyFilter])
 
   const filteredProtocols = useMemo(() => {
+    if (selectedSpecialtyFilter !== 'todas' && selectedSpecialtyFilter !== 'fisioterapia') {
+      return []
+    }
     return protocols.filter((p) => {
       if (!matchesPeriod(p.created)) return false
       if (selectedProfId !== 'todos' && p.professional !== selectedProfId) return false
@@ -479,7 +598,7 @@ export default function MeuHistorico() {
       const text = `${p.title} ${profName}`
       return matchesSearch(text)
     })
-  }, [protocols, selectedProfId, periodoFilter, searchTerm])
+  }, [protocols, selectedProfId, periodoFilter, searchTerm, selectedSpecialtyFilter])
 
   // 4. Filtragem Conteúdos Comprados
   const filteredPurchases = useMemo(() => {
@@ -496,7 +615,8 @@ export default function MeuHistorico() {
 
   // Contadores para os badges das abas
   const totalIa = filteredIaWorkouts.length
-  const totalProfAtiv = filteredProfWorkouts.length + filteredProfServices.length
+  const totalProfAtiv =
+    filteredProfWorkouts.length + filteredDiets.length + filteredProfServices.length
   const totalFichas =
     filteredSessionLogs.length +
     filteredClinicalRecords.length +
@@ -596,6 +716,92 @@ export default function MeuHistorico() {
               <option value="90dias">Últimos 90 dias</option>
               <option value="este_ano">Ano Atual</option>
             </select>
+          </div>
+        </div>
+
+        {/* FILTRO DAS 5 ESPECIALIDADES */}
+        <div className="space-y-2 pt-2 border-t border-[#2A2A2A]">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold font-montserrat uppercase text-gray-400 flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-[#D4AF37]" /> Filtrar por Especialidade:
+            </span>
+            {selectedSpecialtyFilter !== 'todas' && (
+              <button
+                type="button"
+                onClick={() => setSelectedSpecialtyFilter('todas')}
+                className="text-[11px] text-[#D4AF37] hover:underline font-montserrat"
+              >
+                Limpar especialidade
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedSpecialtyFilter('todas')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-montserrat uppercase transition-all ${
+                selectedSpecialtyFilter === 'todas'
+                  ? 'bg-white text-black shadow-md'
+                  : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
+              }`}
+            >
+              Todas Especialidades
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSpecialtyFilter('educacao_fisica')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-montserrat uppercase transition-all flex items-center gap-1.5 ${
+                selectedSpecialtyFilter === 'educacao_fisica'
+                  ? 'bg-[#0057FF] text-white shadow-md'
+                  : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
+              }`}
+            >
+              <Dumbbell className="w-3.5 h-3.5" /> Educação Física
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSpecialtyFilter('nutricao')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-montserrat uppercase transition-all flex items-center gap-1.5 ${
+                selectedSpecialtyFilter === 'nutricao'
+                  ? 'bg-[#22C55E] text-black shadow-md'
+                  : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
+              }`}
+            >
+              <Apple className="w-3.5 h-3.5" /> Nutrição
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSpecialtyFilter('fisioterapia')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-montserrat uppercase transition-all flex items-center gap-1.5 ${
+                selectedSpecialtyFilter === 'fisioterapia'
+                  ? 'bg-amber-500 text-black shadow-md'
+                  : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" /> Fisioterapia
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSpecialtyFilter('psicologia')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-montserrat uppercase transition-all flex items-center gap-1.5 ${
+                selectedSpecialtyFilter === 'psicologia'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5" /> Psicologia
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSpecialtyFilter('artes_marciais')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-montserrat uppercase transition-all flex items-center gap-1.5 ${
+                selectedSpecialtyFilter === 'artes_marciais'
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" /> Artes Marciais
+            </button>
           </div>
         </div>
 
@@ -788,14 +994,30 @@ export default function MeuHistorico() {
                             {isConcluido ? 'Concluído' : workout.status || 'Ativo'}
                           </span>
 
-                          <Button
-                            onClick={() => setSelectedWorkout(workout)}
-                            size="sm"
-                            variant="outline"
-                            className="border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs font-bold uppercase rounded-xl h-8 px-3 flex items-center gap-1.5"
-                          >
-                            <Eye className="w-3.5 h-3.5" /> Ver Ficha
-                          </Button>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              onClick={() => {
+                                if (workout.id) {
+                                  navigate(`/aluno/treino/execucao/${workout.id}`)
+                                } else {
+                                  navigate('/aluno/executar-treino')
+                                }
+                              }}
+                              size="sm"
+                              className="bg-[#0057FF] hover:bg-[#1a66ff] text-white text-xs font-bold uppercase rounded-xl h-8 px-2.5 flex items-center gap-1 shadow-sm"
+                              title="Reexecutar Treino"
+                            >
+                              <RotateCcw className="w-3 h-3" /> Reexecutar
+                            </Button>
+                            <Button
+                              onClick={() => setSelectedWorkout(workout)}
+                              size="sm"
+                              variant="outline"
+                              className="border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs font-bold uppercase rounded-xl h-8 px-2.5 flex items-center gap-1"
+                            >
+                              <Eye className="w-3 h-3" /> Ver Ficha
+                            </Button>
+                          </div>
                         </div>
                       </Card>
                     )
@@ -876,7 +1098,6 @@ export default function MeuHistorico() {
                           </Button>
                         </Link>
                       </div>
-
                       {/* Lista de Serviços Concluídos com este Profissional */}
                       {group.services.length > 0 && (
                         <div className="space-y-2">
@@ -1028,12 +1249,48 @@ export default function MeuHistorico() {
                           </div>
                         </div>
                       )}
-
+                      {/* Lista de Dietas Prescritas por este Profissional */}
+                      {group.diets && group.diets.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <h4 className="text-xs font-bold font-montserrat uppercase text-gray-400 tracking-wider flex items-center gap-1.5">
+                            <Apple className="w-3.5 h-3.5 text-[#22C55E]" /> Dietas & Protocolos
+                            Nutricionais
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {group.diets.map((d, dIdx) => (
+                              <div
+                                key={d.id ? `prof-diet-${d.id}` : `prof-diet-idx-${dIdx}`}
+                                className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-between gap-2"
+                              >
+                                <div>
+                                  <p className="text-xs font-bold text-white font-montserrat">
+                                    {d.title}
+                                  </p>
+                                  <p className="text-[11px] text-gray-400 font-inter">
+                                    {Array.isArray(d.meals) ? d.meals.length : 0} refeições
+                                    {d.calories ? ` • ${d.calories} kcal` : ''} • Prescrito em{' '}
+                                    {new Date(d.created).toLocaleDateString('pt-BR')}
+                                  </p>
+                                </div>
+                                <Button
+                                  onClick={() => setSelectedDiet(d)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-[#22C55E]/40 text-[#22C55E] hover:bg-[#22C55E]/10 text-xs font-bold uppercase rounded-xl h-8 px-3 shrink-0"
+                                >
+                                  Ver Dieta
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {/* Lista de Fichas de Treino Prescritas por este Profissional */}
                       {group.workouts.length > 0 && (
                         <div className="space-y-2 pt-2">
-                          <h4 className="text-xs font-bold font-montserrat uppercase text-gray-400 tracking-wider">
-                            Fichas de Treino Prescritas
+                          <h4 className="text-xs font-bold font-montserrat uppercase text-gray-400 tracking-wider flex items-center gap-1.5">
+                            <Dumbbell className="w-3.5 h-3.5 text-[#0057FF]" /> Fichas de Treino
+                            Prescritas
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {group.workouts.map((w, wIdx) => (
@@ -1050,19 +1307,35 @@ export default function MeuHistorico() {
                                     • Prescrito em {new Date(w.created).toLocaleDateString('pt-BR')}
                                   </p>
                                 </div>
-                                <Button
-                                  onClick={() => setSelectedWorkout(w)}
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs font-bold uppercase rounded-xl h-8 px-3 shrink-0"
-                                >
-                                  Ver Treino
-                                </Button>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Button
+                                    onClick={() => {
+                                      if (w.id) {
+                                        navigate(`/aluno/treino/execucao/${w.id}`)
+                                      } else {
+                                        navigate('/aluno/executar-treino')
+                                      }
+                                    }}
+                                    size="sm"
+                                    className="bg-[#0057FF] hover:bg-[#1a66ff] text-white text-xs font-bold uppercase rounded-xl h-8 px-2.5 flex items-center gap-1 shadow-sm"
+                                    title="Reexecutar Treino"
+                                  >
+                                    <RotateCcw className="w-3 h-3" /> Reexecutar
+                                  </Button>
+                                  <Button
+                                    onClick={() => setSelectedWorkout(w)}
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs font-bold uppercase rounded-xl h-8 px-2.5"
+                                  >
+                                    Ver
+                                  </Button>
+                                </div>
                               </div>
                             ))}
                           </div>
                         </div>
-                      )}
+                      )}{' '}
                     </Card>
                   ))}
                 </div>
@@ -1486,6 +1759,104 @@ export default function MeuHistorico() {
         />
       )}
 
+      {/* Modal 1b: Detalhe de Dieta / Protocolo Nutricional */}
+      <Dialog open={!!selectedDiet} onOpenChange={() => setSelectedDiet(null)}>
+        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-2xl rounded-2xl p-6 max-h-[85vh] overflow-y-auto">
+          {selectedDiet && (
+            <div className="space-y-4">
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 flex items-center gap-1">
+                    <Apple className="w-3 h-3" /> Plano Nutricional
+                  </span>
+                  <span className="text-xs text-gray-400 font-mono">
+                    {new Date(selectedDiet.created).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                <DialogTitle className="text-xl font-bold font-montserrat text-white mt-1">
+                  {selectedDiet.title}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-gray-400 font-inter">
+                  Prescrito por:{' '}
+                  <strong className="text-gray-200">
+                    {(selectedDiet.expand?.professional as any)?.name ||
+                      'Nutricionista Credenciado'}
+                  </strong>
+                  {selectedDiet.calories ? ` • Meta: ${selectedDiet.calories} kcal` : ''}
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Macros se existirem */}
+              {selectedDiet.macros && (
+                <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-center text-xs">
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">
+                      Proteína
+                    </span>
+                    <strong className="text-white font-mono">{selectedDiet.macros.protein}g</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">
+                      Carboidratos
+                    </span>
+                    <strong className="text-white font-mono">{selectedDiet.macros.carbs}g</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">
+                      Gorduras
+                    </span>
+                    <strong className="text-white font-mono">{selectedDiet.macros.fat}g</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de Refeições */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-bold font-montserrat uppercase text-gray-300">
+                  Refeições Estruturadas
+                </h4>
+
+                {Array.isArray(selectedDiet.meals) && selectedDiet.meals.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {selectedDiet.meals.map((m: any, idx: number) => (
+                      <div
+                        key={`diet-meal-${idx}`}
+                        className="p-3.5 rounded-xl bg-[#181818] border border-[#2A2A2A] space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold font-montserrat text-white">
+                            #{idx + 1} {m.name || 'Refeição'}
+                          </span>
+                          {m.calories && (
+                            <span className="text-[10px] text-[#22C55E] font-mono font-bold">
+                              {m.calories} kcal
+                            </span>
+                          )}
+                        </div>
+
+                        {Array.isArray(m.items) && m.items.length > 0 ? (
+                          <ul className="text-xs text-gray-300 space-y-1 list-disc list-inside font-inter">
+                            {m.items.map((itemStr: string, iIdx: number) => (
+                              <li key={`item-${iIdx}`}>{itemStr}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-gray-400">
+                            {m.description || JSON.stringify(m)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">Nenhuma refeição detalhada nesta ficha.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Modal 1: Detalhe do Treino (IA ou Profissional) */}
       <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
         <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-2xl rounded-2xl p-6 max-h-[85vh] overflow-y-auto">
@@ -1510,6 +1881,18 @@ export default function MeuHistorico() {
                   <strong className="text-gray-200">{selectedWorkout.objective || 'Geral'}</strong>
                 </DialogDescription>
               </DialogHeader>
+
+              {/* Botão de Reexecução Guiada no topo do modal */}
+              {selectedWorkout.id && (
+                <Button
+                  onClick={() => {
+                    navigate(`/aluno/treino/execucao/${selectedWorkout.id}`)
+                  }}
+                  className="w-full bg-[#0057FF] hover:bg-[#1a66ff] text-white font-extrabold uppercase text-xs h-10 rounded-xl flex items-center justify-center gap-2 shadow-md"
+                >
+                  <Play className="w-4 h-4 fill-white" /> Iniciar / Reexecutar Treino Guiado
+                </Button>
+              )}
 
               {/* Lista de Exercícios */}
               <div className="space-y-3 pt-2">

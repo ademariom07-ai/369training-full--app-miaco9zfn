@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   Sparkles,
   Search,
@@ -19,8 +21,18 @@ import {
   Loader2,
   User,
   Play,
+  Wallet,
+  ShoppingBag,
+  AlertTriangle,
 } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import type { ContentItem } from '@/pages/profissional/ProfissionalConteudos'
 
@@ -37,30 +49,143 @@ interface ContentWithProf extends ContentItem {
 }
 
 export default function ConteudosEmDestaque() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
   const [contents, setContents] = useState<ContentWithProf[]>([])
+  const [myPurchasedContentIds, setMyPurchasedContentIds] = useState<Set<string>>(new Set())
+  const [walletBalance, setWalletBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [selectedType, setSelectedType] = useState<string>('todos')
   const [selectedProf, setSelectedProf] = useState<string>('todos')
   const [searchQuery, setSearchQuery] = useState('')
   const [activeVideoModal, setActiveVideoModal] = useState<ContentWithProf | null>(null)
 
+  // Modal de Compra com Saldo da Carteira
+  const [buyModalOpen, setBuyModalOpen] = useState(false)
+  const [selectedContentToBuy, setSelectedContentToBuy] = useState<ContentWithProf | null>(null)
+  const [purchasing, setPurchasing] = useState(false)
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const contentsPromise = pb
+        .collection('contents')
+        .getList<ContentWithProf>(1, 100, {
+          filter: 'status = "aprovado"',
+          sort: '-created',
+          expand: 'professional_id',
+        })
+        .catch(() => ({ items: [] as ContentWithProf[] }))
+
+      // Se logado, carregar lista de compras e saldo de carteira
+      let purchasesPromise: Promise<any> = Promise.resolve([])
+      let walletPromise: Promise<any> = Promise.resolve(0)
+
+      if (user?.id) {
+        purchasesPromise = pb
+          .collection('content_purchases')
+          .getFullList({
+            filter: `user = "${user.id}"`,
+          })
+          .catch(() => [])
+
+        // Saldo da carteira
+        walletPromise = pb
+          .collection('wallet_transactions')
+          .getFullList({
+            filter: `user = "${user.id}" && (status = "concluido" || status = "aprovado")`,
+            sort: '-created',
+          })
+          .then((txs) => {
+            let bal = 0
+            for (const t of txs as any[]) {
+              const amt = Number(t.amount) || 0
+              const type = (t.type || '').toLowerCase()
+              if (type === 'deposito' || type === 'cashback' || type === 'bonus_indicacao') {
+                bal += Math.abs(amt)
+              } else if (
+                type === 'saque' ||
+                type === 'tarifa' ||
+                type === 'pagamento' ||
+                type === 'servico' ||
+                type === 'mensalidade'
+              ) {
+                bal -= Math.abs(amt)
+              }
+            }
+            return Math.max(0, bal)
+          })
+          .catch(() => 0)
+      }
+
+      const [resContents, resPurchases, resBalance] = await Promise.all([
+        contentsPromise,
+        purchasesPromise,
+        walletPromise,
+      ])
+
+      setContents(resContents.items || [])
+      const boughtIds = new Set<string>()
+      if (Array.isArray(resPurchases)) {
+        resPurchases.forEach((p: any) => {
+          if (p.content) boughtIds.add(p.content)
+        })
+      }
+      setMyPurchasedContentIds(boughtIds)
+      setWalletBalance(resBalance || 0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    pb.collection('contents')
-      .getList<ContentWithProf>(1, 100, {
-        filter: 'status = "aprovado"',
-        sort: '-created',
-        expand: 'professional_id',
+    loadData()
+  }, [user])
+
+  const handleOpenBuyModal = (item: ContentWithProf) => {
+    if (!user) {
+      toast.error('Faça login para adquirir este conteúdo.')
+      navigate('/login')
+      return
+    }
+    setSelectedContentToBuy(item)
+    setBuyModalOpen(true)
+  }
+
+  const handleConfirmPurchase = async () => {
+    if (!selectedContentToBuy || !user) return
+    const price = selectedContentToBuy.price || 0
+
+    if (price > 0 && walletBalance < price) {
+      toast.error(
+        `Saldo insuficiente (Saldo: R$ ${walletBalance.toFixed(2)}, Necessário: R$ ${price.toFixed(2)}). Faça um depósito PIX com comprovante para recarregar sua carteira.`,
+      )
+      return
+    }
+
+    setPurchasing(true)
+    try {
+      const res = await pb.send('/backend/v1/aluno/purchase-content', {
+        method: 'POST',
+        body: { content_id: selectedContentToBuy.id },
       })
-      .then((res) => {
-        setContents(res.items)
-      })
-      .catch(() => {
-        setContents([])
-      })
-      .finally(() => {
-        setLoading(false)
-      })
-  }, [])
+
+      if (res.success) {
+        toast.success(res.message || 'Material adquirido com sucesso! Disponível em Meu Histórico.')
+        setBuyModalOpen(false)
+        setSelectedContentToBuy(null)
+        await loadData()
+      } else {
+        toast.error(res.message || 'Falha ao processar aquisição.')
+      }
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message || 'Erro ao processar compra de conteúdo.'
+      toast.error(msg)
+    } finally {
+      setPurchasing(false)
+    }
+  }
 
   // Extrair profissionais únicos para o filtro
   const professionalsList = Array.from(
@@ -233,6 +358,7 @@ export default function ConteudosEmDestaque() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredContents.map((item) => {
             const prof = item.expand?.professional_id
+            const isPurchased = myPurchasedContentIds.has(item.id)
             const isFree = !item.price || item.price === 0
             const hasFile = !!item.file
             const downloadUrl = hasFile ? pb.files.getURL(item, item.file) : item.file_url
@@ -252,12 +378,18 @@ export default function ConteudosEmDestaque() {
 
                     <span
                       className={`text-xs font-bold font-mono px-2.5 py-1 rounded-lg border ${
-                        isFree
-                          ? 'bg-[#22C55E]/15 border-[#22C55E]/40 text-[#22C55E]'
-                          : 'bg-[#D4AF37]/15 border-[#D4AF37]/40 text-[#D4AF37]'
+                        isPurchased
+                          ? 'bg-blue-500/15 border-blue-500/40 text-blue-400'
+                          : isFree
+                            ? 'bg-[#22C55E]/15 border-[#22C55E]/40 text-[#22C55E]'
+                            : 'bg-[#D4AF37]/15 border-[#D4AF37]/40 text-[#D4AF37]'
                       }`}
                     >
-                      {isFree ? 'Gratuito' : `R$ ${item.price.toFixed(2)}`}
+                      {isPurchased
+                        ? 'Adquirido ✓'
+                        : isFree
+                          ? 'Gratuito'
+                          : `R$ ${item.price.toFixed(2)}`}
                     </span>
                   </div>
 
@@ -287,10 +419,43 @@ export default function ConteudosEmDestaque() {
                     </div>
                   </div>
                 </div>
-
                 {/* Bottom Action */}
                 <div className="pt-3 border-t border-[#2A2A2A]">
-                  {item.type === 'video' ? (
+                  {isPurchased ? (
+                    <div className="space-y-2">
+                      {item.type === 'video' ? (
+                        <Button
+                          onClick={() => setActiveVideoModal(item)}
+                          className="w-full bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-black" />
+                          Assistir Aula
+                        </Button>
+                      ) : downloadUrl ? (
+                        <a
+                          href={downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full py-2.5 px-4 bg-[#22C55E] text-black hover:bg-[#1eb354] font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 transition-colors shadow-md"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Acessar / Baixar Material
+                        </a>
+                      ) : (
+                        <Button
+                          disabled
+                          className="w-full bg-emerald-950 text-emerald-400 font-bold text-xs uppercase rounded-xl"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Adquirido ✓
+                        </Button>
+                      )}
+                      <Link
+                        to="/aluno/meu-historico"
+                        className="block text-center text-[10px] text-gray-400 hover:text-[#D4AF37] font-inter"
+                      >
+                        Ver em Meu Histórico → Materiais Comprados
+                      </Link>
+                    </div>
+                  ) : item.type === 'video' && isFree ? (
                     <Button
                       onClick={() => setActiveVideoModal(item)}
                       className="w-full bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2"
@@ -310,18 +475,14 @@ export default function ConteudosEmDestaque() {
                     </a>
                   ) : (
                     <Button
-                      onClick={() =>
-                        toast.info(
-                          `Módulo de Marketplace / Pagamento direto: Conteúdo premium no valor de R$ ${item.price.toFixed(2)}. Em breve!`,
-                        )
-                      }
-                      className="w-full bg-[#0057FF] text-white hover:bg-[#1F6CFF] font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2"
+                      onClick={() => handleOpenBuyModal(item)}
+                      className="w-full bg-[#0057FF] text-white hover:bg-[#1F6CFF] font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 shadow-md"
                     >
-                      <Lock className="w-3.5 h-3.5" />
-                      Adquirir (R$ {item.price.toFixed(2)})
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      Comprar com Carteira (R$ {item.price.toFixed(2)})
                     </Button>
                   )}
-                </div>
+                </div>{' '}
               </Card>
             )
           })}

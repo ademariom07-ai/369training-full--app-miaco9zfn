@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { pb } from '@/lib/pocketbase/client'
+import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -561,18 +561,28 @@ export default function ExecutarTreinoHub() {
                   {/* Botões de Ação */}
                   <div className="pt-3 border-t border-[#2A2A2A] flex items-center gap-2">
                     {isPhysical ? (
-                      <Button
-                        onClick={() => {
-                          if (item.targetUrl) {
-                            navigate(item.targetUrl)
-                          } else {
-                            setSelectedPlanItem(item)
-                          }
-                        }}
-                        className="w-full bg-[#0057FF] hover:bg-[#1a66ff] text-white font-extrabold font-montserrat uppercase text-xs h-10 rounded-xl flex items-center justify-center gap-2 shadow-lg"
-                      >
-                        <Play className="w-4 h-4 fill-white" /> Iniciar Execução
-                      </Button>
+                      <div className="w-full flex items-center gap-2">
+                        <Button
+                          onClick={() => {
+                            if (item.targetUrl) {
+                              navigate(item.targetUrl)
+                            } else {
+                              setSelectedPlanItem(item)
+                            }
+                          }}
+                          className="flex-1 bg-[#0057FF] hover:bg-[#1a66ff] text-white font-extrabold font-montserrat uppercase text-xs h-10 rounded-xl flex items-center justify-center gap-2 shadow-lg"
+                        >
+                          <Play className="w-4 h-4 fill-white" /> Iniciar Execução
+                        </Button>
+                        <Button
+                          onClick={() => setSelectedPlanItem(item)}
+                          variant="outline"
+                          className="border-[#2A2A2A] hover:bg-[#202020] text-gray-300 text-xs font-bold uppercase h-10 px-3 rounded-xl shrink-0"
+                          title="Ver Ficha / Detalhes"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                      </div>
                     ) : (
                       <Button
                         onClick={() => setSelectedPlanItem(item)}
@@ -613,6 +623,75 @@ export default function ExecutarTreinoHub() {
               </DialogHeader>
 
               {/* Corpo de Acordo com a Especialidade */}
+              {selectedPlanItem.collectionName === 'workouts' && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase font-montserrat text-gray-300">
+                    Exercícios Prescritos
+                  </h4>
+                  {Array.isArray(selectedPlanItem.rawRecord.exercises) &&
+                  selectedPlanItem.rawRecord.exercises.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {selectedPlanItem.rawRecord.exercises.map((ex: any, idx: number) => (
+                        <div
+                          key={`hub-ex-${idx}`}
+                          className="p-3.5 rounded-xl bg-[#181818] border border-[#2A2A2A] space-y-1 text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <strong className="text-white font-montserrat">
+                              #{idx + 1} {ex.name || 'Exercício'}
+                            </strong>
+                            {ex.muscle_group && (
+                              <span className="text-[10px] text-gray-400 uppercase bg-[#141414] px-2 py-0.5 rounded border border-[#2A2A2A]">
+                                {ex.muscle_group}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[11px] font-mono text-gray-300">
+                            {ex.sets && (
+                              <span>
+                                <strong>Séries:</strong> {ex.sets}
+                              </span>
+                            )}
+                            {ex.reps && (
+                              <span>
+                                • <strong>Reps:</strong> {ex.reps}
+                              </span>
+                            )}
+                            {ex.load && (
+                              <span className="text-[#D4AF37]">
+                                • <strong>Carga:</strong> {ex.load}
+                              </span>
+                            )}
+                            {ex.rest && (
+                              <span>
+                                • <strong>Descanso:</strong> {ex.rest}
+                              </span>
+                            )}
+                          </div>
+                          {ex.tips && (
+                            <p className="text-[11px] text-gray-400 font-inter italic">
+                              💡 {ex.tips}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">Nenhum exercício listado nesta ficha.</p>
+                  )}
+                  {selectedPlanItem.targetUrl && (
+                    <Button
+                      onClick={() => {
+                        navigate(selectedPlanItem.targetUrl!)
+                      }}
+                      className="w-full bg-[#0057FF] hover:bg-[#1a66ff] text-white font-bold text-xs uppercase h-10 rounded-xl flex items-center justify-center gap-2 mt-2"
+                    >
+                      <Play className="w-4 h-4 fill-white" /> Iniciar Modo de Execução Guiada
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {selectedPlanItem.collectionName === 'diets' && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase font-montserrat text-gray-300">
