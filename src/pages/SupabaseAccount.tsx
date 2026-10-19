@@ -21,13 +21,13 @@ import ProfessionalApplications from '@/components/ProfessionalApplications'
 import ProfessionalDirectory from '@/components/ProfessionalDirectory'
 import {readParticipantLinks,type ParticipantLink} from '@/lib/supabase/participantLinks'
 const initial:AccountState={phase:'checking',profile:null,busy:false,error:''}
-export default function SupabaseAccount(){
+export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redirectPath?:string}={}){
  const [state,setState]=useState(initial),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[name,setName]=useState(''),[message,setMessage]=useState(''),[links,setLinks]=useState<ParticipantLink[]>([]),[linkError,setLinkError]=useState(''),[linksLoading,setLinksLoading]=useState(false),[linkPage,setLinkPage]=useState(1),[ending,setEnding]=useState<ParticipantLink|null>(null),[linkOwner,setLinkOwner]=useState<string|null>(null)
  const [availabilityDay,setAvailabilityDay]=useState(()=>saoPauloToday())
  const [mode,setMode]=useState<'login'|'signup'|'recover'>('login'),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
  const controller=useRef<ReturnType<typeof createAccountSession>|null>(null)
  useEffect(()=>{
-  try{const session=createAccountSession(getSupabaseClient(),setState,undefined,new URL('/conta-supabase',window.location.origin).href);controller.current=session;session.start();return()=>{session.dispose();controller.current=null}}
+  try{const session=createAccountSession(getSupabaseClient(),setState,undefined,new URL(redirectPath,window.location.origin).href);controller.current=session;session.start();return()=>{session.dispose();controller.current=null}}
   catch{setState({phase:'error',profile:null,busy:false,error:'O acesso está indisponível neste ambiente.'})}
  },[])
  useEffect(()=>{setLinkPage(1)},[state.profile?.id])
