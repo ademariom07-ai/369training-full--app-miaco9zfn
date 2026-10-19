@@ -56,12 +56,12 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   if(disposed||busy)throw Error('Aguarde a operação atual.')
   busy=true;++epoch;cancelScheduled();cleared('checking')
   try{await task();if(!disposed)await refresh()}
-  catch{if(!disposed)cleared(recovery?'password_recovery':'error','Não foi possível concluir a operação. Verifique seus dados e tente novamente.');throw Error('Não foi possível concluir a operação.')}
+  catch(err){const safe=err instanceof Error&&['Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.','Muitas tentativas. Aguarde alguns minutos e tente novamente.'].includes(err.message)?err.message:'Não foi possível concluir a operação.';if(!disposed)cleared(recovery?'password_recovery':'error',safe);throw Error(safe)}
   finally{busy=false;if(!disposed)changed({...state,busy:false})}
  }
  async function login(email:string,password:string){
   if(typeof email!=='string'||!email.trim()||email.trim().length>254||typeof password!=='string'||!password||password.length>1024)throw Error('Preencha e-mail e senha válidos.')
-  return operation(async()=>{const result=await client.auth.signInWithPassword({email:email.trim(),password});if(result.error||!result.data.session)throw Error('Login indisponível.')})
+  return operation(async()=>{const result=await client.auth.signInWithPassword({email:email.trim(),password});if(result.error){if(result.error.code==='email_not_confirmed')throw Error('Confirme seu e-mail antes de entrar.');if(result.error.code==='invalid_credentials')throw Error('Confira o e-mail, a senha e a confirmação do endereço antes de entrar.');if(result.error.status===429)throw Error('Muitas tentativas. Aguarde alguns minutos e tente novamente.');throw Error('Login indisponível.')}if(!result.data.session)throw Error('Login indisponível.')})
  }
  function mailEmail(value:string){if(typeof value!=='string'||!value.trim()||value.trim().length>254||!/^\S+@\S+\.\S+$/.test(value.trim()))throw Error('Preencha um e-mail válido.');return value.trim()}
  function newPassword(value:string){if(typeof value!=='string'||value.length<10||value.length>72||new TextEncoder().encode(value).length>72)throw Error('Escolha uma senha válida com pelo menos 10 caracteres.')}
@@ -83,6 +83,10 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
  async function signup(email:string,password:string){
   const address=mailEmail(email);newPassword(password)
   return mailOperation(async url=>{const result=await client.auth.signUp({email:address,password,options:{emailRedirectTo:url}});if(result.error)throw Error('Cadastro indisponível.')})
+ }
+ async function resendConfirmation(email:string){
+  const address=mailEmail(email)
+  return mailOperation(async url=>{const result=await client.auth.resend({type:'signup',email:address,options:{emailRedirectTo:url}});if(result.error)throw Error('Reenvio indisponível.')})
  }
  async function recover(email:string){
   const address=mailEmail(email)
@@ -189,5 +193,5 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const owner=state.profile.id,project={...row}
   return operation(async()=>{await reviewEsgProject(project,decision,reason,owner,client)})
  }
- return {start,refresh,login,logout,submitEsg,reviewEsg,saveTerms,saveAvailability,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{esgRetry=null;termsRetry=null;draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ return {start,refresh,login,logout,submitEsg,reviewEsg,saveTerms,saveAvailability,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,resendConfirmation,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{esgRetry=null;termsRetry=null;draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }
