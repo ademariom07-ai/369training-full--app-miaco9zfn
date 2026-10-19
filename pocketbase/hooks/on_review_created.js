@@ -96,7 +96,7 @@ onRecordAfterCreateSuccess((e) => {
       basico: 1,
       pro: 2,
       premium: 3,
-      pro_parceiro: 1,
+      pro_parceiro: 2,
     }
 
     const planTarifas = {
@@ -107,14 +107,14 @@ onRecordAfterCreateSuccess((e) => {
       pro_parceiro: 0.0,
     }
 
-    const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
+    const proParceiroFixedServices = 150 // Confirmed 2026-10-19: scoring only, not real service volume.
 
     const scores = []
 
     for (const u of users) {
       const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
       const role = u.get('role') || 'aluno'
-      const isProParceiro = rawPlan === 'pro_parceiro'
+      const isProParceiro = role === 'profissional' && rawPlan === 'pro_parceiro'
       // Own plan only: a link does not prove historical sponsorship.
       let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
       const subStatus = u.get('subscription_status') || 'ativa'
@@ -189,7 +189,7 @@ onRecordAfterCreateSuccess((e) => {
       let realServicesCount = servicesThisMonth.length
       let effectiveServicesCount = realServicesCount
       if (isProParceiro) {
-        effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
+        effectiveServicesCount = proParceiroFixedServices
       }
 
       const indicacoesCount = referralsThisMonth.length
