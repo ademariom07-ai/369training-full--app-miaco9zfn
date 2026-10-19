@@ -1,0 +1,15 @@
+import {describe,it,expect} from 'vitest'
+import {projectServiceRanking,type ServiceRankingParticipant} from './serviceRankingProjection'
+import type {ServiceEventSnapshot} from './serviceEventsPreview'
+const e:ServiceEventSnapshot={eventId:'e',serviceId:'s',revision:1,period:'2026-10',studentId:'a',partnerId:'p',state:'completed',payment:'confirmed',studentReviewed:true,partnerReviewed:true}
+const person=(id:string,kind:'student'|'partner'):ServiceRankingParticipant=>({kind,plan:'pro',linkedProfessionalPlan:null,facts:{id,validatedReferrals:0,rating:5,seniorityMonths:1,previousPoints:100,joinedAt:'2026-01-01'}})
+const people=()=>[person('a','student'),person('p','partner')]
+describe('service to ranking integration, simulation only',()=>{
+ it('counts one service once for both parties and never compounds on replay',()=>{const p=people(),before=JSON.stringify(p);const a=projectServiceRanking('2026-10',[e,e],p);expect(a.ranking.map(r=>r.monthlyPoints)).toEqual([8,8]);expect(a.ranking.map(r=>r.totalPoints)).toEqual([108,108]);expect(a.duplicateEventsIgnored).toBe(1);expect(projectServiceRanking('2026-10',[e,e],p)).toEqual(a);expect(JSON.stringify(p)).toBe(before);expect(a.pointsWriteAuthorized).toBe(false)})
+ it.each([{payment:'pending'},{studentReviewed:false},{partnerReviewed:false},{state:'scheduled'}] as const)('does not count incomplete service %j',change=>{expect(projectServiceRanking('2026-10',[{...e,...change}],people()).ranking.map(r=>r.actualCompletedServices)).toEqual([0,0])})
+ it('latest refund removes service contribution but preserves closed points',()=>{const r=projectServiceRanking('2026-10',[{...e,eventId:'r',revision:2,payment:'refunded'},e],people());expect(r.ranking[0].totalPoints).toBe(106);expect(r.services[0].status).toBe('reconciliation_required')})
+ it('keeps professional fixed 150 separate from student inherited weight',()=>{const p=people();p[1].plan='pro_partner';p[0].linkedProfessionalPlan='pro_partner';p[0].scoringChoice='migrate';const r=projectServiceRanking('2026-10',[e],p);expect(r.ranking.find(x=>x.id==='p')).toMatchObject({monthlyPoints:306,actualCompletedServices:1,scoringServices:150});expect(r.ranking.find(x=>x.id==='a')).toMatchObject({monthlyPoints:8,scoringServices:1})})
+ it('free plan gets mean rating and uncapped age only',()=>{const p=people();p[0].plan='free';p[0].facts.rating=4.7;p[0].facts.seniorityMonths=120;expect(projectServiceRanking('2026-10',[e],p).ranking.find(x=>x.id==='a')).toMatchObject({monthlyPoints:124.7,eligibleForCashback:false})})
+ it('rejects missing or swapped participants',()=>{expect(()=>projectServiceRanking('2026-10',[e],[person('a','student')])).toThrow();expect(()=>projectServiceRanking('2026-10',[e],[person('a','partner'),person('p','student')])).toThrow()})
+ it('keeps other months out and does not use arbitrary counts supplied at runtime',()=>{const p=people();Object.assign(p[0].facts,{completedEligibleServices:999});expect(projectServiceRanking('2026-11',[e],p).ranking[0].monthlyPoints).toBe(6)})
+})
