@@ -3,7 +3,7 @@
 // 1. Débito de tarifa: PRO PARCEIRO paga R$ 0 de tarifa por serviço (apenas o fixo de R$ 149/mês).
 //    Legacy immediate debits removed: settlement adapter must confirm all prerequisites.
 // 2. Anti-duplicidade na tarifa: wallet_transactions já com reference_id = service.id && type = 'tarifa'.
-// 3. Teto do PRO PARCEIRO: Math.min(realServicesCount, proParceiroCap) (teto de 150).
+// 3. PRO PARCEIRO: 150 fixos para pontuação, peso 2; volume real preservado.
 // 4. Grátis retains rating/seniority with plan multiplier zero; no automatic inheritance.
 
 onRecordAfterUpdateSuccess((e) => {
@@ -88,7 +88,7 @@ onRecordAfterUpdateSuccess((e) => {
       basico: 1,
       pro: 2,
       premium: 3,
-      pro_parceiro: 1,
+      pro_parceiro: 2,
     }
 
     const planTarifas = {
@@ -99,14 +99,14 @@ onRecordAfterUpdateSuccess((e) => {
       pro_parceiro: 0.0,
     }
 
-    const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
+    const proParceiroFixedServices = 150 // Confirmed 2026-10-19: scoring only, not real service volume.
 
     const scores = []
 
     for (const u of users) {
       const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
       const role = u.get('role') || 'aluno'
-      const isProParceiro = rawPlan === 'pro_parceiro'
+      const isProParceiro = role === 'profissional' && rawPlan === 'pro_parceiro'
       // Own plan only: a link does not prove historical sponsorship.
       let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
       const subStatus = u.get('subscription_status') || 'ativa'
@@ -183,7 +183,7 @@ onRecordAfterUpdateSuccess((e) => {
       // TETO de serviços do PRO PARCEIRO: Math.min(servicos_reais, 150)
       let effectiveServicesCount = realServicesCount
       if (isProParceiro) {
-        effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
+        effectiveServicesCount = proParceiroFixedServices
       }
 
       const indicacoesCount = referralsThisMonth.length
@@ -351,7 +351,7 @@ onRecordAfterCreateSuccess((e) => {
       basico: 1,
       pro: 2,
       premium: 3,
-      pro_parceiro: 1,
+      pro_parceiro: 2,
     }
 
     const planTarifas = {
@@ -362,14 +362,14 @@ onRecordAfterCreateSuccess((e) => {
       pro_parceiro: 0.0,
     }
 
-    const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
+    const proParceiroFixedServices = 150 // Confirmed 2026-10-19: scoring only, not real service volume.
 
     const scores = []
 
     for (const u of users) {
       const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
       const role = u.get('role') || 'aluno'
-      const isProParceiro = rawPlan === 'pro_parceiro'
+      const isProParceiro = role === 'profissional' && rawPlan === 'pro_parceiro'
       // Own plan only: a link does not prove historical sponsorship.
       let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
       const subStatus = u.get('subscription_status') || 'ativa'
@@ -443,7 +443,7 @@ onRecordAfterCreateSuccess((e) => {
       let realServicesCount = servicesThisMonth.length
       let effectiveServicesCount = realServicesCount
       if (isProParceiro) {
-        effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
+        effectiveServicesCount = proParceiroFixedServices
       }
 
       const indicacoesCount = referralsThisMonth.length
