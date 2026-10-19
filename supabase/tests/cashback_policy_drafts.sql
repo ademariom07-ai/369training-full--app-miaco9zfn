@@ -1,0 +1,37 @@
+begin;
+do $test$
+declare a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();k uuid:=gen_random_uuid();r public.cashback_policy_drafts;checks integer:=0;
+begin
+ insert into auth.users(id) values(a),(b);
+ insert into public.profiles(id,display_name,role) values(a,'Cashback draft admin','admin'),(b,'Cashback draft student','aluno');
+ set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);
+ select * into r from public.create_cashback_policy_draft(k,' Default ',80,20,10);
+ if r.created_by<>a or r.title<>'Default' or r.status<>'draft' or r.algorithm_version<>'pareto-configurable-v1' then raise exception 'attribution and status';end if;checks:=checks+1;
+ perform public.create_cashback_policy_draft(k,'Default',80,20,10);
+ if (select count(*) from public.cashback_policy_drafts where created_by=a)<>1 then raise exception 'duplicate request';end if;checks:=checks+1;
+ begin perform public.create_cashback_policy_draft(k,'Default',80,20,5);raise exception 'key reuse';exception when unique_violation then checks:=checks+1;end;
+ perform public.create_cashback_policy_draft(gen_random_uuid(),'Alternative',70,20,5);
+ if (select count(*) from public.cashback_policy_drafts where created_by=a)<>2 then raise exception 'history';end if;checks:=checks+1;
+ begin perform public.create_cashback_policy_draft(gen_random_uuid(),'Invalid',100,20,10);raise exception 'bad percent';exception when invalid_parameter_value then checks:=checks+1;end;
+ begin perform public.create_cashback_policy_draft(gen_random_uuid(),'Invalid',80,0,10);raise exception 'bad population';exception when invalid_parameter_value then checks:=checks+1;end;
+ begin perform public.create_cashback_policy_draft(gen_random_uuid(),'Invalid',80,20,101);raise exception 'bad ratio';exception when invalid_parameter_value then checks:=checks+1;end;
+ begin perform public.create_cashback_policy_draft(null,'Invalid',80,20,10);raise exception 'missing key';exception when invalid_parameter_value then checks:=checks+1;end;
+ begin update public.cashback_policy_drafts set top_ratio=5;raise exception 'update allowed';exception when insufficient_privilege then checks:=checks+1;end;
+ begin delete from public.cashback_policy_drafts;raise exception 'delete allowed';exception when insufficient_privilege then checks:=checks+1;end;
+ begin insert into public.cashback_policy_drafts(request_id,created_by,title,top_pool_percent,top_participants_percent,top_ratio) values(gen_random_uuid(),a,'Direct',80,20,10);raise exception 'insert allowed';exception when insufficient_privilege then checks:=checks+1;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',b,'is_anonymous',false,'user_metadata',json_build_object('role','admin'))::text,true);
+ if exists(select 1 from public.cashback_policy_drafts) then raise exception 'student read';end if;checks:=checks+1;
+ begin perform public.create_cashback_policy_draft(k,'Spoof',80,20,10);raise exception 'student write';exception when insufficient_privilege then checks:=checks+1;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',true)::text,true);
+ begin perform public.create_cashback_policy_draft(k,'Default',80,20,10);raise exception 'anonymous write';exception when insufficient_privilege then checks:=checks+1;end;
+ set local role anon;
+ begin perform public.create_cashback_policy_draft(k,'Default',80,20,10);raise exception 'anon execute';exception when insufficient_privilege then checks:=checks+1;end;
+ reset role;update public.profiles set role='aluno' where id=a;
+ set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);
+ begin perform public.create_cashback_policy_draft(k,'Default',80,20,10);raise exception 'demoted replay';exception when insufficient_privilege then checks:=checks+1;end;
+ reset role;
+ if exists(select 1 from public.wallet_accounts where user_id in(a,b)) then raise exception 'money side effect';end if;checks:=checks+1;
+ if checks<>17 then raise exception 'unexpected checks %',checks;end if;
+end $test$;
+select '17 cashback draft checks passed; fixtures rolled back' as result;
+rollback;
