@@ -263,16 +263,16 @@ button.bg-red-600,
 
 .gold-border-glow {
   border: 1px solid rgba(184, 150, 46, 0.35);
-  box-shadow: 0 4px 16px rgba(184, 150, 46, 0.15);
+  box-shadow: 0 2px 8px rgba(184, 150, 46, 0.12);
 }
 
 .gold-border-glow:hover {
   border-color: rgba(184, 150, 46, 0.8);
-  box-shadow: 0 6px 24px rgba(184, 150, 46, 0.25);
+  box-shadow: 0 4px 14px rgba(184, 150, 46, 0.2);
 }
 
 .blue-glow {
-  box-shadow: 0 0 25px rgba(0, 87, 255, 0.3);
+  box-shadow: 0 0 16px rgba(0, 87, 255, 0.25);
 }
 
 /* Shimmer animations */
@@ -304,18 +304,37 @@ button.bg-red-600,
 @keyframes crest-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.45));
+    filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.3));
     transform: scale(1);
   }
   50% {
-    filter: drop-shadow(0 0 40px rgba(212, 175, 55, 0.8))
-      drop-shadow(0 0 60px rgba(244, 215, 122, 0.5));
-    transform: scale(1.02);
+    filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.5));
+    transform: scale(1.01);
   }
 }
 
 .animate-crest-pulse {
   animation: crest-pulse 4s ease-in-out 1 forwards;
+}
+
+/* Otimização de GPU para mobile e dispositivos modestos */
+@media (max-width: 640px) {
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ------------------------------------------------------------- */

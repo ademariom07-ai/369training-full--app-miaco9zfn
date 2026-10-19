@@ -624,8 +624,8 @@ export function Agente369Section() {
     <div className="space-y-4">
       {/* CARD PRINCIPAL DO AGENTE 369 */}
       <Card className="bg-gradient-to-br from-[#0057FF] via-[#0046CC] to-[#003399] border-2 border-[#D4AF37]/40 hover:border-[#D4AF37]/80 transition-all rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-        {/* Glow de fundo */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Fundo decorativo sutil (glow pesado desativado no mobile para economia de GPU) */}
+        <div className="hidden sm:block absolute top-0 right-0 w-80 h-80 bg-[#D4AF37]/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-xl">
@@ -659,8 +659,8 @@ export function Agente369Section() {
             </p>
           </div>
 
-          {/* STATUS DAS FRANQUIAS */}
-          <div className="bg-black/35 backdrop-blur-md border border-white/20 p-4 rounded-2xl min-w-[260px] flex flex-col justify-center space-y-3">
+          {/* STATUS DAS FRANQUIAS (sólido no mobile para desempenho) */}
+          <div className="bg-black/50 sm:bg-black/35 sm:backdrop-blur-sm border border-white/20 p-4 rounded-2xl min-w-[260px] flex flex-col justify-center space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="text-white/85 font-medium flex items-center gap-1.5">
                 <Dumbbell className="w-3.5 h-3.5 text-[#D4AF37]" /> Cota de Treinos (Mês):

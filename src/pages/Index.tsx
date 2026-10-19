@@ -20,14 +20,14 @@ import {
 export default function Index() {
   return (
     <div className="min-h-screen bg-[#f7f6f3] text-[#1A1A1A] selection:bg-[#D4AF37] selection:text-black overflow-x-hidden">
-      {/* Background Glows and Radial Pattern */}
+      {/* Background Glows and Radial Pattern (otimizado para GPU mobile: sem blur pesado de 100px no mobile) */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-[#D4AF37]/15 rounded-full blur-[100px]" />
+        <div className="hidden sm:block absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-[#D4AF37]/10 rounded-full blur-[80px]" />
         <div className="absolute inset-0 bg-[radial-gradient(#B8962E_1px,transparent_1px)] [background-size:48px_48px] opacity-[0.05]" />
       </div>
 
-      {/* Top Bar for Landing */}
-      <header className="relative z-10 border-b border-[#E5E3DC] backdrop-blur-md bg-white/90 sticky top-0 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto shadow-xs">
+      {/* Top Bar for Landing (cor sólida bg-white no mobile para evitar recomposição de GPU no scroll; blur suave apenas em telas desktop md+) */}
+      <header className="relative z-10 border-b border-[#E5E3DC] bg-white md:bg-white/95 md:backdrop-blur-sm sticky top-0 px-4 sm:px-6 py-4 flex items-center justify-between max-w-7xl mx-auto shadow-xs">
         <CrestLogo size={42} showText subText loading="eager" decoding="auto" />
         <div className="flex items-center gap-3">
           <Link to="/login">
@@ -48,8 +48,8 @@ export default function Index() {
 
       {/* HERO SECTION */}
       <section className="relative z-10 pt-16 pb-24 px-6 max-w-5xl mx-auto text-center flex flex-col items-center opacity-[1] bg-transparent rounded-[0px]">
-        {/* Crest Medallion with Pulse Glow */}
-        <div className="mb-8 relative drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]">
+        {/* Crest Medallion with Optimized Glow */}
+        <div className="mb-8 relative sm:drop-shadow-[0_0_15px_rgba(212,175,55,0.25)]">
           <CrestLogo size={210} loading="lazy" decoding="async" />
         </div>
 

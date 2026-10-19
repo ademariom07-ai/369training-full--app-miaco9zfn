@@ -169,8 +169,8 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#f7f6f3] text-[#1A1A1A] flex flex-col selection:bg-[#D4AF37] selection:text-black">
-      {/* TOP NAVIGATION BAR — LOGO CENTRALIZADO AO MEIO */}
-      <header className="sticky top-0 z-40 w-full border-b border-[#E5E3DC] bg-white/95 backdrop-blur-md px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs">
+      {/* TOP NAVIGATION BAR — LOGO CENTRALIZADO AO MEIO (cor sólida no mobile para scroll fluido sem custo excessivo de GPU) */}
+      <header className="sticky top-0 z-40 w-full border-b border-[#E5E3DC] bg-white md:bg-white/95 md:backdrop-blur-sm px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs">
         {/* Left Section: Mobile Drawer Trigger / Spacing balance on desktop */}
         <div className="flex items-center gap-2 flex-1 basis-0">
           <button
@@ -349,7 +349,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="lg:hidden fixed inset-0 z-50 flex">
             {/* Backdrop */}
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+              className="fixed inset-0 bg-black/50 transition-opacity"
               onClick={() => setMobileMenuOpen(false)}
             />
 
@@ -420,9 +420,9 @@ export default function Layout({ children }: LayoutProps) {
         </main>
       </div>
 
-      {/* BOTTOM TAB BAR (Aluno Mobile Only: Home | Comunidade | Chat | Perfil — escondida dentro da tela de chat para não sobrepor o input) */}
+      {/* BOTTOM TAB BAR (Aluno Mobile Only: Home | Comunidade | Chat | Perfil — sólida no mobile) */}
       {user?.role === 'aluno' && !location.pathname.startsWith('/aluno/chat') && (
-        <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-[#E5E3DC] px-2 py-2 flex items-center justify-around shadow-lg">
+        <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-[#E5E3DC] px-2 py-2 flex items-center justify-around shadow-lg">
           <Link
             to="/aluno"
             className={`flex flex-col items-center gap-0.5 text-[10px] font-bold font-montserrat uppercase ${

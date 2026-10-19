@@ -1,18 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceArea,
-  ReferenceLine,
-} from 'recharts'
+import { Suspense, lazy } from 'react'
 import {
   TrendingUp,
   Dumbbell,
@@ -24,14 +12,15 @@ import {
   RefreshCw,
   Sparkles,
   Zap,
-  Target,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import type { WorkoutLogRecord } from '@/services/workoutExecution'
+
+// Lazy loading do componente pesado com os gráficos Recharts
+const EvolucaoChartsSection = lazy(() => import('@/components/EvolucaoChartsSection'))
 
 export default function Evolucao() {
   const { user } = useAuth()
@@ -336,8 +325,8 @@ export default function Evolucao() {
     <div className="space-y-8 pb-16 max-w-7xl mx-auto">
       {/* HEADER DA SEÇÃO */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-2xl bg-[#141414] border border-[#2A2A2A] shadow-xl relative overflow-hidden">
-        {/* Glow de fundo */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#0057FF]/20 via-[#D4AF37]/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+        {/* Fundo decorativo sutil sem blur pesado no mobile */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#0057FF]/10 via-[#D4AF37]/10 to-transparent rounded-full hidden sm:block pointer-events-none" />
 
         <div className="relative z-10 space-y-2">
           <div className="flex items-center gap-2">
@@ -563,294 +552,26 @@ export default function Evolucao() {
             </Card>
           </div>
 
-          {/* GRÁFICO 1: EVOLUÇÃO DE CARGA POR EXERCÍCIO AO LONGO DO TEMPO */}
-          <Card className="bg-[#181818] border border-[#2A2A2A] p-5 sm:p-6 rounded-2xl shadow-lg space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2A2A2A] pb-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-bold font-montserrat text-white uppercase flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-[#0057FF]" />
-                    Evolução de Carga • {activeExerciseName || 'Selecione um exercício'}
-                  </h2>
-                </div>
-                <p className="text-xs text-gray-400 font-inter">
-                  Peso máximo e peso médio registrado em cada sessão (kg)
-                </p>
+          {/* Seção Lazy-Loaded de Gráficos Recharts (Renderizada somente após os dados carregarem) */}
+          <Suspense
+            fallback={
+              <div className="p-8 text-center text-xs text-gray-400 font-inter bg-[#181818] border border-[#2A2A2A] rounded-2xl animate-pulse">
+                Carregando gráficos de evolução...
               </div>
+            }
+          >
+            <EvolucaoChartsSection
+              activeExerciseName={activeExerciseName}
+              loadEvolutionData={loadEvolutionData}
+              rpeEvolutionData={rpeEvolutionData}
+              weeklyVolumeData={weeklyVolumeData}
+            />
+          </Suspense>
 
-              <div className="flex items-center gap-4 text-xs font-montserrat">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#D4AF37]" />
-                  <span className="text-gray-300">Carga Máxima (kg)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#0057FF]" />
-                  <span className="text-gray-300">Carga Média (kg)</span>
-                </div>
-              </div>
-            </div>
-
-            {loadEvolutionData.length === 0 ? (
-              <div className="py-12 text-center text-xs text-gray-500 font-inter">
-                Nenhuma série registrada para &quot;{activeExerciseName}&quot; no período
-                selecionado.
-              </div>
-            ) : (
-              <div className="h-72 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={loadEvolutionData}
-                    margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" vertical={false} />
-                    <XAxis
-                      dataKey="data"
-                      stroke="#6B7280"
-                      tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
-                    />
-                    <YAxis
-                      stroke="#6B7280"
-                      unit=" kg"
-                      tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
-                    />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (!active || !payload?.length) return null
-                        const maxVal = payload.find((p) => p.dataKey === 'pesoMaximo')?.value
-                        const avgVal = payload.find((p) => p.dataKey === 'pesoMedio')?.value
-                        const series = (payload[0]?.payload as any)?.series || 1
-                        return (
-                          <div className="bg-[#141414] border border-[#D4AF37]/40 p-3 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[160px]">
-                            <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1">
-                              Sessão: {label}
-                            </p>
-                            <div className="flex justify-between items-center text-[#D4AF37]">
-                              <span>Peso Máximo:</span>
-                              <span className="font-bold font-mono">{maxVal} kg</span>
-                            </div>
-                            <div className="flex justify-between items-center text-[#0057FF]">
-                              <span>Peso Médio:</span>
-                              <span className="font-bold font-mono">{avgVal} kg</span>
-                            </div>
-                            <div className="flex justify-between items-center text-gray-400 text-[11px] pt-1 border-t border-[#2A2A2A]">
-                              <span>Séries Feitas:</span>
-                              <span className="font-bold text-white">{series}</span>
-                            </div>
-                          </div>
-                        )
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="pesoMaximo"
-                      name="Peso Máximo"
-                      stroke="#D4AF37"
-                      strokeWidth={3}
-                      dot={{ fill: '#D4AF37', r: 4, strokeWidth: 2, stroke: '#141414' }}
-                      activeDot={{ r: 6, fill: '#D4AF37' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="pesoMedio"
-                      name="Peso Médio"
-                      stroke="#0057FF"
-                      strokeWidth={2}
-                      strokeDasharray="4 4"
-                      dot={{ fill: '#0057FF', r: 3 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </Card>
-
-          {/* GRÁFICO 2: ESFORÇO MÉDIO (RPE 1-10) COM FAIXA IDEAL DE ESTÍMULO DESTACADA */}
-          <Card className="bg-[#181818] border border-[#2A2A2A] p-5 sm:p-6 rounded-2xl shadow-lg space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2A2A2A] pb-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-bold font-montserrat text-white uppercase flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-[#D4AF37]" />
-                    Esforço Médio por Sessão (Escala RPE 1–10)
-                  </h2>
-                </div>
-                <p className="text-xs text-gray-400 font-inter">
-                  Percepção subjetiva de esforço. Faixa ideal de hipertrofia destacada (RPE 6 a 8).
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[11px] font-mono">
-                  Zona Ótima: RPE 6 - 8
-                </Badge>
-              </div>
-            </div>
-
-            {rpeEvolutionData.length === 0 ? (
-              <div className="py-12 text-center text-xs text-gray-500 font-inter">
-                Nenhum registro de esforço perceptível no período selecionado.
-              </div>
-            ) : (
-              <div className="h-64 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={rpeEvolutionData}
-                    margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" vertical={false} />
-                    <XAxis
-                      dataKey="data"
-                      stroke="#6B7280"
-                      tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
-                    />
-                    <YAxis
-                      domain={[0, 10]}
-                      ticks={[0, 2, 4, 6, 8, 10]}
-                      stroke="#6B7280"
-                      tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
-                    />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (!active || !payload?.length) return null
-                        const rpeVal = Number(payload[0]?.value) || 0
-                        const series = (payload[0]?.payload as any)?.totalSeries || 1
-                        let zoneDesc = 'Leve / Aquecimento'
-                        let zoneColor = 'text-blue-400'
-                        if (rpeVal >= 6 && rpeVal <= 8) {
-                          zoneDesc = 'Faixa Ideal de Hipertrofia (Estímulo Ótimo)'
-                          zoneColor = 'text-emerald-400'
-                        } else if (rpeVal > 8) {
-                          zoneDesc = 'Pico de Intensidade / Próximo da Falha'
-                          zoneColor = 'text-amber-400'
-                        }
-                        return (
-                          <div className="bg-[#141414] border border-[#2A2A2A] p-3 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[180px]">
-                            <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1">
-                              Sessão: {label}
-                            </p>
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-300">RPE Médio:</span>
-                              <span className="font-bold text-base font-mono text-[#D4AF37]">
-                                {rpeVal} / 10
-                              </span>
-                            </div>
-                            <p className={`text-[11px] font-semibold ${zoneColor}`}>{zoneDesc}</p>
-                            <p className="text-[10px] text-gray-500 border-t border-[#2A2A2A] pt-1">
-                              Calculado sobre {series} séries na sessão
-                            </p>
-                          </div>
-                        )
-                      }}
-                    />
-                    {/* Faixa ideal de estímulo RPE 6 a 8 */}
-                    <ReferenceArea
-                      y1={6}
-                      y2={8}
-                      fill="#22C55E"
-                      fillOpacity={0.12}
-                      strokeOpacity={0.3}
-                      stroke="#22C55E"
-                    />
-                    <ReferenceLine y={6} stroke="#22C55E" strokeDasharray="3 3" opacity={0.6} />
-                    <ReferenceLine y={8} stroke="#22C55E" strokeDasharray="3 3" opacity={0.6} />
-                    <Line
-                      type="monotone"
-                      dataKey="rpeMedio"
-                      name="RPE Médio"
-                      stroke="#0057FF"
-                      strokeWidth={3}
-                      dot={{ fill: '#0057FF', r: 4, stroke: '#141414', strokeWidth: 2 }}
-                      activeDot={{ r: 6, fill: '#D4AF37' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </Card>
-
-          {/* GRÁFICO 3: VOLUME SEMANAL (SÉRIES × REPS × CARGA) E FREQUÊNCIA DE TREINOS */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <Card className="lg:col-span-8 bg-[#181818] border border-[#2A2A2A] p-5 sm:p-6 rounded-2xl shadow-lg space-y-4">
-              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-4">
-                <div className="space-y-1">
-                  <h2 className="text-base sm:text-lg font-bold font-montserrat text-white uppercase flex items-center gap-2">
-                    <Target className="w-5 h-5 text-[#D4AF37]" />
-                    Volume Semanal de Treino (kg)
-                  </h2>
-                  <p className="text-xs text-gray-400 font-inter">
-                    Tonagem agregada por semana (Séries × Repetições × Carga)
-                  </p>
-                </div>
-                <Badge className="bg-[#D4AF37]/15 text-[#D4AF37] border-[#D4AF37]/30 text-xs font-mono">
-                  {weeklyVolumeData.length} semanas
-                </Badge>
-              </div>
-
-              {weeklyVolumeData.length === 0 ? (
-                <div className="py-12 text-center text-xs text-gray-500 font-inter">
-                  Sem dados semanais de volume no período selecionado.
-                </div>
-              ) : (
-                <div className="h-64 w-full pt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={weeklyVolumeData}
-                      margin={{ top: 10, right: 20, left: -5, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" vertical={false} />
-                      <XAxis
-                        dataKey="semana"
-                        stroke="#6B7280"
-                        tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
-                      />
-                      <YAxis
-                        stroke="#6B7280"
-                        unit=" kg"
-                        tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
-                      />
-                      <Tooltip
-                        content={({ active, payload, label }) => {
-                          if (!active || !payload?.length) return null
-                          const vol = Number(payload[0]?.value) || 0
-                          const dias = (payload[0]?.payload as any)?.frequenciaDias || 0
-                          const series = (payload[0]?.payload as any)?.totalSeries || 0
-                          return (
-                            <div className="bg-[#141414] border border-[#2A2A2A] p-3 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[160px]">
-                              <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1">
-                                {label}
-                              </p>
-                              <div className="flex justify-between items-center text-[#D4AF37]">
-                                <span>Volume Semanal:</span>
-                                <span className="font-bold font-mono">
-                                  {vol.toLocaleString('pt-BR')} kg
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center text-gray-300">
-                                <span>Frequência:</span>
-                                <span className="font-bold text-white">{dias} dias</span>
-                              </div>
-                              <div className="flex justify-between items-center text-gray-400 text-[11px] pt-1 border-t border-[#2A2A2A]">
-                                <span>Total de Séries:</span>
-                                <span className="font-bold text-white">{series}</span>
-                              </div>
-                            </div>
-                          )
-                        }}
-                      />
-                      <Bar
-                        dataKey="volumeKg"
-                        fill="#0057FF"
-                        radius={[6, 6, 0, 0]}
-                        className="hover:opacity-90 transition-opacity"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Card>
-
-            <Card className="lg:col-span-4 bg-[#181818] border border-[#2A2A2A] p-5 sm:p-6 rounded-2xl shadow-lg space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
+          {/* CARD DE FREQUÊNCIA DE TREINOS E METODOLOGIA 369 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="bg-[#181818] border border-[#2A2A2A] p-5 sm:p-6 rounded-2xl shadow-lg space-y-4">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
                   <h3 className="text-sm font-bold font-montserrat text-white uppercase flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-[#0057FF]" /> Frequência de Treino
@@ -861,35 +582,56 @@ export default function Evolucao() {
                   A regularidade semanal é o principal pilar para adaptação neuromuscular e
                   hipertrofia sustentável.
                 </p>
-
-                <div className="space-y-2 pt-2">
-                  {weeklyVolumeData.slice(-4).map((w, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-between text-xs"
-                    >
-                      <span className="font-bold font-montserrat text-gray-300">{w.semana}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          {Array.from({ length: 7 }).map((_, i) => (
-                            <span
-                              key={i}
-                              className={`w-2.5 h-2.5 rounded-sm ${
-                                i < w.frequenciaDias ? 'bg-[#D4AF37]' : 'bg-[#2A2A2A]'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="font-mono font-bold text-white text-[11px] ml-1">
-                          {w.frequenciaDias}d
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/30 space-y-1">
+              <div className="space-y-2 pt-2">
+                {weeklyVolumeData.slice(-4).map((w, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2.5 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-between text-xs"
+                  >
+                    <span className="font-bold font-montserrat text-gray-300">{w.semana}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {Array.from({ length: 7 }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={`w-2.5 h-2.5 rounded-sm ${
+                              i < w.frequenciaDias ? 'bg-[#D4AF37]' : 'bg-[#2A2A2A]'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="font-mono font-bold text-white text-[11px] ml-1">
+                        {w.frequenciaDias}d
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="bg-[#181818] border border-[#2A2A2A] p-5 sm:p-6 rounded-2xl shadow-lg space-y-4 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 border-b border-[#2A2A2A] pb-3">
+                  <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+                  <h3 className="text-sm font-bold font-montserrat text-white uppercase">
+                    Metodologia 369 • Princípios de Sobrecarga
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-400 font-inter leading-relaxed">
+                  Para resultados progressivos sem estagnação:
+                </p>
+                <ul className="text-xs text-gray-300 space-y-2 list-disc list-inside font-inter">
+                  <li>Priorize a técnica e cadência antes de aumentar o peso.</li>
+                  <li>Trabalhe dentro da zona de hipertrofia perceptível (RPE 6 a 8).</li>
+                  <li>
+                    Mantenha de 3 a 5 sessões semanais para atingir supercompensação neuromuscular.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="p-3 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/30 space-y-1 mt-4">
                 <p className="text-xs font-bold text-[#D4AF37] uppercase font-montserrat flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" /> Metodologia 369
                 </p>
