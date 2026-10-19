@@ -68,7 +68,7 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
  function callbackUrl(){
   if(!redirectTo)throw Error('Acesso indisponível.')
   const url=new URL(redirectTo)
-  if((url.protocol!=='https:'&&!(url.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname)))||url.username||url.password||url.pathname!=='/conta-supabase'||url.search||url.hash)throw Error('Retorno indisponível.')
+  if((url.protocol!=='https:'&&!(url.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname)))||url.username||url.password||!['/conta-supabase','/acesso.html'].includes(url.pathname)||url.search||url.hash)throw Error('Retorno indisponível.')
   return url.href
  }
  async function mailOperation(task:(url:string)=>Promise<void>){
