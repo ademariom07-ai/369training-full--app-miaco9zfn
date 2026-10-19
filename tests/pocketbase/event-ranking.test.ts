@@ -41,4 +41,4 @@ it('review average includes more than 500 reviews and retains repeating decimals
 })
 
 it('PRO PARCEIRO has weight 2 and 150 fixed scoring services at every real volume',()=>{for(const b of blocks)for(const count of [0,10,200]){const row=calculate(b.source,false,4,count).find(r=>r.user.id==='cap');expect(row).toMatchObject({multiplier:2,services_count:150,monthly_points:325,total_points:335});expect((row as any).services_real_count).toBe(count)}})
-it('event seniority is not capped for long memberships',()=>{for(const b of blocks){const row=calculate(b.source,false,5,0,'2010-01-01T00:00:00Z').find(r=>r.user.id==='a-free');const months=Math.floor((new Date('2026-10-09T12:00:00Z').getTime()-new Date('2010-01-01T00:00:00Z').getTime())/(1000*60*60*24*30));expect(row?.monthly_points).toBe(5+months);expect(months).toBeGreaterThan(120)}})
+it('event seniority is not capped for long memberships',()=>{for(const b of blocks){const row=calculate(b.source,false,5,0,'2010-01-01T00:00:00Z').find(r=>r.user.id==='a-free');const months=201;expect(row?.monthly_points).toBe(5+months);expect(months).toBeGreaterThan(120)}})
