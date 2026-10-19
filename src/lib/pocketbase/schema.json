@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-17T10:35:12.206Z",
+  "generatedAt": "2026-10-19T13:13:23.860Z",
   "collections": [
     {
       "name": "users",
@@ -288,6 +288,18 @@
         },
         {
           "name": "physio_practice_area",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ai_workout_credits",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ai_workout_credits_reset_at",
           "type": "text",
           "required": false,
           "system": false
@@ -2004,7 +2016,7 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
         "view": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
-        "create": "@request.auth.role = 'admin'",
+        "create": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
         "update": "@request.auth.role = 'admin'",
         "delete": "@request.auth.role = 'admin'"
       },

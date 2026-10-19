@@ -41,6 +41,7 @@ const ChatScreen = lazy(() => import('@/pages/aluno/ChatScreen'))
 const AlunoPerfil = lazy(() => import('@/pages/aluno/AlunoPerfil'))
 const ConteudosEmDestaque = lazy(() => import('@/pages/aluno/ConteudosEmDestaque'))
 const MeuHistorico = lazy(() => import('@/pages/aluno/MeuHistorico'))
+const ExecutarTreinoHub = lazy(() => import('@/pages/aluno/ExecutarTreinoHub'))
 
 // Profissional Pages (Lazy)
 const ProfissionalDashboard = lazy(() => import('@/pages/profissional/ProfissionalDashboard'))
@@ -170,6 +171,26 @@ export default function App() {
                     <RoleGuard allowedRoles={['aluno']}>
                       <Layout>
                         <MeuHistorico />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/meu-historico"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <MeuHistorico />
+                      </Layout>
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="/aluno/executar-treino"
+                  element={
+                    <RoleGuard allowedRoles={['aluno']}>
+                      <Layout>
+                        <ExecutarTreinoHub />
                       </Layout>
                     </RoleGuard>
                   }

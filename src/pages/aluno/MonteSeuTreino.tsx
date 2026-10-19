@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { api, type WorkoutRecord } from '@/services/api'
@@ -6,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -31,13 +33,20 @@ import {
   Video,
   ChevronRight,
   TrendingUp,
+  Coins,
+  Wallet,
+  Zap,
+  ShoppingBag,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { fetchExerciseReference, ExerciseReferenceInfo } from '@/lib/exerciseDb'
 
 export default function MonteSeuTreino() {
   const { user } = useAuth()
-  const isProOrPremium = user?.plan === 'pro' || user?.plan === 'premium'
+  const userPlan = (user?.plan || 'gratis').toLowerCase()
+  const isGratis = userPlan === 'gratis'
+  const isPremium = userPlan === 'premium'
+  const isProOrPremium = userPlan === 'pro' || userPlan === 'premium'
 
   // Anamnese Form State
   const [objective, setObjective] = useState(user?.objective || 'Hipertrofia')
@@ -45,6 +54,27 @@ export default function MonteSeuTreino() {
   const [daysAvailable, setDaysAvailable] = useState(4)
   const [restrictions, setRestrictions] = useState('Nenhuma lesão atual')
   const [notes, setNotes] = useState('')
+
+  // AI Credits State
+  const [creditsLoading, setCreditsLoading] = useState(true)
+  const [creditsData, setCreditsData] = useState<{
+    credits: number
+    is_unlimited: boolean
+    has_images: boolean
+    cost_per_workout: number
+    wallet_balance: number
+    reset_month: string
+  }>({
+    credits: 0,
+    is_unlimited: isPremium,
+    has_images: !isGratis,
+    cost_per_workout: 20,
+    wallet_balance: 0,
+    reset_month: '',
+  })
+  const [buyCreditsModalOpen, setBuyCreditsModalOpen] = useState(false)
+  const [buyingCredits, setBuyingCredits] = useState(false)
+  const [selectedPackage, setSelectedPackage] = useState<'pacote_100' | 'pacote_200'>('pacote_100')
 
   // AI Generation State
   const [generating, setGenerating] = useState(false)
@@ -73,12 +103,38 @@ export default function MonteSeuTreino() {
   const [finishModalOpen, setFinishModalOpen] = useState(false)
   const [finishingWorkout, setFinishingWorkout] = useState(false)
 
+  // Consultar Saldo de Créditos do Usuário
+  const loadCredits = async () => {
+    if (!user) return
+    setCreditsLoading(true)
+    try {
+      const res = await pb.send('/backend/v1/aluno/ai-credits', {
+        method: 'GET',
+      })
+      if (res && res.success) {
+        setCreditsData({
+          credits: res.credits ?? 0,
+          is_unlimited: Boolean(res.is_unlimited),
+          has_images: Boolean(res.has_images),
+          cost_per_workout: res.cost_per_workout || 20,
+          wallet_balance: res.wallet_balance || 0,
+          reset_month: res.reset_month || '',
+        })
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar créditos de treino IA:', err)
+    } finally {
+      setCreditsLoading(false)
+    }
+  }
+
   // Load existing workouts for student
   const loadWorkouts = async () => {
     if (!user) return
     try {
-      const res = await pb.collection('workouts').getList<WorkoutRecord>(1, 10, {
-        filter: `student = "${user.id}"`,
+      // Listar todos os treinos que o aluno já gerou por IA ou recebeu
+      const res = await pb.collection('workouts').getList<WorkoutRecord>(1, 20, {
+        filter: `student = "${user.id}" && ai_generated = true`,
         sort: '-created',
       })
       setWorkoutHistory(res.items)
@@ -91,12 +147,19 @@ export default function MonteSeuTreino() {
   }
 
   useEffect(() => {
+    loadCredits()
     loadWorkouts()
   }, [user])
 
-  // Load Exercise real references when currentWorkout changes
+  // Load Exercise real references when currentWorkout changes (apenas se plano suporta imagens)
   useEffect(() => {
     if (!currentWorkout?.exercises) return
+
+    // Plano Grátis NÃO carrega imagem (treino apenas descritivo)
+    if (!creditsData.has_images) {
+      setExerciseRefs({})
+      return
+    }
 
     const loadReferences = async () => {
       const refs: Record<string, ExerciseReferenceInfo | null> = {}
@@ -109,12 +172,50 @@ export default function MonteSeuTreino() {
     }
 
     loadReferences()
-  }, [currentWorkout])
+  }, [currentWorkout, creditsData.has_images])
 
-  // Handle AI Workout Generation
+  // Comprar Mais Créditos usando Saldo da Carteira
+  const handleBuyCredits = async () => {
+    setBuyingCredits(true)
+    try {
+      const res = await pb.send('/backend/v1/aluno/buy-ai-credits', {
+        method: 'POST',
+        body: { package_type: selectedPackage },
+      })
+      if (res.success) {
+        toast.success(res.message || 'Créditos adquiridos com sucesso!')
+        setBuyCreditsModalOpen(false)
+        await loadCredits()
+      } else {
+        toast.error(res.message || 'Falha na compra de créditos.')
+      }
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message || 'Erro ao comprar créditos.'
+      toast.error(msg)
+    } finally {
+      setBuyingCredits(false)
+    }
+  }
+
+  // Handle AI Workout Generation com Dedução de Créditos
   const handleGenerateAI = async () => {
+    // 1. Validar e Consumir Crédito no Backend
     setGenerating(true)
     try {
+      const consumeRes = await pb.send('/backend/v1/aluno/consume-ai-credit', {
+        method: 'POST',
+      })
+
+      if (!consumeRes.success) {
+        if (consumeRes.needs_credits) {
+          toast.error(consumeRes.message)
+          setBuyCreditsModalOpen(true)
+          return
+        }
+        throw new Error(consumeRes.message || 'Não foi possível validar créditos.')
+      }
+
+      // 2. Chamar o serviço de IA
       const generated = await api.generateWorkout({
         objective,
         experience,
@@ -123,7 +224,7 @@ export default function MonteSeuTreino() {
         notes,
       })
 
-      // Persist to PocketBase workouts collection
+      // Persistir no PocketBase
       const newRec = await pb.collection('workouts').create<WorkoutRecord>({
         student: user?.id,
         title: generated.title || `Treino IA - ${objective}`,
@@ -136,10 +237,16 @@ export default function MonteSeuTreino() {
 
       setCurrentWorkout(newRec)
       setWorkoutHistory((prev) => [newRec, ...prev])
-      toast.success('Treino gerado com sucesso pelo algoritmo 369!')
-    } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Falha ao gerar treino com IA. Tente novamente.')
+      await loadCredits()
+
+      toast.success(consumeRes.message || 'Treino gerado com sucesso pelo algoritmo 369!')
+    } catch (err: any) {
+      const errorMsg =
+        err?.data?.message || err?.message || 'Falha ao gerar treino com IA. Tente novamente.'
+      toast.error(errorMsg)
+      if (err?.data?.needs_credits) {
+        setBuyCreditsModalOpen(true)
+      }
     } finally {
       setGenerating(false)
     }
@@ -151,7 +258,7 @@ export default function MonteSeuTreino() {
     if (targetId) {
       window.location.href = `/aluno/treino/execucao/${targetId}`
     } else {
-      window.location.href = '/aluno/treino/execucao'
+      window.location.href = '/aluno/executar-treino'
     }
   }
 
@@ -161,12 +268,10 @@ export default function MonteSeuTreino() {
     const ex = currentWorkout.exercises[index]
 
     if (ex.completed) {
-      // If already completed, toggle to uncompleted directly
       toggleExerciseStatus(index, false)
       return
     }
 
-    // Extract initial load numeric if available
     const matchLoad = ex.load?.match(/\d+/)
     const initialWeight = matchLoad ? matchLoad[0] : '20'
 
@@ -242,7 +347,6 @@ export default function MonteSeuTreino() {
     try {
       const hasProfessional = !!currentWorkout.professional
 
-      // Criar registro na coleção services
       await pb.collection('services').create({
         student: user.id,
         professional: currentWorkout.professional || null,
@@ -254,7 +358,6 @@ export default function MonteSeuTreino() {
         notes: `Treino concluído com 100% dos exercícios finalizados via IA 369. Exercícios: ${currentWorkout.exercises?.length || 0}${hasProfessional ? ' (Com acompanhamento profissional)' : ' (Treino IA autônomo - sem pontuação de ranking)'}`,
       })
 
-      // Atualizar status do treino
       await pb.collection('workouts').update(currentWorkout.id, {
         status: 'concluido',
       })
@@ -278,7 +381,6 @@ export default function MonteSeuTreino() {
     }
   }
 
-  // Check if all exercises are completed
   const allExercisesCompleted =
     currentWorkout?.exercises &&
     currentWorkout.exercises.length > 0 &&
@@ -296,10 +398,96 @@ export default function MonteSeuTreino() {
           Monte Seu Treino com IA & Biomecânica
         </h1>
         <p className="text-sm text-gray-400 font-inter mt-1">
-          Demonstrações com GIFs animados ExerciseDB, feedback de progressão de carga inteligente e
-          validação de pontuação diária.
+          Prescrições inteligentes por IA adaptadas ao seu objetivo, histórico completo de treinos
+          gerados e saldo mensal de créditos.
         </p>
       </div>
+
+      {/* PAINEL DE SALDO DE CRÉDITOS & PLANO DO ALUNO */}
+      <Card className="bg-gradient-to-r from-[#181818] via-[#151a24] to-[#181818] border border-[#2A2A2A] p-6 rounded-2xl shadow-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-[10px] font-extrabold font-montserrat uppercase bg-[#0057FF]/20 text-[#0057FF] border border-[#0057FF]/40 flex items-center gap-1.5">
+                <Coins className="w-3.5 h-3.5 text-[#D4AF37]" /> Sistema de Créditos IA
+              </span>
+              <span
+                className={`px-3 py-1 rounded-full text-[10px] font-extrabold font-montserrat uppercase border ${
+                  userPlan === 'premium'
+                    ? 'bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/50'
+                    : userPlan === 'pro'
+                      ? 'bg-[#0057FF]/20 text-[#0057FF] border-[#0057FF]/50'
+                      : userPlan === 'basico'
+                        ? 'bg-blue-900/30 text-blue-300 border-blue-500/40'
+                        : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                }`}
+              >
+                Plano {userPlan.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl font-black font-montserrat text-white">
+                {creditsLoading ? (
+                  '...'
+                ) : creditsData.is_unlimited ? (
+                  <span className="text-[#D4AF37] flex items-center gap-1.5">
+                    <Zap className="w-7 h-7" /> Ilimitado
+                  </span>
+                ) : (
+                  `${creditsData.credits} Créditos`
+                )}
+              </span>
+              {!creditsData.is_unlimited && (
+                <span className="text-xs text-gray-400 font-inter">
+                  (~{Math.floor(creditsData.credits / 20)} gerações restantes • 20 créditos/treino)
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs text-gray-400 font-inter">
+              {isGratis && (
+                <span className="text-amber-300">
+                  ℹ️ Plano Grátis: gera treinos IA em formato descritivo (sem fotos/vídeos). Evolua
+                  para Básico, Pro ou Premium para fotos e treinos completos.
+                </span>
+              )}
+              {userPlan === 'basico' &&
+                'Plano Básico (R$ 10/mês): 100 créditos mensais com imagens reais inclusas.'}
+              {userPlan === 'pro' &&
+                'Plano Pro (R$ 20/mês): 200 créditos mensais com imagens reais inclusas.'}
+              {userPlan === 'premium' &&
+                'Plano Premium (R$ 30/mês): Gerações ilimitadas de treinos com imagens reais.'}
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+            <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-left text-xs font-inter w-full sm:w-auto">
+              <span className="text-gray-400 block text-[10px] uppercase font-montserrat">
+                Saldo na Carteira
+              </span>
+              <strong className="text-white font-mono text-sm">
+                R$ {creditsData.wallet_balance.toFixed(2)}
+              </strong>
+            </div>
+
+            <Button
+              onClick={() => setBuyCreditsModalOpen(true)}
+              className="w-full sm:w-auto bg-[#D4AF37] hover:bg-[#c5a030] text-black font-bold font-montserrat uppercase text-xs px-5 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md"
+            >
+              <Coins className="w-4 h-4" /> Comprar Mais Créditos
+            </Button>
+            <Link to="/aluno/carteira">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto border-[#2A2A2A] hover:bg-[#202020] text-gray-300 text-xs font-bold uppercase rounded-xl flex items-center justify-center gap-1.5"
+              >
+                <Wallet className="w-3.5 h-3.5" /> Adicionar Saldo
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </Card>
 
       {/* AMBER DISCLAIMER (Mandatory per spec) */}
       <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/40 flex items-start gap-3.5 text-amber-200 text-xs font-inter leading-relaxed">
@@ -315,10 +503,19 @@ export default function MonteSeuTreino() {
 
       {/* ANAMNESE FORM & GENERATOR */}
       <Card className="bg-[#181818] border border-[#2A2A2A] p-6 sm:p-8 rounded-2xl shadow-xl">
-        <h2 className="text-lg font-bold font-montserrat text-white uppercase mb-6 flex items-center gap-2">
-          <Layers className="w-5 h-5 text-[#D4AF37]" />
-          Questionário de Anamnese & Metas
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-lg font-bold font-montserrat text-white uppercase flex items-center gap-2">
+            <Layers className="w-5 h-5 text-[#D4AF37]" />
+            Questionário de Anamnese & Metas
+          </h2>
+
+          <div className="text-xs text-gray-400 font-inter">
+            Custo desta geração:{' '}
+            <strong className="text-[#D4AF37] font-mono">
+              {isGratis ? 'Grátis (Descritivo)' : isPremium ? '0 (Ilimitado)' : '20 Créditos'}
+            </strong>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Objetivo */}
@@ -390,26 +587,41 @@ export default function MonteSeuTreino() {
         </div>
 
         {/* Generate Button */}
-        <Button
-          onClick={handleGenerateAI}
-          disabled={generating}
-          className="w-full sm:w-auto px-8 py-6 bg-gradient-to-r from-[#D4AF37] to-[#F4D77A] text-black font-extrabold text-sm uppercase rounded-xl shadow-[0_0_25px_rgba(212,175,55,0.3)] hover:scale-102 transition-all flex items-center justify-center gap-2"
-        >
-          {generating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Calculando Séries & Cargas com IA...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              Gerar Treino com IA
-            </>
-          )}
-        </Button>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-[#2A2A2A]">
+          <div className="text-xs text-gray-400">
+            {isGratis ? (
+              <span className="text-zinc-400">
+                Treino descritivo sem fotos. Deseja imagens reais dos exercícios?{' '}
+                <Link to="/aluno/perfil" className="text-[#D4AF37] underline font-semibold">
+                  Evoluir Plano
+                </Link>
+              </span>
+            ) : (
+              <span>Imagens de execução e biomecânica inclusas para o seu plano.</span>
+            )}
+          </div>
+
+          <Button
+            onClick={handleGenerateAI}
+            disabled={generating}
+            className="w-full sm:w-auto px-8 py-6 bg-gradient-to-r from-[#D4AF37] to-[#F4D77A] text-black font-extrabold text-sm uppercase rounded-xl shadow-[0_0_25px_rgba(212,175,55,0.3)] hover:scale-102 transition-all flex items-center justify-center gap-2"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Calculando Séries & Cargas com IA...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                Gerar Treino com IA
+              </>
+            )}
+          </Button>
+        </div>
       </Card>
 
-      {/* RECURSO 5: BANNER DE TREINO 100% CONCLUÍDO */}
+      {/* BANNER DE TREINO 100% CONCLUÍDO */}
       {allExercisesCompleted && currentWorkout?.status !== 'concluido' && (
         <Card className="bg-gradient-to-r from-[#22C55E]/20 via-[#181818] to-[#D4AF37]/20 border-2 border-[#22C55E] p-6 rounded-2xl shadow-[0_0_30px_rgba(34,197,94,0.2)] animate-pulse">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
@@ -451,7 +663,12 @@ export default function MonteSeuTreino() {
                 {currentWorkout.ai_generated && (
                   <span className="px-2 py-0.5 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[10px] font-bold text-[#D4AF37] flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
-                    IA
+                    IA 369
+                  </span>
+                )}
+                {!creditsData.has_images && (
+                  <span className="px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300">
+                    Modo Descritivo (Plano Grátis)
                   </span>
                 )}
               </div>
@@ -468,12 +685,14 @@ export default function MonteSeuTreino() {
               Iniciar Modo Execução
             </Button>
           </div>
+
           {/* Exercise List */}
           <div className="grid grid-cols-1 gap-4">
             {currentWorkout.exercises?.map((exercise, idx) => {
               const refInfo = exercise?.name ? exerciseRefs[exercise.name] : null
               const isImageFailed = exercise?.name ? !!failedImages[exercise.name] : false
-              const hasValidRealImage = refInfo?.imageUrl && !isImageFailed
+              const hasValidRealImage =
+                creditsData.has_images && refInfo?.imageUrl && !isImageFailed
               const hasVideoLink = !!exercise?.video
 
               return (
@@ -487,10 +706,10 @@ export default function MonteSeuTreino() {
                 >
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-                      {/* Referência Real do Exercício / Fallback Limpo de Biomecânica */}
-                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-center shrink-0 relative overflow-hidden group shadow-inner">
-                        {isProOrPremium ? (
-                          hasValidRealImage ? (
+                      {/* Referência Real do Exercício (se o plano incluir imagem) */}
+                      {creditsData.has_images ? (
+                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-center shrink-0 relative overflow-hidden group shadow-inner">
+                          {hasValidRealImage ? (
                             <div className="relative w-full h-full">
                               <img
                                 src={refInfo.imageUrl}
@@ -519,16 +738,13 @@ export default function MonteSeuTreino() {
                                 369 BIOMECÂNICA
                               </span>
                             </div>
-                          )
-                        ) : (
-                          <div className="flex flex-col items-center justify-center p-2 text-center text-gray-500 w-full h-full">
-                            <Lock className="w-6 h-6 text-[#D4AF37] mb-1" />
-                            <span className="text-[9px] uppercase font-bold text-[#D4AF37]">
-                              Pro/Premium
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-[#141414] border border-zinc-800 flex items-center justify-center shrink-0 text-zinc-500">
+                          <Dumbbell className="w-6 h-6 text-[#D4AF37]" />
+                        </div>
+                      )}
 
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2">
@@ -571,8 +787,7 @@ export default function MonteSeuTreino() {
                           </p>
                         )}
 
-                        {/* RECURSO 2: Fallback Video Player Embed se disponível */}
-                        {isProOrPremium && hasVideoLink && (
+                        {creditsData.has_images && hasVideoLink && (
                           <div className="pt-1">
                             <a
                               href={exercise.video}
@@ -581,7 +796,7 @@ export default function MonteSeuTreino() {
                               className="inline-flex items-center gap-1.5 text-xs text-[#0057FF] hover:underline font-montserrat font-bold"
                             >
                               <Video className="w-3.5 h-3.5" />
-                              Ver Vídeo Demonstrativo no YouTube
+                              Ver Vídeo Demonstrativo
                             </a>
                           </div>
                         )}
@@ -611,41 +826,186 @@ export default function MonteSeuTreino() {
         </div>
       )}
 
-      {/* PLAN HISTORY */}
-      {workoutHistory.length > 1 && (
-        <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl">
-          <h3 className="font-bold font-montserrat text-white text-sm uppercase mb-3 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#D4AF37]" />
-            Histórico de Planos Gerados
+      {/* LISTAGEM DOS TREINOS QUE O ALUNO JÁ GEROU POR IA */}
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold font-montserrat text-white text-base uppercase flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+            Treinos Gerados por IA ({workoutHistory.length})
           </h3>
-          <div className="space-y-2">
+          <span className="text-xs text-gray-400 font-inter">
+            Seus treinos autônomos salvos na plataforma
+          </span>
+        </div>
+
+        {workoutHistory.length === 0 ? (
+          <div className="p-6 text-center text-xs text-gray-400 bg-[#141414] rounded-xl border border-[#2A2A2A]">
+            Você ainda não gerou treinos por IA. Preencha a anamnese acima e clique em &quot;Gerar
+            Treino com IA&quot;.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {workoutHistory.map((w) => (
               <div
                 key={w.id}
                 onClick={() => setCurrentWorkout(w)}
-                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                className={`p-4 rounded-xl border flex flex-col justify-between gap-3 cursor-pointer transition-all ${
                   currentWorkout?.id === w.id
                     ? 'bg-[#D4AF37]/10 border-[#D4AF37]'
                     : 'bg-[#141414] border-[#2A2A2A] hover:border-gray-700'
                 }`}
               >
                 <div>
-                  <p className="text-xs font-bold text-white font-montserrat">{w.title}</p>
-                  <p className="text-[10px] text-gray-400 font-inter">
-                    {w.exercises?.length || 0} exercícios • Criado em{' '}
-                    {new Date(w.created).toLocaleDateString('pt-BR')}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold font-montserrat uppercase px-2 py-0.5 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30">
+                      IA 369
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-mono">
+                      {new Date(w.created).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-white font-montserrat mt-2">{w.title}</h4>
+                  <p className="text-xs text-gray-400 font-inter line-clamp-1">
+                    Objetivo: {w.objective || 'Hipertrofia'} • {w.exercises?.length || 0} exercícios
                   </p>
                 </div>
-                <Button size="sm" variant="ghost" className="text-xs text-[#D4AF37]">
-                  Carregar
-                </Button>
+
+                <div className="flex items-center justify-between pt-2 border-t border-[#222]">
+                  <span className="text-[11px] text-[#D4AF37] font-semibold">
+                    {currentWorkout?.id === w.id ? 'Treino selecionado' : 'Clique para carregar'}
+                  </span>
+                  <Button
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleStartWorkoutExecution(w.id)
+                    }}
+                    className="h-7 text-[11px] font-bold bg-[#0057FF] hover:bg-[#1a66ff] text-white px-3 rounded-lg"
+                  >
+                    Executar
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
-      {/* RECURSO 3: MODAL DE FEEDBACK DE CARGA COM IA */}
+      {/* MODAL DE COMPRA DE CRÉDITOS IA COM SALDO DA CARTEIRA */}
+      <Dialog open={buyCreditsModalOpen} onOpenChange={setBuyCreditsModalOpen}>
+        <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold font-montserrat uppercase flex items-center gap-2">
+              <Coins className="w-5 h-5 text-[#D4AF37]" /> Comprar Créditos de Treino IA
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-400">
+              Utilize o saldo da sua carteira para adquirir novos créditos de treino com IA.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-2">
+            <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] flex items-center justify-between text-xs">
+              <span className="text-gray-400">Saldo Atual da Carteira:</span>
+              <strong className="text-white font-mono text-sm">
+                R$ {creditsData.wallet_balance.toFixed(2)}
+              </strong>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase font-montserrat text-gray-300">
+                Selecione o Pacote de Créditos:
+              </label>
+
+              {/* Pacote 100 créditos */}
+              <div
+                onClick={() => setSelectedPackage('pacote_100')}
+                className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                  selectedPackage === 'pacote_100'
+                    ? 'bg-[#D4AF37]/15 border-[#D4AF37]'
+                    : 'bg-[#181818] border-[#2A2A2A] hover:border-gray-700'
+                }`}
+              >
+                <div>
+                  <h4 className="text-sm font-bold text-white font-montserrat">
+                    100 Créditos IA (~5 Treinos)
+                  </h4>
+                  <p className="text-xs text-gray-400 font-inter">
+                    Ideal para complementar seu mês de treinos
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black text-[#D4AF37] font-mono">R$ 10,00</span>
+                </div>
+              </div>
+
+              {/* Pacote 200 créditos */}
+              <div
+                onClick={() => setSelectedPackage('pacote_200')}
+                className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                  selectedPackage === 'pacote_200'
+                    ? 'bg-[#D4AF37]/15 border-[#D4AF37]'
+                    : 'bg-[#181818] border-[#2A2A2A] hover:border-gray-700'
+                }`}
+              >
+                <div>
+                  <h4 className="text-sm font-bold text-white font-montserrat">
+                    200 Créditos IA (~10 Treinos)
+                  </h4>
+                  <p className="text-xs text-gray-400 font-inter">
+                    Máxima flexibilidade para múltiplos mesociclos
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black text-[#D4AF37] font-mono">R$ 20,00</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Aviso de saldo insuficiente se necessário */}
+            {creditsData.wallet_balance < (selectedPackage === 'pacote_200' ? 20 : 10) && (
+              <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs font-inter space-y-2">
+                <p>
+                  Seu saldo na carteira (R$ {creditsData.wallet_balance.toFixed(2)}) é inferior ao
+                  valor do pacote. Faça uma recarga via PIX com comprovante.
+                </p>
+                <Link to="/aluno/carteira" onClick={() => setBuyCreditsModalOpen(false)}>
+                  <Button className="w-full bg-[#D4AF37] hover:bg-[#c5a030] text-black font-bold uppercase text-xs rounded-lg h-8">
+                    Recarregar Carteira via PIX
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setBuyCreditsModalOpen(false)}
+              className="border-[#2A2A2A] text-gray-400 text-xs rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBuyCredits}
+              disabled={
+                buyingCredits ||
+                creditsData.wallet_balance < (selectedPackage === 'pacote_200' ? 20 : 10)
+              }
+              className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs uppercase rounded-xl flex items-center gap-2"
+            >
+              {buyingCredits ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Processando...
+                </>
+              ) : (
+                'Confirmar Compra com Saldo'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE FEEDBACK DE CARGA COM IA */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
         <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-md rounded-2xl p-6">
           <DialogHeader>
@@ -660,7 +1020,6 @@ export default function MonteSeuTreino() {
 
           {isProOrPremium ? (
             <div className="space-y-5 my-2">
-              {/* Campo de Carga Real */}
               <div>
                 <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5 font-montserrat">
                   Carga Real Utilizada (kg) *
@@ -681,7 +1040,6 @@ export default function MonteSeuTreino() {
                 </div>
               </div>
 
-              {/* Slider de Grau de Dificuldade (0 a 10) */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs">
                   <label className="font-semibold text-gray-300 uppercase font-montserrat">
@@ -706,7 +1064,6 @@ export default function MonteSeuTreino() {
                 </div>
               </div>
 
-              {/* Botão de Calcular Progressão IA */}
               <Button
                 onClick={handleCalculateAiFeedback}
                 disabled={evaluatingLoad}
@@ -723,7 +1080,6 @@ export default function MonteSeuTreino() {
                 )}
               </Button>
 
-              {/* Resultado da IA */}
               {aiLoadResult && (
                 <div className="p-4 rounded-xl bg-[#181818] border border-[#D4AF37] space-y-2 animate-in fade-in">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] uppercase font-montserrat">
@@ -769,7 +1125,7 @@ export default function MonteSeuTreino() {
         </DialogContent>
       </Dialog>
 
-      {/* RECURSO 5: MODAL DE CONFIRMAÇÃO DUPLA DE FINALIZAÇÃO */}
+      {/* MODAL DE CONFIRMAÇÃO DE FINALIZAÇÃO */}
       <Dialog open={finishModalOpen} onOpenChange={setFinishModalOpen}>
         <DialogContent className="bg-[#141414] border border-[#2A2A2A] text-white max-w-md rounded-2xl p-6">
           <DialogHeader>
@@ -818,7 +1174,7 @@ export default function MonteSeuTreino() {
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" /> Confirmar & Pontuar
+                  <CheckCircle2 className="w-4 h-4" /> Confirmar & Concluir
                 </>
               )}
             </Button>

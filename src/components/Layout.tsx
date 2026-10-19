@@ -96,17 +96,28 @@ export default function Layout({ children }: LayoutProps) {
     }
   }, [user])
 
-  // Aluno Nav Items
+  // Aluno Nav Items — Ordem exata solicitada:
+  // 1) INÍCIO
+  // 2) ENCONTRAR UM PROFISSIONAL
+  // 3) MONTE SEU TREINO
+  // 4) EXECUTAR TREINO
+  // 5) MEU HISTÓRICO
+  // 6) CONTEÚDOS E-BOOKS
+  // 7) SMARTWATCH
+  // 8) COMUNIDADE
+  // 9) MINHA CARTEIRA
+  // 10) CHAT
+  // 11) PERFIL
   const alunoNav = [
     { label: 'Início', path: '/aluno', icon: Home },
-    { label: 'Executar Treino', path: '/aluno/treino/execucao', icon: Dumbbell },
-    { label: 'Meu Histórico', path: '/aluno/historico', icon: History },
-    { label: 'Smartwatch', path: '/smartwatch', icon: Activity },
+    { label: 'Encontrar um Profissional', path: '/aluno/profissionais', icon: Users },
     { label: 'Monte Seu Treino', path: '/aluno/treino', icon: Dumbbell },
-    { label: 'Encontrar Profissional', path: '/aluno/profissionais', icon: Users },
-    { label: 'Conteúdos & E-books', path: '/conteudos', icon: Award },
-    { label: 'Minha Carteira', path: '/aluno/carteira', icon: Wallet },
+    { label: 'Executar Treino', path: '/aluno/executar-treino', icon: Dumbbell },
+    { label: 'Meu Histórico', path: '/aluno/meu-historico', icon: History },
+    { label: 'Conteúdos E-books', path: '/conteudos', icon: Award },
+    { label: 'Smartwatch', path: '/aluno/smartwatch', icon: Activity },
     { label: 'Comunidade', path: '/aluno/comunidade', icon: Trophy },
+    { label: 'Minha Carteira', path: '/aluno/carteira', icon: Wallet },
     { label: 'Chat', path: '/aluno/chat', icon: MessageSquare },
     { label: 'Perfil', path: '/aluno/perfil', icon: User },
   ]
@@ -179,7 +190,6 @@ export default function Layout({ children }: LayoutProps) {
             <CrestLogo size={38} showText subText loading="eager" decoding="auto" />
           </Link>
         </div>
-
         {/* Right Section: Plan Badge + Notif Bell + Avatar Menu */}
         <div className="flex items-center gap-2 sm:gap-3 flex-1 basis-0 justify-end">
           {/* Plan Tier Badge for Professionals */}
