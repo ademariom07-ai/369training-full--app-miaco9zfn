@@ -14,7 +14,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     basico: 1,
     pro: 2,
     premium: 3,
-    pro_parceiro: 1, // Multiplicador de plano 1X para parceiro e aluno vinculado
+    pro_parceiro: 2, // Approved professional PRO PARCEIRO coefficient
   }
 
   const planTarifas = {
@@ -25,14 +25,14 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     pro_parceiro: 0.0, // R$ 0 tarifa por serviço
   }
 
-  const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
+  const proParceiroFixedServices = 150 // Confirmed 2026-10-19: scoring only, not real service volume.
 
   const scores = []
 
   for (const u of users) {
     const rawPlan = (u.get('plan') || 'gratis').toLowerCase()
     const role = u.get('role') || 'aluno'
-    const isProParceiro = rawPlan === 'pro_parceiro'
+    const isProParceiro = role === 'profissional' && rawPlan === 'pro_parceiro'
     let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
     // A link alone is not an explicit historical payer/plan selection.
     const subStatus = (u.get('subscription_status') || 'ativa').toLowerCase()
@@ -109,7 +109,7 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     const realServicesCount = servicesThisMonth.length
     let effectiveServicesCount = realServicesCount
     if (isProParceiro) {
-      effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
+      effectiveServicesCount = proParceiroFixedServices
     }
 
     const indicacoesCount = referralsThisMonth.length
