@@ -55,6 +55,7 @@ import type {
   MartialArtsProgressRecord,
   ProtocolRecord,
   DietRecord,
+  AppointmentRecord,
 } from '@/services/api'
 import type { ContentItem } from '@/pages/profissional/ProfissionalConteudos'
 import ReviewModal from '@/components/ReviewModal'
@@ -93,7 +94,7 @@ export default function MeuHistorico() {
 
   // Tabs de navegação interna do Meu Histórico
   const [activeTab, setActiveTab] = useState<
-    'todos' | 'ia' | 'profissionais' | 'fichas' | 'compras'
+    'todos' | 'agendamentos' | 'ia' | 'profissionais' | 'fichas' | 'compras'
   >('todos')
 
   // Filtro por Categoria das 5 Especialidades
@@ -115,6 +116,7 @@ export default function MeuHistorico() {
   const [martialArtsProgress, setMartialArtsProgress] = useState<MartialArtsProgressRecord[]>([])
   const [protocols, setProtocols] = useState<ProtocolRecord[]>([])
   const [purchases, setPurchases] = useState<ContentPurchaseWithExpand[]>([])
+  const [studentAppointments, setStudentAppointments] = useState<AppointmentRecord[]>([])
 
   // Filtros
   const [selectedProfId, setSelectedProfId] = useState<string>('todos')
@@ -245,6 +247,16 @@ export default function MeuHistorico() {
         })
         .catch(() => [] as ContentPurchaseWithExpand[])
 
+      // 5. Agendamentos completos do aluno (consultas marcadas, sinal, etc.)
+      const appointmentsPromise = pb
+        .collection('appointments')
+        .getFullList<AppointmentRecord>({
+          filter: `aluno = "${user.id}"`,
+          sort: '-created',
+          expand: 'profissional,schedule',
+        })
+        .catch(() => [] as AppointmentRecord[])
+
       const [
         resIaWorkouts,
         resProfWorkouts,
@@ -255,6 +267,7 @@ export default function MeuHistorico() {
         resMartialArts,
         resProtocols,
         resPurchases,
+        resAppointments,
       ] = await Promise.all([
         iaWorkoutsPromise,
         profWorkoutsPromise,
@@ -265,6 +278,7 @@ export default function MeuHistorico() {
         martialArtsPromise,
         protocolsPromise,
         purchasesPromise,
+        appointmentsPromise,
       ])
 
       // Deduplicação defensiva por id para garantir unicidade em montagem / renders
@@ -286,6 +300,7 @@ export default function MeuHistorico() {
       setMartialArtsProgress(dedupeById(resMartialArts))
       setProtocols(dedupeById(resProtocols))
       setPurchases(dedupeById(resPurchases))
+      setStudentAppointments(dedupeById(resAppointments))
 
       // Carregar avaliações do aluno (como reviewer ou reviewee) para permitir revelação quando totalmente_validada
       try {
@@ -623,7 +638,8 @@ export default function MeuHistorico() {
     filteredMartialArts.length +
     filteredProtocols.length
   const totalCompras = filteredPurchases.length
-  const totalGeral = totalIa + totalProfAtiv + totalFichas + totalCompras
+  const totalAgendamentos = studentAppointments.length
+  const totalGeral = totalIa + totalProfAtiv + totalFichas + totalCompras + totalAgendamentos
 
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto">
@@ -826,6 +842,24 @@ export default function MeuHistorico() {
 
           <button
             type="button"
+            onClick={() => setActiveTab('agendamentos')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold font-montserrat uppercase transition-all flex items-center gap-2 ${
+              activeTab === 'agendamentos'
+                ? 'bg-[#D4AF37] text-black shadow-md shadow-[#D4AF37]/20'
+                : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2A2A2A]'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Meus Agendamentos</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${activeTab === 'agendamentos' ? 'bg-black text-[#D4AF37]' : 'bg-[#2A2A2A] text-gray-300'}`}
+            >
+              {totalAgendamentos}
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('ia')}
             className={`px-4 py-2 rounded-xl text-xs font-bold font-montserrat uppercase transition-all flex items-center gap-2 ${
               activeTab === 'ia'
@@ -908,6 +942,171 @@ export default function MeuHistorico() {
         </Card>
       ) : (
         <div className="space-y-10">
+          {/* ==============================================================
+              SEÇÃO 0: MEUS AGENDAMENTOS (ITEM 1 — CONSULTAS, SESSÕES & SINAL PIX)
+             ============================================================== */}
+          {(activeTab === 'todos' || activeTab === 'agendamentos') && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[#D4AF37]">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold font-montserrat text-white uppercase">
+                      Meus Agendamentos & Consultas
+                    </h2>
+                    <p className="text-xs text-gray-400 font-inter">
+                      Consultas futuras e passadas • Status, horário, confirmação e sinal PIX
+                    </p>
+                  </div>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="border-[#D4AF37]/40 text-[#D4AF37] bg-[#D4AF37]/10 font-mono text-xs"
+                >
+                  {studentAppointments.length} agendamentos
+                </Badge>
+              </div>
+
+              {studentAppointments.length === 0 ? (
+                <Card className="bg-[#181818] border border-[#2A2A2A] p-8 text-center rounded-2xl">
+                  <p className="text-xs text-gray-400 font-inter">
+                    Nenhum agendamento encontrado no seu histórico.
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {studentAppointments.map((appt) => {
+                    const schedule = appt.expand?.schedule
+                    const prof = appt.expand?.profissional
+                    const profName = prof?.name || 'Profissional 369'
+                    const dataFormatada = schedule?.data
+                      ? new Date(schedule.data + 'T00:00:00').toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : 'Data a combinar'
+                    const horario = schedule?.hora_inicio
+                      ? `${schedule.hora_inicio}${schedule.hora_fim ? ` - ${schedule.hora_fim}` : ''}`
+                      : 'Horário agendado'
+
+                    const hasPendingAdvance =
+                      Boolean(appt.requires_advance) &&
+                      (appt.advance_amount || 0) > 0 &&
+                      appt.status !== 'cancelado'
+
+                    return (
+                      <Card
+                        key={appt.id}
+                        className="bg-[#181818] border border-[#2A2A2A] hover:border-[#D4AF37]/60 p-5 rounded-2xl flex flex-col justify-between space-y-4 transition-all hover:shadow-[0_8px_25px_rgba(212,175,55,0.08)] group"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold font-montserrat uppercase px-2 py-0.5 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37] flex items-center gap-1">
+                              <Calendar className="w-3 h-3" /> Agendamento
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                                appt.status === 'confirmado'
+                                  ? 'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30'
+                                  : String(appt.status) === 'concluído' ||
+                                      String(appt.status) === 'concluido'
+                                    ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                    : appt.status === 'cancelado'
+                                      ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                                      : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                              }`}
+                            >
+                              {appt.status}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#141414] border border-[#D4AF37]/50 flex items-center justify-center font-bold text-sm text-[#D4AF37] shrink-0">
+                              {profName[0] || 'P'}
+                            </div>
+                            <div>
+                              <h3 className="font-bold font-montserrat text-white text-base group-hover:text-[#D4AF37] transition-colors line-clamp-1">
+                                {profName}
+                              </h3>
+                              <p className="text-xs text-gray-400 font-inter">
+                                {appt.servico_tipo || 'Consulta / Sessão'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between text-gray-400 font-inter">
+                              <span>Data & Horário:</span>
+                              <span className="font-mono font-semibold text-white">
+                                {dataFormatada} • {horario}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-gray-400 font-inter">
+                              <span>Valor Total:</span>
+                              <span className="font-mono font-bold text-[#D4AF37]">
+                                R$ {(appt.valor || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Destaque de sinal PIX pendente se houver */}
+                          {hasPendingAdvance && (
+                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-amber-400 uppercase font-montserrat flex items-center gap-1">
+                                  <AlertCircle className="w-3.5 h-3.5" /> Sinal PIX Pendente
+                                </span>
+                                <span className="font-mono font-bold text-amber-300">
+                                  R$ {(appt.advance_amount || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-300 font-inter">
+                                1ª consulta requer sinal de 30% com comprovante para confirmação.
+                              </p>
+                              <Link to="/aluno/carteira">
+                                <Button
+                                  size="sm"
+                                  className="w-full bg-[#D4AF37] hover:bg-[#E6C65C] text-black font-extrabold text-[11px] uppercase rounded-lg h-7 mt-1"
+                                >
+                                  Pagar via PIX na Carteira
+                                </Button>
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#2A2A2A]">
+                          <Link to="/aluno/chat">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs font-bold text-gray-400 hover:text-white uppercase rounded-xl h-8 px-2.5"
+                            >
+                              Chat com {profName.split(' ')[0]}
+                            </Button>
+                          </Link>
+
+                          <Link to="/aluno/profissionais">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-xs font-bold uppercase rounded-xl h-8 px-2.5"
+                            >
+                              Ver Agenda
+                            </Button>
+                          </Link>
+                        </div>
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ==============================================================
               SEÇÃO 1: TREINOS GERADOS POR IA
              ============================================================== */}

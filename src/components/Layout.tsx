@@ -25,6 +25,7 @@ import {
   FileText,
   History,
   ShieldAlert,
+  Calendar,
 } from 'lucide-react'
 import type { NotificationRecord } from '@/services/api'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -122,16 +123,24 @@ export default function Layout({ children }: LayoutProps) {
     { label: 'Perfil', path: '/aluno/perfil', icon: User },
   ]
 
-  // Profissional Nav Items
+  // Profissional Nav Items — Ordem exata solicitada:
+  // 1. BACKOFFICE
+  // 2. ALUNOS
+  // 3. AGENDA E SERVIÇOS
+  // 4. CONTEÚDOS E MATERIAIS
+  // 5. FINANCEIRO E CARTEIRA
+  // 6. PERFIL E BRANDING
+  // 7. SMARTWATCH
+  // 8. CHAT
   const profissionalNav = [
     { label: 'BackOffice', path: '/profissional', icon: Home },
-    { label: 'Smartwatch', path: '/smartwatch', icon: Activity },
     { label: 'Alunos', path: '/profissional/alunos', icon: Users },
+    { label: 'Agenda e Serviços', path: '/profissional/agenda', icon: Calendar },
+    { label: 'Conteúdos e Materiais', path: '/profissional/conteudos', icon: Award },
+    { label: 'Financeiro e Carteira', path: '/profissional/carteira', icon: Wallet },
+    { label: 'Perfil e Branding', path: '/profissional/perfil', icon: User },
+    { label: 'Smartwatch', path: '/smartwatch', icon: Activity },
     { label: 'Chat', path: '/profissional/chat', icon: MessageSquare },
-    { label: 'Conteúdos & Materiais', path: '/profissional/conteudos', icon: Award },
-    { label: 'Agenda & Serviços', path: '/profissional/agenda', icon: Activity },
-    { label: 'Financeiro & Carteira', path: '/profissional/carteira', icon: Wallet },
-    { label: 'Perfil / Branding', path: '/profissional/perfil', icon: User },
   ]
 
   // Admin Nav Items

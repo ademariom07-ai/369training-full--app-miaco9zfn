@@ -11,6 +11,7 @@ import { DesafiosAlunoSection } from '@/components/DesafiosAlunoSection'
 import { AlunoProfissionaisFeed } from '@/components/AlunoProfissionaisFeed'
 import { Agente369Section } from '@/components/Agente369Section'
 import { MinhasAulasColetivasAluno } from '@/components/MinhasAulasColetivasAluno'
+import { ProximaSessaoCard } from '@/components/ProximaSessaoCard'
 import {
   Dumbbell,
   Utensils,
@@ -68,6 +69,9 @@ export default function AlunoHome() {
     <div className="space-y-8 pb-12">
       {/* 7.2 SEÇÃO ENCONTRE UM PROFISSIONAL NO INÍCIO COM FEED REELS/TIKTOK */}
       <AlunoProfissionaisFeed />
+
+      {/* ITEM 1: CARD PRÓXIMA SESSÃO DO ALUNO */}
+      {user && <ProximaSessaoCard studentId={user.id} />}
 
       {/* Top Greeting & Student Crest Photo */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-[#E5E3DC] shadow-xs">
