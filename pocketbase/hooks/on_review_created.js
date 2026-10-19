@@ -209,11 +209,17 @@ onRecordAfterCreateSuccess((e) => {
         throw new Error('Avaliação fora do intervalo permitido; recálculo interrompido.')
       }
       const avaliacao = ratingValue
-      const createdDate = u.get('created') ? new Date(u.get('created')) : new Date()
-      const diffMonths = Math.max(
-        1,
-        Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)),
-      )
+      const rawCreated = u.get('created')
+      // PocketBase stores UTC; count completed calendar months, clamping month-end anniversaries.
+      const normalizedCreated = typeof rawCreated === 'string' ? rawCreated.replace(' ', 'T') : ''
+      const createdDate = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalizedCreated) ? normalizedCreated : normalizedCreated + 'Z')
+      if (!Number.isFinite(createdDate.getTime()) || createdDate.getTime() > now.getTime()) {
+        throw new Error('Data de cadastro inválida; recálculo interrompido.')
+      }
+      let diffMonths = (now.getUTCFullYear() - createdDate.getUTCFullYear()) * 12 + now.getUTCMonth() - createdDate.getUTCMonth()
+      const lastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate()
+      const anniversary = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), Math.min(createdDate.getUTCDate(), lastDay), createdDate.getUTCHours(), createdDate.getUTCMinutes(), createdDate.getUTCSeconds(), createdDate.getUTCMilliseconds())
+      if (now.getTime() < anniversary) diffMonths--
       const antiguidade = Math.max(diffMonths, 1)
 
       const indicacoesFator = Math.max(indicacoesCount, 1)
