@@ -43,10 +43,10 @@ routerAdd(
         basico: 1,
         pro: 2,
         premium: 3,
-        pro_parceiro: 1,
+        pro_parceiro: 2,
       }
 
-      const proParceiroCap = 150 // Approved 2026-10-07; old floor config cannot override it.
+      const proParceiroFixedServices = 150 // Confirmed 2026-10-19: scoring only, not real service volume.
 
       // Agregações de serviços concluídos válidos no mês por usuário
       const serviceCounts = {}
@@ -173,7 +173,7 @@ routerAdd(
       for (const u of usersRows) {
         const rawPlan = (u.plan || 'gratis').toLowerCase()
         const role = u.role || 'aluno'
-        const isProParceiro = rawPlan === 'pro_parceiro'
+        const isProParceiro = role === 'profissional' && rawPlan === 'pro_parceiro'
         let effectiveMultiplier = planMultipliers[rawPlan] ?? 0
 
         // Regra de inadimplência
@@ -188,7 +188,7 @@ routerAdd(
         const realServicesCount = serviceCounts[u.id] || 0
         let effectiveServicesCount = realServicesCount
         if (isProParceiro) {
-          effectiveServicesCount = Math.min(realServicesCount, proParceiroCap)
+          effectiveServicesCount = proParceiroFixedServices
         }
 
         const indicacoesCount = monthRefCounts[u.id] || 0
