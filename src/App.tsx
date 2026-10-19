@@ -16,6 +16,7 @@ import InstallAppBanner from '@/components/InstallAppBanner'
 const Index = lazy(() => import('@/pages/Index'))
 const Login = lazy(() => import('@/pages/Login'))
 const Cadastro = lazy(() => import('@/pages/Cadastro'))
+const PrimeiroAcessoConvite = lazy(() => import('@/pages/PrimeiroAcessoConvite'))
 const EsqueciSenha = lazy(() => import('@/pages/EsqueciSenha'))
 const RedefinirSenha = lazy(() => import('@/pages/RedefinirSenha'))
 const ConfirmarVerificacaoEmail = lazy(() => import('@/pages/ConfirmarVerificacaoEmail'))
@@ -81,6 +82,7 @@ export default function App() {
                 <Route path="/esqueci-senha" element={<EsqueciSenha />} />
                 <Route path="/redefinir-senha" element={<RedefinirSenha />} />
                 <Route path="/redefinir-senha/:token" element={<RedefinirSenha />} />
+                <Route path="/convite/:token" element={<PrimeiroAcessoConvite />} />
                 <Route path="/confirmar-email" element={<ConfirmarVerificacaoEmail />} />
                 <Route path="/confirmar-email/:token" element={<ConfirmarVerificacaoEmail />} />
                 <Route path="/verificar-email" element={<ConfirmarVerificacaoEmail />} />

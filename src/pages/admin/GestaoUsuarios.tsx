@@ -29,6 +29,10 @@ import {
   AlertTriangle,
   Play,
   RotateCw,
+  Link2,
+  Copy,
+  Clock,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { UserProfile } from '@/contexts/AuthContext'
@@ -50,6 +54,92 @@ export default function GestaoUsuarios() {
 
   // Contagem de usuários de teste existentes
   const [loadtestCount, setLoadtestCount] = useState<number | null>(null)
+
+  // Sistema de Convites Administrativos (5 licenças)
+  interface AdminInvite {
+    id: string
+    token: string
+    license_number: number
+    role_name: string
+    email_licenca: string
+    admin_user?: string
+    personal_email?: string
+    personal_name?: string
+    status: 'pendente' | 'aceito' | 'ativado' | 'expirado'
+    expires_at: string
+    accepted_at?: string
+    activated_at?: string
+    created?: string
+  }
+
+  const [invites, setInvites] = useState<AdminInvite[]>([])
+  const [loadingInvites, setLoadingInvites] = useState(false)
+  const [generatingInvites, setGeneratingInvites] = useState(false)
+  const [activatingId, setActivatingId] = useState<string | null>(null)
+  const [copiedToken, setCopiedToken] = useState<string | null>(null)
+
+  const loadInvites = async () => {
+    try {
+      setLoadingInvites(true)
+      const res: any = await pb.send('/backend/v1/admin/invites/list', { method: 'GET' })
+      if (res?.success && Array.isArray(res?.invites)) {
+        setInvites(res.invites)
+      }
+    } catch {
+      /* intentionally ignored */
+    } finally {
+      setLoadingInvites(false)
+    }
+  }
+
+  const handleGenerateInvites = async () => {
+    try {
+      setGeneratingInvites(true)
+      const res: any = await pb.send('/backend/v1/admin/invites/generate', { method: 'POST' })
+      if (res?.success) {
+        toast.success(res.message || '5 links de convite gerados com validade de 7 dias!')
+        await loadInvites()
+      } else {
+        throw new Error(res?.message || 'Falha ao gerar convites.')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao gerar links de convite.')
+    } finally {
+      setGeneratingInvites(false)
+    }
+  }
+
+  const handleActivateInvite = async (invite: AdminInvite) => {
+    try {
+      setActivatingId(invite.id)
+      const res: any = await pb.send('/backend/v1/admin/invites/activate', {
+        method: 'POST',
+        body: { invite_id: invite.id },
+      })
+      if (res?.success) {
+        toast.success(
+          `Licença #${invite.license_number} (${invite.role_name}) ativada com sucesso!`,
+        )
+        await loadInvites()
+        await loadUsers(page, roleFilter, search)
+      } else {
+        throw new Error(res?.message || 'Falha ao ativar convite.')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao ativar licença.')
+    } finally {
+      setActivatingId(null)
+    }
+  }
+
+  const copyInviteLink = (token: string) => {
+    const origin = window.location.origin
+    const fullUrl = `${origin}/convite/${token}`
+    navigator.clipboard.writeText(fullUrl)
+    setCopiedToken(token)
+    toast.success('Link de convite copiado para a área de transferência!')
+    setTimeout(() => setCopiedToken(null), 3000)
+  }
 
   // Modais de confirmação dupla para carga e limpeza
   const [seedModalOpen, setSeedModalOpen] = useState(false)
@@ -104,6 +194,7 @@ export default function GestaoUsuarios() {
   useEffect(() => {
     loadUsers(page, roleFilter, search)
     checkLoadtestCount()
+    loadInvites()
   }, [page, roleFilter, perPage])
 
   // Busca com debounce de 350ms
@@ -326,6 +417,208 @@ export default function GestaoUsuarios() {
           </div>
         </div>
       </div>
+
+      {/* SEÇÃO: CONVITES DAS 5 LICENÇAS ADMINISTRATIVAS */}
+      <Card className="bg-[#141414] border border-[#2A2A2A] p-6 rounded-2xl shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat mb-2">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Governança Administrativa • 5 Licenças
+            </div>
+            <h2 className="text-xl font-extrabold font-montserrat text-white uppercase">
+              Links de Convite das Licenças Administrativas
+            </h2>
+            <p className="text-xs text-gray-400 font-inter mt-1 max-w-2xl leading-relaxed">
+              Gere links de uso único com expiração de 7 dias para as 5 contas administrativas
+              (suporte, aprovações, financeiro, compliance, operações). O convidado realiza o
+              primeiro acesso, troca a senha temporária pela pessoal e informa e-mail de
+              recuperação. A conta fica pendente de ativação até sua validação neste painel.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={loadInvites}
+              disabled={loadingInvites}
+              className="border-[#2A2A2A] text-gray-300 hover:text-white text-xs h-9"
+            >
+              <RotateCw className={`w-3.5 h-3.5 mr-1 ${loadingInvites ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleGenerateInvites}
+              disabled={generatingInvites}
+              className="bg-[#0057FF] hover:bg-[#0046d6] text-white font-extrabold text-xs uppercase px-4 py-2 rounded-xl flex items-center gap-2 shadow"
+            >
+              {generatingInvites ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <Link2 className="w-3.5 h-3.5" />
+                  Gerar 5 Links de Convite (7 Dias)
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Tabela de Convites */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-inter">
+            <thead>
+              <tr className="border-b border-[#2A2A2A] text-gray-400 font-montserrat uppercase text-[10px]">
+                <th className="pb-3">Licença & Cargo</th>
+                <th className="pb-3">E-mail Institucional</th>
+                <th className="pb-3">Convidado / E-mail Pessoal</th>
+                <th className="pb-3">Expiração (7d)</th>
+                <th className="pb-3">Status</th>
+                <th className="pb-3 text-right">Link de Convite</th>
+                <th className="pb-3 text-right">Ação</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#2A2A2A]">
+              {loadingInvites && invites.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-gray-500">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#D4AF37]" />
+                    Carregando convites administrativos...
+                  </td>
+                </tr>
+              ) : invites.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-gray-500">
+                    Nenhum convite gerado ainda. Clique em &quot;Gerar 5 Links de Convite&quot; para
+                    iniciar o fluxo de entrega das licenças.
+                  </td>
+                </tr>
+              ) : (
+                invites.map((inv) => {
+                  const isExpired = inv.status === 'expirado'
+                  const isAccepted = inv.status === 'aceito'
+                  const isActivated = inv.status === 'ativado'
+                  const isPending = inv.status === 'pendente'
+
+                  return (
+                    <tr key={inv.id} className="hover:bg-[#181818] transition-colors">
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-md bg-[#0057FF]/15 border border-[#0057FF]/40 text-[#0057FF] flex items-center justify-center font-mono font-bold text-[11px]">
+                            #{inv.license_number}
+                          </span>
+                          <span className="font-bold text-white font-montserrat">
+                            {inv.role_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 font-mono text-[11px] text-gray-400">
+                        {inv.email_licenca}
+                      </td>
+                      <td className="py-3">
+                        {inv.personal_email ? (
+                          <div>
+                            <p className="font-bold text-gray-200">{inv.personal_name}</p>
+                            <p className="text-[10px] text-gray-400 font-mono">
+                              {inv.personal_email}
+                            </p>
+                            {inv.accepted_at && (
+                              <p className="text-[9px] text-[#22C55E]">
+                                Aceito em: {new Date(inv.accepted_at).toLocaleString('pt-BR')}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 text-[11px]">Aguardando aceite...</span>
+                        )}
+                      </td>
+                      <td className="py-3 text-[11px] text-gray-400">
+                        {inv.expires_at ? (
+                          <span className={isExpired ? 'text-red-400 font-bold' : ''}>
+                            {new Date(inv.expires_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            isActivated
+                              ? 'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/40'
+                              : isAccepted
+                                ? 'bg-amber-950/40 text-amber-300 border border-amber-500/40'
+                                : isExpired
+                                  ? 'bg-red-950/40 text-red-400 border border-red-500/30'
+                                  : 'bg-[#0057FF]/15 text-[#0057FF] border border-[#0057FF]/40'
+                          }`}
+                        >
+                          {isActivated
+                            ? 'Ativado'
+                            : isAccepted
+                              ? 'Pendente de Ativação'
+                              : isExpired
+                                ? 'Expirado'
+                                : 'Pendente (Aguardando Convite)'}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyInviteLink(inv.token)}
+                          disabled={isExpired}
+                          className="h-7 px-2.5 border-[#2A2A2A] text-gray-300 hover:text-white text-xs font-semibold gap-1.5"
+                        >
+                          {copiedToken === inv.token ? (
+                            <>
+                              <Check className="w-3 h-3 text-[#22C55E]" />
+                              Copiado!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              Copiar Link
+                            </>
+                          )}
+                        </Button>
+                      </td>
+                      <td className="py-3 text-right">
+                        {isAccepted ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleActivateInvite(inv)}
+                            disabled={activatingId === inv.id}
+                            className="h-7 px-3 bg-[#22C55E] hover:bg-[#1eb354] text-black font-extrabold text-[11px] uppercase shadow"
+                          >
+                            {activatingId === inv.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              'Validar & Ativar'
+                            )}
+                          </Button>
+                        ) : isActivated ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-[#22C55E] font-bold">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Ativo
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 text-[11px]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* USERS TABLE */}
       <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl">
