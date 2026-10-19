@@ -1,6 +1,6 @@
 import {prepareConfirmedFeePool,confirmedRanking,resolveStudentPlan,type ConfirmedFeeEvent,type WellnessPlan} from './wellnessCommercialRules'
 import {orderRankingPreview,type RankingFacts,type RankingPolicy} from './rankingRules'
-import {calculateLinearMonthlyCashbackPreview} from './cashbackLinearPreview'
+import {calculateLinearMonthlyCashbackPreview,type CashbackPolicy} from './cashbackLinearPreview'
 
 export type MonthlyParticipant={
  period:string;kind:'student'|'partner';plan:WellnessPlan;
@@ -12,7 +12,7 @@ export type MonthlyParticipant={
  * and persistent idempotency belong to the server adapter, not these input flags.
  * This function never closes a month, persists a balance or authorizes a payment.
  */
-export function projectWellnessMonth(input:{period:string;complete:boolean;events:ConfirmedFeeEvent[];participants:MonthlyParticipant[];referrals:RankingPolicy['referrals']}){
+export function projectWellnessMonth(input:{period:string;complete:boolean;events:ConfirmedFeeEvent[];participants:MonthlyParticipant[];referrals:RankingPolicy['referrals'];cashbackPolicy?:CashbackPolicy}){
  if(!input||!Array.isArray(input.participants)||input.participants.length>500000)throw Error('Participantes inválidos.')
  const source=prepareConfirmedFeePool(input.period,input.events,input.complete)
  const ranking=input.participants.map(participant=>{
@@ -22,7 +22,7 @@ export function projectWellnessMonth(input:{period:string;complete:boolean;event
   return confirmedRanking({version:'monthly-projection-v2-choice',referrals:input.referrals},participant.facts,plan)
  })
  const ordered=orderRankingPreview(ranking)
- const distribution=calculateLinearMonthlyCashbackPreview(source.poolCents,ordered,input.participants.map(p=>({id:p.facts.id,fulfilledProjects:p.fulfilledProjects})))
+ const distribution=calculateLinearMonthlyCashbackPreview(source.poolCents,ordered,input.participants.map(p=>({id:p.facts.id,fulfilledProjects:p.fulfilledProjects})),input.cashbackPolicy)
  const financialById=new Map(distribution.participants.map(p=>[p.id,p]))
  const factsById=new Map(input.participants.map(p=>[p.facts.id,p.facts]))
  return {
