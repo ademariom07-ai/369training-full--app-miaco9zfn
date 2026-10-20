@@ -18,6 +18,7 @@ import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import type { WorkoutLogRecord } from '@/services/workoutExecution'
+import { fetchResumoAlunoIa, type ResumoAlunoResponse } from '@/services/analistaEvolucao'
 
 // Lazy loading do componente pesado com os gráficos Recharts
 const EvolucaoChartsSection = lazy(() => import('@/components/EvolucaoChartsSection'))
@@ -29,6 +30,23 @@ export default function Evolucao() {
   const [refreshing, setRefreshing] = useState(false)
   const [selectedExercise, setSelectedExercise] = useState<string>('todos')
   const [periodo, setPeriodo] = useState<'30dias' | '90dias' | 'todos'>('90dias')
+
+  // Estado do Resumo de IA (3 a 5 pontos)
+  const [aiSummary, setAiSummary] = useState<ResumoAlunoResponse | null>(null)
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false)
+
+  const loadAiSummary = async () => {
+    if (!user) return
+    setAiSummaryLoading(true)
+    try {
+      const data = await fetchResumoAlunoIa()
+      setAiSummary(data)
+    } catch (err) {
+      console.warn('Aviso: falha ao carregar resumo de IA:', err)
+    } finally {
+      setAiSummaryLoading(false)
+    }
+  }
 
   const fetchLogs = async () => {
     if (!user) return
@@ -48,11 +66,12 @@ export default function Evolucao() {
 
   useEffect(() => {
     fetchLogs()
+    loadAiSummary()
   }, [user])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchLogs()
+    await Promise.all([fetchLogs(), loadAiSummary()])
   }
 
   // Lista única de exercícios com contagem de séries
@@ -371,6 +390,77 @@ export default function Evolucao() {
           </Link>
         </div>
       </div>
+
+      {/* RESUMO GERADO PELA IA — ANALISTA DE EVOLUÇÃO (3 A 5 PONTOS, LINGUAGEM SIMPLES) */}
+      <Card className="bg-gradient-to-r from-[#181818] via-[#121a2b] to-[#181818] border-2 border-[#0057FF]/40 p-5 sm:p-6 rounded-2xl shadow-xl relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#2A2A2A]">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#0057FF]/20 border border-[#0057FF]/40 flex items-center justify-center text-[#0057FF]">
+              <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-extrabold font-montserrat text-white uppercase tracking-tight flex items-center gap-2">
+                <span>Resumo da Sua Evolução</span>
+                <span className="text-[10px] font-bold text-[#D4AF37] border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2 py-0.5 rounded-full uppercase">
+                  IA Nativa 369
+                </span>
+              </h3>
+              <p className="text-[11px] text-gray-400 font-inter">
+                Destaques objetivos compilados automaticamente pelo Analista de Evolução
+              </p>
+            </div>
+          </div>
+
+          <Button
+            onClick={loadAiSummary}
+            disabled={aiSummaryLoading}
+            variant="ghost"
+            size="sm"
+            className="text-xs text-gray-300 hover:text-white hover:bg-[#202020] rounded-xl self-start sm:self-auto gap-1.5"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-[#D4AF37] ${aiSummaryLoading ? 'animate-spin' : ''}`}
+            />
+            <span>{aiSummaryLoading ? 'Atualizando IA...' : 'Atualizar Resumo'}</span>
+          </Button>
+        </div>
+
+        <div className="pt-4">
+          {aiSummaryLoading ? (
+            <div className="py-6 flex items-center justify-center gap-3 text-xs text-gray-400 font-inter">
+              <RefreshCw className="w-4 h-4 animate-spin text-[#0057FF]" />
+              <span>O Analista de Evolução está analisando seus treinos...</span>
+            </div>
+          ) : aiSummary && aiSummary.points && aiSummary.points.length > 0 ? (
+            <div className="space-y-2.5">
+              {aiSummary.points.map((ponto, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-[#141414]/90 border border-[#2A2A2A] hover:border-[#0057FF]/40 transition-colors flex items-start gap-3"
+                >
+                  <span className="w-5 h-5 rounded-full bg-[#0057FF]/20 border border-[#0057FF]/50 text-[#D4AF37] text-[11px] font-black font-montserrat flex items-center justify-center shrink-0 mt-0.5">
+                    {idx + 1}
+                  </span>
+                  <p className="text-xs sm:text-sm text-gray-200 font-inter leading-relaxed flex-1">
+                    {ponto}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] text-xs text-gray-400 font-inter flex items-center justify-between">
+              <span>Nenhum resumo gerado ainda. Clique em &ldquo;Atualizar Resumo&rdquo;.</span>
+              <Button
+                onClick={loadAiSummary}
+                size="sm"
+                className="bg-[#0057FF] hover:bg-[#1e69ff] text-white text-xs font-bold"
+              >
+                Gerar Agora
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* CONTROLE DE FILTROS */}
       <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-5 rounded-2xl shadow-lg">

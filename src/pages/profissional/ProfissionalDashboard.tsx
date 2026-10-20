@@ -9,6 +9,7 @@ import { PlanChangeSection } from '@/components/PlanChangeSection'
 import { GestaoDesafiosProfissional } from '@/components/GestaoDesafiosProfissional'
 import { Radar369Section } from '@/components/Radar369Section'
 import { PainelCarteiraIA } from '@/components/PainelCarteiraIA'
+import { PainelInsightsIA } from '@/components/PainelInsightsIA'
 import {
   Users,
   Dumbbell,
@@ -189,6 +190,9 @@ export default function ProfissionalDashboard() {
 
         {/* PAINEL DE CARTEIRA COM IA (ALERTAS DE ADERÊNCIA) */}
         <PainelCarteiraIA />
+
+        {/* PAINEL "INSIGHTS DA IA" — ANALISTA DE EVOLUÇÃO (LGPD RESTRITA) */}
+        <PainelInsightsIA students={students} currentProfId={user?.id || ''} />
 
         {/* ATALHO SMARTWATCH CAMINHO A PARA PROFISSIONAL */}
         <Card className="bg-gradient-to-r from-[#181818] via-[#151c28] to-[#181818] border border-[#D4AF37]/40 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
