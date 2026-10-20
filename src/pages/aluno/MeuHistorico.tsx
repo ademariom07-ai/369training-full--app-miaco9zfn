@@ -664,31 +664,34 @@ export default function MeuHistorico() {
           </p>
         </div>
 
-        <div className="relative z-10 flex items-center gap-3">
+        <div className="relative z-10 w-full md:w-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           <Button
             onClick={handleRefresh}
             disabled={refreshing || loading}
             variant="outline"
-            className="border-[#2A2A2A] bg-[#181818] hover:bg-[#202020] text-gray-300 hover:text-white text-xs font-bold uppercase rounded-xl flex items-center gap-2"
+            className="w-full border-[#2A2A2A] bg-[#181818] hover:bg-[#202020] text-gray-300 hover:text-white text-xs font-bold uppercase rounded-xl flex items-center justify-center gap-2 h-11 px-3"
           >
             <RefreshCw
-              className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-[#D4AF37]' : ''}`}
+              className={`w-3.5 h-3.5 shrink-0 ${refreshing ? 'animate-spin text-[#D4AF37]' : ''}`}
             />
-            Atualizar Dados
+            <span>Atualizar Dados</span>
           </Button>
-          <Link to="/aluno/treino/execucao">
-            <Button className="bg-[#0057FF] hover:bg-[#1e69ff] text-white font-extrabold text-xs uppercase px-4 py-2 rounded-xl shadow-md flex items-center gap-2">
-              <Dumbbell className="w-4 h-4 text-[#D4AF37]" /> Executar Treino
+          <Link to="/aluno/treino/execucao" className="w-full">
+            <Button className="w-full bg-[#0057FF] hover:bg-[#1e69ff] text-white font-extrabold text-xs uppercase h-11 px-3 rounded-xl shadow-md flex items-center justify-center gap-2">
+              <Dumbbell className="w-4 h-4 text-[#D4AF37] shrink-0" />
+              <span>Executar Treino</span>
             </Button>
           </Link>
-          <Link to="/aluno/evolucao">
-            <Button className="bg-[#181818] hover:bg-[#222222] border border-[#D4AF37]/50 text-[#D4AF37] hover:text-white font-extrabold text-xs uppercase px-4 py-2 rounded-xl shadow-md flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-[#D4AF37]" /> Gráfico de Evolução
+          <Link to="/aluno/evolucao" className="w-full">
+            <Button className="w-full bg-[#181818] hover:bg-[#222222] border border-[#D4AF37]/60 text-[#D4AF37] hover:text-white font-extrabold text-xs uppercase h-11 px-3 rounded-xl shadow-[0_0_12px_rgba(212,175,55,0.15)] flex items-center justify-center gap-2 transition-all">
+              <TrendingUp className="w-4 h-4 text-[#D4AF37] shrink-0" />
+              <span>Gráfico de Evolução</span>
             </Button>
           </Link>
-          <Link to="/aluno/treino">
-            <Button className="bg-[#D4AF37] hover:bg-[#E6C65C] text-black font-extrabold text-xs uppercase px-4 py-2 rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.25)] flex items-center gap-2">
-              <Plus className="w-4 h-4" /> Monte Seu Treino
+          <Link to="/aluno/treino" className="w-full">
+            <Button className="w-full bg-[#D4AF37] hover:bg-[#E6C65C] text-black font-extrabold text-xs uppercase h-11 px-3 rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.25)] flex items-center justify-center gap-2">
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>Monte Seu Treino</span>
             </Button>
           </Link>
         </div>

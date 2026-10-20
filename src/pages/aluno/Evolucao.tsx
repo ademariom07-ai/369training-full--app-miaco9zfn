@@ -322,9 +322,9 @@ export default function Evolucao() {
   }, [logs, loadEvolutionData])
 
   return (
-    <div className="space-y-8 pb-16 max-w-7xl mx-auto">
+    <div className="space-y-6 sm:space-y-8 pb-16 max-w-7xl mx-auto w-full min-w-0">
       {/* HEADER DA SEÇÃO */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-2xl bg-[#141414] border border-[#2A2A2A] shadow-xl relative overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-8 rounded-2xl bg-[#141414] border border-[#2A2A2A] shadow-xl relative overflow-hidden">
         {/* Fundo decorativo sutil sem blur pesado no mobile */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#0057FF]/10 via-[#D4AF37]/10 to-transparent rounded-full hidden sm:block pointer-events-none" />
 
@@ -332,16 +332,16 @@ export default function Evolucao() {
           <div className="flex items-center gap-2">
             <Link
               to="/aluno/historico"
-              className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#D4AF37] font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#D4AF37] font-semibold transition-colors py-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Voltar ao Meu Histórico
             </Link>
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0057FF]/15 border border-[#0057FF]/30 text-xs font-bold text-[#0057FF] uppercase font-montserrat">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0057FF]/15 border border-[#0057FF]/30 text-[11px] sm:text-xs font-bold text-[#0057FF] uppercase font-montserrat">
             <TrendingUp className="w-3.5 h-3.5 text-[#D4AF37]" />
             Métricas de Desempenho Físico
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold font-montserrat text-white uppercase tracking-tight">
+          <h1 className="text-xl sm:text-3xl font-extrabold font-montserrat text-white uppercase tracking-tight">
             Gráfico de Evolução • 369WELLNESS
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 font-inter max-w-2xl leading-relaxed">
@@ -350,22 +350,23 @@ export default function Evolucao() {
           </p>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full md:w-auto">
           <Button
             onClick={handleRefresh}
             disabled={refreshing || loading}
             variant="outline"
-            className="border-[#2A2A2A] bg-[#181818] hover:bg-[#202020] text-gray-300 hover:text-white text-xs font-bold uppercase rounded-xl flex items-center gap-2"
+            className="w-full border-[#2A2A2A] bg-[#181818] hover:bg-[#202020] text-gray-300 hover:text-white text-xs font-bold uppercase rounded-xl flex items-center justify-center gap-2 h-11 px-4"
           >
             <RefreshCw
-              className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-[#D4AF37]' : ''}`}
+              className={`w-3.5 h-3.5 shrink-0 ${refreshing ? 'animate-spin text-[#D4AF37]' : ''}`}
             />
-            Atualizar
+            <span>Atualizar</span>
           </Button>
 
-          <Link to="/aluno/treino/execucao">
-            <Button className="bg-[#0057FF] hover:bg-[#1e69ff] text-white font-extrabold text-xs uppercase px-4 py-2 rounded-xl shadow-md flex items-center gap-2">
-              <Dumbbell className="w-4 h-4 text-[#D4AF37]" /> Registrar Treino
+          <Link to="/aluno/treino/execucao" className="w-full">
+            <Button className="w-full bg-[#0057FF] hover:bg-[#1e69ff] text-white font-extrabold text-xs uppercase h-11 px-4 rounded-xl shadow-md flex items-center justify-center gap-2">
+              <Dumbbell className="w-4 h-4 text-[#D4AF37] shrink-0" />
+              <span>Registrar Treino</span>
             </Button>
           </Link>
         </div>
@@ -373,16 +374,16 @@ export default function Evolucao() {
 
       {/* CONTROLE DE FILTROS */}
       <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-5 rounded-2xl shadow-lg">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <span className="text-xs font-bold font-montserrat text-gray-400 uppercase">
               Período:
             </span>
-            <div className="flex bg-[#141414] p-1 rounded-xl border border-[#2A2A2A]">
+            <div className="grid grid-cols-3 bg-[#141414] p-1 rounded-xl border border-[#2A2A2A] gap-1">
               <button
                 type="button"
                 onClick={() => setPeriodo('30dias')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase text-center ${
                   periodo === '30dias'
                     ? 'bg-[#0057FF] text-white shadow'
                     : 'text-gray-400 hover:text-white'
@@ -393,7 +394,7 @@ export default function Evolucao() {
               <button
                 type="button"
                 onClick={() => setPeriodo('90dias')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase text-center ${
                   periodo === '90dias'
                     ? 'bg-[#0057FF] text-white shadow'
                     : 'text-gray-400 hover:text-white'
@@ -404,7 +405,7 @@ export default function Evolucao() {
               <button
                 type="button"
                 onClick={() => setPeriodo('todos')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all font-montserrat uppercase text-center ${
                   periodo === 'todos'
                     ? 'bg-[#0057FF] text-white shadow'
                     : 'text-gray-400 hover:text-white'
@@ -416,14 +417,14 @@ export default function Evolucao() {
           </div>
 
           {exerciseOptions.length > 0 && (
-            <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 max-w-md justify-end">
               <span className="text-xs font-bold font-montserrat text-[#D4AF37] uppercase whitespace-nowrap">
                 Exercício:
               </span>
               <select
                 value={selectedExercise}
                 onChange={(e) => setSelectedExercise(e.target.value)}
-                className="w-full sm:w-auto flex-1 h-9 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
+                className="w-full sm:w-auto flex-1 h-10 px-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-white text-xs font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:outline-none"
               >
                 {exerciseOptions.map((opt) => (
                   <option key={opt.name} value={opt.name}>

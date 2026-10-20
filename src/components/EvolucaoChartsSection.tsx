@@ -51,58 +51,61 @@ export default function EvolucaoChartsSection({
   weeklyVolumeData,
 }: EvolucaoChartsSectionProps) {
   return (
-    <div className="space-y-8 w-full min-w-0">
+    <div className="space-y-6 sm:space-y-8 w-full min-w-0">
       {/* GRÁFICO 1: EVOLUÇÃO DE CARGA POR EXERCÍCIO AO LONGO DO TEMPO */}
-      <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-6 rounded-2xl shadow-lg space-y-4 w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2A2A2A] pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold font-montserrat text-white uppercase flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-[#0057FF] shrink-0" />
-                <span className="truncate">
-                  Evolução de Carga • {activeExerciseName || 'Selecione um exercício'}
-                </span>
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-3.5 sm:p-6 rounded-2xl shadow-lg space-y-3 sm:space-y-4 w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#2A2A2A] pb-3 sm:pb-4">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 rounded-lg bg-[#0057FF]/15 text-[#0057FF] shrink-0">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#0057FF]" />
+              </div>
+              <h2 className="text-sm sm:text-lg font-bold font-montserrat text-white uppercase truncate">
+                Evolução de Carga • {activeExerciseName || 'Selecione um exercício'}
               </h2>
             </div>
-            <p className="text-xs text-gray-400 font-inter">
-              Peso máximo e peso médio registrado em cada sessão (kg)
+            <p className="text-[11px] sm:text-xs text-gray-400 font-inter">
+              Peso máximo e médio por sessão (kg)
             </p>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-montserrat flex-wrap">
+          <div className="flex items-center gap-3 sm:gap-4 text-[11px] sm:text-xs font-montserrat flex-wrap">
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-[#D4AF37] shrink-0" />
-              <span className="text-gray-300">Carga Máxima (kg)</span>
+              <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#D4AF37] shrink-0" />
+              <span className="text-gray-300 font-semibold">Carga Máxima (kg)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-[#0057FF] shrink-0" />
-              <span className="text-gray-300">Carga Média (kg)</span>
+              <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#0057FF] shrink-0" />
+              <span className="text-gray-300 font-semibold">Carga Média (kg)</span>
             </div>
           </div>
         </div>
 
         {loadEvolutionData.length === 0 ? (
-          <div className="py-12 text-center text-xs text-gray-500 font-inter">
+          <div className="py-10 text-center text-xs text-gray-500 font-inter">
             Nenhuma série registrada para &quot;{activeExerciseName}&quot; no período selecionado.
           </div>
         ) : (
-          <div className="w-full min-w-0 pt-2">
-            <div className="w-full min-w-[280px] h-[280px] sm:h-[320px]">
+          <div className="w-full min-w-0 pt-1 sm:pt-2">
+            <div className="w-full h-[280px]">
               <ResponsiveContainer width="99%" height={280}>
                 <LineChart
                   data={loadEvolutionData}
-                  margin={{ top: 10, right: 15, left: -15, bottom: 0 }}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                   <XAxis
                     dataKey="data"
-                    stroke="#6B7280"
-                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
+                    stroke="#525252"
+                    interval="preserveStartEnd"
+                    minTickGap={20}
+                    tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'Montserrat' }}
                   />
                   <YAxis
-                    stroke="#6B7280"
-                    unit=" kg"
-                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
+                    stroke="#525252"
+                    unit="kg"
+                    width={38}
+                    tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'Montserrat' }}
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {
@@ -111,19 +114,19 @@ export default function EvolucaoChartsSection({
                       const avgVal = payload.find((p) => p.dataKey === 'pesoMedio')?.value
                       const series = (payload[0]?.payload as LoadEvolutionItem)?.series || 1
                       return (
-                        <div className="bg-[#141414] border border-[#D4AF37]/40 p-3 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[160px]">
-                          <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1">
+                        <div className="bg-[#141414]/95 backdrop-blur border border-[#D4AF37]/50 p-2.5 sm:p-3 rounded-xl shadow-2xl text-xs space-y-1.5 min-w-[150px]">
+                          <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1 text-[11px] sm:text-xs">
                             Sessão: {label}
                           </p>
-                          <div className="flex justify-between items-center text-[#D4AF37]">
-                            <span>Peso Máximo:</span>
-                            <span className="font-bold font-mono">{maxVal} kg</span>
+                          <div className="flex justify-between items-center text-[#D4AF37] gap-3">
+                            <span className="text-[11px]">Máxima:</span>
+                            <span className="font-bold font-mono text-xs">{maxVal} kg</span>
                           </div>
-                          <div className="flex justify-between items-center text-[#0057FF]">
-                            <span>Peso Médio:</span>
-                            <span className="font-bold font-mono">{avgVal} kg</span>
+                          <div className="flex justify-between items-center text-[#0057FF] gap-3">
+                            <span className="text-[11px]">Média:</span>
+                            <span className="font-bold font-mono text-xs">{avgVal} kg</span>
                           </div>
-                          <div className="flex justify-between items-center text-gray-400 text-[11px] pt-1 border-t border-[#2A2A2A]">
+                          <div className="flex justify-between items-center text-gray-400 text-[10px] pt-1 border-t border-[#2A2A2A] gap-3">
                             <span>Séries Feitas:</span>
                             <span className="font-bold text-white">{series}</span>
                           </div>
@@ -136,9 +139,9 @@ export default function EvolucaoChartsSection({
                     dataKey="pesoMaximo"
                     name="Peso Máximo"
                     stroke="#D4AF37"
-                    strokeWidth={3}
-                    dot={{ fill: '#D4AF37', r: 4, strokeWidth: 2, stroke: '#141414' }}
-                    activeDot={{ r: 6, fill: '#D4AF37' }}
+                    strokeWidth={2.5}
+                    dot={{ fill: '#D4AF37', r: 3.5, strokeWidth: 1.5, stroke: '#141414' }}
+                    activeDot={{ r: 5.5, fill: '#D4AF37' }}
                   />
                   <Line
                     type="monotone"
@@ -147,7 +150,7 @@ export default function EvolucaoChartsSection({
                     stroke="#0057FF"
                     strokeWidth={2}
                     strokeDasharray="4 4"
-                    dot={{ fill: '#0057FF', r: 3 }}
+                    dot={{ fill: '#0057FF', r: 2.5 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -157,50 +160,55 @@ export default function EvolucaoChartsSection({
       </Card>
 
       {/* GRÁFICO 2: ESFORÇO MÉDIO (RPE 1-10) COM FAIXA IDEAL DE ESTÍMULO DESTACADA */}
-      <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-6 rounded-2xl shadow-lg space-y-4 w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2A2A2A] pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold font-montserrat text-white uppercase flex items-center gap-2">
-                <Activity className="w-5 h-5 text-[#D4AF37] shrink-0" />
-                <span>Esforço Médio por Sessão (Escala RPE 1–10)</span>
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-3.5 sm:p-6 rounded-2xl shadow-lg space-y-3 sm:space-y-4 w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#2A2A2A] pb-3 sm:pb-4">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 rounded-lg bg-[#D4AF37]/15 text-[#D4AF37] shrink-0">
+                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-[#D4AF37]" />
+              </div>
+              <h2 className="text-sm sm:text-lg font-bold font-montserrat text-white uppercase truncate">
+                Esforço Médio por Sessão (RPE 1–10)
               </h2>
             </div>
-            <p className="text-xs text-gray-400 font-inter">
-              Percepção subjetiva de esforço. Faixa ideal de hipertrofia destacada (RPE 6 a 8).
+            <p className="text-[11px] sm:text-xs text-gray-400 font-inter">
+              Percepção subjetiva de esforço • Zona ideal destacada (RPE 6 a 8)
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[11px] font-mono">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px] sm:text-[11px] font-mono px-2 py-0.5">
               Zona Ótima: RPE 6 - 8
             </Badge>
           </div>
         </div>
 
         {rpeEvolutionData.length === 0 ? (
-          <div className="py-12 text-center text-xs text-gray-500 font-inter">
+          <div className="py-10 text-center text-xs text-gray-500 font-inter">
             Nenhum registro de esforço perceptível no período selecionado.
           </div>
         ) : (
-          <div className="w-full min-w-0 pt-2">
-            <div className="w-full min-w-[280px] h-[260px] sm:h-[300px]">
+          <div className="w-full min-w-0 pt-1 sm:pt-2">
+            <div className="w-full h-[260px]">
               <ResponsiveContainer width="99%" height={260}>
                 <LineChart
                   data={rpeEvolutionData}
-                  margin={{ top: 10, right: 15, left: -15, bottom: 0 }}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                   <XAxis
                     dataKey="data"
-                    stroke="#6B7280"
-                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
+                    stroke="#525252"
+                    interval="preserveStartEnd"
+                    minTickGap={20}
+                    tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'Montserrat' }}
                   />
                   <YAxis
                     domain={[0, 10]}
                     ticks={[0, 2, 4, 6, 8, 10]}
-                    stroke="#6B7280"
-                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
+                    stroke="#525252"
+                    width={32}
+                    tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'Montserrat' }}
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {
@@ -210,26 +218,28 @@ export default function EvolucaoChartsSection({
                       let zoneDesc = 'Leve / Aquecimento'
                       let zoneColor = 'text-blue-400'
                       if (rpeVal >= 6 && rpeVal <= 8) {
-                        zoneDesc = 'Faixa Ideal de Hipertrofia (Estímulo Ótimo)'
+                        zoneDesc = 'Faixa Ideal de Hipertrofia (Ótimo)'
                         zoneColor = 'text-emerald-400'
                       } else if (rpeVal > 8) {
-                        zoneDesc = 'Pico de Intensidade / Próximo da Falha'
+                        zoneDesc = 'Pico / Próximo da Falha'
                         zoneColor = 'text-amber-400'
                       }
                       return (
-                        <div className="bg-[#141414] border border-[#2A2A2A] p-3 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[180px]">
-                          <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1">
+                        <div className="bg-[#141414]/95 backdrop-blur border border-[#2A2A2A] p-2.5 sm:p-3 rounded-xl shadow-2xl text-xs space-y-1.5 min-w-[160px]">
+                          <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1 text-[11px] sm:text-xs">
                             Sessão: {label}
                           </p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-300">RPE Médio:</span>
-                            <span className="font-bold text-base font-mono text-[#D4AF37]">
+                          <div className="flex justify-between items-center gap-3">
+                            <span className="text-gray-300 text-[11px]">RPE Médio:</span>
+                            <span className="font-bold text-sm font-mono text-[#D4AF37]">
                               {rpeVal} / 10
                             </span>
                           </div>
-                          <p className={`text-[11px] font-semibold ${zoneColor}`}>{zoneDesc}</p>
+                          <p className={`text-[10px] sm:text-[11px] font-semibold ${zoneColor}`}>
+                            {zoneDesc}
+                          </p>
                           <p className="text-[10px] text-gray-500 border-t border-[#2A2A2A] pt-1">
-                            Calculado sobre {series} séries na sessão
+                            Calculado sobre {series} séries
                           </p>
                         </div>
                       )
@@ -250,9 +260,9 @@ export default function EvolucaoChartsSection({
                     dataKey="rpeMedio"
                     name="RPE Médio"
                     stroke="#0057FF"
-                    strokeWidth={3}
-                    dot={{ fill: '#0057FF', r: 4, stroke: '#141414', strokeWidth: 2 }}
-                    activeDot={{ r: 6, fill: '#D4AF37' }}
+                    strokeWidth={2.5}
+                    dot={{ fill: '#0057FF', r: 3.5, stroke: '#141414', strokeWidth: 1.5 }}
+                    activeDot={{ r: 5.5, fill: '#D4AF37' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -262,44 +272,51 @@ export default function EvolucaoChartsSection({
       </Card>
 
       {/* GRÁFICO 3: VOLUME SEMANAL (SÉRIES × REPS × CARGA) */}
-      <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-6 rounded-2xl shadow-lg space-y-4 w-full overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-4">
-          <div className="space-y-1">
-            <h2 className="text-base sm:text-lg font-bold font-montserrat text-white uppercase flex items-center gap-2">
-              <Target className="w-5 h-5 text-[#D4AF37] shrink-0" />
-              <span>Volume Semanal de Treino (kg)</span>
-            </h2>
-            <p className="text-xs text-gray-400 font-inter">
-              Tonagem agregada por semana (Séries × Repetições × Carga)
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-3.5 sm:p-6 rounded-2xl shadow-lg space-y-3 sm:space-y-4 w-full overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3 sm:pb-4 gap-2">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 rounded-lg bg-[#D4AF37]/15 text-[#D4AF37] shrink-0">
+                <Target className="w-4 h-4 sm:w-5 sm:h-5 text-[#D4AF37]" />
+              </div>
+              <h2 className="text-sm sm:text-lg font-bold font-montserrat text-white uppercase truncate">
+                Volume Semanal (kg)
+              </h2>
+            </div>
+            <p className="text-[11px] sm:text-xs text-gray-400 font-inter">
+              Tonagem semanal agregada (Séries × Reps × Carga)
             </p>
           </div>
-          <Badge className="bg-[#D4AF37]/15 text-[#D4AF37] border-[#D4AF37]/30 text-xs font-mono">
-            {weeklyVolumeData.length} semanas
+          <Badge className="bg-[#D4AF37]/15 text-[#D4AF37] border-[#D4AF37]/30 text-[10px] sm:text-xs font-mono shrink-0 px-2 py-0.5">
+            {weeklyVolumeData.length} sem.
           </Badge>
         </div>
 
         {weeklyVolumeData.length === 0 ? (
-          <div className="py-12 text-center text-xs text-gray-500 font-inter">
+          <div className="py-10 text-center text-xs text-gray-500 font-inter">
             Sem dados semanais de volume no período selecionado.
           </div>
         ) : (
-          <div className="w-full min-w-0 pt-2">
-            <div className="w-full min-w-[280px] h-[260px] sm:h-[300px]">
+          <div className="w-full min-w-0 pt-1 sm:pt-2">
+            <div className="w-full h-[260px]">
               <ResponsiveContainer width="99%" height={260}>
                 <BarChart
                   data={weeklyVolumeData}
-                  margin={{ top: 10, right: 15, left: -15, bottom: 0 }}
+                  margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                   <XAxis
                     dataKey="semana"
-                    stroke="#6B7280"
-                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
+                    stroke="#525252"
+                    interval="preserveStartEnd"
+                    minTickGap={16}
+                    tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'Montserrat' }}
                   />
                   <YAxis
-                    stroke="#6B7280"
-                    unit=" kg"
-                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Montserrat' }}
+                    stroke="#525252"
+                    unit="kg"
+                    width={40}
+                    tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'Montserrat' }}
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {
@@ -308,22 +325,22 @@ export default function EvolucaoChartsSection({
                       const dias = (payload[0]?.payload as WeeklyVolumeItem)?.frequenciaDias || 0
                       const series = (payload[0]?.payload as WeeklyVolumeItem)?.totalSeries || 0
                       return (
-                        <div className="bg-[#141414] border border-[#2A2A2A] p-3 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[160px]">
-                          <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1">
+                        <div className="bg-[#141414]/95 backdrop-blur border border-[#2A2A2A] p-2.5 sm:p-3 rounded-xl shadow-2xl text-xs space-y-1.5 min-w-[150px]">
+                          <p className="font-bold text-white font-montserrat border-b border-[#2A2A2A] pb-1 text-[11px] sm:text-xs">
                             {label}
                           </p>
-                          <div className="flex justify-between items-center text-[#D4AF37]">
-                            <span>Volume Semanal:</span>
-                            <span className="font-bold font-mono">
+                          <div className="flex justify-between items-center text-[#D4AF37] gap-3">
+                            <span className="text-[11px]">Volume:</span>
+                            <span className="font-bold font-mono text-xs">
                               {vol.toLocaleString('pt-BR')} kg
                             </span>
                           </div>
-                          <div className="flex justify-between items-center text-gray-300">
-                            <span>Frequência:</span>
-                            <span className="font-bold text-white">{dias} dias</span>
+                          <div className="flex justify-between items-center text-gray-300 gap-3">
+                            <span className="text-[11px]">Frequência:</span>
+                            <span className="font-bold text-white text-xs">{dias} dias</span>
                           </div>
-                          <div className="flex justify-between items-center text-gray-400 text-[11px] pt-1 border-t border-[#2A2A2A]">
-                            <span>Total de Séries:</span>
+                          <div className="flex justify-between items-center text-gray-400 text-[10px] pt-1 border-t border-[#2A2A2A] gap-3">
+                            <span>Séries:</span>
                             <span className="font-bold text-white">{series}</span>
                           </div>
                         </div>
@@ -333,7 +350,7 @@ export default function EvolucaoChartsSection({
                   <Bar
                     dataKey="volumeKg"
                     fill="#0057FF"
-                    radius={[6, 6, 0, 0]}
+                    radius={[4, 4, 0, 0]}
                     className="hover:opacity-90 transition-opacity"
                   />
                 </BarChart>
