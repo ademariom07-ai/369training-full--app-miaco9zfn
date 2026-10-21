@@ -61,10 +61,15 @@ export default function AdminChat() {
   // Estado de minimizar/fechar o chat
   const [isMinimized, setIsMinimized] = useState(false)
 
-  // 1. Carregar lista de usuários (alunos e profissionais) com quem o admin pode conversar
+  // Ref para activeContact para uso em listeners de realtime estáveis sem recriar subscriptions
+  const activeContactRef = useRef<AdminChatContact | null>(null)
+  activeContactRef.current = activeContact
+
+  // 1. Carregar lista de usuários UMA vez ao entrar na tela (ou quando user mudar)
   useEffect(() => {
     if (!user) return
 
+    let cancelled = false
     setLoadingContacts(true)
     const fetchContacts = async () => {
       try {
@@ -78,6 +83,8 @@ export default function AdminChat() {
           }),
         ])
 
+        if (cancelled) return
+
         const unreadCountsBySender: Record<string, number> = {}
         unreadRes.items.forEach((m) => {
           unreadCountsBySender[m.sender] = (unreadCountsBySender[m.sender] || 0) + 1
@@ -90,6 +97,7 @@ export default function AdminChat() {
 
         setContacts(mapped)
 
+        // Se contactId estiver na URL, seleciona; senão o primeiro contato
         if (contactId) {
           const target = mapped.find((c) => c.id === contactId)
           if (target) {
@@ -99,22 +107,41 @@ export default function AdminChat() {
             setActiveContact(mapped[0])
           }
         } else if (mapped.length > 0) {
-          setActiveContact(mapped[0])
+          setActiveContact((current) => current || mapped[0])
         }
       } catch (err) {
         console.warn('Erro ao carregar contatos do chat admin:', err)
-        setContacts([])
+        if (!cancelled) setContacts([])
       } finally {
-        setLoadingContacts(false)
+        if (!cancelled) setLoadingContacts(false)
       }
     }
 
     fetchContacts()
-  }, [user, contactId])
 
-  // 2. Carregar mensagens da conversa ativa + Realtime
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id]) // Executa uma vez por usuário autenticado, NÃO por contactId
+
+  // Sincroniza activeContact se contactId na URL mudar diretamente (sem refetch da lista)
   useEffect(() => {
-    if (!user || !activeContact) return
+    if (!contactId || contacts.length === 0) return
+    const target = contacts.find((c) => c.id === contactId)
+    if (target && target.id !== activeContact?.id) {
+      setActiveContact(target)
+      setMobileShowConversation(true)
+    }
+  }, [contactId, contacts])
+
+  // 2. Carregar apenas as mensagens da conversa ativa ao trocar de contato
+  useEffect(() => {
+    if (!user || !activeContact) {
+      setMessages([])
+      return
+    }
+
+    const currentContactId = activeContact.id
 
     const markIncomingAsRead = (list: MessageRecord[]) => {
       const unreadIncoming = list.filter((m) => m.receiver === user.id && !m.read)
@@ -125,23 +152,35 @@ export default function AdminChat() {
       })
       if (unreadIncoming.length > 0) {
         setContacts((prev) =>
-          prev.map((c) => (c.id === activeContact.id ? { ...c, unreadCount: 0 } : c)),
+          prev.map((c) => (c.id === currentContactId ? { ...c, unreadCount: 0 } : c)),
         )
       }
     }
 
+    let active = true
     pb.collection('messages')
       .getList<MessageRecord>(1, 100, {
-        filter: `(sender = "${user.id}" && receiver = "${activeContact.id}") || (sender = "${activeContact.id}" && receiver = "${user.id}")`,
+        filter: `(sender = "${user.id}" && receiver = "${currentContactId}") || (sender = "${currentContactId}" && receiver = "${user.id}")`,
         sort: 'created',
       })
       .then((res) => {
-        setMessages(res.items)
-        markIncomingAsRead(res.items)
+        if (active) {
+          setMessages(res.items)
+          markIncomingAsRead(res.items)
+        }
       })
       .catch(() => {
-        setMessages([])
+        if (active) setMessages([])
       })
+
+    return () => {
+      active = false
+    }
+  }, [user?.id, activeContact?.id])
+
+  // 3. Assinatura Realtime persistente (uma única assinatura global para messages)
+  useEffect(() => {
+    if (!user) return
 
     let unsubscribeFn: (() => Promise<void>) | undefined
     let cancelled = false
@@ -149,9 +188,11 @@ export default function AdminChat() {
     pb.collection('messages')
       .subscribe('*', (e) => {
         const changedMsg = e.record as unknown as MessageRecord
+        const currentActive = activeContactRef.current
         const isCurrentConv =
-          (changedMsg.sender === user.id && changedMsg.receiver === activeContact.id) ||
-          (changedMsg.sender === activeContact.id && changedMsg.receiver === user.id)
+          !!currentActive &&
+          ((changedMsg.sender === user.id && changedMsg.receiver === currentActive.id) ||
+            (changedMsg.sender === currentActive.id && changedMsg.receiver === user.id))
 
         if (e.action === 'create') {
           if (isCurrentConv) {
@@ -163,6 +204,9 @@ export default function AdminChat() {
               pb.collection('messages')
                 .update(changedMsg.id, { read: true })
                 .catch(() => {})
+              setContacts((prev) =>
+                prev.map((c) => (c.id === changedMsg.sender ? { ...c, unreadCount: 0 } : c)),
+              )
             }
           } else if (changedMsg.receiver === user.id) {
             setContacts((prev) =>
@@ -171,8 +215,21 @@ export default function AdminChat() {
               ),
             )
           }
-        } else if (e.action === 'update' && isCurrentConv) {
-          setMessages((prev) => prev.map((m) => (m.id === changedMsg.id ? changedMsg : m)))
+        } else if (e.action === 'update') {
+          if (isCurrentConv) {
+            setMessages((prev) => prev.map((m) => (m.id === changedMsg.id ? changedMsg : m)))
+          }
+          if (changedMsg.receiver === user.id && changedMsg.read) {
+            // Se foi marcada como lida
+            setContacts((prev) =>
+              prev.map((c) => {
+                if (c.id === changedMsg.sender) {
+                  return { ...c, unreadCount: Math.max(0, (c.unreadCount || 1) - 1) }
+                }
+                return c
+              }),
+            )
+          }
         }
       })
       .then((fn) => {
@@ -190,13 +247,9 @@ export default function AdminChat() {
       cancelled = true
       if (unsubscribeFn) {
         unsubscribeFn().catch(() => {})
-      } else {
-        pb.collection('messages')
-          .unsubscribe('*')
-          .catch(() => {})
       }
     }
-  }, [user, activeContact])
+  }, [user?.id])
 
   // Scroll to bottom
   useEffect(() => {
@@ -293,8 +346,10 @@ export default function AdminChat() {
   }
 
   const filteredContacts = contacts.filter((c) => {
-    const q = searchTerm.toLowerCase()
-    const matchesSearch = c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
+    const q = (searchTerm || '').trim().toLowerCase()
+    const nameStr = (c.name || '').toLowerCase()
+    const emailStr = (c.email || '').toLowerCase()
+    const matchesSearch = !q || nameStr.includes(q) || emailStr.includes(q)
     const matchesRole = roleFilter === 'todos' || c.role === roleFilter
     return matchesSearch && matchesRole
   })

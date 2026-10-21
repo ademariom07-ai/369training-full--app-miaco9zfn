@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import type { MessageRecord } from '@/services/api'
 import { useChatMessages, type ChatMessage } from '@/hooks/use-chat-messages'
+import { useRealtime } from '@/hooks/use-realtime'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -94,7 +95,10 @@ export default function ProfissionalChatScreen() {
     }
   }, [user])
 
-  // 2. Load Students List with unread counts
+  const activeStudentRef = useRef<StudentContact | null>(null)
+  activeStudentRef.current = activeStudent
+
+  // 2. Load Students List with unread counts (UMA vez ao montar a tela)
   useEffect(() => {
     if (!user) return
 
@@ -173,7 +177,7 @@ export default function ProfissionalChatScreen() {
             setActiveStudent(finalContacts[0])
           }
         } else if (finalContacts.length > 0) {
-          setActiveStudent(finalContacts[0])
+          setActiveStudent((cur) => cur || finalContacts[0])
         }
       } catch {
         if (isMounted) setStudents([])
@@ -187,7 +191,54 @@ export default function ProfissionalChatScreen() {
     return () => {
       isMounted = false
     }
-  }, [user, alunoId])
+  }, [user?.id, user?.role])
+
+  // Sincroniza activeStudent caso o alunoId na URL mude sem recarregar a lista
+  useEffect(() => {
+    if (!alunoId || students.length === 0) return
+    const target = students.find((s) => s.id === alunoId)
+    if (target && target.id !== activeStudent?.id) {
+      setActiveStudent(target)
+      setMobileShowConversation(true)
+    }
+  }, [alunoId, students])
+
+  // Atualizar contadores de unread em tempo real sem refetch
+  useRealtime<MessageRecord>(
+    'messages',
+    (e) => {
+      if (!user) return
+      const msg = e.record
+      if (msg.receiver !== user.id) return
+
+      const currentActive = activeStudentRef.current
+
+      if (e.action === 'create') {
+        if (currentActive && msg.sender === currentActive.id) {
+          // Se a mensagem for do contato ativo, já foi/será marcada como lida pelo useChatMessages
+          setStudents((prev) =>
+            prev.map((s) => (s.id === msg.sender ? { ...s, unreadCount: 0 } : s)),
+          )
+        } else {
+          setStudents((prev) =>
+            prev.map((s) =>
+              s.id === msg.sender ? { ...s, unreadCount: (s.unreadCount || 0) + 1 } : s,
+            ),
+          )
+        }
+      } else if (e.action === 'update' && msg.read) {
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.id === msg.sender) {
+              return { ...s, unreadCount: Math.max(0, (s.unreadCount || 1) - 1) }
+            }
+            return s
+          }),
+        )
+      }
+    },
+    !!user?.id,
+  )
 
   // 3. Mensagens da conversa ativa (histórico, tempo real e checagem de reserva)
   const { messages, setMessages, addMessage } = useChatMessages(user?.id, activeStudent?.id)
@@ -282,11 +333,13 @@ export default function ProfissionalChatScreen() {
     }
   }
 
-  const filteredStudents = students.filter(
-    (s) =>
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const filteredStudents = students.filter((s) => {
+    const q = (searchTerm || '').trim().toLowerCase()
+    if (!q) return true
+    const nameStr = (s.name || '').toLowerCase()
+    const emailStr = (s.email || '').toLowerCase()
+    return nameStr.includes(q) || emailStr.includes(q)
+  })
 
   if (checkingTerms) {
     return (

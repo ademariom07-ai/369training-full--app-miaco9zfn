@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import type { MessageRecord } from '@/services/api'
 import { useChatMessages, type ChatMessage } from '@/hooks/use-chat-messages'
+import { useRealtime } from '@/hooks/use-realtime'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -94,7 +95,10 @@ export default function ChatScreen() {
     }
   }, [user])
 
-  // 2. Load professionals & determine linked professional
+  const activeProfRef = useRef<ProfessionalContact | null>(null)
+  activeProfRef.current = activeProf
+
+  // 2. Load professionals & determine linked professional (UMA vez ao montar a tela)
   useEffect(() => {
     if (!user) return
 
@@ -167,7 +171,7 @@ export default function ChatScreen() {
         }
 
         // Buscar mensagens não lidas recebidas de cada profissional
-        let unreadCountsBySender: Record<string, number> = {}
+        const unreadCountsBySender: Record<string, number> = {}
         try {
           const unreadRes = await pb.collection('messages').getList<MessageRecord>(1, 200, {
             filter: `receiver = "${user.id}" && read = false`,
@@ -226,7 +230,7 @@ export default function ChatScreen() {
             setActiveProf(finalContacts[0])
           }
         } else if (finalContacts.length > 0) {
-          setActiveProf(finalContacts[0])
+          setActiveProf((cur) => cur || finalContacts[0])
         }
       } catch (err) {
         console.error('Erro ao buscar profissionais:', err)
@@ -241,7 +245,54 @@ export default function ChatScreen() {
     return () => {
       isMounted = false
     }
-  }, [user, profId])
+  }, [user?.id])
+
+  // Sincroniza activeProf caso o profId na URL mude sem recarregar a lista
+  useEffect(() => {
+    if (!profId || professionals.length === 0) return
+    const target = professionals.find((p) => p.id === profId)
+    if (target && target.id !== activeProf?.id) {
+      setActiveProf(target)
+      setMobileShowConversation(true)
+    }
+  }, [profId, professionals])
+
+  // Atualizar contadores de unread em tempo real sem refetch
+  useRealtime<MessageRecord>(
+    'messages',
+    (e) => {
+      if (!user) return
+      const msg = e.record
+      if (msg.receiver !== user.id) return
+
+      const currentActive = activeProfRef.current
+
+      if (e.action === 'create') {
+        if (currentActive && msg.sender === currentActive.id) {
+          // Se a mensagem for do contato ativo, já foi/será marcada como lida pelo useChatMessages
+          setProfessionals((prev) =>
+            prev.map((p) => (p.id === msg.sender ? { ...p, unreadCount: 0 } : p)),
+          )
+        } else {
+          setProfessionals((prev) =>
+            prev.map((p) =>
+              p.id === msg.sender ? { ...p, unreadCount: (p.unreadCount || 0) + 1 } : p,
+            ),
+          )
+        }
+      } else if (e.action === 'update' && msg.read) {
+        setProfessionals((prev) =>
+          prev.map((p) => {
+            if (p.id === msg.sender) {
+              return { ...p, unreadCount: Math.max(0, (p.unreadCount || 1) - 1) }
+            }
+            return p
+          }),
+        )
+      }
+    },
+    !!user?.id,
+  )
 
   // 3. Mensagens da conversa ativa (histórico, tempo real e checagem de reserva)
   const { messages, setMessages, addMessage } = useChatMessages(user?.id, activeProf?.id)
@@ -338,12 +389,15 @@ export default function ChatScreen() {
   }
 
   const filteredProfs = professionals.filter((p) => {
-    const q = searchTerm.toLowerCase()
-    const nameMatch = p.name.toLowerCase().includes(q)
-    const emailMatch = p.email?.toLowerCase().includes(q)
+    const q = (searchTerm || '').trim().toLowerCase()
+    if (!q) return true
+    const nameStr = (p.name || '').toLowerCase()
+    const emailStr = (p.email || '').toLowerCase()
+    const nameMatch = nameStr.includes(q)
+    const emailMatch = emailStr.includes(q)
     const specMatch = Array.isArray(p.specialties)
-      ? p.specialties.some((s) => s.toLowerCase().includes(q))
-      : typeof p.specialties === 'string' && p.specialties.toLowerCase().includes(q)
+      ? p.specialties.some((s) => (s || '').toLowerCase().includes(q))
+      : typeof p.specialties === 'string' && (p.specialties || '').toLowerCase().includes(q)
     return nameMatch || emailMatch || specMatch
   })
 

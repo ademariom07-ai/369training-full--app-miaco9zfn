@@ -66,6 +66,19 @@ export function useChatMessages(userId?: string, partnerId?: string) {
     return res.items.reverse()
   }, [userId, partnerId])
 
+  const markIncomingAsRead = useCallback(
+    (list: ChatMessage[]) => {
+      if (!userId) return
+      const unreadIncoming = list.filter((m) => m.receiver === userId && !m.read)
+      for (const m of unreadIncoming) {
+        pb.collection('messages')
+          .update(m.id, { read: true })
+          .catch(() => {})
+      }
+    },
+    [userId],
+  )
+
   // Histórico ao abrir/trocar de conversa
   useEffect(() => {
     setMessages([])
@@ -73,7 +86,10 @@ export function useChatMessages(userId?: string, partnerId?: string) {
     let active = true
     fetchMessages()
       .then((items) => {
-        if (active) setMessages(items)
+        if (active) {
+          setMessages(items)
+          markIncomingAsRead(items)
+        }
       })
       .catch(() => {
         if (active) setMessages([])
@@ -81,7 +97,7 @@ export function useChatMessages(userId?: string, partnerId?: string) {
     return () => {
       active = false
     }
-  }, [userId, partnerId, fetchMessages])
+  }, [userId, partnerId, fetchMessages, markIncomingAsRead])
 
   // Tempo real
   useRealtime<ChatMessage>(
@@ -89,6 +105,11 @@ export function useChatMessages(userId?: string, partnerId?: string) {
     (e) => {
       if ((e.action === 'create' || e.action === 'update') && belongsToPair(e.record)) {
         merge([e.record])
+        if (e.record.receiver === userId && !e.record.read) {
+          pb.collection('messages')
+            .update(e.record.id, { read: true })
+            .catch(() => {})
+        }
       }
     },
     !!userId,
@@ -100,7 +121,10 @@ export function useChatMessages(userId?: string, partnerId?: string) {
     const tick = () => {
       if (document.visibilityState !== 'visible') return
       fetchMessages()
-        .then(merge)
+        .then((items) => {
+          merge(items)
+          markIncomingAsRead(items)
+        })
         .catch(() => {})
     }
     const id = window.setInterval(tick, POLL_MS)
@@ -109,7 +133,7 @@ export function useChatMessages(userId?: string, partnerId?: string) {
       window.clearInterval(id)
       document.removeEventListener('visibilitychange', tick)
     }
-  }, [userId, partnerId, fetchMessages, merge])
+  }, [userId, partnerId, fetchMessages, merge, markIncomingAsRead])
 
   const addMessage = useCallback((m: ChatMessage) => merge([m]), [merge])
 
