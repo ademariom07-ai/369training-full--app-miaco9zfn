@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-21T19:59:40.811Z",
+  "generatedAt": "2026-10-21T20:16:25.842Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && (role = 'profissional' || role = 'admin')) || (@request.auth.role = 'profissional' && ((role = 'aluno' && linked_professional = @request.auth.id) || role = 'admin'))",
-        "view": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && (role = 'profissional' || role = 'admin')) || (@request.auth.role = 'profissional' && ((role = 'aluno' && linked_professional = @request.auth.id) || role = 'admin'))",
+        "list": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && (role = 'profissional' || role = 'admin')) || (@request.auth.role = 'profissional' && ((role = 'aluno' && (linked_professional = @request.auth.id || @collection.messages.receiver ?= @request.auth.id || @collection.messages.sender ?= @request.auth.id)) || role = 'admin'))",
+        "view": "id = @request.auth.id || @request.auth.role = 'admin' || (@request.auth.role = 'aluno' && (role = 'profissional' || role = 'admin')) || (@request.auth.role = 'profissional' && ((role = 'aluno' && (linked_professional = @request.auth.id || @collection.messages.receiver ?= @request.auth.id || @collection.messages.sender ?= @request.auth.id)) || role = 'admin'))",
         "create": "@request.body.role != 'admin'",
         "update": "@request.auth.role = 'admin' || (id = @request.auth.id && @request.body.plan:isset = false && @request.body.plan_type:isset = false && @request.body.plan_upgraded_at:isset = false && @request.body.role:isset = false && @request.body.approved:isset = false && @request.body.tree_position:isset = false && @request.body.tree_level:isset = false && @request.body.verified:isset = false && @request.body.rating_avg:isset = false && @request.body.subscription_status:isset = false && @request.body.subscription_expires_at:isset = false && @request.body.linked_professional:isset = false && @request.body.linked_prof_fee_mode:isset = false && (@request.body.cpf:isset = false || cpf = ''))",
         "delete": "id = @request.auth.id"

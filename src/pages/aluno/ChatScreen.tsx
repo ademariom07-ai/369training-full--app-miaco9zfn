@@ -215,7 +215,24 @@ export default function ChatScreen() {
         // Priority 2: linked professional (if user has a linked one)
         // Priority 3: none (show list to let student choose)
         if (profId) {
-          const target = finalContacts.find((p) => p.id === profId)
+          let target = finalContacts.find((p) => p.id === profId)
+          if (!target) {
+            try {
+              const directProf = await pb.collection('users').getOne<ProfessionalContact>(profId)
+              if (directProf) {
+                target = {
+                  ...directProf,
+                  isLinked: linkedProfId ? directProf.id === linkedProfId : false,
+                  unreadCount: unreadCountsBySender[directProf.id] || 0,
+                }
+                finalContacts.push(target)
+                setProfessionals([...finalContacts])
+              }
+            } catch (errDirect) {
+              console.warn('Não foi possível obter profissional direto da URL:', profId, errDirect)
+            }
+          }
+
           if (target) {
             setActiveProf(target)
             setMobileShowConversation(true)
@@ -249,13 +266,43 @@ export default function ChatScreen() {
 
   // Sincroniza activeProf caso o profId na URL mude sem recarregar a lista
   useEffect(() => {
-    if (!profId || professionals.length === 0) return
+    if (!profId) return
     const target = professionals.find((p) => p.id === profId)
-    if (target && target.id !== activeProf?.id) {
-      setActiveProf(target)
-      setMobileShowConversation(true)
+    if (target) {
+      if (target.id !== activeProf?.id) {
+        setActiveProf(target)
+        setMobileShowConversation(true)
+      }
+    } else {
+      let isMounted = true
+      pb.collection('users')
+        .getOne<ProfessionalContact>(profId)
+        .then((fetched) => {
+          if (!isMounted) return
+          const newContact: ProfessionalContact = {
+            ...fetched,
+            isLinked: false,
+            unreadCount: 0,
+          }
+          setProfessionals((prev) => {
+            if (prev.some((p) => p.id === newContact.id)) return prev
+            return [...prev, newContact]
+          })
+          setActiveProf(newContact)
+          setMobileShowConversation(true)
+        })
+        .catch((err) => {
+          console.warn(
+            'Não foi possível carregar profissional da URL em sincronização:',
+            profId,
+            err,
+          )
+        })
+      return () => {
+        isMounted = false
+      }
     }
-  }, [profId, professionals])
+  }, [profId, professionals, activeProf?.id])
 
   // Atualizar contadores de unread em tempo real sem refetch
   useRealtime<MessageRecord>(

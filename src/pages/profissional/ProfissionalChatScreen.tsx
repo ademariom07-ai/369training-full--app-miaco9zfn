@@ -135,13 +135,21 @@ export default function ProfissionalChatScreen() {
             ? 'role = "aluno"'
             : `role = "aluno" && linked_professional = "${user.id}"`
 
-        const [usersRes, unreadRes] = await Promise.all([
+        // Carrega:
+        // 1. Alunos vinculados (ou todos se admin)
+        // 2. Mensagens não lidas recebidas pelo profissional
+        // 3. Histórico de mensagens enviadas ou recebidas para identificar alunos que já interagiram
+        const [linkedRes, unreadRes, myMessagesRes] = await Promise.all([
           pb.collection('users').getList<StudentContact>(1, 100, {
             filter: studentFilter,
             sort: 'name',
           }),
           pb.collection('messages').getList<MessageRecord>(1, 200, {
             filter: `receiver = "${user.id}" && read = false`,
+          }),
+          pb.collection('messages').getList<MessageRecord>(1, 200, {
+            filter: `receiver = "${user.id}" || sender = "${user.id}"`,
+            sort: '-created',
           }),
         ])
 
@@ -150,10 +158,63 @@ export default function ProfissionalChatScreen() {
           unreadCountsBySender[m.sender] = (unreadCountsBySender[m.sender] || 0) + 1
         })
 
-        const mappedStudents = usersRes.items.map((s) => ({
-          ...s,
-          unreadCount: unreadCountsBySender[s.id] || 0,
-        }))
+        // Mapa de alunos já obtidos por ID
+        const studentMap = new Map<string, StudentContact>()
+        for (const s of linkedRes.items) {
+          studentMap.set(s.id, {
+            ...s,
+            unreadCount: unreadCountsBySender[s.id] || 0,
+          })
+        }
+
+        // Identifica interlocutores das mensagens que ainda não estão no mapa
+        const extraStudentIds = new Set<string>()
+        for (const m of myMessagesRes.items) {
+          const otherId = m.sender === user.id ? m.receiver : m.sender
+          if (
+            otherId &&
+            otherId !== user.id &&
+            (!supportContact || otherId !== supportContact.id) &&
+            !studentMap.has(otherId)
+          ) {
+            extraStudentIds.add(otherId)
+          }
+        }
+
+        // Se alunoId da URL foi informado e ainda não está mapeado, adiciona para busca direta
+        if (
+          alunoId &&
+          alunoId !== user.id &&
+          (!supportContact || alunoId !== supportContact.id) &&
+          !studentMap.has(alunoId)
+        ) {
+          extraStudentIds.add(alunoId)
+        }
+
+        // Buscar dados dos alunos extras
+        if (extraStudentIds.size > 0) {
+          await Promise.all(
+            Array.from(extraStudentIds).map(async (id) => {
+              try {
+                const fetched = await pb.collection('users').getOne<StudentContact>(id)
+                // Apenas inclui se não for admin de suporte (já tratado)
+                if (fetched && fetched.role !== 'admin') {
+                  studentMap.set(fetched.id, {
+                    ...fetched,
+                    unreadCount: unreadCountsBySender[fetched.id] || 0,
+                  })
+                }
+              } catch (errUser) {
+                console.warn('Não foi possível carregar dados do aluno interlocutor:', id, errUser)
+              }
+            }),
+          )
+        }
+
+        // Ordenar os alunos (alunos vinculados ou com mensagens)
+        const mappedStudents = Array.from(studentMap.values()).sort((a, b) =>
+          (a.name || '').localeCompare(b.name || ''),
+        )
 
         // Lista final: Suporte sempre no topo, seguido dos alunos
         const finalContacts: StudentContact[] = []
@@ -169,7 +230,23 @@ export default function ProfissionalChatScreen() {
         setStudents(finalContacts)
 
         if (alunoId) {
-          const target = finalContacts.find((s) => s.id === alunoId)
+          let target = finalContacts.find((s) => s.id === alunoId)
+          // Se ainda não estiver na lista final por qualquer motivo, tenta carregar diretamente
+          if (!target) {
+            try {
+              const directUser = await pb.collection('users').getOne<StudentContact>(alunoId)
+              if (directUser) {
+                target = {
+                  ...directUser,
+                  unreadCount: unreadCountsBySender[directUser.id] || 0,
+                }
+                setStudents((prev) => [...prev, target!])
+              }
+            } catch (errDirect) {
+              console.warn('Não foi possível obter aluno direto da URL:', alunoId, errDirect)
+            }
+          }
+
           if (target) {
             setActiveStudent(target)
             setMobileShowConversation(true)
@@ -195,13 +272,39 @@ export default function ProfissionalChatScreen() {
 
   // Sincroniza activeStudent caso o alunoId na URL mude sem recarregar a lista
   useEffect(() => {
-    if (!alunoId || students.length === 0) return
+    if (!alunoId) return
     const target = students.find((s) => s.id === alunoId)
-    if (target && target.id !== activeStudent?.id) {
-      setActiveStudent(target)
-      setMobileShowConversation(true)
+    if (target) {
+      if (target.id !== activeStudent?.id) {
+        setActiveStudent(target)
+        setMobileShowConversation(true)
+      }
+    } else {
+      // Se o alunoId da URL não estiver na lista existente, busca diretamente pelo backend
+      let isMounted = true
+      pb.collection('users')
+        .getOne<StudentContact>(alunoId)
+        .then((fetched) => {
+          if (!isMounted) return
+          const newContact: StudentContact = {
+            ...fetched,
+            unreadCount: 0,
+          }
+          setStudents((prev) => {
+            if (prev.some((s) => s.id === newContact.id)) return prev
+            return [...prev, newContact]
+          })
+          setActiveStudent(newContact)
+          setMobileShowConversation(true)
+        })
+        .catch((err) => {
+          console.warn('Não foi possível carregar aluno da URL em sincronização:', alunoId, err)
+        })
+      return () => {
+        isMounted = false
+      }
     }
-  }, [alunoId, students])
+  }, [alunoId, students, activeStudent?.id])
 
   // Atualizar contadores de unread em tempo real sem refetch
   useRealtime<MessageRecord>(
