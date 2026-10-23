@@ -3,7 +3,13 @@ import react from '@vitejs/plugin-react'
 import path from 'node:path'
 // Separate access bundle. No legacy application bootstrap or private environment loading.
 export default defineConfig({
- envDir:false,publicDir:false,plugins:[react()],base:'/',
+ envDir:false,publicDir:false,plugins:[react(),{
+  name:'supabase-only-access',
+  generateBundle(){
+   const legacy=[...this.getModuleIds()].filter(id=>/[/\\]pocketbase[/\\]/i.test(id)||id==='pocketbase');
+   if(legacy.length)this.error('A área operacional não pode importar PocketBase: '+legacy.join(', '));
+  },
+ }],base:'/',
  resolve:{alias:{'@':path.resolve(__dirname,'src')}},
  define:{
   'import.meta.env.VITE_SUPABASE_URL':JSON.stringify('https://elahjmtboqhqqxmoaths.supabase.co'),
