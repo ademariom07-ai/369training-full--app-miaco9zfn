@@ -27,7 +27,7 @@ begin
   perform set_config('request.jwt.claims',json_build_object('sub',b,'is_anonymous',false)::text,true);
   if exists(select 1 from public.training_completions) then raise exception 'third party reads';end if;checks:=checks+1;
   perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);perform public.revoke_student_link(a,1);
-  if exists(select 1 from public.training_completions) then raise exception 'revoked read';end if;checks:=checks+1;
+  if not exists(select 1 from public.training_completions where plan_id=plan.id and student_id=a) then raise exception 'student lost completion history';end if;checks:=checks+1;
   begin perform public.complete_training_plan(plan.id);raise exception 'revoked completes';exception when insufficient_privilege then checks:=checks+1;end;
   perform public.request_student_link(p);
   perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);perform public.accept_student_link(a,2);
