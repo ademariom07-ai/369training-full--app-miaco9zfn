@@ -431,17 +431,31 @@ export default function AgendaServicos() {
   const handleCompleteAppointment = async (appointmentId: string) => {
     setActionLoading(`comp-${appointmentId}`)
     try {
-      await pb.collection('appointments').update(appointmentId, {
-        status: 'concluído',
-      })
+      const updatedRecord = await pb.collection('appointments').update<AppointmentRecord>(
+        appointmentId,
+        {
+          status: 'concluído',
+        },
+        { expand: 'aluno,schedule,service_record' },
+      )
+
+      // Atualização imediata no estado local (sem recarregar as 4 listas)
+      setAppointments((prev) =>
+        prev.map((app) =>
+          app.id === appointmentId
+            ? { ...app, status: 'concluído', expand: updatedRecord.expand || app.expand }
+            : app,
+        ),
+      )
 
       toast.success(
         'Atendimento concluído! Tarifa debitada. A aula aguarda avaliação para validar a pontuação.',
       )
-      loadData()
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao concluir atendimento.')
+      // Fallback de erro: recarrega listas para manter coerência
+      loadData()
     } finally {
       setActionLoading(null)
     }
@@ -451,14 +465,28 @@ export default function AgendaServicos() {
   const handleCancelAppointment = async (appointmentId: string) => {
     setActionLoading(`canc-${appointmentId}`)
     try {
-      await pb.collection('appointments').update(appointmentId, {
-        status: 'cancelado',
-      })
+      const updatedRecord = await pb.collection('appointments').update<AppointmentRecord>(
+        appointmentId,
+        {
+          status: 'cancelado',
+        },
+        { expand: 'aluno,schedule,service_record' },
+      )
+
+      // Atualização imediata no estado local
+      setAppointments((prev) =>
+        prev.map((app) =>
+          app.id === appointmentId
+            ? { ...app, status: 'cancelado', expand: updatedRecord.expand || app.expand }
+            : app,
+        ),
+      )
+
       toast.info('Agendamento cancelado.')
-      loadData()
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao cancelar agendamento.')
+      loadData()
     } finally {
       setActionLoading(null)
     }
@@ -468,14 +496,28 @@ export default function AgendaServicos() {
   const handleConfirmAppointment = async (appointmentId: string) => {
     setActionLoading(`conf-${appointmentId}`)
     try {
-      await pb.collection('appointments').update(appointmentId, {
-        status: 'confirmado',
-      })
+      const updatedRecord = await pb.collection('appointments').update<AppointmentRecord>(
+        appointmentId,
+        {
+          status: 'confirmado',
+        },
+        { expand: 'aluno,schedule,service_record' },
+      )
+
+      // Atualização imediata no estado local
+      setAppointments((prev) =>
+        prev.map((app) =>
+          app.id === appointmentId
+            ? { ...app, status: 'confirmado', expand: updatedRecord.expand || app.expand }
+            : app,
+        ),
+      )
+
       toast.success('Agendamento confirmado!')
-      loadData()
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao confirmar agendamento.')
+      loadData()
     } finally {
       setActionLoading(null)
     }
