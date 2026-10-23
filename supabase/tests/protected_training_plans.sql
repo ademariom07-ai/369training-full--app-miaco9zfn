@@ -41,8 +41,8 @@ begin
   perform set_config('request.jwt.claims',json_build_object('sub',z,'is_anonymous',false)::text,true);
   if exists(select 1 from public.training_plans) then raise exception 'admin clinical blanket read';end if;checks:=checks+1;
   perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);perform public.revoke_student_link(a,1);
-  if exists(select 1 from public.training_plans) or exists(select 1 from public.training_plan_notifications) then raise exception 'revoked read leak';end if;checks:=checks+1;
-  begin perform public.read_training_notification(plan.id);raise exception 'revoked marks read';exception when insufficient_privilege then checks:=checks+1;end;
+  if (select count(*) from public.training_plans)<>1 or (select count(*) from public.training_plan_notifications)<>1 then raise exception 'student lost received history';end if;checks:=checks+1;
+  select * into notice from public.read_training_notification(plan.id);if notice.read_at<>seen then raise exception 'historical notice read changed timestamp';end if;checks:=checks+1;
   perform public.request_student_link(p);
   perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);perform public.accept_student_link(a,2);
   if exists(select 1 from public.training_plans) then raise exception 'reopened link resurrects old content';end if;checks:=checks+1;
@@ -50,7 +50,7 @@ begin
   reset role;update public.profiles set approved=false where id=p;set local role authenticated;
   if exists(select 1 from public.training_plans) then raise exception 'approval lost pro still reads';end if;checks:=checks+1;
   perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);
-  if exists(select 1 from public.training_plans) then raise exception 'approval lost student still reads';end if;checks:=checks+1;
+  if (select count(*) from public.training_plans)<>2 then raise exception 'student lost history after approval withdrawn';end if;checks:=checks+1;
   reset role;update public.profiles set approved=true where id=p;set local role authenticated;
   perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',true)::text,true);
   if exists(select 1 from public.training_plans) or exists(select 1 from public.training_plan_notifications) then raise exception 'anonymous Auth reads';end if;checks:=checks+1;
