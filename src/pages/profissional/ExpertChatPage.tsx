@@ -98,8 +98,18 @@ export default function ExpertChatPage() {
 
       setMessages((prev) => [...prev, expertMsg])
     } catch (err: unknown) {
+      // Fallback discreto/silencioso: adiciona mensagem amigável no chat sem crash ou toast agressivo
+      console.warn('Aviso: falha na resposta do Expert:', err)
       const error = err as Error
-      toast.error(error.message || 'Erro ao consultar o Expert.')
+      const fallbackMsg: ChatMessage = {
+        id: 'err_' + Date.now(),
+        sender: 'expert',
+        content:
+          error.message ||
+          'Não foi possível obter a resposta do Expert no momento (timeout de 10s). Tente reformular sua pergunta.',
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      }
+      setMessages((prev) => [...prev, fallbackMsg])
     } finally {
       setLoading(false)
     }
@@ -209,7 +219,9 @@ export default function ExpertChatPage() {
         })}
         {loading && (
           <div className="flex items-center gap-2 text-xs text-[#D4AF37] font-montserrat">
-            <Loader2 className="w-4 h-4 animate-spin" /> O Expert está formulando sua resposta...
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Analisando…</span>
+            <span className="text-gray-400 font-inter text-[11px]">(timeout máx. 10s)</span>
           </div>
         )}
         <div ref={messagesEndRef} />

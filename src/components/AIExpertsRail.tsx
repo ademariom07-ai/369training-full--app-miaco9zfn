@@ -51,8 +51,10 @@ export const AIExpertsRail: React.FC<AIExpertsRailProps> = ({
       })
       setQuickResponse(res.content)
     } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || 'Erro ao consultar o Expert.')
+      console.warn('Aviso: falha na resposta rápida do Expert:', err)
+      setQuickResponse(
+        'O Expert não respondeu a tempo (timeout de 10s). Tente novamente em instantes.',
+      )
     } finally {
       setLoading(false)
     }
@@ -181,6 +183,7 @@ export const AIExpertsRail: React.FC<AIExpertsRailProps> = ({
           <div className="p-3 rounded-xl bg-[#0B0B0C] border border-[#2A2A2A] space-y-2 animate-fade-in">
             <div className="flex justify-between items-center text-[10px] font-bold uppercase text-gray-400 font-montserrat">
               <span>Chat Rápido: {activeExpert === 'mentor' ? 'Mentor 369' : 'Roteirista 10'}</span>
+              {loading && <span className="text-[#D4AF37] lowercase">analisando…</span>}
             </div>
 
             {quickResponse && (

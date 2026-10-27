@@ -69,10 +69,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
       return (
         <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center justify-center p-4 selection:bg-[#D4AF37] selection:text-black">
-          {/* Subtle brand glow in the background */}
+          {/* Subtle brand glow in the background (simplificado no mobile para desempenho) */}
           <div className="fixed inset-0 pointer-events-none opacity-20">
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-[#0057FF]/30 rounded-full blur-3xl" />
-            <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-80 h-80 bg-[#D4AF37]/20 rounded-full blur-3xl" />
+            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-[#0057FF]/30 rounded-full sm:blur-3xl" />
+            <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-80 h-80 bg-[#D4AF37]/20 rounded-full sm:blur-3xl" />
           </div>
 
           <Card className="relative z-10 max-w-xl w-full bg-[#141414] border-2 border-[#D4AF37]/50 shadow-[0_0_50px_rgba(212,175,55,0.15)] p-6 sm:p-8 rounded-2xl">

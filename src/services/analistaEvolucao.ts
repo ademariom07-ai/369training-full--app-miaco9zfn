@@ -102,26 +102,38 @@ export async function analisarAlunoComIa(params: {
 }): Promise<AnalisarAlunoResponse> {
   const token = pb.authStore.token
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || ''
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-  const res = await fetch(`${baseUrl}/backend/v1/ai/analista/analisar-aluno`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: token ? `Bearer ${token}` : '',
-    },
-    body: JSON.stringify({
-      student_id: params.studentId,
-      csv_context: params.csvContext || '',
-      csv_import_id: params.csvImportId || null,
-    }),
-  })
+  try {
+    const res = await fetch(`${baseUrl}/backend/v1/ai/analista/analisar-aluno`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+      body: JSON.stringify({
+        student_id: params.studentId,
+        csv_context: params.csvContext || '',
+        csv_import_id: params.csvImportId || null,
+      }),
+      signal: controller.signal,
+    })
 
-  const data = await res.json()
-  if (!res.ok) {
-    throw new Error(data?.error || 'Erro ao processar análise do aluno com IA')
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data?.error || 'Erro ao processar análise do aluno com IA')
+    }
+
+    return data
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('A análise demorou mais que 10s para responder. Tente novamente mais tarde.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return data
 }
 
 /**
@@ -130,22 +142,34 @@ export async function analisarAlunoComIa(params: {
 export async function fetchResumoAlunoIa(): Promise<ResumoAlunoResponse> {
   const token = pb.authStore.token
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || ''
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-  const res = await fetch(`${baseUrl}/backend/v1/ai/analista/resumo-aluno`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: token ? `Bearer ${token}` : '',
-    },
-    body: JSON.stringify({}),
-  })
+  try {
+    const res = await fetch(`${baseUrl}/backend/v1/ai/analista/resumo-aluno`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+      body: JSON.stringify({}),
+      signal: controller.signal,
+    })
 
-  const data = await res.json()
-  if (!res.ok) {
-    throw new Error(data?.error || 'Erro ao carregar resumo da IA')
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data?.error || 'Erro ao carregar resumo da IA')
+    }
+
+    return data
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('O resumo da IA demorou mais que 10s para responder.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return data
 }
 
 /**

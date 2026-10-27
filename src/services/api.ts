@@ -318,18 +318,30 @@ export const api = {
     message: string
     conversation_id?: string | null
   }) => {
-    return pb.send<{
-      content: string
-      conversation_id: string
-      message_id: string
-      citations: Array<{ excerpt: string; source_id: string }>
-      remaining_quota: number
-      max_quota: number
-      plan_tier: string
-    }>('/backend/v1/experts/chat', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+    try {
+      return await pb.send<{
+        content: string
+        conversation_id: string
+        message_id: string
+        citations: Array<{ excerpt: string; source_id: string }>
+        remaining_quota: number
+        max_quota: number
+        plan_tier: string
+      }>('/backend/v1/experts/chat', {
+        method: 'POST',
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      })
+    } catch (err: unknown) {
+      if ((err as Error)?.name === 'AbortError') {
+        throw new Error('O Expert demorou mais que 10s para responder.')
+      }
+      throw err
+    } finally {
+      clearTimeout(timeoutId)
+    }
   },
 
   loadFeedback: async (params: {

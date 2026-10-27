@@ -425,17 +425,22 @@ export function Agente369Section() {
     return <div className="space-y-1 font-inter">{blocks}</div>
   }
 
-  // Carregar status do agente
+  // Carregar status do agente com timeout de 10s e erro silencioso não-bloqueante
   const loadStatus = async () => {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
     try {
       setLoading(true)
       const res = await pb.send('/backend/v1/aluno/agent_status', {
         method: 'POST',
+        signal: controller.signal,
       })
       setAgentStatus(res)
     } catch (err: any) {
-      console.error('Erro ao carregar status do Agente 369:', err)
+      // Tratamento silencioso (não bloqueia renderização da tela)
+      console.warn('Aviso: status do Agente 369 indisponível no momento:', err?.message || err)
     } finally {
+      clearTimeout(timeoutId)
       setLoading(false)
     }
   }
@@ -606,9 +611,21 @@ export function Agente369Section() {
 
   if (loading && !agentStatus) {
     return (
-      <Card className="bg-white border-2 border-[#E5E3DC] p-6 rounded-2xl animate-pulse shadow-sm">
-        <div className="h-6 w-48 bg-[#E5E3DC] rounded mb-4" />
-        <div className="h-16 w-full bg-[#E5E3DC]/60 rounded" />
+      <Card className="bg-gradient-to-br from-[#0057FF]/90 via-[#0046CC]/90 to-[#003399]/90 border border-white/20 p-5 rounded-2xl text-white shadow-sm flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-[#D4AF37]">
+            <Sparkles className="w-4 h-4 animate-spin text-[#D4AF37]" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold uppercase font-montserrat">Agente 369</h4>
+            <p className="text-[11px] text-white/80 font-inter">
+              Analisando status do seu plano e cotas...
+            </p>
+          </div>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-white/70 font-mono">
+          Analisando…
+        </span>
       </Card>
     )
   }

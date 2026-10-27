@@ -31,7 +31,7 @@ export default function Evolucao() {
   const [selectedExercise, setSelectedExercise] = useState<string>('todos')
   const [periodo, setPeriodo] = useState<'30dias' | '90dias' | 'todos'>('90dias')
 
-  // Estado do Resumo de IA (3 a 5 pontos)
+  // Estado do Resumo de IA (3 a 5 pontos) — carregamento não bloqueante
   const [aiSummary, setAiSummary] = useState<ResumoAlunoResponse | null>(null)
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false)
 
@@ -41,8 +41,9 @@ export default function Evolucao() {
     try {
       const data = await fetchResumoAlunoIa()
       setAiSummary(data)
-    } catch (err) {
-      console.warn('Aviso: falha ao carregar resumo de IA:', err)
+    } catch (err: unknown) {
+      // Tratamento de erro silencioso (sem toast agressivo ou crash)
+      console.warn('Aviso: falha silenciosa ao carregar resumo de IA:', err)
     } finally {
       setAiSummaryLoading(false)
     }
@@ -66,13 +67,17 @@ export default function Evolucao() {
   }
 
   useEffect(() => {
+    // Tela renderiza primeiro os logs de treino
     fetchLogs()
+    // Resumo de IA carrega de forma não bloqueante em paralelo
     loadAiSummary()
   }, [user])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await Promise.all([fetchLogs(), loadAiSummary()])
+    // Dispara logs e resumo sem travar um no outro
+    fetchLogs()
+    loadAiSummary()
   }
 
   // Lista única de exercícios com contagem de séries
@@ -429,8 +434,11 @@ export default function Evolucao() {
         <div className="pt-4">
           {aiSummaryLoading ? (
             <div className="py-6 flex items-center justify-center gap-3 text-xs text-gray-400 font-inter">
-              <RefreshCw className="w-4 h-4 animate-spin text-[#0057FF]" />
-              <span>O Analista de Evolução está analisando seus treinos...</span>
+              <RefreshCw className="w-4 h-4 animate-spin text-[#D4AF37]" />
+              <span className="font-montserrat uppercase tracking-wide font-bold text-gray-300">
+                Analisando…
+              </span>
+              <span className="hidden sm:inline text-gray-500">• compilando evolução</span>
             </div>
           ) : aiSummary && aiSummary.points && aiSummary.points.length > 0 ? (
             <div className="space-y-2.5">
@@ -449,14 +457,19 @@ export default function Evolucao() {
               ))}
             </div>
           ) : (
-            <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] text-xs text-gray-400 font-inter flex items-center justify-between">
-              <span>Nenhum resumo gerado ainda. Clique em &ldquo;Atualizar Resumo&rdquo;.</span>
+            <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] text-xs text-gray-400 font-inter flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <span>
+                {logs.length === 0
+                  ? 'Registre seus primeiros treinos para gerar o resumo automático de IA.'
+                  : 'Resumo da IA em espera. Clique em atualizar para carregar.'}
+              </span>
               <Button
                 onClick={loadAiSummary}
                 size="sm"
-                className="bg-[#0057FF] hover:bg-[#1e69ff] text-white text-xs font-bold"
+                disabled={aiSummaryLoading}
+                className="bg-[#0057FF] hover:bg-[#1e69ff] text-white text-xs font-bold shrink-0 self-start sm:self-auto"
               >
-                Gerar Agora
+                {aiSummaryLoading ? 'Analisando…' : 'Gerar Resumo'}
               </Button>
             </div>
           )}

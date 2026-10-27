@@ -63,18 +63,22 @@ export function PainelInsightsIA({ students, currentProfId }: PainelInsightsIAPr
     }
   }, [students, selectedStudentId])
 
-  // Carregar histórico de análises quando troca de aluno
+  // Carregar histórico de análises quando troca de aluno (não bloqueante)
   useEffect(() => {
     if (selectedStudentId) {
-      fetchHistoricoInsights(selectedStudentId).then((items) => {
-        setInsightsHistory(items)
-        if (items.length > 0 && !analyzedContent) {
-          setAnalyzedContent(items[0].content)
-          if (items[0].metrics_snapshot) {
-            setMetrics(items[0].metrics_snapshot)
+      fetchHistoricoInsights(selectedStudentId)
+        .then((items) => {
+          setInsightsHistory(items)
+          if (items.length > 0 && !analyzedContent) {
+            setAnalyzedContent(items[0].content)
+            if (items[0].metrics_snapshot) {
+              setMetrics(items[0].metrics_snapshot)
+            }
           }
-        }
-      })
+        })
+        .catch((err) => {
+          console.warn('Aviso: falha silenciosa ao carregar histórico de insights:', err)
+        })
     }
   }, [selectedStudentId])
 
@@ -167,8 +171,8 @@ export function PainelInsightsIA({ students, currentProfId }: PainelInsightsIAPr
 
   return (
     <Card className="bg-gradient-to-br from-[#181818] via-[#141414] to-[#181818] border-2 border-[#0057FF]/40 p-5 sm:p-7 rounded-2xl shadow-2xl relative overflow-hidden">
-      {/* Glow decorativo sutil */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-[#0057FF]/15 via-[#D4AF37]/10 to-transparent rounded-full pointer-events-none blur-2xl" />
+      {/* Glow decorativo sutil (reduzido no mobile para desempenho de renderização) */}
+      <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-[#0057FF]/15 via-[#D4AF37]/10 to-transparent rounded-full pointer-events-none sm:blur-2xl opacity-60 sm:opacity-100" />
 
       {/* HEADER DO PAINEL */}
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#2A2A2A]">
@@ -457,18 +461,18 @@ export function PainelInsightsIA({ students, currentProfId }: PainelInsightsIAPr
           {/* PAINEL PRINCIPAL DE RECOMENDAÇÕES DA IA */}
           <Card className="bg-[#141414] border border-[#2A2A2A] p-5 sm:p-6 rounded-xl relative min-h-[340px] flex flex-col justify-between">
             {loading ? (
-              <div className="flex-1 flex flex-col items-center justify-center py-16 text-center space-y-4">
+              <div className="flex-1 flex flex-col items-center justify-center py-16 text-center space-y-3">
                 <div className="relative">
-                  <div className="w-14 h-14 rounded-full border-4 border-[#0057FF]/30 border-t-[#0057FF] animate-spin" />
-                  <Brain className="w-6 h-6 text-[#D4AF37] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  <div className="w-12 h-12 rounded-full border-3 border-[#0057FF]/30 border-t-[#0057FF] animate-spin" />
+                  <Brain className="w-5 h-5 text-[#D4AF37] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                 </div>
                 <div>
-                  <h4 className="text-base font-bold font-montserrat text-white uppercase">
-                    O Analista de Evolução está compilando os dados...
+                  <h4 className="text-sm font-bold font-montserrat text-white uppercase flex items-center justify-center gap-2">
+                    <span>Analisando…</span>
                   </h4>
                   <p className="text-xs text-gray-400 font-inter mt-1 max-w-md">
-                    Processando workout_logs, consultas, fichas clínicas e avaliações do aluno sob
-                    regras LGPD.
+                    O Analista de Evolução está compilando workout_logs, cargas e constância sob
+                    regras LGPD (timeout 10s).
                   </p>
                 </div>
               </div>

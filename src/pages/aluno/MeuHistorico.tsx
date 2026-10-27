@@ -656,8 +656,8 @@ export default function MeuHistorico() {
     <div className="space-y-8 pb-16 max-w-7xl mx-auto">
       {/* HEADER DA SEÇÃO: Dossiê Agregador */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-2xl bg-[#141414] border border-[#2A2A2A] shadow-xl relative overflow-hidden">
-        {/* Glow dourado decorativo */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#D4AF37]/10 via-[#B8962E]/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+        {/* Glow dourado decorativo (simplificado no mobile para desempenho) */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#D4AF37]/10 via-[#B8962E]/5 to-transparent rounded-full sm:blur-3xl pointer-events-none opacity-40 sm:opacity-100" />
 
         <div className="relative z-10 space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-bold text-[#D4AF37] uppercase font-montserrat">

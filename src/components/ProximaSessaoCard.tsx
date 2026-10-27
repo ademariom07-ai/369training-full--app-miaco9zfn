@@ -133,8 +133,8 @@ export function ProximaSessaoCard({ studentId }: ProximaSessaoCardProps) {
   return (
     <>
       <Card className="bg-gradient-to-r from-white via-[#FCFBF7] to-white border-2 border-[#D4AF37]/50 p-5 rounded-2xl shadow-md transition-all hover:shadow-lg relative overflow-hidden">
-        {/* Glow dourado de destaque */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+        {/* Glow dourado de destaque (simplificado no mobile) */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 rounded-full sm:blur-2xl -mr-10 -mt-10 pointer-events-none opacity-50 sm:opacity-100" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
