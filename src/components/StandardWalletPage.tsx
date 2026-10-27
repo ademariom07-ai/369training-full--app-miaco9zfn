@@ -70,8 +70,11 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
   const [servicosCountMes, setServicosCountMes] = useState<number>(0)
   const [servicosHistorico, setServicosHistorico] = useState<ServiceRecord[]>([])
 
-  // Transações gerais
+  // Transações gerais com paginação (cap inicial 50 + "carregar mais")
   const [transactions, setTransactions] = useState<WalletTransactionRecord[]>([])
+  const [txPage, setTxPage] = useState<number>(1)
+  const [hasMoreTx, setHasMoreTx] = useState<boolean>(false)
+  const [loadingMoreTx, setLoadingMoreTx] = useState<boolean>(false)
   const [snapshotsHistory, setSnapshotsHistory] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(true)
 
@@ -136,14 +139,16 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
         /* intentionally ignored */
       }
 
-      // 1. Transações de Carteira (saldo + cashback)
+      // 1. Transações de Carteira (saldo + cashback) com paginação inicial de 50
       const txRes = await pb
         .collection('wallet_transactions')
-        .getList<WalletTransactionRecord>(1, 100, {
+        .getList<WalletTransactionRecord>(1, 50, {
           filter: `user = "${user.id}"`,
           sort: '-created',
         })
       setTransactions(txRes.items)
+      setTxPage(1)
+      setHasMoreTx(txRes.totalItems > txRes.items.length)
 
       let calcSaldo = 0
       let calcCashDisponivel = 0
@@ -305,6 +310,27 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
   useEffect(() => {
     loadAllWalletData()
   }, [user, role])
+
+  const handleLoadMoreTransactions = async () => {
+    if (!user || loadingMoreTx || !hasMoreTx) return
+    setLoadingMoreTx(true)
+    try {
+      const nextPage = txPage + 1
+      const res = await pb
+        .collection('wallet_transactions')
+        .getList<WalletTransactionRecord>(nextPage, 50, {
+          filter: `user = "${user.id}"`,
+          sort: '-created',
+        })
+      setTransactions((prev) => [...prev, ...res.items])
+      setTxPage(nextPage)
+      setHasMoreTx(res.page < res.totalPages)
+    } catch (err) {
+      console.warn('Erro ao carregar mais transações:', err)
+    } finally {
+      setLoadingMoreTx(false)
+    }
+  }
 
   // Submissão de Depósito PIX via hook do backend com upload real de comprovante
   const handleDepositSubmit = async (e: React.FormEvent) => {
@@ -802,6 +828,27 @@ export function StandardWalletPage({ role }: StandardWalletProps) {
             </tbody>
           </table>
         </div>
+
+        {hasMoreTx && (
+          <div className="pt-4 border-t border-[#2A2A2A] text-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={loadingMoreTx}
+              onClick={handleLoadMoreTransactions}
+              className="border-[#2A2A2A] hover:bg-[#202020] text-gray-300 text-xs rounded-xl"
+            >
+              {loadingMoreTx ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Carregando...
+                </>
+              ) : (
+                'Carregar mais transações'
+              )}
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* MODAL DEPÓSITO PIX */}

@@ -85,18 +85,20 @@ export default function ConteudosEmDestaque() {
       if (user?.id) {
         purchasesPromise = pb
           .collection('content_purchases')
-          .getFullList({
+          .getList(1, 100, {
             filter: `user = "${user.id}"`,
           })
+          .then((r) => r.items)
           .catch(() => [])
 
-        // Saldo da carteira
+        // Saldo da carteira (cap de 100 transações recentes)
         walletPromise = pb
           .collection('wallet_transactions')
-          .getFullList({
+          .getList(1, 100, {
             filter: `user = "${user.id}" && (status = "concluido" || status = "aprovado")`,
             sort: '-created',
           })
+          .then((r) => r.items)
           .then((txs) => {
             let bal = 0
             for (const t of txs as any[]) {

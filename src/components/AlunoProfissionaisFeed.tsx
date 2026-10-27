@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import pb from '@/lib/pocketbase/client'
 import type { UserProfile } from '@/contexts/AuthContext'
+import { getVerifiedProfessionalsWithStatusCached } from '@/services/professionalsCache'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -72,26 +73,16 @@ export function AlunoProfissionaisFeed() {
     }
   }, [])
 
-  // Load professionals with video_enabled = true and approved = true
+  // Load professionals with video_enabled = true and approved = true (usando cache compartilhado em memória)
   useEffect(() => {
     async function loadPros() {
       setLoading(true)
       try {
-        const [prosRes, credsRes] = await Promise.all([
-          pb.collection('users').getList<UserProfile>(1, 50, {
-            filter: 'role = "profissional" && approved = true',
-            sort: '-rating_avg',
-          }),
-          pb
-            .collection('credential_verifications')
-            .getList(1, 100, { filter: 'status = "verificado"' })
-            .catch(() => ({ items: [] })),
-        ])
-
-        const verifiedSet = new Set(credsRes.items.map((c: any) => c.professional))
+        const { professionals: cachedPros, verifiedProfIds: verifiedSet } =
+          await getVerifiedProfessionalsWithStatusCached()
 
         // Filtrar apenas com video_enabled = true e video_url presente
-        const videoPros = prosRes.items.filter(
+        const videoPros = cachedPros.filter(
           (p) => p.video_enabled && p.video_url && p.video_url.trim().length > 0,
         )
 

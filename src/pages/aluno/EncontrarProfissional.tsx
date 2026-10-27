@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import pb from '@/lib/pocketbase/client'
 import type { UserProfile } from '@/contexts/AuthContext'
+import { getApprovedProfessionalsCached } from '@/services/professionalsCache'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -176,15 +177,12 @@ export default function EncontrarProfissional() {
       })
   }, [user])
 
-  // Fetch approved professionals
+  // Fetch approved professionals (compartilhado via cache em memória)
   useEffect(() => {
     setLoading(true)
-    pb.collection('users')
-      .getList<UserProfile>(1, 100, {
-        filter: 'role = "profissional" && approved = true',
-      })
-      .then((res) => {
-        setProfessionals(res.items)
+    getApprovedProfessionalsCached()
+      .then((items) => {
+        setProfessionals(items)
       })
       .catch((err) => {
         console.error('Error loading professionals:', err)

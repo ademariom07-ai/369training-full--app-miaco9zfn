@@ -44,9 +44,11 @@ export function ReacceptanceModal() {
       // 1. Obter todos os documentos publicados relevantes para o papel do usuário
       const targetAudience = activeRole === 'profissional' ? 'profissional' : 'aluno'
       const filter = `status = 'publicado' && (audience = 'todos' || audience = '${targetAudience}')`
-      const publishedDocs = await pb
+      // 1. Obter documentos publicados relevantes para o papel do usuário (cap razoável de 50)
+      const publishedDocsRes = await pb
         .collection('legal_documents')
-        .getFullList<LegalDocumentRecord>({ filter })
+        .getList<LegalDocumentRecord>(1, 50, { filter })
+      const publishedDocs = publishedDocsRes.items
 
       if (publishedDocs.length === 0) {
         setPendingDocs([])
@@ -54,12 +56,13 @@ export function ReacceptanceModal() {
         return
       }
 
-      // 2. Buscar os aceites registrados para este usuário
-      const userAcceptances = await pb
+      // 2. Buscar os aceites registrados para este usuário (cap razoável de 100)
+      const userAcceptancesRes = await pb
         .collection('legal_acceptances')
-        .getFullList<LegalAcceptanceRecord>({
+        .getList<LegalAcceptanceRecord>(1, 100, {
           filter: `user = '${activeUserId}'`,
         })
+      const userAcceptances = userAcceptancesRes.items
 
       // Mapear aceites por slug e por id para o conjunto de versões já aceitas
       // Reconciliação canônica: aceites de 'consentimento-dados-sensiveis-saude' também contam para 'lgpd-consentimentos'

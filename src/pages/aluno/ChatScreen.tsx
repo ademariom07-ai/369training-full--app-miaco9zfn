@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
+import { getApprovedProfessionalsCached } from '@/services/professionalsCache'
 import type { MessageRecord } from '@/services/api'
 import { useChatMessages, type ChatMessage } from '@/hooks/use-chat-messages'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -129,13 +130,8 @@ export default function ChatScreen() {
           console.warn('Não foi possível carregar contato de Suporte:', errAdmin)
         }
 
-        // 2. Fetch all approved professionals
-        const profsRes = await pb.collection('users').getList<ProfessionalContact>(1, 100, {
-          filter: 'role = "profissional" && approved = true',
-          sort: 'name',
-        })
-
-        const allProfs = profsRes.items
+        // 2. Fetch all approved professionals (compartilhado via cache)
+        const allProfs = (await getApprovedProfessionalsCached()) as ProfessionalContact[]
 
         // Find linked professional via user profile, appointments or services
         let linkedProfId: string | null = (user as any).linked_professional || null

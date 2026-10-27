@@ -123,11 +123,11 @@ export default function AlunoPerfil() {
       })
   }, [user])
 
-  // Load Wallet Transactions — cálculo real com saldo = (depósitos + cashback - saques - tarifas - serviços) e cashback = soma das transações de cashback
+  // Load Wallet Transactions — cálculo real com cap de 100 registros (mais recentes)
   const loadWalletData = () => {
     if (!user) return
     pb.collection('wallet_transactions')
-      .getList<WalletTransactionRecord>(1, 500, {
+      .getList<WalletTransactionRecord>(1, 100, {
         filter: `user = "${user.id}"`,
         sort: '-created',
       })

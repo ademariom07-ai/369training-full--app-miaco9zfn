@@ -157,105 +157,115 @@ export default function MeuHistorico() {
   const loadAllHistoryData = async () => {
     if (!user) return
     try {
-      // 1. Treinos gerados por IA (ai_generated = true && student = user.id)
+      // 1. Treinos gerados por IA (cap razoável de 50)
       const iaWorkoutsPromise = pb
         .collection('workouts')
-        .getFullList<WorkoutRecord>({
+        .getList<WorkoutRecord>(1, 50, {
           filter: `student = "${user.id}" && ai_generated = true`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [] as WorkoutRecord[])
 
-      // 2a. Treinos de profissionais (ai_generated = false && student = user.id)
+      // 2a. Treinos de profissionais (cap razoável de 50)
       const profWorkoutsPromise = pb
         .collection('workouts')
-        .getFullList<WorkoutRecord>({
+        .getList<WorkoutRecord>(1, 50, {
           filter: `student = "${user.id}" && ai_generated = false`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [] as WorkoutRecord[])
 
-      // 2b. Dietas / Nutrição do aluno
+      // 2b. Dietas / Nutrição do aluno (cap razoável de 50)
       const dietsPromise = pb
         .collection('diets')
-        .getFullList<DietRecord>({
+        .getList<DietRecord>(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [] as DietRecord[])
 
-      // 2c. Serviços concluídos do aluno (coleção services)
+      // 2c. Serviços concluídos do aluno (cap razoável de 50)
       const profServicesPromise = pb
         .collection('services')
-        .getFullList<ServiceRecord>({
+        .getList<ServiceRecord>(1, 50, {
           filter: `student = "${user.id}" && status = "concluido"`,
           sort: '-completed_at,-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [] as ServiceRecord[])
 
       // 3. Fichas de acompanhamento:
-      // 3a. clinical_records (as regras do banco protegem psi/fisio — aluno só recebe se cat != psi e cat != fisio)
+      // 3a. clinical_records (cap 50)
       const clinicalPromise = pb
         .collection('clinical_records')
-        .getFullList<ClinicalRecordModel>({
+        .getList<ClinicalRecordModel>(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [] as ClinicalRecordModel[])
 
-      // 3b. clinical_session_logs (aluno tem listRule: apenas data, public_status e profissional)
+      // 3b. clinical_session_logs (cap 50)
       const sessionLogsPromise = pb
         .collection('clinical_session_logs')
-        .getFullList<ClinicalSessionLogRecord>({
+        .getList<ClinicalSessionLogRecord>(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-session_date,-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [] as ClinicalSessionLogRecord[])
 
-      // 3c. martial_arts_progress (artes marciais visíveis em detalhe)
+      // 3c. martial_arts_progress (cap 50)
       const martialArtsPromise = pb
         .collection('martial_arts_progress')
-        .getFullList<MartialArtsProgressRecord>({
+        .getList<MartialArtsProgressRecord>(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [] as MartialArtsProgressRecord[])
 
-      // 3d. protocols do aluno
+      // 3d. protocols do aluno (cap 50)
       const protocolsPromise = pb
         .collection('protocols')
-        .getFullList<ProtocolRecord>({
+        .getList<ProtocolRecord>(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [] as ProtocolRecord[])
 
-      // 4. Conteúdos comprados (content_purchases com expand content e professional)
+      // 4. Conteúdos comprados (cap 50)
       const purchasesPromise = pb
         .collection('content_purchases')
-        .getFullList<ContentPurchaseWithExpand>({
+        .getList<ContentPurchaseWithExpand>(1, 50, {
           filter: `user = "${user.id}"`,
           sort: '-created',
           expand: 'content,content.professional_id',
         })
+        .then((r) => r.items)
         .catch(() => [] as ContentPurchaseWithExpand[])
 
-      // 5. Agendamentos completos do aluno (consultas marcadas, sinal, etc.)
+      // 5. Agendamentos do aluno (cap 50)
       const appointmentsPromise = pb
         .collection('appointments')
-        .getFullList<AppointmentRecord>({
+        .getList<AppointmentRecord>(1, 50, {
           filter: `aluno = "${user.id}"`,
           sort: '-created',
           expand: 'profissional,schedule',
         })
+        .then((r) => r.items)
         .catch(() => [] as AppointmentRecord[])
 
       const [
@@ -303,9 +313,9 @@ export default function MeuHistorico() {
       setPurchases(dedupeById(resPurchases))
       setStudentAppointments(dedupeById(resAppointments))
 
-      // Carregar avaliações do aluno (como reviewer ou reviewee) para permitir revelação quando totalmente_validada
+      // Carregar avaliações do aluno (como reviewer ou reviewee) com cap de 50
       try {
-        const revs = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 500, {
+        const revs = await pb.collection('service_reviews').getList<ServiceReviewRecord>(1, 50, {
           filter: `reviewer = "${user.id}" || reviewee = "${user.id}"`,
           sort: '-created',
           expand: 'reviewer,reviewee',

@@ -72,54 +72,59 @@ export default function ExecutarTreinoHub() {
     if (!user) return
     setLoading(true)
     try {
-      // 1. Treinos de Educação Física (workouts ai_generated=false ou ai_generated=true enviados por profissional ou IA)
+      // 1. Treinos de Educação Física (cap 50)
       const workoutsPromise = pb
         .collection('workouts')
-        .getFullList({
+        .getList(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [])
 
-      // 2. Dietas / Protocolos de Nutrição (diets)
+      // 2. Dietas / Protocolos de Nutrição (cap 50)
       const dietsPromise = pb
         .collection('diets')
-        .getFullList({
+        .getList(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [])
 
-      // 3. Fisioterapia & Reabilitação (protocols)
+      // 3. Fisioterapia & Reabilitação (cap 50)
       const protocolsPromise = pb
         .collection('protocols')
-        .getFullList({
+        .getList(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [])
 
-      // 4. Psicologia (clinical_session_logs com categoria psicologia)
+      // 4. Psicologia (cap 50)
       const psychPromise = pb
         .collection('clinical_session_logs')
-        .getFullList({
+        .getList(1, 50, {
           filter: `student = "${user.id}" && category = "psicologia"`,
           sort: '-session_date,-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [])
 
-      // 5. Artes Marciais (martial_arts_sessions)
+      // 5. Artes Marciais (cap 50)
       const martialPromise = pb
         .collection('martial_arts_sessions')
-        .getFullList({
+        .getList(1, 50, {
           filter: `student = "${user.id}"`,
           sort: '-created',
           expand: 'professional',
         })
+        .then((r) => r.items)
         .catch(() => [])
 
       const [workouts, diets, protocols, psychSessions, martialSessions] = await Promise.all([

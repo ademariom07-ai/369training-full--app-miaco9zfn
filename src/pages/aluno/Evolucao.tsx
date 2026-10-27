@@ -51,11 +51,12 @@ export default function Evolucao() {
   const fetchLogs = async () => {
     if (!user) return
     try {
-      const res = await pb.collection('workout_logs').getFullList<WorkoutLogRecord>({
+      // Consulta paginada com cap razoável de 100 registros mais recentes
+      const res = await pb.collection('workout_logs').getList<WorkoutLogRecord>(1, 100, {
         filter: `student = "${user.id}"`,
         sort: 'completed_at',
       })
-      setLogs(res)
+      setLogs(res.items)
     } catch (err) {
       console.error('Erro ao carregar workout_logs:', err)
     } finally {
