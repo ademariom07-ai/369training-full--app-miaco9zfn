@@ -24,14 +24,15 @@ select * into s from public.submit_esg_project(k,'ambiental','Other project','Bo
 perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);
 select * into x from public.submit_esg_project(gen_random_uuid(),'economica','Professional project','Body');if x.owner_id<>p then raise exception 'professional submit';end if;checks:=checks+1;
 perform set_config('request.jwt.claims',json_build_object('sub',z,'is_anonymous',false)::text,true);
-if (select count(*) from public.esg_projects)<>3 then raise exception 'admin queue';end if;checks:=checks+1;
+-- Restrict the admin assertion to fixtures: existing projects are legitimate queue entries.
+if (select count(*) from public.esg_projects where id in(r.id,s.id,x.id))<>3 then raise exception 'admin queue';end if;checks:=checks+1;
 begin perform public.submit_esg_project(gen_random_uuid(),'social','Admin project','Body');raise exception 'unexpected permitted operation';exception when insufficient_privilege then checks:=checks+1;end;
 begin perform public.review_esg_project(r.id,99,'approved','Reason');raise exception 'unexpected permitted operation';exception when invalid_parameter_value then checks:=checks+1;end;
 begin perform public.review_esg_project(r.id,1,'approved',' ');raise exception 'unexpected permitted operation';exception when invalid_parameter_value then checks:=checks+1;end;
 begin perform public.review_esg_project(gen_random_uuid(),1,'approved','Reason');raise exception 'unexpected permitted operation';exception when insufficient_privilege then checks:=checks+1;end;
 select * into r from public.review_esg_project(r.id,1,'approved',' Evidence checked ');if r.status<>'approved' or r.version<>2 or r.review_reason<>'Evidence checked' then raise exception 'review failed';end if;checks:=checks+1;
 if not exists(select 1 from public.esg_project_reviews where project_id=r.id and reviewer_id=z and reviewed_version=1 and decision='approved' and reason='Evidence checked') then raise exception 'audit missing';end if;checks:=checks+1;
-perform public.review_esg_project(r.id,1,'approved','Evidence checked');if (select count(*) from public.esg_project_reviews)<>1 then raise exception 'duplicate review';end if;checks:=checks+1;
+perform public.review_esg_project(r.id,1,'approved','Evidence checked');if (select count(*) from public.esg_project_reviews where project_id=r.id)<>1 then raise exception 'duplicate review';end if;checks:=checks+1;
 begin perform public.review_esg_project(r.id,1,'rejected','Changed mind');raise exception 'unexpected permitted operation';exception when insufficient_privilege then checks:=checks+1;end;
 begin update public.esg_project_reviews set reason='rewrite' where project_id=r.id;raise exception 'unexpected permitted operation';exception when insufficient_privilege then checks:=checks+1;end;
 begin delete from public.esg_project_reviews where project_id=r.id;raise exception 'unexpected permitted operation';exception when insufficient_privilege then checks:=checks+1;end;
