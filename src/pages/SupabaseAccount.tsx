@@ -10,7 +10,6 @@ import {saoPauloToday} from '@/lib/supabase/availability'
 import RankingPolicyDrafts from '@/components/RankingPolicyDrafts'
 import SupabaseWallet from '@/components/SupabaseWallet'
 import React,{useEffect,useRef,useState} from 'react'
-import {Link} from 'react-router-dom'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {Card} from '@/components/ui/card'
@@ -51,7 +50,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   })
  }
  const profile=state.profile
- return <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900"><div className="mx-auto max-w-3xl space-y-5"><Link to="/" className="text-blue-700">369 WELLNESS</Link><h1 className="text-2xl font-bold">{state.phase==='ready'&&profile?(profile.role==='admin'?'Área administrativa':profile.role==='profissional'?'Área do profissional':'Área do aluno'):'Sua conta'}</h1>
+ return <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900"><div className="mx-auto max-w-3xl space-y-5"><a href="/" className="text-blue-700">369 WELLNESS · Voltar ao início</a><h1 className="text-2xl font-bold">{state.phase==='ready'&&profile?(profile.role==='admin'?'Área administrativa':profile.role==='profissional'?'Área do profissional':'Área do aluno'):'Sua conta'}</h1>
  {state.phase==='ready'&&profile&&<nav aria-label="Módulos da minha conta" className="flex flex-wrap gap-2 rounded-xl border bg-white p-3">
   <a className="rounded border px-3 py-2 text-blue-700" href="#meu-perfil">Meu perfil</a>
   {profile.role==='admin'&&<a className="rounded border px-3 py-2 text-blue-700" href="#administracao">Administração</a>}
