@@ -1,5 +1,5 @@
 import {prepareFeeLedgerPool, type FeeLedgerRow} from './feeCashbackPool'
-import {calculateRankingPreview, type RankingFacts, type RankingPolicy} from './rankingRules'
+import {calculateWellnessRankingPreview, type RankingFacts, type RankingPolicy} from './rankingRules'
 
 /** Confirmed 2026-10-13. Pure integration boundary: does not collect or pay money. */
 export type WellnessPlan='free'|'basic'|'pro'|'premium'|'pro_partner'
@@ -28,8 +28,8 @@ export function cashbackEligibility(plan:WellnessPlan,averageRating:number){
 }
 export function confirmedRanking(policy:Omit<RankingPolicy,'partnerServices'|'rating'>,facts:RankingFacts,effectivePlan:WellnessPlan){
  validPlan(effectivePlan)
- const normalized={...facts,multiplier:weights[effectivePlan],partnerPro:false,completedEligibleServices:effectivePlan==='pro_partner'?150:facts.completedEligibleServices}
- const row=calculateRankingPreview({...policy,version:policy.version+'-commercial-2026-10-13',partnerServices:'actual',rating:'exact'},normalized)
+ const normalized={...facts,multiplier:weights[effectivePlan],partnerPro:effectivePlan==='pro_partner'}
+ const row=calculateWellnessRankingPreview({...policy,version:policy.version+'-commercial-2026-10-13',rating:'exact'},normalized)
  return {...row,eligibleForCashback:cashbackEligibility(effectivePlan,facts.rating)}
 }
 export type ConfirmedFeeEvent=FeeLedgerRow & {
