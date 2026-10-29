@@ -1,5 +1,7 @@
 /** Explicit simulation policies. No active production policy or ledger writes. */
 export const APPROVED_SENIORITY_RULE='months-min-one-no-cap-2026-10-11' as const
+/** Historical draft storage contract only. Do not use to calculate current points.
+ * Persisted drafts still require a separate versioned database migration. */
 export const APPROVED_PARTNER_SERVICES='cap_150' as const
 export const PARTNER_SERVICE_CAP=150
 export function countedRankingServices(completed:number,partnerPro:boolean){integer(completed);if(typeof partnerPro!=='boolean')throw Error('Plano inválido.');return partnerPro?Math.min(completed,PARTNER_SERVICE_CAP):completed}
@@ -38,5 +40,14 @@ export function orderRankingPreview(rows:ReturnType<typeof calculateRankingPrevi
  return rows.map(r=>({...r})).sort((a,b)=>b.totalPoints-a.totalPoints||b.rating-a.rating||Date.parse(a.joinedAt)-Date.parse(b.joinedAt)||(a.id<b.id?-1:a.id>b.id?1:0)).map((r,i)=>({...r,position:i+1}))
 }
 
-/** Current WELLNESS decision; other policy fields still require explicit selection. */
-export function calculateWellnessRankingPreview(policy:Omit<RankingPolicy,'partnerServices'>,facts:RankingFacts){return calculateRankingPreview({...policy,rating:'exact',partnerServices:APPROVED_PARTNER_SERVICES},facts)}
+/** Current WELLNESS decision. partnerPro identifies the professional's own plan,
+ * never a student's inherited coefficient. Real service counts stay unchanged.
+ * Historical policy calculations above remain available for audit comparisons.
+ */
+export function calculateWellnessRankingPreview(policy:Omit<RankingPolicy,'partnerServices'>,facts:RankingFacts){
+ integer(facts.completedEligibleServices)
+ if(typeof facts.partnerPro!=='boolean')throw Error('Plano inválido.')
+ const normalized={...facts,multiplier:facts.partnerPro?2:facts.multiplier,completedEligibleServices:facts.partnerPro?150:facts.completedEligibleServices,partnerPro:false}
+ const row=calculateRankingPreview({...policy,rating:'exact',partnerServices:'actual'},normalized)
+ return {...row,rulesKey:JSON.stringify(['wellness-fixed-150-weight-2-rating-over-4.8-v1',row.rulesKey]),eligibleForCashback:normalized.multiplier>0&&facts.rating>4.8}
+}
