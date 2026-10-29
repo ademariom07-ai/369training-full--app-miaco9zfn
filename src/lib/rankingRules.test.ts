@@ -10,7 +10,27 @@ it('invalid or overflowing facts cannot produce a score',()=>{for(const change o
 it('deterministic ties keep general positions and reject mixed policies or duplicate users',()=>{const a=calc(policy,facts),b=calc(policy,{...facts,id:'b'});expect(orderRankingPreview([b,a]).map(r=>[r.id,r.position])).toEqual([['a',1],['b',2]]);expect(()=>orderRankingPreview([a,a])).toThrow();expect(()=>orderRankingPreview([a,{...b,rulesVersion:'other'}])).toThrow()})
 
 it('approved PRO PARCEIRO counts 0 10 149 150 151 200 with fixed ceiling',()=>{expect([0,10,149,150,151,200].map(n=>countedRankingServices(n,true))).toEqual([0,10,149,150,150,150]);expect(countedRankingServices(200,false)).toBe(200)})
-it('approved cap precedes multipliers and does not cap the entire point total',()=>{const p={version:'wellness-cap-150-2026-10-07',referrals:'minimum_one' as const,rating:'rounded' as const};const f={...facts,partnerPro:true,completedEligibleServices:200};expect(calculateWellnessRankingPreview(p,f).monthlyPoints).toBe(916.5);expect(calculateWellnessRankingPreview(p,{...f,completedEligibleServices:10}).monthlyPoints).toBe(76.5);expect(calculateWellnessRankingPreview(p,{...f,partnerPro:false}).monthlyPoints).toBe(1216.5)})
+it('current professional rule uses fixed 150 and weight 2 without mutating actual counts',()=>{
+ const p={version:'current',referrals:'minimum_one' as const,rating:'rounded' as const}
+ for(const count of [0,10,149,150,151,200])for(const multiplier of [0,1,2,3]){
+  const f={...facts,partnerPro:true,multiplier,completedEligibleServices:count},before={...f}
+  expect(calculateWellnessRankingPreview(p,f).monthlyPoints).toBe(916.5)
+  expect(f).toEqual(before)
+ }
+ expect(calculateWellnessRankingPreview(p,{...facts,partnerPro:false,completedEligibleServices:200}).monthlyPoints).toBe(1216.5)
+})
+it('current eligibility uses the exact mean strictly above 4.8 even for rounded historical drafts',()=>{
+ for(const rating of [0,4.79,4.8,4.80001,5])for(const multiplier of [0,1,2,3]){
+  const row=calculateWellnessRankingPreview(policy,{...facts,rating,multiplier})
+  expect(row.rating).toBe(rating)
+  expect(row.eligibleForCashback).toBe(multiplier>0&&rating>4.8)
+ }
+})
+it('current fixed rule validates original counts and cannot mix with historical rows',()=>{
+ for(const count of [-1,NaN,Infinity,1.5])expect(()=>calculateWellnessRankingPreview(policy,{...facts,partnerPro:true,completedEligibleServices:count})).toThrow()
+ const current=calculateWellnessRankingPreview(policy,facts),historical=calc({...policy,rating:'exact'},{...facts,id:'other'})
+ expect(()=>orderRankingPreview([current,historical])).toThrow()
+})
 
 it('exact fractional ratings carry into following months without losing hundredths',()=>{
  const p={...policy,rating:'exact' as const}
