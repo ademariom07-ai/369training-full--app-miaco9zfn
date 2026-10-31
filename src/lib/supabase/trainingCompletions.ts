@@ -19,9 +19,11 @@ export async function completeTrainingPlan(planId:string,expectedStudentId:strin
 }
 export async function readTrainingCompletions(plans:TrainingPlan[],account:{id:string;role:string},client:Client=getSupabaseClient()){
  if(!Array.isArray(plans)||plans.length>20||!['aluno','profissional'].includes(account.role))throw Error('Consulta indisponível.')
- const identity=await actor(client,account.id),targets=new Map<string,string>()
- for(const plan of plans){const id=uuid(plan.id),student=uuid(plan.student_id),professional=uuid(plan.professional_id);if(targets.has(id)||(account.role==='aluno'?student:professional)!==identity.id)throw Error('Consulta indisponível.');targets.set(id,student)}
- if(!targets.size)return[]
+ // Freeze the requested scope before any asynchronous session work.
+ const accountId=uuid(account.id),role=account.role,targets=new Map<string,string>()
+ for(const plan of plans){const id=uuid(plan.id),student=uuid(plan.student_id),professional=uuid(plan.professional_id);if(targets.has(id)||(role==='aluno'?student:professional)!==accountId)throw Error('Consulta indisponível.');targets.set(id,student)}
+ const identity=await actor(client,accountId)
+ if(!targets.size){await assertSessionUnchanged(client,identity);return[]}
  const result=await client.from('training_completions').select('plan_id,student_id,completed_at').in('plan_id',[...targets.keys()])
  await assertSessionUnchanged(client,identity)
  if(result.error||!Array.isArray(result.data)||result.data.length>targets.size)throw Error('Registros indisponíveis.')
