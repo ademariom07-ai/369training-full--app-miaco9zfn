@@ -5,17 +5,17 @@ import {getSupabaseClient} from './client'
 import {verifiedIdentity,assertSessionUnchanged,readOwnProfile} from './profiles'
 type Client=SupabaseClient<Database>
 export const poolBases=['tarifas_only','tarifas_and_monthly','weighted_tarifas_monthly'] as const
-export type DraftInput={title:string;notes:string;referrals:RankingPolicy['referrals'];partnerServices:RankingPolicy['partnerServices'];rating:RankingPolicy['rating'];poolBasis:typeof poolBases[number]}
+export type DraftInput={title:string;notes:string;referrals:RankingPolicy['referrals'];partnerServices:RankingPolicy['partnerServices']|typeof APPROVED_PARTNER_SERVICES;rating:RankingPolicy['rating'];poolBasis:typeof poolBases[number]}
 export type RankingDraft=Omit<Database['public']['Tables']['ranking_policy_drafts']['Row'],'referrals'|'partner_services'|'rating'|'pool_basis'>&{referrals:DraftInput['referrals'];partner_services:DraftInput['partnerServices'];rating:DraftInput['rating'];pool_basis:DraftInput['poolBasis']}
 const fields='id,request_id,created_by,created_at,title,notes,referrals,partner_services,rating,pool_basis'
 function uuid(value:string){if(typeof value!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))throw Error('Identificação inválida.');return value.toLowerCase()}
 export function validateDraft(input:DraftInput):DraftInput{
  if(!input||typeof input.title!=='string'||typeof input.notes!=='string')throw Error('Dados inválidos.')
  const title=input.title.trim(),notes=input.notes.trim()
- if(!title||Array.from(title).length>120||Array.from(notes).length>2000||!['minimum_one','plus_one','legacy_divisor_18'].includes(input.referrals)||!['actual','floor_150','cap_150'].includes(input.partnerServices)||!['rounded','exact'].includes(input.rating)||!poolBases.includes(input.poolBasis))throw Error('Escolha todas as opções do rascunho.')
+ if(!title||Array.from(title).length>120||Array.from(notes).length>2000||!['minimum_one','plus_one','legacy_divisor_18'].includes(input.referrals)||!['actual','floor_150','cap_150',APPROVED_PARTNER_SERVICES].includes(input.partnerServices)||!['rounded','exact'].includes(input.rating)||!poolBases.includes(input.poolBasis))throw Error('Escolha todas as opções do rascunho.')
  return{title,notes,referrals:input.referrals,partnerServices:input.partnerServices,rating:input.rating,poolBasis:input.poolBasis}
 }
-export function validateNewDraft(input:DraftInput){const body=validateDraft(input);if(body.partnerServices!==APPROVED_PARTNER_SERVICES)throw Error('PRO PARCEIRO usa teto de 150 serviços.');return body}
+export function validateNewDraft(input:DraftInput){const body=validateDraft(input);if(body.partnerServices!==APPROVED_PARTNER_SERVICES||body.rating!=='exact')throw Error('PRO PARCEIRO usa 150 serviços fixos, peso 2 e avaliação sem arredondamento.');return body}
 function row(value:Database['public']['Tables']['ranking_policy_drafts']['Row']):RankingDraft{
  if(!value||typeof value.created_at!=='string'||!Number.isFinite(Date.parse(value.created_at)))throw Error('Rascunho indisponível.')
  const body=validateDraft({title:value.title,notes:value.notes,referrals:value.referrals as DraftInput['referrals'],partnerServices:value.partner_services as DraftInput['partnerServices'],rating:value.rating as DraftInput['rating'],poolBasis:value.pool_basis as DraftInput['poolBasis']})
