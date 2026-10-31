@@ -1,0 +1,32 @@
+begin;
+do $test$
+declare s uuid:=gen_random_uuid(); s2 uuid:=gen_random_uuid(); p uuid:=gen_random_uuid(); p2 uuid:=gen_random_uuid(); a uuid:=gen_random_uuid(); r uuid; t timestamptz:=((now() at time zone 'America/Sao_Paulo')::date+2+time '12:00') at time zone 'America/Sao_Paulo'; checks integer:=0;
+begin
+ insert into auth.users(id) values(s),(s2),(p),(p2),(a);
+ insert into public.profiles(id,display_name,role,approved) values(s,'Fixture student','aluno',false),(s2,'Fixture outsider','aluno',false),(p,'Fixture professional','profissional',true),(p2,'Fixture other','profissional',true),(a,'Fixture admin','admin',false);
+ insert into public.booking_reservations(request_id,student_id,professional_id,starts_at,ends_at,expires_at) values(gen_random_uuid(),s,p,t,t+interval '1 hour',t-interval '1 hour') returning id into r;
+ begin insert into public.booking_reservations(request_id,student_id,professional_id,starts_at,ends_at,expires_at) values(gen_random_uuid(),s2,p,t,t+interval '1 hour',t-interval '1 hour');raise exception 'professional double reservation';exception when unique_violation then checks:=checks+1;end;
+ begin insert into public.booking_reservations(request_id,student_id,professional_id,starts_at,ends_at,expires_at) values(gen_random_uuid(),s,p2,t,t+interval '1 hour',t-interval '1 hour');raise exception 'student double reservation';exception when unique_violation then checks:=checks+1;end;
+ begin update public.booking_reservations set status='confirmed' where id=r;raise exception 'unverified confirmation';exception when check_violation then checks:=checks+1;end;
+ begin update public.booking_reservations set ends_at=t+interval '2 hours' where id=r;raise exception 'duration';exception when check_violation then checks:=checks+1;end;
+ set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',s,'is_anonymous',false)::text,true);
+ if not exists(select 1 from public.booking_reservations where id=r) then raise exception 'owner cannot read';end if;checks:=checks+1;
+ begin update public.booking_reservations set status='cancelled' where id=r;raise exception 'client write';exception when insufficient_privilege then checks:=checks+1;end;
+ begin delete from public.booking_reservations where id=r;raise exception 'client delete';exception when insufficient_privilege then checks:=checks+1;end;
+ begin insert into public.booking_reservations(request_id,student_id,professional_id,starts_at,ends_at,expires_at) values(gen_random_uuid(),s,p,t,t+interval '1 hour',t-interval '1 hour');raise exception 'client insert';exception when insufficient_privilege then checks:=checks+1;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',s2,'is_anonymous',false,'user_metadata',json_build_object('role','admin'))::text,true);
+ if exists(select 1 from public.booking_reservations where id=r) then raise exception 'outsider';end if;checks:=checks+1;
+ perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);
+ if not exists(select 1 from public.booking_reservations where id=r) then raise exception 'professional cannot read';end if;checks:=checks+1;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);
+ if exists(select 1 from public.booking_reservations where id=r) then raise exception 'admin blanket read';end if;checks:=checks+1;
+ perform set_config('request.jwt.claims',json_build_object('sub',s,'is_anonymous',true)::text,true);
+ if exists(select 1 from public.booking_reservations where id=r) then raise exception 'anonymous auth read';end if;checks:=checks+1;
+ set local role anon;
+ begin perform 1 from public.booking_reservations;raise exception 'anon read';exception when insufficient_privilege then checks:=checks+1;end;
+ reset role;
+ update public.booking_reservations set status='expired' where id=r;
+ insert into public.booking_reservations(request_id,student_id,professional_id,starts_at,ends_at,expires_at) values(gen_random_uuid(),s2,p,t,t+interval '1 hour',t-interval '1 hour');checks:=checks+1;
+ if checks<>14 then raise exception 'check count %',checks;end if;
+end $test$;
+rollback;
