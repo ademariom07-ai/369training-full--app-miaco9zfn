@@ -19,3 +19,10 @@ it('participant read limits records to displayed owned publications',async()=>{f
 it('foreign duplicated oversized or admin plan lists cannot query',async()=>{for(const [plans,account] of [[[plan],{id:professional,role:'aluno'}],[[plan,plan],{id:student,role:'aluno'}],[Array(21).fill(plan),{id:student,role:'aluno'}],[[plan],{id:student,role:'admin'}]] as const){const m=mock();await expect(readTrainingCompletions([...plans],account,m.client)).rejects.toThrow();expect(m.calls).toHaveLength(0)}})
 it('unexpected student publication or repeated response rejected',async()=>{for(const rows of [[{...mock().state.row,student_id:professional}],[{...mock().state.row,plan_id:professional}],[mock().state.row,mock().state.row]]){const m=mock();m.state.rows=rows;await expect(readTrainingCompletions([plan],{id:student,role:'aluno'},m.client)).rejects.toThrow()}})
 it('controller restricts completion to pupil and clears state on server refusal',async()=>{for(const role of ['profissional','admin','aluno']){const m=mock(role);m.controller.start();for(let n=0;n<12;n++)await Promise.resolve();expect(m.last.phase).toBe('ready');m.calls.length=0;if(role!=='aluno'){expect(()=>m.controller.completeTraining(id)).toThrow();expect(m.calls).toHaveLength(0)}else{m.state.fail=true;const pending=m.controller.completeTraining(id);expect(()=>m.controller.completeTraining(id)).toThrow();await expect(pending).rejects.toThrow();expect(m.last.profile).toBeNull()}m.controller.dispose()}})
+it('snapshots displayed plans and role before asynchronous authentication',async()=>{
+ const m=mock();const displayed=[{...plan}],account={id:student,role:'aluno'}
+ const pending=readTrainingCompletions(displayed,account,m.client)
+ displayed[0].id=professional;account.role='profissional'
+ await expect(pending).resolves.toEqual([m.state.row])
+ expect(m.calls).toContainEqual(['in','plan_id',[id]])
+})
