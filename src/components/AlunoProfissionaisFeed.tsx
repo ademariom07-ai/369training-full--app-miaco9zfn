@@ -368,9 +368,17 @@ function VideoCardItem({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(true)
+  const [drivePlaying, setDrivePlaying] = useState(false)
   const videoInfo = getVideoInfo(prof.video_url)
 
-  // Autoplay / pause when active / inactive
+  // Reset drive playing state when card becomes inactive
+  useEffect(() => {
+    if (!isActive) {
+      setDrivePlaying(false)
+    }
+  }, [isActive])
+
+  // Autoplay / pause when active / inactive (apenas para MP4)
   useEffect(() => {
     if (!videoRef.current) return
 
@@ -432,6 +440,69 @@ function VideoCardItem({
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           className="w-full h-full border-0"
         />
+      ) : videoInfo.type === 'vimeo' && videoInfo.embedUrl ? (
+        <iframe
+          src={`${videoInfo.embedUrl}&autoplay=${isActive ? '1' : '0'}&muted=${isMuted ? '1' : '0'}`}
+          title={`Pitch de ${prof.name}`}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          className="w-full h-full border-0"
+        />
+      ) : videoInfo.type === 'googledrive' && videoInfo.embedUrl ? (
+        drivePlaying ? (
+          <div className="w-full h-full relative bg-black flex items-center justify-center">
+            <iframe
+              src={videoInfo.embedUrl}
+              title={`Pitch de ${prof.name}`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="w-full h-full border-0"
+            />
+          </div>
+        ) : (
+          <div
+            onClick={() => setDrivePlaying(true)}
+            className="w-full h-full relative cursor-pointer bg-gradient-to-b from-[#181818] via-[#121212] to-black flex flex-col items-center justify-center p-6 text-center group"
+          >
+            {/* Background poster / decorative avatar effect */}
+            <div className="absolute inset-0 opacity-20 bg-cover bg-center filter blur-xl scale-110 pointer-events-none" />
+            <div className="relative z-10 flex flex-col items-center gap-3">
+              <div className="relative">
+                <UserAvatar
+                  user={prof}
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-[#D4AF37]/60 shadow-[0_0_30px_rgba(212,175,55,0.25)]"
+                />
+                <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-[#D4AF37] text-black flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-[#E6C65C] transition-transform">
+                  <Play className="w-5 h-5 fill-black ml-0.5" />
+                </div>
+              </div>
+
+              <div className="space-y-1 max-w-xs">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[11px] font-bold text-[#D4AF37] uppercase font-montserrat">
+                  <Video className="w-3.5 h-3.5" /> Vídeo no Google Drive
+                </span>
+                <p className="text-sm font-bold text-white font-montserrat mt-1">
+                  Apresentação de {prof.name}
+                </p>
+                <p className="text-[11px] text-gray-400 font-inter">
+                  Clique para reproduzir o pitch de apresentação
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                className="mt-1 bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-extrabold text-xs uppercase rounded-xl px-5 py-2.5 shadow-lg flex items-center gap-2"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDrivePlaying(true)
+                }}
+              >
+                <Play className="w-4 h-4 fill-black" />
+                Assistir Vídeo
+              </Button>
+            </div>
+          </div>
+        )
       ) : (
         <div className="text-white text-xs">Vídeo indisponível</div>
       )}

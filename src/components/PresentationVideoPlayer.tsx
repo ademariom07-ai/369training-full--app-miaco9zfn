@@ -2,7 +2,58 @@ import React, { useRef, useState } from 'react'
 import { Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export type VideoType = 'youtube' | 'vimeo' | 'mp4' | 'unknown'
+export type VideoType = 'youtube' | 'vimeo' | 'mp4' | 'googledrive' | 'unknown'
+
+/**
+ * Extrai o ID de um arquivo de vídeo do Google Drive a partir de diversas variações de URL:
+ * - drive.google.com/file/d/ID/view...
+ * - drive.google.com/file/d/ID/preview...
+ * - drive.google.com/file/d/ID
+ * - drive.google.com/uc?id=ID / uc?export=download&id=ID
+ * - drive.google.com/open?id=ID
+ * - docs.google.com/file/d/ID...
+ */
+export function extractGoogleDriveId(url: string): string | null {
+  if (!url) return null
+  const cleanUrl = url.trim()
+
+  try {
+    const normalizedUrl = cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`
+    const parsed = new URL(normalizedUrl)
+    const hostname = parsed.hostname.toLowerCase()
+
+    if (
+      hostname === 'drive.google.com' ||
+      hostname.endsWith('.drive.google.com') ||
+      hostname === 'docs.google.com' ||
+      hostname.endsWith('.docs.google.com')
+    ) {
+      // 1. /file/d/ID/...
+      const fileMatch = parsed.pathname.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i)
+      if (fileMatch && fileMatch[1]) {
+        return fileMatch[1]
+      }
+
+      // 2. uc?id=ID ou open?id=ID
+      const idParam = parsed.searchParams.get('id')
+      if (idParam && /^[a-zA-Z0-9_-]+$/.test(idParam)) {
+        return idParam
+      }
+    }
+  } catch {
+    // Fallback por regex caso a URL seja malformada
+  }
+
+  // Fallback regex abrangente
+  const driveRegex =
+    /(?:drive|docs)\.google\.com\/(?:file\/d\/([a-zA-Z0-9_-]+)|(?:uc|open)\?(?:.*&)?id=([a-zA-Z0-9_-]+))/i
+  const match = cleanUrl.match(driveRegex)
+  if (match) {
+    return match[1] || match[2] || null
+  }
+
+  return null
+}
 
 /**
  * Extrai o ID do vídeo do YouTube e sanitiza parâmetros de rastreamento (ex: ?si=, ?is=, &feature=, etc.)
@@ -68,7 +119,17 @@ export function getVideoInfo(url?: string): {
   if (!url || !url.trim()) return { type: 'unknown' }
   const trimmed = url.trim()
 
-  // 1. Verificar YouTube
+  // 1. Verificar Google Drive (deve vir antes do fallback genérico de http(s))
+  const driveId = extractGoogleDriveId(trimmed)
+  if (driveId) {
+    return {
+      type: 'googledrive',
+      videoId: driveId,
+      embedUrl: `https://drive.google.com/file/d/${driveId}/preview`,
+    }
+  }
+
+  // 2. Verificar YouTube
   const ytId = extractYouTubeId(trimmed)
   if (ytId) {
     return {
@@ -79,7 +140,7 @@ export function getVideoInfo(url?: string): {
     }
   }
 
-  // 2. Verificar Vimeo
+  // 3. Verificar Vimeo
   const vimeoMatch = trimmed.match(
     /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/i,
   )
@@ -91,7 +152,7 @@ export function getVideoInfo(url?: string): {
     }
   }
 
-  // 3. Arquivo direto de vídeo (.mp4, .webm, .ogg, .mov) ou links diretos
+  // 4. Arquivo direto de vídeo (.mp4, .webm, .ogg, .mov) ou links diretos
   if (trimmed.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
     return {
       type: 'mp4',
@@ -99,7 +160,7 @@ export function getVideoInfo(url?: string): {
     }
   }
 
-  // Se começar com http(s) e não foi reconhecido como YouTube/Vimeo, pode ser mp4 / stream
+  // Se começar com http(s) e não foi reconhecido como Drive/YouTube/Vimeo, pode ser mp4 / stream
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return {
       type: 'mp4',
@@ -135,7 +196,13 @@ export function PresentationVideoPlayer({ url, profName }: { url: string; profNa
     }
   }
 
-  if (videoInfo.type === 'youtube' || videoInfo.type === 'vimeo') {
+  if (
+    videoInfo.type === 'youtube' ||
+    videoInfo.type === 'vimeo' ||
+    videoInfo.type === 'googledrive'
+  ) {
+    const displayTypeLabel = videoInfo.type === 'googledrive' ? 'Google Drive' : videoInfo.type
+
     return (
       <div className="space-y-2">
         <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-[#2A2A2A] shadow-lg">
@@ -152,7 +219,7 @@ export function PresentationVideoPlayer({ url, profName }: { url: string; profNa
             <Clock className="w-3.5 h-3.5" />
             Pitch de apresentação (máx. 30s)
           </span>
-          <span className="capitalize">{videoInfo.type}</span>
+          <span className="capitalize">{displayTypeLabel}</span>
         </div>
       </div>
     )

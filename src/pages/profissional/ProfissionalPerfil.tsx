@@ -485,7 +485,8 @@ export default function ProfissionalPerfil() {
                   Vídeo de Apresentação (Pitch de 30s)
                 </label>
                 <p className="text-[11px] text-gray-400 font-inter mt-0.5">
-                  Insira o link do seu vídeo de apresentação (YouTube, Vimeo ou link direto MP4).
+                  Insira o link do seu vídeo de apresentação (Google Drive, YouTube, Vimeo ou link
+                  direto MP4).
                 </p>
               </div>
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -505,7 +506,7 @@ export default function ProfissionalPerfil() {
               <Input
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/... ou https://.../video.mp4"
+                placeholder="https://drive.google.com/file/d/... ou YouTube, Vimeo, MP4"
                 className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white placeholder:text-gray-600"
               />
             </div>
