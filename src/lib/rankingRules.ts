@@ -1,8 +1,7 @@
 /** Explicit simulation policies. No active production policy or ledger writes. */
 export const APPROVED_SENIORITY_RULE='months-min-one-no-cap-2026-10-11' as const
-/** Historical draft storage contract only. Do not use to calculate current points.
- * Persisted drafts still require a separate versioned database migration. */
-export const APPROVED_PARTNER_SERVICES='cap_150' as const
+/** Versioned draft identifier; historical calculations retain their original policies. */
+export const APPROVED_PARTNER_SERVICES='fixed_150_weight_2_v1' as const
 export const PARTNER_SERVICE_CAP=150
 export function countedRankingServices(completed:number,partnerPro:boolean){integer(completed);if(typeof partnerPro!=='boolean')throw Error('Plano inválido.');return partnerPro?Math.min(completed,PARTNER_SERVICE_CAP):completed}
 export type RankingPolicy={version:string;referrals:'minimum_one'|'plus_one'|'legacy_divisor_18';partnerServices:'actual'|'floor_150'|'cap_150';rating:'rounded'|'exact'}
