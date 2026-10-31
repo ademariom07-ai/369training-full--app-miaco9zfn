@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_reservations: {
+        Row: {
+          id: string
+          request_id: string
+          student_id: string
+          professional_id: string
+          starts_at: string
+          ends_at: string
+          status: string
+          created_at: string
+          expires_at: string
+        }
+        Insert: {
+          id: string
+          request_id: string
+          student_id: string
+          professional_id: string
+          starts_at: string
+          ends_at: string
+          status: string
+          created_at: string
+          expires_at: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          student_id?: string
+          professional_id?: string
+          starts_at?: string
+          ends_at?: string
+          status?: string
+          created_at?: string
+          expires_at?: string
+        }
+        Relationships: []
+      }
       esg_project_reviews: {
         Row: {
           created_at: string
