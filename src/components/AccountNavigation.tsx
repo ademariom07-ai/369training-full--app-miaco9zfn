@@ -10,7 +10,7 @@ export default function AccountNavigation({profile}:{profile:Pick<OwnProfile,'ro
   <a href="#meu-perfil">Meu perfil</a>
   {admin&&<><a href="#administracao">Administração</a><a href="#participantes">Participantes</a><a href="#entrada-servicos">Serviços — eventos recebidos</a><a href="#piloto-videos">Vídeos — piloto</a><a href="#config-ranking">Ranking — rascunhos</a><a href="#config-cashback">Cashback — rascunhos</a></>}
   {professional&&<a href="#minha-agenda">Agenda</a>}
-  {participant&&<a href="#treinos-vinculos">Treinos e vínculos</a>}
+  {participant&&<><a href="#minhas-reservas">Reservas — em preparação</a><a href="#treinos-vinculos">Treinos e vínculos</a></>}
   <a href="#meu-esg">Projetos ESG</a><a href="#minha-carteira">Carteira — piloto</a>
   <a href="#cadastro-profissional">{admin?'Aprovações profissionais':'Cadastro profissional'}</a>
  </nav>
