@@ -1,0 +1,24 @@
+name: Disputa por horário no PostgreSQL
+on:
+  push:
+    branches: [prep/supabase-vite]
+    paths:
+      - '.github/workflows/booking-contention.yml'
+      - 'scripts/qa/booking_contention.py'
+      - 'supabase/migrations/**'
+permissions:
+  contents: read
+jobs:
+  booking:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare isolated PostgreSQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-16 python3-psycopg
+      - name: Run two-session booking contention checks
+        run: PATH="/usr/lib/postgresql/16/bin:$PATH" /usr/bin/python3 scripts/qa/booking_contention.py
