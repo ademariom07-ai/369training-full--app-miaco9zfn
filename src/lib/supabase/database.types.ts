@@ -677,6 +677,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      booking_hold_minutes: { Args: Record<never, never>; Returns: number }
+      set_booking_hold_minutes: { Args: {p_expected:number;p_minutes:number}; Returns:number }
+      create_booking_hold: { Args: {p_request:string;p_professional:string;p_day:string;p_hour:number;p_availability:number;p_terms:string}; Returns: Database['public']['Tables']['booking_reservations']['Row'] }
+      cancel_booking_hold: { Args: {p_id:string}; Returns: Database['public']['Tables']['booking_reservations']['Row'] }
       accept_student_link: {
         Args: { p_expected_version: number; p_student_id: string }
         Returns: {
