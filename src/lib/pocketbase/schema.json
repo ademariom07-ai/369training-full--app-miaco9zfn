@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-10T17:17:36.411Z",
+  "generatedAt": "2026-11-10T17:53:18.819Z",
   "collections": [
     {
       "name": "users",
@@ -4706,13 +4706,7 @@
           "system": false
         }
       ],
-      "indexes": [
-        "CREATE INDEX idx_crm_prof_status ON crm_contacts (professional, status)",
-        "CREATE INDEX idx_crm_followup ON crm_contacts (professional, next_followup_at)",
-        "CREATE UNIQUE INDEX idx_crm_prof_student_linked ON crm_contacts (professional, student) WHERE student IS NOT NULL AND student <> professional",
-        "CREATE INDEX idx_crm_prof_external ON crm_contacts (professional, contact_name) WHERE student = professional AND contact_name != ''",
-        "CREATE INDEX `idx_crm_prof_contact_type` ON `crm_contacts` (professional, contact_type)"
-      ]
+      "indexes": []
     }
   ]
 }
