@@ -105,6 +105,33 @@ export interface CrmAdminOverview {
   }
 }
 
+// Sanitização de strings sem acionar eslint no-control-regex
+export const sanitizeInputText = (str: string, maxLength = 255): string => {
+  if (!str) return ''
+  return Array.from(str)
+    .filter((ch) => {
+      const code = ch.charCodeAt(0)
+      // Permite caracteres legíveis, recusa caracteres de controle (0-31 e 127) exceto tab/newline onde permitido
+      return (code >= 32 && code !== 127) || code > 127
+    })
+    .join('')
+    .trim()
+    .slice(0, maxLength)
+}
+
+export const sanitizeMultilineText = (str: string, maxLength = 5000): string => {
+  if (!str) return ''
+  return Array.from(str)
+    .filter((ch) => {
+      const code = ch.charCodeAt(0)
+      // Permite tab (9), newline (10), carriage return (13) e caracteres normais
+      return code === 9 || code === 10 || code === 13 || (code >= 32 && code !== 127) || code > 127
+    })
+    .join('')
+    .trim()
+    .slice(0, maxLength)
+}
+
 export const inferCategory = (specialties?: string[] | string): string => {
   const list = Array.isArray(specialties) ? specialties.join(' ') : specialties || ''
   const s = list.toLowerCase()
@@ -149,11 +176,37 @@ export const crmApi = {
     next_followup_at?: string
     estimated_value?: number
   }) => {
-    return pb.collection('crm_contacts').create<CrmContactRecord>(data)
+    // Sanitização e validação de segurança centralizada
+    const sanitizedName = sanitizeInputText(data.contact_name || '', 120)
+    const sanitizedPhone = data.phone ? sanitizeInputText(data.phone, 30) : undefined
+    const sanitizedEmail = data.email ? sanitizeInputText(data.email, 100).toLowerCase() : undefined
+    const sanitizedNotes = data.notes ? sanitizeMultilineText(data.notes, 5000) : undefined
+
+    return pb.collection('crm_contacts').create<CrmContactRecord>({
+      ...data,
+      contact_name: sanitizedName,
+      phone: sanitizedPhone || '',
+      email: sanitizedEmail || '',
+      notes: sanitizedNotes || '',
+    })
   },
 
   updateContact: async (id: string, data: Partial<CrmContactRecord>) => {
-    return pb.collection('crm_contacts').update<CrmContactRecord>(id, data)
+    // Sanitização defensiva nos campos editáveis
+    const payload: Partial<CrmContactRecord> = { ...data }
+    if (payload.contact_name !== undefined) {
+      payload.contact_name = sanitizeInputText(payload.contact_name, 120)
+    }
+    if (payload.phone !== undefined) {
+      payload.phone = payload.phone ? sanitizeInputText(payload.phone, 30) : ''
+    }
+    if (payload.email !== undefined) {
+      payload.email = payload.email ? sanitizeInputText(payload.email, 100).toLowerCase() : ''
+    }
+    if (payload.notes !== undefined) {
+      payload.notes = payload.notes ? sanitizeMultilineText(payload.notes, 5000) : ''
+    }
+    return pb.collection('crm_contacts').update<CrmContactRecord>(id, payload)
   },
 
   deleteContact: async (id: string) => {

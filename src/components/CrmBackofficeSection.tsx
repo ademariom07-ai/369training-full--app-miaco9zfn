@@ -34,6 +34,8 @@ import {
   crmHistoryApi,
   crmTemplatesApi,
   inferCategory,
+  sanitizeInputText,
+  sanitizeMultilineText,
   CRM_STATUS_LABELS,
   CRM_CATEGORY_LABELS,
   CRM_CONTACT_TYPE_LABELS,
@@ -397,29 +399,38 @@ const ContactSheet: React.FC<{
   }
 
   const saveContactChannels = async () => {
+    const cleanPhone = sanitizeInputText(phoneDraft, 30)
+    const cleanEmail = sanitizeInputText(emailDraft, 100).toLowerCase()
+
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      toast.error('E-mail em formato inválido.')
+      return
+    }
+
     setSaving(true)
     try {
       await crmApi.updateContact(contact.id, {
-        phone: phoneDraft.trim(),
-        email: emailDraft.trim(),
+        phone: cleanPhone,
+        email: cleanEmail,
       })
       toast.success('Telefone/e-mail atualizados')
       onUpdate()
     } catch (_) {
-      toast.error('Erro ao atualizar telefone e e-mail')
+      toast.error('Erro ao atualizar telefone e e-mail. Verifique os dados.')
     } finally {
       setSaving(false)
     }
   }
 
   const saveNotes = async () => {
+    const cleanNotes = sanitizeMultilineText(noteDraft, 5000)
     setSaving(true)
     try {
-      await crmApi.updateContact(contact.id, { notes: noteDraft })
+      await crmApi.updateContact(contact.id, { notes: cleanNotes })
       toast.success('Anotação salva')
       onUpdate()
     } catch (_) {
-      toast.error('Erro ao salvar anotação')
+      toast.error('Erro ao salvar anotação.')
     } finally {
       setSaving(false)
     }
@@ -885,6 +896,7 @@ export const CrmBackofficeSection: React.FC = () => {
   const [newType, setNewType] = useState<CrmContactType>('cliente')
   const [newPhone, setNewPhone] = useState('')
   const [newEmail, setNewEmail] = useState('')
+  const [newNotes, setNewNotes] = useState('')
   const [showAdvancedCreation, setShowAdvancedCreation] = useState(false)
   const [creating, setCreating] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -967,10 +979,27 @@ export const CrmBackofficeSection: React.FC = () => {
   }
 
   const handleCreate = async () => {
-    const name = newName.trim()
-    if (!name || !profId) return
+    // Sanitização e validações de segurança no frontend
+    const name = sanitizeInputText(newName, 120)
+    if (!name || !profId) {
+      toast.error('Por favor, informe o nome do contato.')
+      return
+    }
+    if (name.length < 2) {
+      toast.error('O nome do contato deve ter pelo menos 2 caracteres.')
+      return
+    }
 
-    // Limite de 10 contatos no plano Grátis
+    const cleanPhone = sanitizeInputText(newPhone, 30)
+    const cleanEmail = sanitizeInputText(newEmail, 100).toLowerCase()
+    const cleanNotes = sanitizeMultilineText(newNotes, 2000)
+
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      toast.error('E-mail em formato inválido. Verifique e tente novamente.')
+      return
+    }
+
+    // Limite de contatos no plano Grátis
     if (features.maxContacts !== Infinity && contacts.length >= features.maxContacts) {
       openUpgradeModal(
         'Básico',
@@ -989,25 +1018,24 @@ export const CrmBackofficeSection: React.FC = () => {
         status: 'novo',
         origin: 'perfil',
         contact_type: newType,
-        phone: newPhone.trim() || undefined,
-        email: newEmail.trim() || undefined,
+        phone: cleanPhone || undefined,
+        email: cleanEmail || undefined,
+        notes: cleanNotes || undefined,
       })
       setNewName('')
       setNewPhone('')
       setNewEmail('')
+      setNewNotes('')
       setShowAdvancedCreation(false)
-      toast.success(`Contato criado como ${CRM_CONTACT_TYPE_LABELS[newType]}`)
+      toast.success(`Contato "${name}" criado como ${CRM_CONTACT_TYPE_LABELS[newType]}`)
       setRefreshKey((k) => k + 1)
     } catch (err: any) {
       const status = err?.status ?? err?.response?.status
-      const reason = err?.response?.message || err?.message || ''
+      const reason = String(err?.response?.message || err?.message || '')
       if (status === 400 && /unique|idx_crm_prof_student/i.test(reason)) {
         toast.error('Este contato já existe na sua lista.')
       } else if (status === 400 || status === 403) {
-        toast.error(
-          'Não foi possível criar o contato: verifique os dados e tente novamente. ' +
-            (reason ? `(${reason})` : ''),
-        )
+        toast.error('Não foi possível cadastrar o contato. Revise os campos preenchidos.')
       } else {
         toast.error('Erro ao criar contato. Verifique sua conexão e tente novamente.')
       }
@@ -1338,87 +1366,155 @@ export const CrmBackofficeSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Cadastro de novo lead com Classificação (Cliente / Parceiro / Fornecedor) */}
-      <Card className="bg-[#181818] border border-[#2A2A2A] p-3 rounded-2xl space-y-2.5">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Nome do novo contato (lead)..."
-            className="bg-[#121212] border-[#2A2A2A] text-xs text-white h-9 flex-1"
-          />
-
-          {/* Seletor obrigatório da Classificação (Cliente, Parceiro ou Fornecedor) */}
-          <div className="flex rounded-lg border border-[#2A2A2A] bg-[#121212] p-0.5 shrink-0">
-            {CONTACT_TYPES.map((t) => {
-              const isSelected = newType === t
-              const cfg = CONTACT_TYPE_BADGES[t]
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setNewType(t)}
-                  className={`text-[11px] font-bold px-2.5 py-1 rounded-md transition-all ${
-                    isSelected
-                      ? 'bg-[#D4AF37] text-black shadow-sm'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {cfg.label}
-                </button>
-              )
-            })}
+      {/* Cadastro de novo lead com Classificação (Cliente / Parceiro / Fornecedor) — Área ampliada */}
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-4 sm:p-5 rounded-2xl space-y-3.5 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-center justify-center shrink-0">
+              <Plus className="w-4 h-4 text-[#22C55E]" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-bold font-montserrat text-white">
+                Adicionar Novo Lead / Contato
+              </p>
+              <p className="text-[11px] text-gray-400">
+                Cadastre clientes, parceiros ou fornecedores para gerenciar no seu CRM
+              </p>
+            </div>
           </div>
 
-          <Button
-            size="sm"
-            onClick={handleCreate}
-            disabled={creating || !newName.trim()}
-            className="bg-[#22C55E] hover:bg-[#1ea750] text-black h-9 text-[11px] font-bold px-4 shrink-0"
-          >
-            {creating ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
-            ) : (
-              <Plus className="w-3.5 h-3.5 mr-1" />
-            )}
-            Cadastrar {CRM_CONTACT_TYPE_LABELS[newType]}
-          </Button>
+          <span className="hidden sm:inline-block text-[11px] text-gray-500 font-inter">
+            Lead manual externo • sem aluno vinculado
+          </span>
         </div>
 
-        {/* Toggle para telefone/WhatsApp e E-mail opcionais na criação */}
-        <div className="flex items-center justify-between">
+        {/* Linha principal: Nome ampliado + Seletor de classificação + Botão de ação */}
+        <div className="flex flex-col md:flex-row gap-2.5">
+          <div className="flex-1">
+            <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+              Nome do contato <span className="text-[#D4AF37]">*</span>
+            </label>
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              maxLength={120}
+              placeholder="Digite o nome completo do lead..."
+              className="bg-[#121212] border-[#2A2A2A] focus:border-[#D4AF37] text-sm sm:text-base text-white h-12 px-3.5 rounded-xl transition-all"
+            />
+          </div>
+
+          <div className="shrink-0 flex flex-col justify-end">
+            <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+              Classificação
+            </label>
+            {/* Seletor da Classificação (Cliente, Parceiro ou Fornecedor) com botões maiores e confortáveis */}
+            <div className="flex rounded-xl border border-[#2A2A2A] bg-[#121212] p-1 h-12 items-center">
+              {CONTACT_TYPES.map((t) => {
+                const isSelected = newType === t
+                const cfg = CONTACT_TYPE_BADGES[t]
+                const Icon = cfg.icon
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setNewType(t)}
+                    className={`text-xs sm:text-sm font-bold px-3 sm:px-4 h-9 rounded-lg transition-all flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-[#D4AF37] text-black shadow-md font-extrabold'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {cfg.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="shrink-0 flex flex-col justify-end">
+            <span className="hidden md:block text-[11px] text-transparent mb-1 select-none">
+              Ação
+            </span>
+            <Button
+              type="button"
+              onClick={handleCreate}
+              disabled={creating || !newName.trim()}
+              className="bg-[#22C55E] hover:bg-[#1ea750] text-black h-12 text-xs sm:text-sm font-extrabold px-5 rounded-xl transition-all shadow-md shrink-0 disabled:opacity-50"
+            >
+              {creating ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+              ) : (
+                <Plus className="w-4 h-4 mr-1.5" />
+              )}
+              Cadastrar {CRM_CONTACT_TYPE_LABELS[newType]}
+            </Button>
+          </div>
+        </div>
+
+        {/* Toggle para telefone/WhatsApp, e-mail e anotação inicial */}
+        <div className="flex items-center justify-between pt-1">
           <button
             type="button"
             onClick={() => setShowAdvancedCreation(!showAdvancedCreation)}
-            className="text-[10px] text-gray-400 hover:text-[#D4AF37] flex items-center gap-1 font-inter"
+            className="text-xs text-gray-300 hover:text-[#D4AF37] flex items-center gap-1.5 font-medium py-1 px-2 rounded-lg bg-[#141414] hover:bg-[#1f1f1f] border border-[#2A2A2A] transition-colors"
           >
             <ChevronDown
-              className={`w-3 h-3 transition-transform ${showAdvancedCreation ? 'rotate-180' : ''}`}
+              className={`w-3.5 h-3.5 transition-transform ${showAdvancedCreation ? 'rotate-180' : ''}`}
             />
             {showAdvancedCreation
-              ? 'Ocultar telefone e e-mail'
-              : '+ Adicionar telefone/WhatsApp e e-mail agora'}
+              ? 'Ocultar campos adicionais'
+              : '+ Adicionar WhatsApp, E-mail e Anotação inicial'}
           </button>
           <span className="text-[10px] text-gray-500 font-inter">
-            Sem campo de plano no contato • classifique apenas cliente/parceiro/fornecedor
+            Sem campo de plano no contato • classificação apenas cliente/parceiro/fornecedor
           </span>
         </div>
 
         {showAdvancedCreation && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-[#2A2A2A]">
-            <Input
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              placeholder="WhatsApp / Telefone (ex: 11 99999-9999)"
-              className="bg-[#121212] border-[#2A2A2A] text-xs text-white h-8"
-            />
-            <Input
-              type="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              placeholder="E-mail (ex: contato@exemplo.com)"
-              className="bg-[#121212] border-[#2A2A2A] text-xs text-white h-8"
-            />
+          <div className="space-y-3 pt-2 border-t border-[#2A2A2A]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+                  WhatsApp / Telefone (opcional)
+                </label>
+                <Input
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  maxLength={30}
+                  placeholder="Ex: (11) 99999-9999"
+                  className="bg-[#121212] border-[#2A2A2A] focus:border-[#D4AF37] text-xs sm:text-sm text-white h-11 px-3 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+                  E-mail (opcional)
+                </label>
+                <Input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  maxLength={100}
+                  placeholder="Ex: contato@exemplo.com"
+                  className="bg-[#121212] border-[#2A2A2A] focus:border-[#D4AF37] text-xs sm:text-sm text-white h-11 px-3 rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-gray-300 block mb-1">
+                Anotações iniciais sobre o lead (opcional)
+              </label>
+              <textarea
+                value={newNotes}
+                onChange={(e) => setNewNotes(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder="Ex: Aluno interessado em consultoria online, conheceu pelo Instagram, prefere treinar pela manhã..."
+                className="w-full bg-[#121212] border border-[#2A2A2A] focus:border-[#D4AF37] focus:outline-none rounded-xl p-3 text-xs sm:text-sm text-white placeholder-gray-500 resize-y"
+              />
+            </div>
           </div>
         )}
       </Card>
