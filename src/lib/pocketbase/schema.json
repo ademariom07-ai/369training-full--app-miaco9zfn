@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-31T10:49:44.551Z",
+  "generatedAt": "2026-11-10T10:46:15.600Z",
   "collections": [
     {
       "name": "users",
@@ -1319,11 +1319,11 @@
       "name": "community_posts",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != '' && @request.body.user = @request.auth.id",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || (user = @request.auth.id && @request.body.user:isset = false))",
-        "delete": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')"
+        "list": "@request.auth.id != '' && reported = false",
+        "view": "@request.auth.id != '' && reported = false",
+        "create": "@request.auth.id != '' && @request.body.user = @request.auth.id && @request.body.reported = false && @request.body.report_reason = ''",
+        "update": "@request.auth.id != '' && user = @request.auth.id && @request.body.user = @request.auth.id && @request.body.reported = false && @request.body.report_reason = ''",
+        "delete": "@request.auth.id != '' && user = @request.auth.id"
       },
       "fields": [
         {
@@ -1370,9 +1370,30 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "media",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reported",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "report_reason",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
-      "indexes": ["CREATE INDEX idx_posts_user ON community_posts (user)"]
+      "indexes": [
+        "CREATE INDEX idx_posts_user ON community_posts (user)",
+        "CREATE INDEX `idx_community_posts_created` ON `community_posts` (created)"
+      ]
     },
     {
       "name": "achievements",
@@ -4477,6 +4498,102 @@
         "CREATE INDEX idx_ai_insights_student ON ai_insights (student)",
         "CREATE INDEX idx_ai_insights_prof_student ON ai_insights (professional, student)",
         "CREATE INDEX idx_ai_insights_type ON ai_insights (insight_type)"
+      ]
+    },
+    {
+      "name": "community_post_likes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.body.user = @request.auth.id && @request.body.post != ''",
+        "update": null,
+        "delete": "@request.auth.id != '' && user = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "post",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "community_posts"
+        },
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_community_likes_unique ON community_post_likes (post, user)",
+        "CREATE INDEX idx_community_likes_post ON community_post_likes (post)"
+      ]
+    },
+    {
+      "name": "community_post_comments",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.body.user = @request.auth.id && @request.body.post != ''",
+        "update": "@request.auth.id != '' && user = @request.auth.id && @request.body.user = @request.auth.id && @request.body.post != ''",
+        "delete": "@request.auth.id != '' && user = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "post",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "community_posts"
+        },
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_community_comments_post ON community_post_comments (post, created)",
+        "CREATE INDEX idx_community_comments_user ON community_post_comments (user)"
       ]
     }
   ]
