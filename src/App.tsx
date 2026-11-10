@@ -1,4 +1,5 @@
 import React, { Suspense, lazy } from 'react'
+import { installChunkErrorRecovery } from '@/lib/chunkRecovery'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { AccessibilityProvider } from '@/contexts/AccessibilityContext'
@@ -67,6 +68,10 @@ const AdminDocumentosLegais = lazy(() => import('@/pages/admin/AdminDocumentosLe
 const AdminChat = lazy(() => import('@/pages/admin/AdminChat'))
 const AdminChatModeracao = lazy(() => import('@/pages/admin/AdminChatModeracao'))
 const AdminPerfil = lazy(() => import('@/pages/admin/AdminPerfil'))
+
+// Recuperação automática de tela branca causada por chunk JS ausente após um
+// deploy (cache do service worker apontando para bundle antigo). Idempotente.
+installChunkErrorRecovery()
 
 export default function App() {
   return (
