@@ -24,6 +24,7 @@ import {
 import type { UserProfile } from '@/contexts/AuthContext'
 import type { ServiceRecord } from '@/services/api'
 import { toast } from 'sonner'
+import { AdminCrmPanel } from '@/components/AdminCrmPanel'
 
 export interface FinancialSummaryData {
   cycle: string
@@ -642,6 +643,9 @@ export default function AdminDashboard() {
           </div>
         </Card>
       </div>
+
+      {/* CRM — ALUNOS & PARCEIROS POR CATEGORIA */}
+      <AdminCrmPanel />
 
       {/* ATALHOS DE GESTÃO */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">

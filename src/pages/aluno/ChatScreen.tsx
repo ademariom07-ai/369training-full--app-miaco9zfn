@@ -376,6 +376,19 @@ export default function ChatScreen() {
       })
       addMessage(sent)
       setInputText('')
+
+      // CRM: captura automática de lead (ignora falha silenciosamente; o backend não duplica)
+      const profAny = activeProf as unknown as { linked?: boolean; is_linked?: boolean }
+      if (!profAny.linked && !profAny.is_linked) {
+        try {
+          await pb.send('/backend/v1/crm/capture_lead', {
+            method: 'POST',
+            body: JSON.stringify({ professional_id: activeProf.id, message: trimmed }),
+          })
+        } catch {
+          /* captura de lead é best-effort */
+        }
+      }
     } catch (err: unknown) {
       const error = err as Error
       toast.error(error.message || 'Erro ao enviar mensagem.')

@@ -10,6 +10,7 @@ import { GestaoDesafiosProfissional } from '@/components/GestaoDesafiosProfissio
 import { Radar369Section } from '@/components/Radar369Section'
 import { PainelCarteiraIA } from '@/components/PainelCarteiraIA'
 import { PainelInsightsIA } from '@/components/PainelInsightsIA'
+import { CrmBackofficeSection } from '@/components/CrmBackofficeSection'
 import {
   Users,
   Dumbbell,
@@ -184,6 +185,9 @@ export default function ProfissionalDashboard() {
             </span>
           </Card>
         </div>
+
+        {/* CRM BACKOFFICE — MEUS CLIENTES + KANBAN + FOLLOW-UPS + IA */}
+        <CrmBackofficeSection />
 
         {/* RADAR 369 — O QUE HÁ DE NOVO NA WEB (SEMANAL) */}
         <Radar369Section specialties={user?.specialties || ['Educação Física']} />
