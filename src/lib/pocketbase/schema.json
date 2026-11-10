@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-10T11:04:27.434Z",
+  "generatedAt": "2026-11-10T11:21:12.223Z",
   "collections": [
     {
       "name": "users",
@@ -4594,6 +4594,89 @@
       "indexes": [
         "CREATE INDEX idx_community_comments_post ON community_post_comments (post, created)",
         "CREATE INDEX idx_community_comments_user ON community_post_comments (user)"
+      ]
+    },
+    {
+      "name": "crm_contacts",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (professional = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (professional = @request.auth.id || @request.auth.role = 'admin')",
+        "create": "@request.auth.id != '' && @request.body.professional = @request.auth.id && @request.body.status = 'novo' && @request.body.origin = 'chat'",
+        "update": "@request.auth.id != '' && professional = @request.auth.id",
+        "delete": "@request.auth.id != '' && professional = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "professional",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "student",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "contact_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "category",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "personal_trainer",
+            "nutricionista",
+            "fisioterapeuta",
+            "psicologo",
+            "professor_artes_marciais"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["novo", "em_contato", "ativo", "inativo"]
+        },
+        {
+          "name": "origin",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["vinculo", "chat", "perfil"]
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "next_followup_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "estimated_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_crm_prof_student ON crm_contacts (professional, student)",
+        "CREATE INDEX idx_crm_prof_status ON crm_contacts (professional, status)",
+        "CREATE INDEX idx_crm_followup ON crm_contacts (professional, next_followup_at)"
       ]
     }
   ]

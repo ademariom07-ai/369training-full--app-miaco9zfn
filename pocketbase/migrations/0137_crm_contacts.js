@@ -84,44 +84,37 @@ migrate(
     }
 
     // ---------- 2. AGENTE NATIVO BACKOFFICE ----------
-    const agents = $app.findCollectionByNameOrId('ai_agents')
-    const existing = $app.findRecordsByFilter(agents.id, "name = 'backoffice-pro-369'", '', 1, 0)
-    if (existing.length === 0) {
-      const agentRecord = new Record(agents)
-      agentRecord.set('name', 'backoffice-pro-369')
-      agentRecord.set('displayName', 'BackOffice 369 — Assistente do Profissional')
-      agentRecord.set(
-        'systemPrompt',
-        [
+    // API oficial Skip Cloud: $ai.agents.define (idempotente, upsert por slug).
+    // Nunca consultar a coleção ai_agents diretamente (ela pode não existir neste ponto).
+    // A coleção crm_contacts acima já foi criada — o agente não bloqueia a migração:
+    // falhas aqui são tratadas silenciosamente (o hook tem fallback $ai.chat).
+    try {
+      $ai.agents.define(app, {
+        slug: 'backoffice-pro-369',
+        name: 'BackOffice 369 — Assistente do Profissional',
+        description:
+          'Assistente de backoffice do profissional parceiro 369WELLNESS: carteira de clientes, follow-ups do CRM, resumo de alunos e leads parados.',
+        systemPrompt: [
           'Você é o BACKOFFICE 369, assistente interno do profissional parceiro da 369WELLNESS.',
           'Você responde EXCLUSIVAMENTE com base nos dados do próprio profissional fornecidos no contexto (contatos CRM, serviços, agendamentos).',
           'Nunca invente dados. Nunca exponha dados de outros profissionais ou usuários.',
           'Funções: responder dúvidas sobre a carteira, sugerir follow-ups (priorizando vencidos), resumir alunos e apontar leads parados.',
           'Responda sempre em português, de forma curta e objetiva, adequada a celular.',
         ].join('\n'),
+        tier: 'fast',
+      })
+      console.log('[migr-0137] agente nativo backoffice-pro-369 definido')
+    } catch (agentErr) {
+      console.log(
+        '[migr-0137] agente nativo não definido (fallback $ai.chat ativo): ' +
+          (agentErr && agentErr.message),
       )
-      agentRecord.set('model', 'fast')
-      agentRecord.set('temperature', 0.3)
-      agentRecord.set('maxTokens', 500)
-      agentRecord.set(
-        'knowledge',
-        JSON.stringify({
-          collections: ['crm_contacts', 'services', 'appointments'],
-          scope: 'own_professional_data_only',
-        }),
-      )
-      $app.save(agentRecord)
-      console.log('[migr-0137] agente nativo backoffice-pro-369 criado')
-    } else {
-      console.log('[migr-0137] agente nativo backoffice-pro-369 já existe — no-op')
     }
   },
   (app) => {
     // rollback: remove agente e coleção (reversível, seguro em base nova)
     try {
-      const agents = $app.findCollectionByNameOrId('ai_agents')
-      const recs = $app.findRecordsByFilter(agents.id, "name = 'backoffice-pro-369'", '', 1, 0)
-      for (let i = 0; i < recs.length; i++) $app.delete(recs[i])
+      $ai.agents.delete(app, 'backoffice-pro-369')
     } catch (_) {}
     try {
       const col = $app.findCollectionByNameOrId('crm_contacts')
