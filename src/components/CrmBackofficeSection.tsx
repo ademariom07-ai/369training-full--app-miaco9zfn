@@ -580,13 +580,17 @@ export const CrmBackofficeSection: React.FC = () => {
   }
 
   const handleCreate = async () => {
-    if (!newName.trim() || !profId) return
+    const name = newName.trim()
+    if (!name || !profId) return
     setCreating(true)
     try {
+      // Criação manual na tela Meus Clientes: origem sempre 'perfil'.
+      // Todos os campos obrigatórios da coleção são enviados explicitamente
+      // (professional, student, contact_name, category, status, origin).
       await crmApi.createContact({
         professional: profId,
         student: profId, // contato manual sem aluno vinculado (lead externo)
-        contact_name: newName.trim(),
+        contact_name: name,
         category: inferCategory(user?.specialties) as CrmCategory,
         status: 'novo',
         origin: 'perfil',
@@ -594,8 +598,19 @@ export const CrmBackofficeSection: React.FC = () => {
       setNewName('')
       toast.success('Contato criado')
       setRefreshKey((k) => k + 1)
-    } catch (_) {
-      toast.error('Erro ao criar contato')
+    } catch (err: any) {
+      const status = err?.status ?? err?.response?.status
+      const reason = err?.response?.message || err?.message || ''
+      if (status === 400 && /unique|idx_crm_prof_student/i.test(reason)) {
+        toast.error('Este contato já existe na sua lista.')
+      } else if (status === 400 || status === 403) {
+        toast.error(
+          'Não foi possível criar o contato: verifique os dados e tente novamente. ' +
+            (reason ? `(${reason})` : ''),
+        )
+      } else {
+        toast.error('Erro ao criar contato. Verifique sua conexão e tente novamente.')
+      }
     } finally {
       setCreating(false)
     }
