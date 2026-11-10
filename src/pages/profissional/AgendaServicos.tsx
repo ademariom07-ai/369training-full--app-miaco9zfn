@@ -109,7 +109,9 @@ export default function AgendaServicos() {
   const [schedules, setSchedules] = useState<WeeklyScheduleRecord[]>([])
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([])
   const [students, setStudents] = useState<UserProfile[]>([])
-  const [loading, setLoading] = useState(true)
+  // Loading separado por dependência: semana (schedules + appointments) x sessão (services + reviews)
+  const [loadingWeek, setLoadingWeek] = useState(true)
+  const [loadingMeta, setLoadingMeta] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   // Percentual de cobrança para alunos/clientes sem plano (default 10%, editável pelo profissional)
@@ -154,80 +156,102 @@ export default function AgendaServicos() {
     existingReview?: ServiceReviewRecord | null
   } | null>(null)
 
-  // Load Data
-  const loadData = useCallback(async () => {
+  // Load Data — dados dependentes da semana (troca de semana recarrega SOMENTE isto)
+  const loadWeekData = useCallback(async () => {
     if (!user) return
     try {
-      setLoading(true)
+      setLoadingWeek(true)
       const weekDates = currentWeekDays.map((d) => d.date)
       const minDate = weekDates[0]
       const maxDate = weekDates[weekDates.length - 1]
 
-      // 1. Load schedules for current selected week
-      const schedRes = await pb
-        .collection('weekly_schedules')
-        .getList<WeeklyScheduleRecord>(1, 300, {
+      // 1 + 2 em paralelo: schedules da semana e appointments do profissional
+      const [schedRes, appRes] = await Promise.all([
+        pb.collection('weekly_schedules').getList<WeeklyScheduleRecord>(1, 300, {
           filter: `profissional = "${user.id}" && data >= "${minDate}" && data <= "${maxDate}"`,
           sort: 'data,hora_inicio',
-        })
+        }),
+        pb.collection('appointments').getList<AppointmentRecord>(1, 150, {
+          filter: `profissional = "${user.id}"`,
+          sort: '-created',
+          expand: 'aluno,schedule,service_record',
+        }),
+      ])
       setSchedules(schedRes.items)
-
-      // 2. Load appointments for current professional
-      const appRes = await pb.collection('appointments').getList<AppointmentRecord>(1, 150, {
-        filter: `profissional = "${user.id}"`,
-        sort: '-created',
-        expand: 'aluno,schedule,service_record',
-      })
       setAppointments(appRes.items)
+    } catch (err) {
+      console.error('Error loading agenda week data:', err)
+    } finally {
+      setLoadingWeek(false)
+    }
+  }, [user, currentWeekDays])
 
-      // 3. Carregar serviços concluídos do profissional para mapeamento
-      const svcRes = await pb.collection('services').getList<ServiceRecord>(1, 200, {
-        filter: `professional = "${user.id}"`,
-        sort: '-created',
-      })
+  // Load Data — dados independentes da semana (1× por sessão/mount; troca de semana NÃO recarrega)
+  const loadStaticData = useCallback(async () => {
+    if (!user) return
+    try {
+      setLoadingMeta(true)
+
+      // 3 + 4 em paralelo: serviços e reviews não dependem do intervalo de datas
+      const [svcRes, reviewMaps] = await Promise.all([
+        pb.collection('services').getList<ServiceRecord>(1, 200, {
+          filter: `professional = "${user.id}"`,
+          sort: '-created',
+        }),
+        (async () => {
+          const rMap: Record<string, ServiceReviewRecord> = {}
+          const allMap: Record<string, ServiceReviewRecord[]> = {}
+
+          const pageSize = 50
+          let page = 1
+          let totalPages = 1
+
+          do {
+            const revRes = await pb
+              .collection('service_reviews')
+              .getList<ServiceReviewRecord>(page, pageSize, {
+                filter: `reviewer = "${user.id}" || reviewee = "${user.id}"`,
+                sort: '-created',
+                expand: 'reviewer,reviewee',
+              })
+            for (const r of revRes.items) {
+              if (r.reviewer === user.id) {
+                rMap[r.service] = r
+              }
+              if (!allMap[r.service]) {
+                allMap[r.service] = []
+              }
+              allMap[r.service].push(r)
+            }
+            totalPages = revRes.totalPages || 1
+            page += 1
+          } while (page <= totalPages)
+
+          return { rMap, allMap }
+        })(),
+      ])
+
+      // 3. Aplica mapeamento de serviços
       const sMap: Record<string, ServiceRecord> = {}
       for (const s of svcRes.items) {
         sMap[s.id] = s
       }
       setServicesMap(sMap)
 
-      // 4. Carregar reviews visíveis ao profissional com paginação incremental
-      const rMap: Record<string, ServiceReviewRecord> = {}
-      const allMap: Record<string, ServiceReviewRecord[]> = {}
-
-      const pageSize = 50
-      let page = 1
-      let totalPages = 1
-
-      do {
-        const revRes = await pb
-          .collection('service_reviews')
-          .getList<ServiceReviewRecord>(page, pageSize, {
-            filter: `reviewer = "${user.id}" || reviewee = "${user.id}"`,
-            sort: '-created',
-            expand: 'reviewer,reviewee',
-          })
-        for (const r of revRes.items) {
-          if (r.reviewer === user.id) {
-            rMap[r.service] = r
-          }
-          if (!allMap[r.service]) {
-            allMap[r.service] = []
-          }
-          allMap[r.service].push(r)
-        }
-        totalPages = revRes.totalPages || 1
-        page += 1
-      } while (page <= totalPages)
-
-      setMyReviewsMap(rMap)
-      setAllReviewsByServiceMap(allMap)
+      // 4. Aplica mapeamentos de reviews
+      setMyReviewsMap(reviewMaps.rMap)
+      setAllReviewsByServiceMap(reviewMaps.allMap)
     } catch (err) {
-      console.error('Error loading agenda data:', err)
+      console.error('Error loading agenda meta data:', err)
     } finally {
-      setLoading(false)
+      setLoadingMeta(false)
     }
-  }, [user, currentWeekDays])
+  }, [user])
+
+  // Recarga completa (usada após ações: concluir/cancelar/confirmar/liberar/agendar/avaliar)
+  const loadData = useCallback(async () => {
+    await Promise.all([loadWeekData(), loadStaticData()])
+  }, [loadWeekData, loadStaticData])
 
   // Initial load & students load
   useEffect(() => {
@@ -245,9 +269,15 @@ export default function AgendaServicos() {
       .catch(() => {})
   }, [user])
 
+  // Troca de semana: recarrega APENAS schedules + appointments
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    loadWeekData()
+  }, [loadWeekData])
+
+  // Sessão/mount: carrega services + reviews 1×
+  useEffect(() => {
+    loadStaticData()
+  }, [loadStaticData])
 
   // Helper: check if a day is released (liberado)
   const isDayLiberado = (dateStr: string) => {
@@ -830,7 +860,7 @@ export default function AgendaServicos() {
             </div>
           </div>
 
-          {loading ? (
+          {loadingWeek ? (
             <div className="p-12 flex flex-col items-center justify-center gap-3 bg-[#181818] rounded-2xl border border-[#2A2A2A]">
               <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
               <p className="text-xs text-gray-400 font-inter">
@@ -1165,8 +1195,13 @@ export default function AgendaServicos() {
             </span>
           </div>
 
-          {/* Appointments Grid/Cards */}
-          {filteredAppointments.length === 0 ? (
+          {/* Appointments Grid/Cards — loading local da aba (renderização progressiva) */}
+          {loadingWeek ? (
+            <div className="p-12 flex flex-col items-center justify-center gap-3 bg-[#181818] rounded-2xl border border-[#2A2A2A]">
+              <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+              <p className="text-xs text-gray-400 font-inter">Carregando agendamentos...</p>
+            </div>
+          ) : filteredAppointments.length === 0 ? (
             <Card className="bg-[#181818] border border-[#2A2A2A] p-12 text-center rounded-2xl">
               <CalendarIcon className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <h3 className="text-base font-bold text-white font-montserrat uppercase">
