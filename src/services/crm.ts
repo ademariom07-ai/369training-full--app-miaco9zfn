@@ -3,12 +3,19 @@ import pb from '@/lib/pocketbase/client'
 // ---------- TIPOS CRM ----------
 export type CrmStatus = 'novo' | 'em_contato' | 'ativo' | 'inativo'
 export type CrmOrigin = 'vinculo' | 'chat' | 'perfil'
+export type CrmContactType = 'cliente' | 'parceiro' | 'fornecedor'
 export type CrmCategory =
   | 'personal_trainer'
   | 'nutricionista'
   | 'fisioterapeuta'
   | 'psicologo'
   | 'professor_artes_marciais'
+
+export const CRM_CONTACT_TYPE_LABELS: Record<CrmContactType, string> = {
+  cliente: 'Cliente',
+  parceiro: 'Parceiro',
+  fornecedor: 'Fornecedor',
+}
 
 export const CRM_CATEGORY_LABELS: Record<CrmCategory, string> = {
   personal_trainer: 'Personal Trainer',
@@ -33,12 +40,17 @@ export interface CrmContactRecord {
   category: CrmCategory
   status: CrmStatus
   origin: CrmOrigin
+  contact_type?: CrmContactType
+  phone?: string
+  email?: string
   notes: string
   next_followup_at: string
   estimated_value: number
   created: string
   updated: string
-  expand?: { student?: { id: string; name: string; avatar: string } }
+  expand?: {
+    student?: { id: string; name: string; avatar: string; email?: string; phone?: string }
+  }
 }
 
 export interface CrmFollowupItem {
@@ -106,12 +118,20 @@ export const inferCategory = (specialties?: string[] | string): string => {
 // ---------- CRUD DIRETO (regras da coleção limitam ao profissional dono) ----------
 
 export const crmApi = {
-  listContacts: async (profId: string, page = 1, perPage = 50, status?: CrmStatus) => {
+  listContacts: async (
+    profId: string,
+    page = 1,
+    perPage = 50,
+    status?: CrmStatus,
+    contactType?: CrmContactType,
+  ) => {
     let filter = `professional = "${profId}"`
     if (status) filter += ` && status = "${status}"`
+    if (contactType) filter += ` && contact_type = "${contactType}"`
     return pb.collection('crm_contacts').getList<CrmContactRecord>(page, perPage, {
       filter,
       sort: '-updated',
+      expand: 'student',
     })
   },
 
@@ -122,6 +142,9 @@ export const crmApi = {
     category: CrmCategory
     status?: CrmStatus
     origin?: CrmOrigin
+    contact_type?: CrmContactType
+    phone?: string
+    email?: string
     notes?: string
     next_followup_at?: string
     estimated_value?: number

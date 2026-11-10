@@ -70,6 +70,9 @@ routerAdd(
       rec.set('category', category)
       rec.set('status', 'novo')
       rec.set('origin', 'chat')
+      rec.set('contact_type', 'cliente')
+      if (auth.get('phone')) rec.set('phone', auth.getString('phone'))
+      if (auth.get('email')) rec.set('email', auth.getString('email'))
       rec.set('notes', contactMessage ? 'Primeira mensagem: ' + contactMessage : '')
       $app.save(rec)
 
