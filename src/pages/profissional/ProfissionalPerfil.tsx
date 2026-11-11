@@ -21,6 +21,7 @@ import {
 import { PlanChangeSection } from '@/components/PlanChangeSection'
 import { toast } from 'sonner'
 import { AvatarUploader } from '@/components/AvatarUploader'
+import { ProfServicosCard } from '@/components/ProfServicosCard'
 
 export default function ProfissionalPerfil() {
   const { user, refreshUser } = useAuth()
@@ -795,35 +796,7 @@ export default function ProfissionalPerfil() {
           </div>
         </Card>
 
-        <Card className="bg-[#181818] border border-[#2A2A2A] p-6 rounded-2xl">
-          <h3 className="font-bold font-montserrat text-white text-base uppercase mb-4 flex items-center gap-2">
-            <Award className="w-5 h-5 text-[#22C55E]" /> Serviços & Cursos Disponíveis
-          </h3>
-          <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-white font-montserrat">
-                  Consultoria Mensal Completa
-                </p>
-                <p className="text-[10px] text-gray-400 font-inter">
-                  Treinos semanais + Suporte WhatsApp
-                </p>
-              </div>
-              <span className="text-xs font-bold text-[#D4AF37] font-mono">R$ 250,00/mês</span>
-            </div>
-            <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-white font-montserrat">
-                  Curso Online: Hipertrofia Científica
-                </p>
-                <p className="text-[10px] text-gray-400 font-inter">
-                  12 módulos em vídeo + E-book 369
-                </p>
-              </div>
-              <span className="text-xs font-bold text-[#22C55E] font-mono">R$ 197,00</span>
-            </div>
-          </div>
-        </Card>
+        <ProfServicosCard />
       </div>
     </div>
   )
