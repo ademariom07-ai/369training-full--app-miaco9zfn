@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   DollarSign,
   MessageSquare,
+  MapPin,
 } from 'lucide-react'
 import { PlanChangeSection } from '@/components/PlanChangeSection'
 import { toast } from 'sonner'
@@ -57,6 +58,9 @@ export default function ProfissionalPerfil() {
 
   const [videoUrl, setVideoUrl] = useState(user?.video_url || '')
   const [videoEnabled, setVideoEnabled] = useState(user?.video_enabled ?? false)
+  const [latitude, setLatitude] = useState<number | undefined>(user?.latitude)
+  const [longitude, setLongitude] = useState<number | undefined>(user?.longitude)
+  const [locating, setLocating] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Referrals List State
@@ -129,8 +133,46 @@ export default function ProfissionalPerfil() {
       if (user.physio_practice_area !== undefined) setPhysioArea(user.physio_practice_area)
       if (user.video_url !== undefined) setVideoUrl(user.video_url)
       if (user.video_enabled !== undefined) setVideoEnabled(user.video_enabled)
+      if (user.latitude !== undefined) setLatitude(user.latitude)
+      if (user.longitude !== undefined) setLongitude(user.longitude)
     }
   }, [user])
+
+  // Captura de coordenadas GPS do dispositivo (navegador)
+  const handleUseMyLocation = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      toast.error('Seu navegador não suporta geolocalização.')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(Number(pos.coords.latitude.toFixed(6)))
+        setLongitude(Number(pos.coords.longitude.toFixed(6)))
+        setLocating(false)
+        toast.success('Localização capturada! Salve o perfil para gravar as coordenadas.')
+      },
+      (err) => {
+        setLocating(false)
+        let msg = 'Não foi possível obter sua localização.'
+        if (err.code === err.PERMISSION_DENIED) {
+          msg = 'Permissão de localização negada. Habilite o GPS/localização no navegador.'
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          msg = 'Localização indisponível no momento. Tente novamente.'
+        } else if (err.code === err.TIMEOUT) {
+          msg = 'Tempo esgotado ao obter a localização. Tente novamente.'
+        }
+        toast.error(msg)
+      },
+      { timeout: 10000, enableHighAccuracy: true },
+    )
+  }
+
+  const handleClearLocation = () => {
+    setLatitude(undefined)
+    setLongitude(undefined)
+    toast.info('Coordenadas removidas do formulário. Salve o perfil para confirmar.')
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -156,6 +198,8 @@ export default function ProfissionalPerfil() {
         physio_practice_area: physioArea,
         video_url: videoUrl,
         video_enabled: videoEnabled,
+        latitude: latitude !== undefined ? latitude : 0,
+        longitude: longitude !== undefined ? longitude : 0,
       })
       await refreshUser()
       toast.success('Perfil público atualizado com sucesso!')
@@ -509,6 +553,68 @@ export default function ProfissionalPerfil() {
                 placeholder="https://drive.google.com/file/d/... ou YouTube, Vimeo, MP4"
                 className="bg-[#141414] border-[#2A2A2A] rounded-xl text-xs text-white placeholder:text-gray-600"
               />
+            </div>
+          </div>
+
+          {/* SEÇÃO DE LOCALIZAÇÃO — captura GPS + exibição discreta das coordenadas */}
+          <div className="pt-4 border-t border-[#2A2A2A] space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label className="block text-xs font-bold text-white uppercase font-montserrat flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#D4AF37]" />
+                  Minha Localização
+                </label>
+                <p className="text-[11px] text-gray-400 font-inter mt-0.5">
+                  Usada para os alunos encontrarem você por proximidade. Aproximação pela sua cidade
+                  quando não houver coordenadas.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={locating || saving}
+                  onClick={handleUseMyLocation}
+                  className="bg-[#141414] border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-[11px] font-bold uppercase rounded-xl h-9 px-3 flex items-center gap-1.5"
+                >
+                  {locating ? (
+                    <>
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-[#D4AF37] border-t-transparent animate-spin" />
+                      Localizando...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-3.5 h-3.5" />
+                      Usar minha localização
+                    </>
+                  )}
+                </Button>
+                {(latitude !== undefined && latitude !== 0) ||
+                (longitude !== undefined && longitude !== 0) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={saving}
+                    onClick={handleClearLocation}
+                    className="bg-transparent border-[#2A2A2A] text-gray-400 hover:text-red-400 hover:border-red-500/40 text-[11px] font-bold uppercase rounded-xl h-9 px-3"
+                  >
+                    Limpar
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="text-[11px] text-gray-500 font-mono flex items-center gap-1.5">
+              <MapPin className="w-3 h-3 text-gray-600" />
+              {latitude !== undefined &&
+              longitude !== undefined &&
+              (latitude !== 0 || longitude !== 0) ? (
+                <span>
+                  Coordenadas salvas: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+                </span>
+              ) : (
+                <span>Nenhuma coordenada definida — proximidade estimada pela cidade.</span>
+              )}
             </div>
           </div>
 

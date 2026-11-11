@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useId } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import pb from '@/lib/pocketbase/client'
 import type { UserProfile } from '@/contexts/AuthContext'
@@ -24,6 +24,7 @@ import {
   Video,
 } from 'lucide-react'
 import { UserAvatar } from '@/components/UserAvatar'
+import { hasRealCoords, useProfessionalsCoords } from '@/hooks/useProfessionalsCoords'
 
 // Haversine distance in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -53,6 +54,15 @@ export function AlunoProfissionaisFeed() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isMuted, setIsMuted] = useState(true)
   const [selectedProfModal, setSelectedProfModal] = useState<ProfessionalWithDist | null>(null)
+
+  const computeDist = (p: UserProfile, geo?: { lat: number; lon: number }): number | undefined => {
+    const lat = hasRealCoords(p) ? p.latitude : geo?.lat
+    const lon = hasRealCoords(p) ? p.longitude : geo?.lon
+    if (typeof lat !== 'number' || typeof lon !== 'number') return undefined
+    // Referência quando o aluno não autorizou GPS: centro de São Paulo
+    const origin = userCoords || { lat: -23.55052, lon: -46.633308 }
+    return calculateDistance(origin.lat, origin.lon, lat, lon)
+  }
 
   // Request browser location
   useEffect(() => {
@@ -86,28 +96,11 @@ export function AlunoProfissionaisFeed() {
           (p) => p.video_enabled && p.video_url && p.video_url.trim().length > 0,
         )
 
-        const mapped: ProfessionalWithDist[] = videoPros.map((p) => {
-          let dist: number | undefined
-          if (userCoords && typeof p.latitude === 'number' && p.latitude !== 0) {
-            dist = calculateDistance(userCoords.lat, userCoords.lon, p.latitude, p.longitude || 0)
-          } else if (typeof p.latitude === 'number' && p.latitude !== 0) {
-            // Default SP distance reference if user has no coords
-            dist = calculateDistance(-23.55052, -46.633308, p.latitude, p.longitude || 0)
-          }
-          return {
-            ...p,
-            calculatedDist: dist,
-            hasVerifiedCred: verifiedSet.has(p.id) || p.name?.includes('(Verificado)'),
-          }
-        })
-
-        // Ordenar: por proximidade quando disponível, senão por rating
-        mapped.sort((a, b) => {
-          if (a.calculatedDist !== undefined && b.calculatedDist !== undefined) {
-            return a.calculatedDist - b.calculatedDist
-          }
-          return (b.rating_avg || 0) - (a.rating_avg || 0)
-        })
+        const mapped: ProfessionalWithDist[] = videoPros.map((p) => ({
+          ...p,
+          calculatedDist: undefined,
+          hasVerifiedCred: verifiedSet.has(p.id) || p.name?.includes('(Verificado)'),
+        }))
 
         setProfessionals(mapped)
       } catch (err) {
@@ -118,13 +111,32 @@ export function AlunoProfissionaisFeed() {
     }
 
     loadPros()
-  }, [userCoords])
+  }, [])
+
+  // Dispara geocodificação de cidades (fila sequencial com cache) para quem está 0/0
+  const { coordsByProfId } = useProfessionalsCoords(professionals)
+
+  // Distâncias + ordenação recalculadas quando as cidades forem resolvidas
+  const sortedProfessionals = useMemo(() => {
+    const withDist = professionals.map((p) => ({
+      ...p,
+      calculatedDist: computeDist(p, coordsByProfId[p.id]),
+    }))
+    withDist.sort((a, b) => {
+      if (a.calculatedDist !== undefined && b.calculatedDist !== undefined) {
+        return a.calculatedDist - b.calculatedDist
+      }
+      return (b.rating_avg || 0) - (a.rating_avg || 0)
+    })
+    return withDist
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [professionals, coordsByProfId, userCoords])
 
   const feedRef = useRef<HTMLDivElement>(null)
 
   // Scroll to previous / next video
   const handleScrollTo = (index: number) => {
-    if (index < 0 || index >= professionals.length) return
+    if (index < 0 || index >= sortedProfessionals.length) return
     setCurrentIndex(index)
     const container = feedRef.current
     if (container) {
@@ -136,7 +148,7 @@ export function AlunoProfissionaisFeed() {
   }
 
   // Fallback: se não houver vídeos, cards de profissionais próximos
-  if (!loading && professionals.length === 0) {
+  if (!loading && sortedProfessionals.length === 0) {
     return (
       <Card className="bg-white border border-[#E5E3DC] p-6 rounded-2xl shadow-xs">
         <div className="flex items-center justify-between mb-4">
@@ -220,12 +232,12 @@ export function AlunoProfissionaisFeed() {
             <ChevronUp className="w-5 h-5" />
           </button>
           <span className="text-[10px] font-bold font-mono text-center text-white bg-black/60 px-1 py-0.5 rounded-full">
-            {currentIndex + 1}/{professionals.length || 1}
+            {currentIndex + 1}/{sortedProfessionals.length || 1}
           </span>
           <button
             type="button"
             aria-label="Próximo vídeo"
-            disabled={currentIndex >= professionals.length - 1}
+            disabled={currentIndex >= sortedProfessionals.length - 1}
             onClick={() => handleScrollTo(currentIndex + 1)}
             className="w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg"
           >
@@ -247,7 +259,7 @@ export function AlunoProfissionaisFeed() {
               </p>
             </div>
           ) : (
-            professionals.map((prof, idx) => (
+            sortedProfessionals.map((prof, idx) => (
               <VideoCardItem
                 key={prof.id}
                 prof={prof}
@@ -311,9 +323,10 @@ export function AlunoProfissionaisFeed() {
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-[#0057FF]" />
                     {selectedProfModal.calculatedDist !== undefined
-                      ? `${selectedProfModal.calculatedDist.toFixed(1)} km`
-                      : 'Próximo'}
-                    {selectedProfModal.city ? ` (${selectedProfModal.city})` : ''}
+                      ? `a ${selectedProfModal.calculatedDist.toFixed(1)} km`
+                      : selectedProfModal.city
+                        ? `cidade: ${selectedProfModal.city}`
+                        : 'Localização não informada'}
                   </span>
                 </div>
               </div>
@@ -557,8 +570,11 @@ function VideoCardItem({
           </span>
           <span className="flex items-center gap-1 font-semibold">
             <MapPin className="w-3.5 h-3.5 text-[#0057FF]" />
-            {prof.calculatedDist !== undefined ? `${prof.calculatedDist.toFixed(1)} km` : 'Próximo'}
-            {prof.city ? ` • ${prof.city}` : ''}
+            {prof.calculatedDist !== undefined
+              ? `a ${prof.calculatedDist.toFixed(1)} km`
+              : prof.city
+                ? `cidade: ${prof.city}`
+                : 'Localização não informada'}
           </span>
           <span className="flex items-center gap-1 text-[#D4AF37] font-bold">
             <Star className="w-3.5 h-3.5 fill-[#D4AF37]" />

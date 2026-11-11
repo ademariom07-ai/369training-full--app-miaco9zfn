@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import pb from '@/lib/pocketbase/client'
 import type { UserProfile } from '@/contexts/AuthContext'
 import { getApprovedProfessionalsCached } from '@/services/professionalsCache'
@@ -50,6 +50,8 @@ import {
   ArrowUpDown,
 } from 'lucide-react'
 import { UserAvatar } from '@/components/UserAvatar'
+import { hasRealCoords, useCitiesCoords } from '@/hooks/useProfessionalsCoords'
+import { normalizeCityKey } from '@/services/geocodeCity'
 
 // Haversine formula to compute distance in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -150,6 +152,30 @@ export default function EncontrarProfissional() {
       setGeoLoading(false)
     }
   }, [])
+
+  // Coordenadas resolvidas por cidade (Nominatim, cache em memória, fila sequencial).
+  // Só consultamos cidades de profissionais que NÃO têm coordenadas próprias (0/0).
+  const citiesNeedingGeo = useMemo(() => {
+    const keys: string[] = []
+    for (const p of professionals) {
+      if (!hasRealCoords(p) && p.city) {
+        const key = `${(p.city || '').trim().toLowerCase()}|${(p.state || '').trim().toLowerCase()}`
+        if (!keys.includes(key)) keys.push(key)
+      }
+    }
+    return keys
+  }, [professionals])
+
+  const { coordsByCity } = useCitiesCoords(citiesNeedingGeo)
+
+  const resolveProfCoords = (p: UserProfile): { lat: number; lon: number } | undefined => {
+    if (hasRealCoords(p)) {
+      return { lat: p.latitude as number, lon: p.longitude as number }
+    }
+    const key = normalizeCityKey(p.city, p.state)
+    const v = coordsByCity[key]
+    return v && typeof v.lat === 'number' && typeof v.lon === 'number' ? v : undefined
+  }
 
   // Fetch matching profile of the current user
   useEffect(() => {
@@ -295,10 +321,13 @@ export default function EncontrarProfissional() {
 
   const processedProfessionals = professionals
     .map((p) => {
-      // Coords default fallback if professional has no exact coords
-      const pLat = typeof p.latitude === 'number' && p.latitude !== 0 ? p.latitude : -23.561684
-      const pLon = typeof p.longitude === 'number' && p.longitude !== 0 ? p.longitude : -46.655981
+      // Fonte de coordenadas: GPS próprio do profissional; se 0/0, geocodificação
+      // da cidade (Nominatim). Se nem a cidade resolver, mantém fallback SP.
+      const coords = resolveProfCoords(p)
+      const pLat = coords?.lat ?? -23.561684
+      const pLon = coords?.lon ?? -46.655981
       const dist = calculateDistance(userCoords.lat, userCoords.lon, pLat, pLon)
+      const hasExactCoords = Boolean(coords)
 
       // Score matching
       let score = 0
@@ -411,6 +440,7 @@ export default function EncontrarProfissional() {
       return {
         ...p,
         calculatedDistance: dist,
+        hasExactCoords,
         matchingScore: score,
         matchingReasons: matchedReasons,
       }
@@ -943,12 +973,21 @@ export default function EncontrarProfissional() {
 
                       {/* Distance pill (Highlighted) */}
                       <div className="text-right shrink-0">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0057FF]/15 border border-[#0057FF]/40 text-[#0057FF] text-xs font-bold font-montserrat">
-                          <MapPin className="w-3.5 h-3.5" />
-                          <span>{prof.calculatedDistance.toFixed(1)} km</span>
-                        </div>
+                        {prof.hasExactCoords ? (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0057FF]/15 border border-[#0057FF]/40 text-[#0057FF] text-xs font-bold font-montserrat">
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span>a {prof.calculatedDistance.toFixed(1)} km</span>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#2A2A2A]/60 border border-[#3A3A3A] text-gray-300 text-xs font-bold font-montserrat">
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span>cidade: {prof.city || '—'}</span>
+                          </div>
+                        )}
                         <p className="text-[10px] text-gray-400 mt-1 font-mono">
-                          {prof.city || 'São Paulo, SP'}
+                          {prof.city
+                            ? `${prof.city}${prof.state ? ` - ${prof.state}` : ''}`
+                            : 'Brasil'}
                         </p>
                       </div>
                     </div>
@@ -1117,8 +1156,12 @@ export default function EncontrarProfissional() {
                       <span>•</span>
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-[#0057FF]" />
-                        {selectedProf.calculatedDistance?.toFixed(1)} km (
-                        {selectedProf.city || 'São Paulo'})
+                        {selectedProf.hasExactCoords &&
+                        selectedProf.calculatedDistance !== undefined
+                          ? `a ${selectedProf.calculatedDistance.toFixed(1)} km`
+                          : selectedProf.city
+                            ? `cidade: ${selectedProf.city}`
+                            : 'Localização não informada'}
                       </span>
                       <span>•</span>
                       <span className="font-mono text-gray-200 bg-[#1f1f1f] px-2 py-0.5 rounded border border-[#333] text-[11px]">
