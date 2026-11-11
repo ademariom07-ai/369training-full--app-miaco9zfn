@@ -101,6 +101,24 @@ routerAdd(
       const today = new Date().toISOString().slice(0, 10)
       const monthStart = today.slice(0, 7) + '-01'
 
+      // Converte datas do PocketBase (DateTime/Date/string) para "YYYY-MM-DD" sem lancar
+      // "Invalid time value" (na JSVM, record.get() de campo date NAO e um Date JS valido).
+      const dateStr = function (v) {
+        try {
+          if (!v) return ''
+          let s
+          if (typeof v === 'string') s = v
+          else if (typeof v.toISOString === 'function') s = v.toISOString()
+          else if (typeof v.string === 'function') s = v.string()
+          else s = String(v)
+          if (s.indexOf('0001-') === 0) return ''
+          const m = s.match(/^\d{4}-\d{2}-\d{2}/)
+          return m ? m[0] : ''
+        } catch (_) {
+          return ''
+        }
+      }
+
       let filter = "professional = '" + profId + "'"
       if (category) {
         filter += " && category = '" + category + "'"
@@ -119,26 +137,23 @@ routerAdd(
         counts.total++
         if (counts[status] !== undefined) counts[status]++
 
-        const fu = c.get('next_followup_at')
-        if (fu) {
-          const fuDate = new Date(fu).toISOString().slice(0, 10)
-          if (fuDate <= today) {
-            todayFollowups.push({
-              id: c.id,
-              name: c.getString('contact_name'),
-              status: status,
-              followup_date: fuDate,
-              overdue: fuDate < today,
-              notes: c.getString('notes'),
-              estimated_value: c.getFloat('estimated_value'),
-            })
-          }
+        const fuDate = dateStr(c.get('next_followup_at'))
+        if (fuDate && fuDate <= today) {
+          todayFollowups.push({
+            id: c.id,
+            name: c.getString('contact_name'),
+            status: status,
+            followup_date: fuDate,
+            overdue: fuDate < today,
+            notes: c.getString('notes'),
+            estimated_value: c.getFloat('estimated_value'),
+          })
         }
 
         if (status === 'ativo') pipelineValue += c.getFloat('estimated_value')
 
-        const created = new Date(c.get('created'))
-        if (status === 'ativo' && created.toISOString().slice(0, 7) === today.slice(0, 7)) {
+        const createdDate = dateStr(c.get('created'))
+        if (status === 'ativo' && createdDate.substring(0, 7) === today.substring(0, 7)) {
           wonThisMonth++
         }
       }
@@ -197,6 +212,24 @@ routerAdd(
       const todayDate = today.slice(0, 10)
       const currentMonth = today.slice(0, 7)
 
+      // Converte datas do PocketBase (DateTime/Date/string) para "YYYY-MM-DD" sem lancar
+      // "Invalid time value" (na JSVM, record.get() de campo date NAO e um Date JS valido).
+      const dateStr = function (v) {
+        try {
+          if (!v) return ''
+          let s
+          if (typeof v === 'string') s = v
+          else if (typeof v.toISOString === 'function') s = v.toISOString()
+          else if (typeof v.string === 'function') s = v.string()
+          else s = String(v)
+          if (s.indexOf('0001-') === 0) return ''
+          const m = s.match(/^\d{4}-\d{2}-\d{2}/)
+          return m ? m[0] : ''
+        } catch (_) {
+          return ''
+        }
+      }
+
       const byCategory = []
       let grandTotalContacts = 0
       let grandTotalWon = 0
@@ -221,10 +254,10 @@ routerAdd(
           const status = c.getString('status')
           counts[status] = (counts[status] || 0) + 1
           profIds[c.getString('professional')] = true
-          const fu = c.get('next_followup_at')
-          if (fu && new Date(fu).toISOString().slice(0, 10) < todayDate) overdue++
-          const created = new Date(c.get('created'))
-          if (status === 'ativo' && created.toISOString().slice(0, 7) === currentMonth) won++
+          const fuDate = dateStr(c.get('next_followup_at'))
+          if (fuDate && fuDate < todayDate) overdue++
+          const createdDate = dateStr(c.get('created'))
+          if (status === 'ativo' && createdDate.substring(0, 7) === currentMonth) won++
         }
 
         const total = contacts.length
