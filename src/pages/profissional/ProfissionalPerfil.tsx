@@ -150,19 +150,20 @@ export default function ProfissionalPerfil() {
         setLatitude(Number(pos.coords.latitude.toFixed(6)))
         setLongitude(Number(pos.coords.longitude.toFixed(6)))
         setLocating(false)
-        toast.success('Localização capturada! Salve o perfil para gravar as coordenadas.')
+        toast.success('Localização salva — salve o perfil para aplicar', { duration: 6000 })
       },
       (err) => {
         setLocating(false)
         let msg = 'Não foi possível obter sua localização.'
         if (err.code === err.PERMISSION_DENIED) {
-          msg = 'Permissão de localização negada. Habilite o GPS/localização no navegador.'
+          msg =
+            'Permissão de localização negada. Para liberar: toque no cadeado ao lado do endereço do site → Permissões → Localização → Permitir. Ou preencha Cidade/UF para ser encontrado por proximidade.'
         } else if (err.code === err.POSITION_UNAVAILABLE) {
           msg = 'Localização indisponível no momento. Tente novamente.'
         } else if (err.code === err.TIMEOUT) {
           msg = 'Tempo esgotado ao obter a localização. Tente novamente.'
         }
-        toast.error(msg)
+        toast.error(msg, { duration: 10000 })
       },
       { timeout: 10000, enableHighAccuracy: true },
     )
@@ -273,18 +274,6 @@ export default function ProfissionalPerfil() {
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-2 w-full sm:w-auto">
-            <Button className="bg-[#D4AF37] text-black hover:bg-[#E6C65C] font-bold text-xs">
-              Assinar Meu Plano
-            </Button>
-            <Button
-              variant="outline"
-              className="border-[#0057FF] text-white hover:bg-[#0057FF]/10 text-xs"
-            >
-              Falar Comigo
-            </Button>
           </div>
         </div>
       </div>
