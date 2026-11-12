@@ -21,6 +21,8 @@ import {
   Check,
   Eye,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
@@ -30,39 +32,72 @@ interface MinhasAulasColetivasAlunoProps {
   currentUserId: string
 }
 
+// Cards exibidos por página na tela do aluno
+const PAGE_SIZE = 6
+// Itens buscados por requisição ao backend (cap de consulta)
+const SERVER_PAGE_SIZE = 50
+
 export function MinhasAulasColetivasAluno({ currentUserId }: MinhasAulasColetivasAlunoProps) {
   const [participants, setParticipants] = useState<GroupSessionParticipantRecord[]>([])
+  const [totalItems, setTotalItems] = useState(0)
+  const [serverPagesLoaded, setServerPagesLoaded] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   // Modal para ver Selfie Coletiva
   const [selfieModalOpen, setSelfieModalOpen] = useState(false)
   const [activeSessionSelfie, setActiveSessionSelfie] = useState<GroupSessionRecord | null>(null)
 
-  const loadMyGroupSessions = async () => {
+  // Busca uma página do backend; reset=true substitui a lista, senão acrescenta
+  const fetchServerPage = async (serverPage: number, reset: boolean) => {
     try {
-      setLoading(true)
+      setPageLoading(true)
       // Buscar participações do aluno logado
       const res = await pb
         .collection('group_session_participants')
-        .getList<GroupSessionParticipantRecord>(1, 50, {
+        .getList<GroupSessionParticipantRecord>(serverPage, SERVER_PAGE_SIZE, {
           filter: `student = "${currentUserId}"`,
           expand: 'session,session.professional',
           sort: '-created',
         })
-      setParticipants(res.items)
+      setTotalItems(res.totalItems)
+      setParticipants((prev) => (reset ? res.items : [...prev, ...res.items]))
+      setServerPagesLoaded(serverPage)
     } catch (err) {
       console.error('Erro ao carregar aulas coletivas do aluno:', err)
     } finally {
       setLoading(false)
+      setPageLoading(false)
     }
   }
 
+  const loadMyGroupSessions = () => fetchServerPage(1, true)
+
   useEffect(() => {
     if (currentUserId) {
+      setCurrentPage(1)
       loadMyGroupSessions()
     }
   }, [currentUserId])
+
+  // Busca o próximo lote do backend quando a página local pede itens ainda não carregados
+  useEffect(() => {
+    if (loading || serverPagesLoaded === 0) return
+    const needed = currentPage * PAGE_SIZE
+    const available = Math.min(totalItems, serverPagesLoaded * SERVER_PAGE_SIZE)
+    if (needed > available && totalItems > available) {
+      fetchServerPage(serverPagesLoaded + 1, false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, serverPagesLoaded, totalItems, loading])
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const pageStart = (safePage - 1) * PAGE_SIZE
+  const pageItems = participants.slice(pageStart, pageStart + PAGE_SIZE)
+  const showPageSkeleton = pageLoading && pageItems.length === 0
 
   // Aluno confirma a própria presença ("Estou presente")
   const handleConfirmPresence = async (participantId: string) => {
@@ -89,7 +124,7 @@ export function MinhasAulasColetivasAluno({ currentUserId }: MinhasAulasColetiva
     return null // silêncio durante o carregamento inicial para não saltar na tela
   }
 
-  if (participants.length === 0) {
+  if (totalItems === 0) {
     return null // se o aluno não estiver em nenhuma aula coletiva, não polui a home
   }
 
@@ -111,12 +146,23 @@ export function MinhasAulasColetivasAluno({ currentUserId }: MinhasAulasColetiva
         </div>
 
         <Badge className="bg-[#D4AF37]/20 text-[#8B6508] border border-[#D4AF37]/40 text-[10px] font-extrabold uppercase">
-          {participants.length} {participants.length === 1 ? 'Aula' : 'Aulas'}
+          {totalItems} {totalItems === 1 ? 'Aula' : 'Aulas'}
         </Badge>
       </div>
 
+      {showPageSkeleton && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-48 rounded-2xl bg-[#f7f6f3] border border-[#E5E3DC] animate-pulse"
+            />
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {participants.map((participant) => {
+        {pageItems.map((participant) => {
           const session = participant.expand?.session as GroupSessionRecord | undefined
           if (!session) return null
 
@@ -293,6 +339,35 @@ export function MinhasAulasColetivasAluno({ currentUserId }: MinhasAulasColetiva
           )
         })}
       </div>
+
+      {totalPages > 1 && (
+        <nav
+          aria-label="Paginação das aulas"
+          className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1"
+        >
+          <span className="text-xs text-gray-500 font-inter">
+            Página {safePage} de {totalPages} · {totalItems} {totalItems === 1 ? 'aula' : 'aulas'}
+          </span>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage(safePage - 1)}
+              disabled={safePage <= 1 || pageLoading}
+              className="flex-1 sm:flex-none min-h-11 min-w-11 px-4 border-[#D4AF37] text-[#8B6508] hover:bg-[#D4AF37]/10 text-xs font-bold uppercase"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage(safePage + 1)}
+              disabled={safePage >= totalPages || pageLoading}
+              className="flex-1 sm:flex-none min-h-11 min-w-11 px-4 border-[#D4AF37] text-[#8B6508] hover:bg-[#D4AF37]/10 text-xs font-bold uppercase"
+            >
+              Próxima <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </nav>
+      )}
 
       {/* MODAL PARA VER A SELFIE COLETIVA */}
       <Dialog open={selfieModalOpen} onOpenChange={setSelfieModalOpen}>
