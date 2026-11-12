@@ -47,6 +47,11 @@ import {
   type CrmTemplate,
 } from '@/services/crm'
 import { CrmUpgradeModal } from '@/components/CrmUpgradeModal'
+import {
+  CrmKanbanFiltersBar,
+  CrmKanbanEmptyState,
+  useKanbanFilters,
+} from '@/components/CrmKanbanFilters'
 
 const STATUSES: CrmStatus[] = ['novo', 'em_contato', 'ativo', 'inativo']
 const CONTACT_TYPES: CrmContactType[] = ['cliente', 'parceiro', 'fornecedor']
@@ -290,9 +295,8 @@ const CrmKanban: React.FC<{
               <span
                 className={`text-[10px] font-bold uppercase font-montserrat px-2 py-0.5 rounded border ${STATUS_STYLES[status]}`}
               >
-                {CRM_STATUS_LABELS[status]}
+                {CRM_STATUS_LABELS[status]} ({items.length})
               </span>
-              <span className="text-[10px] text-gray-400 font-mono">{items.length}</span>
             </div>
             {total > 0 && (
               <p className="text-[9px] text-gray-500 font-mono px-1 mb-1.5">
@@ -914,6 +918,9 @@ export const CrmBackofficeSection: React.FC = () => {
 
   const { contacts, loading, reload } = useCrmContacts(profId, refreshKey)
 
+  // Filtros do funil (Kanban) — independentes dos filtros da lista
+  const kanbanFilters = useKanbanFilters(contacts)
+
   const openUpgradeModal = (requiredPlan: 'Básico' | 'Pro' | 'Premium', featureName: string) => {
     setUpgradeModal({
       open: true,
@@ -1525,7 +1532,29 @@ export const CrmBackofficeSection: React.FC = () => {
           <Loader2 className="w-4 h-4 animate-spin" /> carregando contatos...
         </div>
       ) : tab === 'kanban' && features.hasKanban && kanbanLoaded ? (
-        <CrmKanban contacts={filtered} onOpen={setSheetContact} onMove={handleMove} />
+        <div className="space-y-3">
+          <CrmKanbanFiltersBar
+            typeFilter={kanbanFilters.state.typeFilter}
+            originFilter={kanbanFilters.state.originFilter}
+            searchInput={kanbanFilters.state.searchInput}
+            filteredCount={kanbanFilters.filteredCount}
+            totalCount={kanbanFilters.totalCount}
+            hasActiveFilters={kanbanFilters.hasActiveFilters}
+            onTypeChange={kanbanFilters.setTypeFilter}
+            onOriginChange={kanbanFilters.setOriginFilter}
+            onSearchChange={kanbanFilters.setSearchInput}
+            onClear={kanbanFilters.clearFilters}
+          />
+          {kanbanFilters.filteredCount === 0 ? (
+            <CrmKanbanEmptyState onClear={kanbanFilters.clearFilters} />
+          ) : (
+            <CrmKanban
+              contacts={kanbanFilters.filtered}
+              onOpen={setSheetContact}
+              onMove={handleMove}
+            />
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.length === 0 ? (
