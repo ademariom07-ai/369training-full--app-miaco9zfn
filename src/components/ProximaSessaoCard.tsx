@@ -1,247 +1,165 @@
-import React, { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import pb from '@/lib/pocketbase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  Calendar,
-  Clock,
-  User,
-  AlertCircle,
-  QrCode,
-  ChevronRight,
-  ExternalLink,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-} from 'lucide-react'
-import pb from '@/lib/pocketbase/client'
+import { CalendarClock, ChevronRight, Users, UserPlus } from 'lucide-react'
 import type { AppointmentRecord } from '@/services/api'
-import { UserAvatar } from '@/components/UserAvatar'
-import { MeusAgendamentosModal } from './MeusAgendamentosModal'
+
+const SERVICO_LABELS: Record<string, string> = {
+  treino: 'Sessão de Treino',
+  nutrição: 'Consulta de Nutrição',
+  fisioterapia: 'Sessão de Fisioterapia',
+  artes_marciais: 'Aula de Artes Marciais',
+}
 
 interface ProximaSessaoCardProps {
   studentId: string
 }
 
+function formatDateTime(dateStr: string): { date: string; time: string } {
+  const d = new Date(dateStr)
+  const date = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
+  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return { date, time }
+}
+
 export function ProximaSessaoCard({ studentId }: ProximaSessaoCardProps) {
+  const { user } = useAuth()
+  const [appointment, setAppointment] = useState<AppointmentRecord | null>(null)
   const [loading, setLoading] = useState(true)
-  const [proximoAgendamento, setProximoAgendamento] = useState<AppointmentRecord | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-
-  const fetchNextAppointment = async () => {
-    if (!studentId) return
-    try {
-      // Buscar agendamentos futuros do aluno
-      const today = new Date().toISOString().split('T')[0]
-      const res = await pb.collection('appointments').getList<AppointmentRecord>(1, 10, {
-        filter: `aluno = "${studentId}" && status != "cancelado"`,
-        sort: 'created',
-        expand: 'profissional,schedule',
-      })
-
-      // Ordenar e achar o próximo válido
-      const validItems = res.items.filter((item) => {
-        const scheduleDate = item.expand?.schedule?.data
-        const st = String(item.status)
-        if (scheduleDate) {
-          return scheduleDate >= today && st !== 'cancelado' && st !== 'concluído'
-        }
-        return st === 'pendente' || st === 'confirmado' || st === 'agendado'
-      })
-
-      if (validItems.length > 0) {
-        setProximoAgendamento(validItems[0])
-      } else {
-        setProximoAgendamento(null)
-      }
-    } catch (err) {
-      console.warn('Erro ao carregar próxima sessão do aluno:', err)
-      setProximoAgendamento(null)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   useEffect(() => {
-    fetchNextAppointment()
-
-    // Subscrição em tempo real para mudanças em appointments
-    let unsubscribeFn: (() => Promise<void>) | undefined
+    if (!studentId) return
     let cancelled = false
 
     pb.collection('appointments')
-      .subscribe('*', (e) => {
-        const record = e.record as unknown as AppointmentRecord
-        if (record && record.aluno === studentId) {
-          fetchNextAppointment()
-        }
+      .getFullList<AppointmentRecord>({
+        filter: `aluno = "${studentId}" && status != "cancelado" && status != "concluído"`,
+        sort: '-created',
+        expand: 'profissional,schedule,service_record',
       })
-      .then((fn) => {
-        if (cancelled) {
-          fn().catch(() => {})
-        } else {
-          unsubscribeFn = fn
-        }
+      .then((res) => {
+        if (cancelled) return
+        const today = new Date().toISOString().split('T')[0]
+        const upcoming = res
+          .filter((appt) => {
+            const d = appt.expand?.schedule?.data
+            if (d) return d >= today
+            return appt.status === 'pendente' || appt.status === 'confirmado'
+          })
+          .sort((a, b) => {
+            const da = a.expand?.schedule?.data || '9999-12-31'
+            const db = b.expand?.schedule?.data || '9999-12-31'
+            return da.localeCompare(db)
+          })
+        setAppointment(upcoming[0] || null)
       })
-      .catch((err) => {
-        console.warn('[Realtime ProximaSessao] Ignorando erro silenciosamente:', err)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false)
       })
 
     return () => {
       cancelled = true
-      if (unsubscribeFn) {
-        unsubscribeFn().catch(() => {})
-      } else {
-        pb.collection('appointments')
-          .unsubscribe('*')
-          .catch(() => {})
-      }
     }
   }, [studentId])
 
-  // Se estiver carregando ou não houver agendamento futuro, não polui a tela do aluno
-  if (loading || !proximoAgendamento) {
+  if (loading) {
     return (
-      <MeusAgendamentosModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        studentId={studentId}
-        onUpdated={fetchNextAppointment}
-      />
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-5 rounded-2xl animate-pulse">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-[#2A2A2A]" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-32 rounded bg-[#2A2A2A]" />
+            <div className="h-4 w-2/3 rounded bg-[#2A2A2A]" />
+            <div className="h-3 w-1/3 rounded bg-[#2A2A2A]" />
+          </div>
+          <div className="h-9 w-28 rounded-xl bg-[#2A2A2A] hidden sm:block" />
+        </div>
+      </Card>
     )
   }
 
-  const schedule = proximoAgendamento.expand?.schedule
-  const prof = proximoAgendamento.expand?.profissional
-  const profName = prof?.name || 'Profissional 369'
-  const dataFormatada = schedule?.data
-    ? new Date(schedule.data + 'T00:00:00').toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-    : 'A combinar'
-  const horario = schedule?.hora_inicio
-    ? `${schedule.hora_inicio}${schedule.hora_fim ? ` - ${schedule.hora_fim}` : ''}`
-    : 'Horário agendado'
-
-  const hasPendingAdvance =
-    Boolean(proximoAgendamento.requires_advance) &&
-    (proximoAgendamento.advance_amount || 0) > 0 &&
-    proximoAgendamento.status !== 'cancelado'
-
-  return (
-    <>
-      <Card className="bg-gradient-to-r from-white via-[#FCFBF7] to-white border-2 border-[#D4AF37]/50 p-5 rounded-2xl shadow-md transition-all hover:shadow-lg relative overflow-hidden">
-        {/* Glow dourado de destaque (simplificado no mobile) */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 rounded-full sm:blur-2xl -mr-10 -mt-10 pointer-events-none opacity-50 sm:opacity-100" />
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-4">
-            <div className="relative shrink-0">
-              <UserAvatar
-                user={prof}
-                thumb="64x64"
-                className="w-14 h-14 rounded-2xl border-2 border-[#D4AF37] shadow-sm text-sm"
-              />
-              <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white" />
+  if (!appointment) {
+    // Estado vazio acolhedor: sem sessão marcada
+    return (
+      <Card className="bg-[#181818] border border-[#2A2A2A] p-5 rounded-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/30 flex items-center justify-center text-[#0057FF] shrink-0">
+              <CalendarClock className="w-5.5 h-5.5" />
             </div>
-
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/40 text-[#B8962E] font-montserrat flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> Próxima Sessão
-                </span>
-                <span
-                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                    proximoAgendamento.status === 'confirmado'
-                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                      : String(proximoAgendamento.status) === 'concluído'
-                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                        : 'bg-amber-100 text-amber-800 border border-amber-300'
-                  }`}
-                >
-                  {proximoAgendamento.status === 'confirmado'
-                    ? 'Confirmada'
-                    : String(proximoAgendamento.status) === 'concluído'
-                      ? 'Concluída'
-                      : 'Agendada'}
-                </span>
-              </div>
-
-              <h3 className="font-extrabold font-montserrat text-[#1A1A1A] text-base sm:text-lg">
-                {proximoAgendamento.servico_tipo || 'Consulta / Sessão'} com {profName}
+            <div className="min-w-0">
+              <span className="text-[11px] font-bold text-[#0057FF] uppercase tracking-widest font-montserrat">
+                Agenda
+              </span>
+              <h3 className="text-sm font-bold font-montserrat text-white mt-0.5">
+                Nenhuma sessão marcada por enquanto
               </h3>
-
-              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 font-inter">
-                <span className="flex items-center gap-1 font-semibold text-gray-800">
-                  <Calendar className="w-3.5 h-3.5 text-[#B8962E]" />
-                  {dataFormatada}
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1 font-semibold text-gray-800">
-                  <Clock className="w-3.5 h-3.5 text-[#B8962E]" />
-                  {horario}
-                </span>
-                {schedule?.dia_da_semana && (
-                  <>
-                    <span>•</span>
-                    <span className="capitalize text-gray-500">{schedule.dia_da_semana}</span>
-                  </>
-                )}
-              </div>
+              <p className="text-xs text-gray-400 font-inter mt-0.5 leading-relaxed">
+                Que tal agendar um horário com um profissional ou entrar em uma aula coletiva?
+              </p>
             </div>
           </div>
-
-          {/* Ações: Ver detalhes / Pagar sinal se pendente */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
-            {hasPendingAdvance && (
-              <Button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs uppercase px-3.5 py-2 rounded-xl shadow-xs flex items-center justify-center gap-1.5"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-                Sinal Pendente (R$ {(proximoAgendamento.advance_amount || 0).toFixed(2)})
+          <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto shrink-0">
+            <Link to="/aluno/profissionais" className="flex-1 sm:flex-none">
+              <Button className="w-full bg-[#0057FF] hover:bg-[#0046d1] text-white text-xs font-bold font-montserrat uppercase rounded-xl min-h-[40px] px-4 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+                <UserPlus className="w-4 h-4" /> Agendar
               </Button>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setModalOpen(true)}
-              className="border-[#D4AF37] text-[#B8962E] hover:bg-[#D4AF37]/10 font-bold text-xs uppercase px-3.5 py-2 rounded-xl flex items-center justify-center gap-1"
-            >
-              Meus Agendamentos
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Button>
+            </Link>
+            <Link to="/aluno/agenda" className="flex-1 sm:flex-none">
+              <Button
+                variant="outline"
+                className="w-full border-[#2A2A2A] text-gray-200 hover:bg-white/5 font-bold rounded-xl min-h-[40px] px-4 flex items-center justify-center gap-1.5"
+              >
+                <Users className="w-4 h-4" /> Aulas
+              </Button>
+            </Link>
           </div>
         </div>
-
-        {/* Alerta discreto de sinal pendente se aplicável */}
-        {hasPendingAdvance && (
-          <div className="mt-3 pt-3 border-t border-[#D4AF37]/20 flex items-center justify-between gap-2 text-xs font-inter text-amber-800 bg-amber-50/60 p-2 rounded-lg">
-            <span className="flex items-center gap-1.5">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              Sinal de 30% aguarda confirmação de comprovante PIX para assegurar sua vaga.
-            </span>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="text-[#B8962E] font-bold underline hover:text-[#9A7D24] text-[11px] shrink-0 uppercase"
-            >
-              Ver PIX
-            </button>
-          </div>
-        )}
       </Card>
+    )
+  }
 
-      <MeusAgendamentosModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        studentId={studentId}
-        onUpdated={fetchNextAppointment}
-      />
-    </>
+  const schedule = appointment.expand?.schedule
+  const profName = appointment.expand?.profissional?.name || 'Profissional 369'
+  const serviceName = SERVICO_LABELS[appointment.servico_tipo] || 'Atendimento'
+  const date = schedule?.data
+    ? new Date(schedule.data + 'T00:00:00').toLocaleDateString('pt-BR', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+      })
+    : 'Data a combinar'
+  const time = schedule?.hora_inicio || 'Horário agendado'
+
+  return (
+    <Card className="bg-gradient-to-br from-[#181818] via-[#141414] to-[#181818] border-2 border-[#0057FF]/50 rounded-2xl p-5 shadow-[0_8px_30px_rgba(0,87,255,0.15)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-11 h-11 rounded-xl bg-[#0057FF]/10 border border-[#0057FF]/40 flex items-center justify-center text-[#0057FF] shrink-0">
+            <CalendarClock className="w-5.5 h-5.5" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-[#0057FF] uppercase tracking-widest font-montserrat">
+              Próxima atividade confirmada
+            </span>
+            <h3 className="text-base sm:text-lg font-extrabold font-montserrat text-white mt-0.5 truncate">
+              {serviceName}
+            </h3>
+            <p className="text-xs text-gray-400 font-inter mt-0.5">
+              {date} às <span className="text-[#D4AF37] font-bold">{time}</span> · com {profName}
+            </p>
+          </div>
+        </div>
+        <Link to="/aluno/agenda" className="shrink-0 w-full sm:w-auto">
+          <Button className="w-full sm:w-auto bg-[#0057FF] hover:bg-[#0046d1] text-white text-xs font-bold font-montserrat uppercase rounded-xl min-h-[40px] px-5 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+            Ver Agenda <ChevronRight className="w-4 h-4" />
+          </Button>
+        </Link>
+      </div>
+    </Card>
   )
 }
