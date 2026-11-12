@@ -109,7 +109,7 @@ export function ProximaSessaoCard({ studentId }: ProximaSessaoCardProps) {
                 <UserPlus className="w-4 h-4" /> Agendar
               </Button>
             </Link>
-            <Link to="/aluno/agenda" className="flex-1 sm:flex-none">
+            <Link to="/aluno" className="flex-1 sm:flex-none">
               <Button
                 variant="outline"
                 className="w-full border-[#2A2A2A] text-gray-200 hover:bg-white/5 font-bold rounded-xl min-h-[40px] px-4 flex items-center justify-center gap-1.5"
@@ -154,7 +154,7 @@ export function ProximaSessaoCard({ studentId }: ProximaSessaoCardProps) {
             </p>
           </div>
         </div>
-        <Link to="/aluno/agenda" className="shrink-0 w-full sm:w-auto">
+        <Link to="/aluno" className="shrink-0 w-full sm:w-auto">
           <Button className="w-full sm:w-auto bg-[#0057FF] hover:bg-[#0046d1] text-white text-xs font-bold font-montserrat uppercase rounded-xl min-h-[40px] px-5 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
             Ver Agenda <ChevronRight className="w-4 h-4" />
           </Button>
