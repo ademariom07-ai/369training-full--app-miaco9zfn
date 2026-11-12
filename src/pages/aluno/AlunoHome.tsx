@@ -272,7 +272,11 @@ export default function AlunoHome() {
       </div>
 
       {/* AULAS COLETIVAS MULTI-ALUNO E CONFIRMAÇÃO DE PRESENÇA (SELFIE COLETIVA) */}
-      {user && <MinhasAulasColetivasAluno currentUserId={user.id} />}
+      {user && (
+        <div id="aulas-coletivas">
+          <MinhasAulasColetivasAluno currentUserId={user.id} />
+        </div>
+      )}
 
       {/* AGENTE 369 DO ALUNO (BENEFÍCIO DO PLANO, MOTOR DETERMINÍSTICO E FRANQUIAS) */}
       <Agente369Section />
