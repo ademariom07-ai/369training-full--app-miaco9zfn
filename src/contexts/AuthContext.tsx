@@ -119,6 +119,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return authData.record as unknown as UserProfile
     } catch (err: any) {
       if (err?.status === 400 || err?.status === 401) {
+        // Distingue credencial errada de bloqueio por e-mail não confirmado (regra da plataforma).
+        const raw = typeof err?.response?.message === 'string' ? err.response.message : ''
+        if (raw.includes('Confirme seu e-mail') || raw.includes('EMAIL_NOT_VERIFIED')) {
+          throw new Error(
+            'Confirme seu e-mail para continuar. Enviamos um link de confirmação para a sua caixa de entrada.',
+          )
+        }
         throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.')
       }
       if (err?.status === 0 || (err?.name === 'ClientResponseError' && !err?.status)) {

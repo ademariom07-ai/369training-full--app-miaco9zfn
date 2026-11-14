@@ -50,6 +50,7 @@ export default function Login() {
       setLoading(false)
     }
   }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) {
