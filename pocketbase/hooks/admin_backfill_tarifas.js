@@ -140,17 +140,18 @@ routerAdd(
             profPlanCache[profId] = profPlan
           }
 
-          // NOVA REGRA: plano GRATIS/BASICO e PRO PARCEIRO não têm tarifa por serviço concluído
+          // 4 planos confirmados: grátis R$ 0, básico R$ 1, pro R$ 2, premium R$ 3, pro_parceiro R$ 0
           if (profPlan === 'pro_parceiro') {
             tarifasPuladasProParceiro++
             continue
           }
-          if (profPlan === 'gratis' || profPlan === 'basico') {
+          if (profPlan === 'gratis') {
             tarifasPuladasPlanoGratis++
             continue
           }
 
-          let rate = 2.0
+          let rate = 1.0 // basico
+          if (profPlan === 'pro') rate = 2.0
           if (profPlan === 'premium') rate = 3.0
 
           // Criar wallet_transaction idêntica ao on_service_completed.js
@@ -197,7 +198,7 @@ routerAdd(
 
         const planTarifas = {
           gratis: 0.0,
-          basico: 0.0,
+          basico: 1.0,
           pro: 2.0,
           premium: 3.0,
           pro_parceiro: 0.0,

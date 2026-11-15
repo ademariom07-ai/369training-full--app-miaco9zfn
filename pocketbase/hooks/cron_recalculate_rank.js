@@ -20,13 +20,13 @@ cronAdd('recalculate_rank', '0 3 * * *', () => {
     pro_parceiro: 1, // Multiplicador de plano 1X para parceiro e aluno vinculado
   }
 
-  // NOVA REGRA: plano grátis/básico = ZERO tarifa (nenhum lançamento de tarifa)
+  // 4 planos confirmados: grátis R$ 0, básico R$ 1, pro R$ 2, premium R$ 3, pro_parceiro R$ 0
   const planTarifas = {
     gratis: 0.0,
-    basico: 0.0,
+    basico: 1.0,
     pro: 2.0,
     premium: 3.0,
-    pro_parceiro: 0.0, // R$ 0 tarifa por serviço
+    pro_parceiro: 0.0,
   }
 
   let proParceiroFloor = 150

@@ -97,7 +97,7 @@ onRecordAfterCreateSuccess((e) => {
 
       const planTarifas = {
         gratis: 0.0,
-        basico: 0.0,
+        basico: 1.0,
         pro: 2.0,
         premium: 3.0,
         pro_parceiro: 0.0,
