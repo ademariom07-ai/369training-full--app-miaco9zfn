@@ -8,3 +8,9 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | Data | Migração | Teste no banco real | Observação |
 | --- | --- | --- | --- |
 | 15/11/2026 | 20261115120000_quick_signup_contacts.sql | quick_signup_contacts.sql: 18 verificações OK | Cadastro rápido: nome, celular, e-mail e senha. |
+
+## Configurações do painel (Auth)
+
+| Data | Configuração | Valor | Motivo |
+| --- | --- | --- | --- |
+| 15/11/2026 | Auth → Sign In / Providers → Confirm email | Desligado | Cadastro rápido entra direto; a confirmação de e-mail passa para a etapa "complete seu cadastro", antes do uso real. Conferido em /auth/v1/settings (mailer_autoconfirm=true). |
