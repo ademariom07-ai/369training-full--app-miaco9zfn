@@ -52,7 +52,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   if(mode==='signup'&&!normalizeBrazilPhone(phone)){setMessage('Preencha um celular válido com DDD, por exemplo (11) 98765-4321.');return}
   await act(async()=>{
    if(mode==='login')await controller.current!.login(email,password)
-   else if(mode==='signup'){await controller.current!.signup(email,password,{fullName,phone});setNotice('Se a confirmação for necessária, siga as instruções no seu e-mail. Se já possui conta, use Entrar.')}
+   else if(mode==='signup'){const started=await controller.current!.signup(email,password,{fullName,phone});setNotice(started?'Conta criada! Bem-vindo(a) ao 369 WELLNESS.':'Se a confirmação for necessária, siga as instruções no seu e-mail. Se já possui conta, use Entrar.')}
    else{await controller.current!.recover(email);setNotice('Se o endereço estiver apto à recuperação, você receberá as instruções por e-mail. Verifique também a caixa de spam.')}
   })
  }

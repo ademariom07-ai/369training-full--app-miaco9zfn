@@ -91,7 +91,10 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
    if(!phone)throw Error('Preencha um celular válido com DDD.')
    data={full_name:fullName,phone}
   }
-  return mailOperation(async url=>{const result=await client.auth.signUp({email:address,password,options:data?{emailRedirectTo:url,data}:{emailRedirectTo:url}});if(result.error)throw Error('Cadastro indisponível.')})
+  // Retorna true quando o Supabase já abre a sessão (cadastro sem confirmação de e-mail).
+  let started=false
+  await mailOperation(async url=>{const result=await client.auth.signUp({email:address,password,options:data?{emailRedirectTo:url,data}:{emailRedirectTo:url}});if(result.error)throw Error('Cadastro indisponível.');started=!!result.data.session})
+  return started
  }
  async function resendConfirmation(email:string){
   const address=mailEmail(email)
