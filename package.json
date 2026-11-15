@@ -4,6 +4,7 @@
   "private": true,
   "version": "0.0.109",
   "type": "module",
+  "packageManager": "pnpm@10.28.0",
   "scripts": {
     "start": "vite dev",
     "dev": "vite",
