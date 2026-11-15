@@ -17,6 +17,7 @@ import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {Card} from '@/components/ui/card'
 import {getSupabaseClient} from '@/lib/supabase/client'
+import {normalizeBrazilPhone,normalizeFullName} from '@/lib/supabase/phone'
 import {createAccountSession,type AccountState} from '@/lib/supabase/accountSession'
 import TrainingPlans from '@/components/TrainingPlans'
 import ProfessionalApplications from '@/components/ProfessionalApplications'
@@ -27,6 +28,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
  const [state,setState]=useState(initial),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[name,setName]=useState(''),[message,setMessage]=useState(''),[links,setLinks]=useState<ParticipantLink[]>([]),[linkError,setLinkError]=useState(''),[linksLoading,setLinksLoading]=useState(false),[linkPage,setLinkPage]=useState(1),[ending,setEnding]=useState<ParticipantLink|null>(null),[linkOwner,setLinkOwner]=useState<string|null>(null)
  const [availabilityDay,setAvailabilityDay]=useState(()=>saoPauloToday())
  const [mode,setMode]=useState<'login'|'signup'|'recover'>('login'),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
+ const [fullName,setFullName]=useState(''),[phone,setPhone]=useState('')
  const controller=useRef<ReturnType<typeof createAccountSession>|null>(null)
  useEffect(()=>{
   try{const session=createAccountSession(getSupabaseClient(),setState,undefined,new URL(redirectPath,window.location.origin).href);controller.current=session;session.start();return()=>{session.dispose();controller.current=null}}
@@ -46,9 +48,11 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
  function chooseMode(next:typeof mode){setMode(next);setPassword('');setConfirmation('');setMessage('');setNotice('')}
  async function submitAccess(){
   if(mode==='signup'&&password!==confirmation){setMessage('As senhas precisam ser iguais.');setPassword('');setConfirmation('');return}
+  if(mode==='signup'&&!normalizeFullName(fullName)){setMessage('Preencha seu nome completo (nome e sobrenome).');return}
+  if(mode==='signup'&&!normalizeBrazilPhone(phone)){setMessage('Preencha um celular válido com DDD, por exemplo (11) 98765-4321.');return}
   await act(async()=>{
    if(mode==='login')await controller.current!.login(email,password)
-   else if(mode==='signup'){await controller.current!.signup(email,password);setNotice('Se a confirmação for necessária, siga as instruções no seu e-mail. Se já possui conta, use Entrar.')}
+   else if(mode==='signup'){await controller.current!.signup(email,password,{fullName,phone});setNotice('Se a confirmação for necessária, siga as instruções no seu e-mail. Se já possui conta, use Entrar.')}
    else{await controller.current!.recover(email);setNotice('Se o endereço estiver apto à recuperação, você receberá as instruções por e-mail. Verifique também a caixa de spam.')}
   })
  }
@@ -61,6 +65,8 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   {(state.phase==='signed_out'||state.phase==='error')&&<>
    <div className="flex flex-wrap gap-2" aria-label="Opções de acesso">{([['login','Entrar'],['signup','Criar conta'],['recover','Recuperar senha']] as const).map(([value,label])=><Button key={value} type="button" variant={mode===value?'default':'outline'} disabled={state.busy||!controller.current} onClick={()=>chooseMode(value)}>{label}</Button>)}</div>
    <form className="space-y-4" onSubmit={e=>{e.preventDefault();void submitAccess()}}>
+    {mode==='signup'&&<><label className="block">Nome completo<Input autoComplete="name" required maxLength={160} value={fullName} onChange={e=>setFullName(e.target.value)} disabled={state.busy}/></label>
+    <label className="block">Celular (WhatsApp)<Input type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" required maxLength={40} value={phone} onChange={e=>setPhone(e.target.value)} disabled={state.busy}/></label></>}
     <label className="block">E-mail<Input type="email" autoComplete="username" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} disabled={state.busy}/></label>
     {mode!=='recover'&&<label className="block">{mode==='signup'?'Nova senha':'Senha'}<Input type="password" autoComplete={mode==='signup'?'new-password':'current-password'} required minLength={mode==='signup'?10:undefined} maxLength={mode==='signup'?72:1024} value={password} onChange={e=>setPassword(e.target.value)} disabled={state.busy}/></label>}
     {mode==='signup'&&<><p>Use pelo menos 10 caracteres. O cadastro inicial é de aluno; o acesso profissional depende de aprovação.</p><label className="block">Confirme a senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={confirmation} onChange={e=>setConfirmation(e.target.value)} disabled={state.busy}/></label></>}

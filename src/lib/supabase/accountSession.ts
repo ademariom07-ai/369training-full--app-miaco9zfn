@@ -6,6 +6,7 @@ import {ensureOwnWallet,reserveWallet,cancelWallet} from './wallet'
 import {completeTrainingPlan} from './trainingCompletions'
 import {createTrainingPlan,markTrainingRead,type TrainingInput} from './trainingPlans'
 import {submitApplication,reviewApplication,type Specialty,type Application} from './applications'
+import {normalizeBrazilPhone,normalizeFullName} from './phone'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 import { requestStudentLink, acceptStudentLink, revokeStudentLink, type StudentLink } from './links'
@@ -80,9 +81,17 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
    lastMailAttempt=Date.now();await task(url)
   })
  }
- async function signup(email:string,password:string){
+ async function signup(email:string,password:string,details?:{fullName:string;phone:string}){
   const address=mailEmail(email);newPassword(password)
-  return mailOperation(async url=>{const result=await client.auth.signUp({email:address,password,options:{emailRedirectTo:url}});if(result.error)throw Error('Cadastro indisponível.')})
+  // Cadastro rápido: nome e telefone vão no user_metadata; o servidor valida e cria perfil (aluno) e contato.
+  let data:{full_name:string;phone:string}|undefined
+  if(details){
+   const fullName=normalizeFullName(details.fullName),phone=normalizeBrazilPhone(details.phone)
+   if(!fullName)throw Error('Preencha seu nome completo.')
+   if(!phone)throw Error('Preencha um celular válido com DDD.')
+   data={full_name:fullName,phone}
+  }
+  return mailOperation(async url=>{const result=await client.auth.signUp({email:address,password,options:data?{emailRedirectTo:url,data}:{emailRedirectTo:url}});if(result.error)throw Error('Cadastro indisponível.')})
  }
  async function resendConfirmation(email:string){
   const address=mailEmail(email)
