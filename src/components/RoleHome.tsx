@@ -1,5 +1,5 @@
 import React from 'react'
-import {Briefcase,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 
 // Menus por perfil verificado. Só organiza a tela: a autorização continua no servidor.
@@ -29,6 +29,7 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'alunos',label:'Meus alunos',icon:Users,summary:'Pedidos de vínculo e alunos ativos.'},
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Horários disponíveis, regras e reservas.'},
   {id:'treinos',label:'Treinos',icon:Dumbbell,summary:'Publique e acompanhe treinos dos seus alunos.'},
+  {id:'meus-videos',label:'Meus vídeos',icon:Clapperboard,summary:'Envie vídeos para o feed dos alunos da sua região.'},
   carteira,esg,
   {id:'cadastro',label:'Meu cadastro profissional',icon:ClipboardCheck,summary:'Especialidade e situação da aprovação.'},
   perfil],
@@ -38,6 +39,7 @@ const menus:Record<RoleKind,RoleView[]>={
   carteira,esg,perfil],
  admin:[inicio,
   {id:'aprovacoes',label:'Aprovações',icon:ShieldCheck,summary:'Cadastros profissionais aguardando análise.'},
+  {id:'feed',label:'Vídeos do feed',icon:Clapperboard,summary:'Aprove os vídeos dos profissionais antes de irem para o feed.'},
   {id:'participantes',label:'Participantes',icon:Users,summary:'Visão geral de alunos e profissionais.'},
   {id:'servicos',label:'Serviços recebidos',icon:Inbox,summary:'Eventos de serviços que chegaram à plataforma.'},
   {id:'videos',label:'Vídeos — piloto',icon:Film,summary:'Biblioteca de vídeos em teste.'},
@@ -92,7 +94,7 @@ export function RoleShell({profile,view,onView,busy,onRefresh,onLogout,children}
  </div>
 }
 
-export function RoleOverview({profile,onView,highlights}:{profile:Pick<OwnProfile,'role'|'approved'>,onView:(id:string)=>void,highlights?:React.ReactNode}){
+export function RoleOverview({profile,onView,highlights,feed}:{profile:Pick<OwnProfile,'role'|'approved'>,onView:(id:string)=>void,highlights?:React.ReactNode,feed?:React.ReactNode}){
  const kind=roleKind(profile),info=titles[kind]
  return <div className="space-y-5">
   <section className="rounded-[12px_30px_12px_30px] bg-[#33325a] p-6 text-[#f7f6f2]">
@@ -101,6 +103,8 @@ export function RoleOverview({profile,onView,highlights}:{profile:Pick<OwnProfil
    <p className="mt-2 max-w-xl text-[#d5d4e1]">{info.text}</p>
   </section>
   {highlights}
+  {feed}
+  {feed&&<h2 className="pt-2 text-xl font-extrabold">Atalhos</h2>}
   <div className="grid gap-3 sm:grid-cols-2">
    {menus[kind].filter(item=>item.id!=='inicio').map(item=>{const Icon=item.icon
     return <button key={item.id} type="button" onClick={()=>onView(item.id)} className="flex min-h-11 items-start gap-3 rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4 text-left hover:border-[#a5ce41]">

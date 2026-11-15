@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_locations: {
+        Row: { user_id: string; uf: string; city: string; neighborhood: string | null; lat: number | null; lng: number | null; updated_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      feed_videos: {
+        Row: { id: string; professional_id: string; youtube_id: string; title: string; description: string | null; status: string; review_reason: string | null; reviewed_by: string | null; reviewed_at: string | null; approved_at: string | null; created_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       booking_reservations: {
         Row: {
           id: string
@@ -677,6 +689,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_my_location: {
+        Args: { p_uf: string; p_city: string; p_neighborhood: string | null; p_lat: number | null; p_lng: number | null }
+        Returns: { user_id: string; uf: string; city: string; neighborhood: string | null; lat: number | null; lng: number | null; updated_at: string }[]
+      }
+      submit_feed_video: {
+        Args: { p_url: string; p_title: string; p_description: string | null }
+        Returns: { id: string; professional_id: string; youtube_id: string; title: string; description: string | null; status: string; review_reason: string | null; reviewed_by: string | null; reviewed_at: string | null; approved_at: string | null; created_at: string }[]
+      }
+      remove_feed_video: {
+        Args: { p_video_id: string }
+        Returns: { id: string; professional_id: string; youtube_id: string; title: string; description: string | null; status: string; review_reason: string | null; reviewed_by: string | null; reviewed_at: string | null; approved_at: string | null; created_at: string }[]
+      }
+      review_feed_video: {
+        Args: { p_video_id: string; p_decision: string; p_reason: string }
+        Returns: { id: string; professional_id: string; youtube_id: string; title: string; description: string | null; status: string; review_reason: string | null; reviewed_by: string | null; reviewed_at: string | null; approved_at: string | null; created_at: string }[]
+      }
+      list_feed_videos_for_review: {
+        Args: { p_status: string; p_page: number }
+        Returns: { video_id: string; youtube_id: string; title: string; description: string | null; status: string; professional_id: string; professional_name: string; review_reason: string | null; created_at: string }[]
+      }
+      student_video_feed: {
+        Args: { p_lat: number | null; p_lng: number | null; p_page: number }
+        Returns: { video_id: string; youtube_id: string; title: string; description: string | null; professional_id: string; professional_name: string; specialty: string | null; uf: string | null; city: string | null; neighborhood: string | null; proximity: string; distance_km: number | null; published_at: string }[]
+      }
       booking_hold_minutes: { Args: Record<never, never>; Returns: number }
       set_booking_hold_minutes: { Args: {p_expected:number;p_minutes:number}; Returns:number }
       create_booking_hold: { Args: {p_request:string;p_professional:string;p_day:string;p_hour:number;p_availability:number;p_terms:string}; Returns: Database['public']['Tables']['booking_reservations']['Row'] }

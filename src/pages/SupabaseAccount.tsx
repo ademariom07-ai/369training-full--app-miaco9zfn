@@ -1,5 +1,6 @@
 import {HoldPolicy} from '@/components/BookingHoldControls'
 import BookingReservations from '@/components/BookingReservations'
+import {StudentVideoFeed,ProfessionalVideos,AdminVideoReview} from '@/components/VideoFeed'
 import {RoleShell,RoleOverview,pickView,roleKind} from '@/components/RoleHome'
 import CashbackPolicyDrafts from '@/components/CashbackPolicyDrafts'
 import AdminServiceIntake from '@/components/AdminServiceIntake'
@@ -75,7 +76,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    :kind==='parceiro'&&linksReady?<p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{pendingLinks?`${pendingLinks} pedido(s) de vínculo aguardando seu aceite em “Meus alunos”.`:`Alunos ativos nesta página: ${activeLinks}.`}</p>
    :kind==='parceiro_pendente'?<p className="rounded-[12px_30px_12px_30px] border border-amber-300 bg-amber-50 p-4">Aprovação profissional pendente. Confira o andamento em “Meu cadastro profissional”.</p>:null
   const views:Record<string,()=>React.ReactNode>={
-   inicio:()=><RoleOverview profile={profile} onView={openView} highlights={highlights}/>,
+   inicio:()=><RoleOverview profile={profile} onView={openView} highlights={highlights} feed={kind==='aluno'?<StudentVideoFeed key={'feed'+profile.id} owner={profile.id} disabled={busy}/>:undefined}/>,
    perfil:()=>panel(<><h2 className="text-xl font-bold">Meu perfil</h2><p>Perfil: {profile.role==='aluno'?'Aluno':profile.role==='profissional'?'Profissional':'Administrador'}</p>{kind==='parceiro_pendente'&&<p>Aprovação profissional pendente.</p>}<form className="space-y-3" onSubmit={e=>{e.preventDefault();void act(()=>controller.current!.renameProfile(name))}}><label className="block">Nome<Input required maxLength={160} value={name} onChange={e=>setName(e.target.value)} disabled={busy}/></label><Button type="submit" disabled={busy}>Salvar nome</Button></form></>),
    esg:()=>panel(<EsgProjects key={'esg'+profile.id} account={profile} disabled={busy} onSubmit={input=>controller.current!.submitEsg(input)} onReview={(row,decision,reason)=>controller.current!.reviewEsg(row,decision,reason)}/>),
    carteira:()=>panel(wallet),
@@ -87,9 +88,11 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    alunos:()=>panel(linksBlock),
    treinos:()=>panel(training),
    cadastro:()=>panel(applications),
+   'meus-videos':()=>panel(<ProfessionalVideos key={'myvideos'+profile.id} owner={profile.id} disabled={busy}/>),
    agenda:()=>kind==='parceiro'?<>{panel(<><h2 className="text-xl font-bold">Minha agenda</h2><BookingTerms key={'terms'+profile.id} owner={profile.id} disabled={busy} onSave={input=>controller.current!.saveTerms(input)}/><ProfessionalAvailability key={profile.id} owner={profile.id} selectedDay={availabilityDay} onSelectDay={setAvailabilityDay} disabled={busy} onSave={input=>controller.current!.saveAvailability(input)}/></>)}{panel(reservations)}</>:panel(reservations),
    // Admin
    aprovacoes:()=>panel(applications),
+   feed:()=>panel(<AdminVideoReview key={'review'+profile.id} owner={profile.id} disabled={busy}/>),
    participantes:()=>panel(<AdminParticipantOverview key={'overview'+profile.id} owner={profile.id} disabled={busy}/>),
    servicos:()=>panel(<AdminServiceIntake key={'intake'+profile.id} owner={profile.id} disabled={busy}/>),
    videos:()=>panel(<SupabaseVideoPilot key={'video'+profile.id} owner={profile.id} disabled={busy}/>),

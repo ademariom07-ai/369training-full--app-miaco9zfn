@@ -13,18 +13,18 @@ describe('home individual por perfil verificado',()=>{
  })
  it('aluno recebe profissionais e treino, sem administração nem gestão de agenda',()=>{
   const menu=ids('aluno');expect(menu).toEqual(expect.arrayContaining(['inicio','profissionais','treino','agenda','parceiro','perfil']))
-  for(const id of ['aprovacoes','participantes','ranking','alunos','treinos'])expect(menu).not.toContain(id)
+  for(const id of ['aprovacoes','participantes','ranking','alunos','treinos','meus-videos','feed'])expect(menu).not.toContain(id)
  })
  it('parceiro aprovado recebe alunos, agenda e treinos sem administração',()=>{
-  const menu=ids('profissional',true);expect(menu).toEqual(expect.arrayContaining(['alunos','agenda','treinos','cadastro']))
+  const menu=ids('profissional',true);expect(menu).toEqual(expect.arrayContaining(['alunos','agenda','treinos','meus-videos','cadastro']))
   for(const id of ['aprovacoes','participantes','financeiro'])expect(menu).not.toContain(id)
  })
  it('parceiro pendente não recebe funções ainda não autorizadas',()=>{
   const menu=ids('profissional');expect(menu).toContain('cadastro')
-  for(const id of ['alunos','treinos','aprovacoes'])expect(menu).not.toContain(id)
+  for(const id of ['alunos','treinos','aprovacoes','meus-videos'])expect(menu).not.toContain(id)
  })
  it('admin recebe aprovações, participantes, serviços, vídeos e rascunhos',()=>{
-  const menu=ids('admin');for(const id of ['aprovacoes','participantes','servicos','videos','financeiro','ranking'])expect(menu).toContain(id)
+  const menu=ids('admin');for(const id of ['aprovacoes','feed','participantes','servicos','videos','financeiro','ranking'])expect(menu).toContain(id)
   for(const id of ['treino','treinos','alunos'])expect(menu).not.toContain(id)
  })
  it('endereço com tela de outro perfil volta para a visão geral',()=>{

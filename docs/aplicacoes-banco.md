@@ -8,6 +8,7 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | Data | Migração | Teste no banco real | Observação |
 | --- | --- | --- | --- |
 | 15/11/2026 | 20261115120000_quick_signup_contacts.sql | quick_signup_contacts.sql: 18 verificações OK | Cadastro rápido: nome, celular, e-mail e senha. |
+| 16/11/2026 | 20261116120000_professional_video_feed.sql | professional_video_feed.sql: 28 verificações (aguardando aplicação) | Feed de vídeos (YouTube) dos profissionais, com aprovação do admin e ordem por proximidade. |
 
 ## Configurações do painel (Auth)
 

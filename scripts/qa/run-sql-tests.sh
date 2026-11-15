@@ -13,7 +13,7 @@ cleanup() { as_pg "$PGBIN/pg_ctl" -D "$WORK/data" -m immediate stop >/dev/null 2
 trap cleanup EXIT
 [ "$(id -u)" = 0 ] && chown postgres "$WORK"
 
-as_pg "$PGBIN/initdb" -D "$WORK/data" -A trust -U postgres >/dev/null
+as_pg "$PGBIN/initdb" -D "$WORK/data" -A trust -U postgres -E UTF8 --locale=C.UTF-8 >/dev/null
 as_pg "$PGBIN/pg_ctl" -D "$WORK/data" -l "$WORK/log" -w \
   -o "-k $WORK -c listen_addresses='' -p $PORT" start >/dev/null
 PSQL=(psql -X -q -v ON_ERROR_STOP=1 -h "$WORK" -p "$PORT" -U postgres -d postgres)
