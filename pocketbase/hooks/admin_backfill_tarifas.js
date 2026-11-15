@@ -62,6 +62,7 @@ routerAdd(
 
       let tarifasCriadas = 0
       let tarifasPuladasProParceiro = 0
+      let tarifasPuladasPlanoGratis = 0
       let tarifasJaExistentes = 0
       let servicosSemProfissional = 0
       const erros = []
@@ -139,16 +140,18 @@ routerAdd(
             profPlanCache[profId] = profPlan
           }
 
-          // Regra PRO PARCEIRO: R$ 0 tarifa por atendimento (apenas fixo R$ 149)
+          // NOVA REGRA: plano GRATIS/BASICO e PRO PARCEIRO não têm tarifa por serviço concluído
           if (profPlan === 'pro_parceiro') {
             tarifasPuladasProParceiro++
             continue
           }
+          if (profPlan === 'gratis' || profPlan === 'basico') {
+            tarifasPuladasPlanoGratis++
+            continue
+          }
 
-          let rate = 1.0
-          if (profPlan === 'pro') rate = 2.0
+          let rate = 2.0
           if (profPlan === 'premium') rate = 3.0
-          if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
 
           // Criar wallet_transaction idêntica ao on_service_completed.js
           const feeTx = new Record(walletCol)
@@ -193,8 +196,8 @@ routerAdd(
         }
 
         const planTarifas = {
-          gratis: 1.0,
-          basico: 1.0,
+          gratis: 0.0,
+          basico: 0.0,
           pro: 2.0,
           premium: 3.0,
           pro_parceiro: 0.0,
@@ -450,6 +453,7 @@ routerAdd(
         servicos_verificados: completedServices.length,
         tarifas_criadas: tarifasCriadas,
         tarifas_puladas_por_plano_pro_parceiro: tarifasPuladasProParceiro,
+        tarifas_puladas_por_plano_gratis: tarifasPuladasPlanoGratis,
         tarifas_ja_existentes: tarifasJaExistentes,
         servicos_sem_profissional: servicosSemProfissional,
         erros: erros,

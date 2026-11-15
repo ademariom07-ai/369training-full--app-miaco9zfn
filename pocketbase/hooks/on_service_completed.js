@@ -1,7 +1,8 @@
 // Hook triggered whenever a service status changes to 'concluido' or is created already 'concluido'
 // HOTFIX 369 v2 + OTIMIZAÇÃO EM LOTE (evita N+1 na conclusão de atendimentos):
 // 1. Débito de tarifa: PRO PARCEIRO paga R$ 0 de tarifa por serviço (apenas o fixo de R$ 149/mês).
-//    Planos: basico R$ 1, pro R$ 2, premium R$ 3, pro_parceiro R$ 0, gratis R$ 1.
+//    Planos: pro R$ 2, premium R$ 3, pro_parceiro R$ 0, gratis R$ 0 e basico R$ 0
+//    (NOVA REGRA: plano grátis/básico NÃO tem tarifa por serviço concluído — nenhum lançamento).
 // 2. Anti-duplicidade na tarifa: wallet_transactions já com reference_id = service.id && type = 'tarifa'.
 // 3. Teto do PRO PARCEIRO: Math.min(realServicesCount, proParceiroFloor) (teto de 150).
 // 4. Parceiro Grátis: pontua como Básico (1x), sem cashback, tie_break com plan_effective = 'basico_gratis'.
@@ -50,15 +51,14 @@ onRecordAfterUpdateSuccess((e) => {
 
         const profPlan = prof ? (prof.get('plan') || 'basico').toLowerCase() : 'basico'
 
-        // PRO PARCEIRO paga apenas o fixo de R$ 149/mês — SEM tarifa por serviço
-        if (profPlan === 'pro_parceiro') {
+        // NOVA REGRA: PRO PARCEIRO e plano GRATIS/BASICO não têm tarifa por serviço concluído
+        // (plano grátis/básico = ZERO tarifa — nenhum lançamento é criado)
+        if (profPlan === 'pro_parceiro' || profPlan === 'gratis' || profPlan === 'basico') {
           return
         }
 
-        let rate = 1.0
-        if (profPlan === 'pro') rate = 2.0
+        let rate = 2.0
         if (profPlan === 'premium') rate = 3.0
-        if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
 
         const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
         const feeTx = new Record(walletCol)
@@ -95,8 +95,8 @@ onRecordAfterUpdateSuccess((e) => {
       }
 
       const planTarifas = {
-        gratis: 1.0,
-        basico: 1.0,
+        gratis: 0.0,
+        basico: 0.0,
         pro: 2.0,
         premium: 3.0,
         pro_parceiro: 0.0,
@@ -554,15 +554,14 @@ onRecordAfterCreateSuccess((e) => {
 
         const profPlan = prof ? (prof.get('plan') || 'basico').toLowerCase() : 'basico'
 
-        // PRO PARCEIRO paga apenas o fixo de R$ 149/mês — SEM tarifa por serviço
-        if (profPlan === 'pro_parceiro') {
+        // NOVA REGRA: PRO PARCEIRO e plano GRATIS/BASICO não têm tarifa por serviço concluído
+        // (plano grátis/básico = ZERO tarifa — nenhum lançamento é criado)
+        if (profPlan === 'pro_parceiro' || profPlan === 'gratis' || profPlan === 'basico') {
           return
         }
 
-        let rate = 1.0
-        if (profPlan === 'pro') rate = 2.0
+        let rate = 2.0
         if (profPlan === 'premium') rate = 3.0
-        if (profPlan === 'basico' || profPlan === 'gratis') rate = 1.0
 
         const walletCol = $app.findCollectionByNameOrId('wallet_transactions')
         const feeTx = new Record(walletCol)
@@ -599,8 +598,8 @@ onRecordAfterCreateSuccess((e) => {
       }
 
       const planTarifas = {
-        gratis: 1.0,
-        basico: 1.0,
+        gratis: 0.0,
+        basico: 0.0,
         pro: 2.0,
         premium: 3.0,
         pro_parceiro: 0.0,
