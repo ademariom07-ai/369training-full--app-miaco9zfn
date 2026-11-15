@@ -16,3 +16,6 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | Data | Configuração | Valor | Motivo |
 | --- | --- | --- | --- |
 | 15/11/2026 | Auth → Sign In / Providers → Confirm email | Desligado | Cadastro rápido entra direto; a confirmação de e-mail passa para a etapa "complete seu cadastro", antes do uso real. Conferido em /auth/v1/settings (mailer_autoconfirm=true). |
+| 15/11/2026 | Authentication → Emails → SMTP Settings | Brevo (smtp-relay.brevo.com:587) | Envio de e-mails para qualquer endereço; o envio embutido do Supabase só atende a equipe do projeto. |
+| 15/11/2026 | Authentication → Emails → Templates → Reset Password | Modelo em português com {{ .Token }} (código de 6 dígitos) | Recuperação por código no site, sem depender do link nem do endereço de retorno. Testado: funcionou. |
+| 15/11/2026 | Authentication → URL Configuration → Site URL | Deve ser https://369wellness.ademariom07.workers.dev | Estava com dois endereços colados (chatgpt.site + localhost), o que gerava 404 nos links. Conferir. |
