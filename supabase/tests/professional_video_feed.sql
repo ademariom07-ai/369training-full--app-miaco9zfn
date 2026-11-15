@@ -21,7 +21,7 @@ begin
      or wellness_private.youtube_video_id('https://youtube.com/shorts/dQw4w9WgXcQ') <> 'dQw4w9WgXcQ'
      or wellness_private.youtube_video_id('https://m.youtube.com/watch?feature=share&v=dQw4w9WgXcQ&t=3') <> 'dQw4w9WgXcQ' then
       raise exception 'valid youtube link rejected'; end if; checks := checks + 1;
-    if wellness_private.youtube_video_id('http://www.youtube.com/watch?v=dQw4w9WgXcQ') is not null
+    if wellness_private.youtube_video_id('ftp://www.youtube.com/watch?v=dQw4w9WgXcQ') is not null
      or wellness_private.youtube_video_id('https://evil.com/watch?v=dQw4w9WgXcQ') is not null
      or wellness_private.youtube_video_id('https://www.youtube.com.evil.com/watch?v=dQw4w9WgXcQ') is not null
      or wellness_private.youtube_video_id('https://www.youtube.com/playlist?list=PL123') is not null then

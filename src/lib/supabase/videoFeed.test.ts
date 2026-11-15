@@ -15,8 +15,8 @@ const row={video_id:vid,youtube_id:'dQw4w9WgXcQ',title:'Mobilidade',description:
 
 describe('links do YouTube',()=>{
  it('aceita os formatos comuns e recusa outros endereços',()=>{
-  for(const url of ['https://www.youtube.com/watch?v=dQw4w9WgXcQ','https://youtu.be/dQw4w9WgXcQ?si=x','https://youtube.com/shorts/dQw4w9WgXcQ','https://m.youtube.com/watch?feature=share&v=dQw4w9WgXcQ'])expect(youtubeVideoId(url)).toBe('dQw4w9WgXcQ')
-  for(const url of ['http://youtu.be/dQw4w9WgXcQ','https://evil.com/watch?v=dQw4w9WgXcQ','https://www.youtube.com.evil.com/watch?v=dQw4w9WgXcQ','https://www.youtube.com/playlist?list=PL1','javascript:alert(1)'])expect(youtubeVideoId(url)).toBeNull()
+  for(const url of ['https://www.youtube.com/watch?v=dQw4w9WgXcQ','https://youtu.be/dQw4w9WgXcQ?si=x','https://youtube.com/shorts/dQw4w9WgXcQ','https://m.youtube.com/watch?feature=share&v=dQw4w9WgXcQ','youtu.be/dQw4w9WgXcQ','www.youtube.com/watch?v=dQw4w9WgXcQ','http://YouTube.com/live/dQw4w9WgXcQ',' https://music.youtube.com/watch?v=dQw4w9WgXcQ '])expect(youtubeVideoId(url)).toBe('dQw4w9WgXcQ')
+  for(const url of ['ftp://youtu.be/dQw4w9WgXcQ','https://evil.com/youtu.be/dQw4w9WgXcQ','https://evil.com/watch?v=dQw4w9WgXcQ','https://www.youtube.com.evil.com/watch?v=dQw4w9WgXcQ','https://www.youtube.com/playlist?list=PL1','javascript:alert(1)'])expect(youtubeVideoId(url)).toBeNull()
  })
 })
 describe('feed do aluno',()=>{
@@ -41,6 +41,11 @@ describe('região e envio',()=>{
  })
  it('link que não é do YouTube não é enviado',async()=>{
   const m=mock(null);await expect(submitVideo({url:'https://vimeo.com/1',title:'Treino',description:''},m.client)).rejects.toThrow('YouTube');expect(m.calls).toHaveLength(0)
+ })
+ it('envia o link no formato padrão e aceita vídeo já publicado (equipe)',async()=>{
+  const m=mock({id:vid,professional_id:id,youtube_id:'dQw4w9WgXcQ',title:'Boas-vindas',description:null,status:'approved',review_reason:'Publicado pela equipe.',reviewed_by:id,reviewed_at:'2026-11-17T10:00:00Z',approved_at:'2026-11-17T10:00:00Z',created_at:'2026-11-17T10:00:00Z'})
+  const sent=await submitVideo({url:'youtu.be/dQw4w9WgXcQ?si=abc',title:' Boas-vindas ',description:''},m.client)
+  expect(m.calls).toEqual([['submit_feed_video',{p_url:'https://www.youtube.com/watch?v=dQw4w9WgXcQ',p_title:'Boas-vindas',p_description:null}]]);expect(sent.status).toBe('approved')
  })
  it('análise do admin exige motivo',async()=>{
   const m=mock(null);await expect(reviewVideo(vid,'rejected','  ',m.client)).rejects.toThrow('motivo');expect(m.calls).toHaveLength(0)

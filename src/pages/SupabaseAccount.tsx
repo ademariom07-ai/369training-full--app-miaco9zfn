@@ -1,6 +1,6 @@
 import {HoldPolicy} from '@/components/BookingHoldControls'
 import BookingReservations from '@/components/BookingReservations'
-import {StudentVideoFeed,ProfessionalVideos,AdminVideoReview} from '@/components/VideoFeed'
+import {StudentVideoFeed,ProfessionalVideos,AdminVideoReview,PendingVideosNotice} from '@/components/VideoFeed'
 import {RoleShell,RoleOverview,pickView,roleKind} from '@/components/RoleHome'
 import CashbackPolicyDrafts from '@/components/CashbackPolicyDrafts'
 import AdminServiceIntake from '@/components/AdminServiceIntake'
@@ -74,6 +74,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   const activeLinks=links.filter(row=>row.state==='active').length,pendingLinks=links.filter(row=>row.state==='pending').length
   const highlights=kind==='aluno'&&linksReady?<p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{activeLinks?`Você tem ${activeLinks} profissional(is) acompanhando sua evolução.`:pendingLinks?'Seu pedido de vínculo aguarda o aceite do profissional.':'Comece escolhendo um profissional em “Profissionais”.'}</p>
    :kind==='parceiro'&&linksReady?<p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{pendingLinks?`${pendingLinks} pedido(s) de vínculo aguardando seu aceite em “Meus alunos”.`:`Alunos ativos nesta página: ${activeLinks}.`}</p>
+   :kind==='admin'?<PendingVideosNotice key={'pending'+profile.id} owner={profile.id} onOpen={()=>openView('feed')}/>
    :kind==='parceiro_pendente'?<p className="rounded-[12px_30px_12px_30px] border border-amber-300 bg-amber-50 p-4">Aprovação profissional pendente. Confira o andamento em “Meu cadastro profissional”.</p>:null
   const views:Record<string,()=>React.ReactNode>={
    inicio:()=><RoleOverview profile={profile} onView={openView} highlights={highlights} feed={kind==='aluno'?<StudentVideoFeed key={'feed'+profile.id} owner={profile.id} disabled={busy}/>:undefined}/>,
@@ -91,7 +92,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    'meus-videos':()=>panel(<ProfessionalVideos key={'myvideos'+profile.id} owner={profile.id} disabled={busy}/>),
    agenda:()=>kind==='parceiro'?<>{panel(<><h2 className="text-xl font-bold">Minha agenda</h2><BookingTerms key={'terms'+profile.id} owner={profile.id} disabled={busy} onSave={input=>controller.current!.saveTerms(input)}/><ProfessionalAvailability key={profile.id} owner={profile.id} selectedDay={availabilityDay} onSelectDay={setAvailabilityDay} disabled={busy} onSave={input=>controller.current!.saveAvailability(input)}/></>)}{panel(reservations)}</>:panel(reservations),
    // Admin
-   aprovacoes:()=>panel(applications),
+   aprovacoes:()=><><PendingVideosNotice key={'pendingA'+profile.id} owner={profile.id} onOpen={()=>openView('feed')}/>{panel(applications)}</>,
    feed:()=>panel(<AdminVideoReview key={'review'+profile.id} owner={profile.id} disabled={busy}/>),
    participantes:()=>panel(<AdminParticipantOverview key={'overview'+profile.id} owner={profile.id} disabled={busy}/>),
    servicos:()=>panel(<AdminServiceIntake key={'intake'+profile.id} owner={profile.id} disabled={busy}/>),

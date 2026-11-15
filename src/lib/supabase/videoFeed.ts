@@ -7,10 +7,11 @@ import {verifiedIdentity,assertSessionUnchanged} from './profiles'
 // quem aprova e o que o aluno vê; aqui só se valida a entrada e a forma da resposta.
 type Client=SupabaseClient<Database>
 const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const youtubePattern=/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#/].*)?$/
+const youtubePattern=/^(?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#/].*)?$/i
 export const ufs=['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'] as const
 
-// Mesmo critério de wellness_private.youtube_video_id.
+// Mesmo critério de wellness_private.youtube_video_id (migração 20261117120000).
+// Aceita o link com ou sem https://, de youtube.com, youtu.be, shorts e lives.
 export function youtubeVideoId(url:string):string|null{
  if(typeof url!=='string'||url.length>300)return null
  return youtubePattern.exec(url.trim())?.[1]??null
@@ -84,13 +85,14 @@ export async function readMyVideos(client:Client=getSupabaseClient()):Promise<My
 }
 
 export async function submitVideo(input:{url:string,title:string,description:string},client:Client=getSupabaseClient()):Promise<MyVideo>{
- if(!youtubeVideoId(input.url))fail('Cole um link do YouTube (youtube.com ou youtu.be).')
+ const videoId=youtubeVideoId(input.url)
+ if(!videoId)fail('Cole um link do YouTube (youtube.com ou youtu.be).')
  const title=clean(input.title??''),description=(input.description??'').trim()
  if(title.length<3||title.length>120)fail('O título precisa ter de 3 a 120 caracteres.')
  if(description.length>1000)fail('A descrição pode ter até 1000 caracteres.')
- const {actor,result}=await run(client,async()=>await client.rpc('submit_feed_video',{p_url:input.url.trim(),p_title:title,p_description:description||null}).single())
- if(result.error){const known=['Este vídeo já foi enviado.','Aguarde a análise dos vídeos enviados.'];fail(known.includes(result.error.message)?result.error.message:'Não foi possível enviar o vídeo.')}
- if(!result.data||result.data.professional_id!==actor.id||result.data.status!=='pending')fail('Não foi possível enviar o vídeo.')
+ const {actor,result}=await run(client,async()=>await client.rpc('submit_feed_video',{p_url:'https://www.youtube.com/watch?v='+videoId,p_title:title,p_description:description||null}).single())
+ if(result.error){const known=['Este vídeo já foi enviado.','Aguarde a análise dos vídeos enviados.','Envio disponível só para profissionais aprovados.'];fail(known.includes(result.error.message)?result.error.message:'Não foi possível enviar o vídeo.')}
+ if(!result.data||result.data.professional_id!==actor.id||result.data.youtube_id!==videoId||!['pending','approved'].includes(result.data.status))fail('Não foi possível enviar o vídeo.')
  return copyVideo(result.data!)
 }
 

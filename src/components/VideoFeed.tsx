@@ -3,7 +3,7 @@ import {LocateFixed,MapPin,Play} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {specialties} from '@/lib/supabase/applications'
-import {readMyLocation,readMyVideos,readReviewQueue,readVideoFeed,removeVideo,reviewVideo,saveMyLocation,submitVideo,ufs,youtubeEmbed,youtubeThumbnail,type Coordinates,type FeedItem,type MyLocation,type MyVideo,type ReviewItem} from '@/lib/supabase/videoFeed'
+import {youtubeVideoId,readMyLocation,readMyVideos,readReviewQueue,readVideoFeed,removeVideo,reviewVideo,saveMyLocation,submitVideo,ufs,youtubeEmbed,youtubeThumbnail,type Coordinates,type FeedItem,type MyLocation,type MyVideo,type ReviewItem} from '@/lib/supabase/videoFeed'
 
 const errorText=(err:unknown,fallback:string)=>err instanceof Error&&err.message?err.message:fallback
 
@@ -104,54 +104,59 @@ export function StudentVideoFeed({owner,disabled}:{owner:string,disabled:boolean
 
 const statusLabel:Record<MyVideo['status'],string>={pending:'Em análise',approved:'Publicado no feed',rejected:'Recusado',removed:'Retirado'}
 
-// Profissional aprovado: região de atendimento, envio de link do YouTube e situação de cada vídeo.
-export function ProfessionalVideos({owner,disabled}:{owner:string,disabled:boolean}){
+// Profissional aprovado (ou a equipe, no painel admin): região, envio de link do YouTube e situação de cada vídeo.
+export function ProfessionalVideos({owner,disabled,team=false}:{owner:string,disabled:boolean,team?:boolean}){
  const [location,setLocation]=useState<MyLocation|null>(null),[editing,setEditing]=useState(false)
  const [videos,setVideos]=useState<MyVideo[]>([]),[loading,setLoading]=useState(true)
  const [url,setUrl]=useState(''),[title,setTitle]=useState(''),[description,setDescription]=useState('')
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('')
  const refresh=useCallback(async()=>{setLoading(true);try{setVideos(await readMyVideos())}catch(err){setError(errorText(err,'Não foi possível carregar seus vídeos.'))}finally{setLoading(false)}},[])
- useEffect(()=>{readMyLocation().then(l=>{setLocation(l);setEditing(!l)}).catch(()=>setEditing(true));void refresh()},[owner,refresh])
- async function send(){setBusy(true);setError('');setNotice('');try{await submitVideo({url,title,description});setUrl('');setTitle('');setDescription('');setNotice('Vídeo enviado! Ele aparece no feed dos alunos depois da aprovação da equipe.');await refresh()}catch(err){setError(errorText(err,'Não foi possível enviar o vídeo.'))}finally{setBusy(false)}}
+ useEffect(()=>{if(!team)readMyLocation().then(l=>{setLocation(l);setEditing(!l)}).catch(()=>setEditing(true));void refresh()},[owner,refresh,team])
+ const recognized=url.trim()?youtubeVideoId(url):null
+ async function send(){setBusy(true);setError('');setNotice('');try{const sent=await submitVideo({url,title,description});setUrl('');setTitle('');setDescription('');setNotice(sent.status==='approved'?'Vídeo publicado! Ele já aparece no feed dos alunos.':'Vídeo enviado! Ele aparece no feed dos alunos depois da aprovação da equipe.');await refresh()}catch(err){setError(errorText(err,'Não foi possível enviar o vídeo.'))}finally{setBusy(false)}}
  async function remove(video:MyVideo){if(!window.confirm('Retirar este vídeo do feed?'))return;setBusy(true);setError('');try{await removeVideo(video.id);await refresh()}catch(err){setError(errorText(err,'Não foi possível retirar o vídeo.'))}finally{setBusy(false)}}
  return <div className="space-y-6">
-  <section className="space-y-3"><h2 className="text-xl font-bold">Sua região de atendimento</h2>
+  {!team&&<ol className="grid gap-2 text-sm sm:grid-cols-3">{[['1','Informe sua região',!!location],['2','Cole o link do YouTube',videos.length>0],['3','A equipe aprova e o vídeo vai para o feed',videos.some(v=>v.status==='approved')]].map(([n,label,done])=><li key={n as string} className={'rounded-[8px_16px_8px_16px] border p-3 '+(done?'border-[#a5ce41] bg-[#f3f9e6]':'border-[#dddee4] bg-white')}><span className="font-bold">{done?'✓':n}</span> {label}</li>)}</ol>}
+  {!team&&<section className="space-y-3"><h2 className="text-xl font-bold">Sua região de atendimento</h2>
    {editing?<LocationForm initial={location} disabled={disabled} withCoordinates intro="Os alunos mais próximos veem seus vídeos primeiro. Mostramos só bairro e cidade; o ponto aproximado (opcional) serve para calcular a distância e nunca é exibido." onCancel={location?()=>setEditing(false):undefined} onSaved={l=>{setLocation(l);setEditing(false)}}/>
    :<div className="flex flex-wrap items-center gap-3"><p>{location?placeLabel(location):''}{location?.lat!=null?' · com ponto aproximado':''}</p><Button type="button" variant="outline" disabled={disabled} onClick={()=>setEditing(true)}>Alterar</Button></div>}
-  </section>
-  <section className="space-y-3"><h2 className="text-xl font-bold">Enviar vídeo para o feed</h2>
-   <p className="text-sm">Publique o vídeo no YouTube (pode ser “não listado”) e cole o link aqui. A equipe analisa antes de liberar para os alunos.</p>
+  </section>}
+  <section className="space-y-3"><h2 className="text-xl font-bold">{team?'Publicar vídeo da equipe':'Enviar vídeo para o feed'}</h2>
+   <p className="text-sm">{team?'Vídeos publicados pelo admin aparecem na hora no feed de todos os alunos, como “Equipe 369 WELLNESS”.':'Publique o vídeo no YouTube (pode ser “não listado”), toque em Compartilhar › Copiar link e cole aqui. A equipe analisa antes de liberar para os alunos.'}</p>
    <form className="space-y-3" onSubmit={e=>{e.preventDefault();void send()}}>
-    <label className="block">Link do YouTube<Input type="url" required maxLength={300} placeholder="https://youtu.be/..." value={url} onChange={e=>setUrl(e.target.value)} disabled={disabled||busy}/></label>
+    <label className="block">Link do YouTube<Input type="text" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} required maxLength={300} placeholder="https://youtu.be/..." value={url} onChange={e=>setUrl(e.target.value)} disabled={disabled||busy}/></label>
+    {url.trim()&&(recognized?<div className="space-y-2"><p className="text-sm font-semibold text-[#4f6b17]">✓ Link reconhecido. Confira o vídeo:</p><div className="max-w-sm"><YoutubePlayer id={recognized} title="Prévia do vídeo"/></div></div>:<p className="text-sm text-red-700">Este link não parece ser de um vídeo do YouTube. Exemplos: https://youtu.be/abc123XYZ00 ou https://www.youtube.com/watch?v=abc123XYZ00</p>)}
     <label className="block">Título<Input required minLength={3} maxLength={120} value={title} onChange={e=>setTitle(e.target.value)} disabled={disabled||busy}/></label>
     <label className="block">Descrição (opcional)<textarea maxLength={1000} rows={3} value={description} onChange={e=>setDescription(e.target.value)} disabled={disabled||busy} className="mt-1 block w-full rounded-md border p-2"/></label>
-    <Button type="submit" disabled={disabled||busy}>Enviar para análise</Button>
+    <Button type="submit" disabled={disabled||busy||!recognized}>{team?'Publicar no feed':'Enviar para análise'}</Button>
    </form>
    {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
   </section>
-  <section className="space-y-3"><h2 className="text-xl font-bold">Meus vídeos</h2>
+  <section className="space-y-3"><h2 className="text-xl font-bold">{team?'Vídeos publicados pela equipe':'Meus vídeos'}</h2>
    {loading?<p role="status">Carregando…</p>:!videos.length?<p>Você ainda não enviou vídeos.</p>:<ul className="grid gap-4 lg:grid-cols-2">{videos.map(v=><li key={v.id} className="space-y-2 rounded-lg border p-3"><YoutubePlayer id={v.youtube_id} title={v.title}/><p className="font-bold">{v.title}</p><p className="text-sm">{statusLabel[v.status]}{v.review_reason&&v.status!=='approved'?' — '+v.review_reason:''}</p>{(v.status==='pending'||v.status==='approved')&&<Button type="button" variant="outline" disabled={disabled||busy} onClick={()=>void remove(v)}>Retirar</Button>}</li>)}</ul>}
   </section>
  </div>
 }
 
 // Admin: aprova ou recusa vídeos pendentes e pode retirar vídeos publicados. Motivo obrigatório.
+type AdminTab='pending'|'approved'|'publish'|'preview'
 export function AdminVideoReview({owner,disabled}:{owner:string,disabled:boolean}){
- const [tab,setTab]=useState<'pending'|'approved'>('pending'),[rows,setRows]=useState<ReviewItem[]>([]),[loading,setLoading]=useState(true)
+ const [tab,setTab]=useState<AdminTab>('pending'),[rows,setRows]=useState<ReviewItem[]>([]),[loading,setLoading]=useState(true)
  const [reasons,setReasons]=useState<Record<string,string>>({}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('')
  const refresh=useCallback(async(which:'pending'|'approved')=>{setLoading(true);setError('');try{setRows(await readReviewQueue(which))}catch(err){setError(errorText(err,'Fila indisponível.'))}finally{setLoading(false)}},[])
- useEffect(()=>{void refresh(tab)},[owner,tab,refresh])
+ useEffect(()=>{if(tab==='pending'||tab==='approved')void refresh(tab)},[owner,tab,refresh])
  async function decide(row:ReviewItem,decision:'approved'|'rejected'|'removed'){
   const fallback=decision==='approved'?'Conteúdo adequado.':''
   setBusy(true);setError('');setNotice('')
-  try{await reviewVideo(row.video_id,decision,reasons[row.video_id]?.trim()||fallback);setNotice(decision==='approved'?'Vídeo publicado no feed.':decision==='rejected'?'Vídeo recusado.':'Vídeo retirado do feed.');await refresh(tab)}
+  try{await reviewVideo(row.video_id,decision,reasons[row.video_id]?.trim()||fallback);setNotice(decision==='approved'?'Vídeo publicado no feed. Veja em “Prévia do aluno”.':decision==='rejected'?'Vídeo recusado. O profissional vê o motivo em “Meus vídeos”.':'Vídeo retirado do feed.');if(tab==='pending'||tab==='approved')await refresh(tab)}
   catch(err){setError(errorText(err,'Não foi possível registrar a análise.'))}finally{setBusy(false)}
  }
  return <div className="space-y-4">
   <h2 className="text-xl font-bold">Vídeos do feed</h2>
-  <div className="flex gap-2" role="tablist">{([['pending','Aguardando análise'],['approved','Publicados']] as const).map(([id,label])=><Button key={id} type="button" role="tab" aria-selected={tab===id} variant={tab===id?'default':'outline'} onClick={()=>setTab(id)}>{label}</Button>)}</div>
+  <p className="text-sm">Profissionais enviam vídeos em “Meus vídeos”. Eles chegam aqui em “Aguardando análise” e só vão para o feed dos alunos depois que você aprova.</p>
+  <div className="flex flex-wrap gap-2" role="tablist">{([['pending','Aguardando análise'],['approved','Publicados'],['publish','Publicar vídeo da equipe'],['preview','Prévia do feed do aluno']] as const).map(([id,label])=><Button key={id} type="button" role="tab" aria-selected={tab===id} variant={tab===id?'default':'outline'} onClick={()=>{setNotice('');setTab(id)}}>{label}</Button>)}</div>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
-  {loading?<p role="status">Carregando…</p>:!rows.length?<p>{tab==='pending'?'Nenhum vídeo aguardando análise.':'Nenhum vídeo publicado.'}</p>:
+  {tab==='publish'?<ProfessionalVideos owner={owner} disabled={disabled} team/>:tab==='preview'?<StudentVideoFeed owner={owner} disabled={disabled}/>:loading?<p role="status">Carregando…</p>:!rows.length?<p>{tab==='pending'?'Nenhum vídeo aguardando análise.':'Nenhum vídeo publicado.'}</p>:
   <ul className="grid gap-4 lg:grid-cols-2">{rows.map(row=><li key={row.video_id} className="space-y-2 rounded-lg border p-3">
    <YoutubePlayer id={row.youtube_id} title={row.title}/>
    <p className="font-bold">{row.title}</p><p className="text-sm">{row.professional_name} · enviado em {new Date(row.created_at).toLocaleString('pt-BR')}</p>
@@ -160,5 +165,16 @@ export function AdminVideoReview({owner,disabled}:{owner:string,disabled:boolean
    <div className="flex flex-wrap gap-2">{tab==='pending'?<><Button type="button" disabled={disabled||busy} onClick={()=>void decide(row,'approved')}>Aprovar</Button><Button type="button" variant="outline" disabled={disabled||busy||!reasons[row.video_id]?.trim()} onClick={()=>void decide(row,'rejected')}>Recusar</Button></>
     :<Button type="button" variant="outline" disabled={disabled||busy||!reasons[row.video_id]?.trim()} onClick={()=>void decide(row,'removed')}>Retirar do feed</Button>}</div>
   </li>)}</ul>}
+ </div>
+}
+
+// Aviso no painel admin: quantos vídeos esperam aprovação, com atalho para a fila.
+export function PendingVideosNotice({owner,onOpen}:{owner:string,onOpen:()=>void}){
+ const [count,setCount]=useState<number|null>(null)
+ useEffect(()=>{let alive=true;readReviewQueue('pending').then(rows=>{if(alive)setCount(rows.length)}).catch(()=>{if(alive)setCount(null)});return()=>{alive=false}},[owner])
+ if(count===null)return null
+ return <div className={'flex flex-wrap items-center justify-between gap-3 rounded-[12px_30px_12px_30px] border p-4 '+(count?'border-amber-300 bg-amber-50':'border-[#dddee4] bg-white')}>
+  <p>{count?`${count>=20?'20 ou mais':count} vídeo(s) de profissionais aguardando sua aprovação.`:'Nenhum vídeo aguardando aprovação.'}</p>
+  <Button type="button" variant={count?'default':'outline'} onClick={onOpen}>{count?'Revisar vídeos':'Abrir vídeos do feed'}</Button>
  </div>
 }
