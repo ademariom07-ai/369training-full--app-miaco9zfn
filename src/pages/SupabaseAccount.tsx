@@ -29,7 +29,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
  const [state,setState]=useState(initial),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[name,setName]=useState(''),[message,setMessage]=useState(''),[links,setLinks]=useState<ParticipantLink[]>([]),[linkError,setLinkError]=useState(''),[linksLoading,setLinksLoading]=useState(false),[linkPage,setLinkPage]=useState(1),[ending,setEnding]=useState<ParticipantLink|null>(null),[linkOwner,setLinkOwner]=useState<string|null>(null)
  const [availabilityDay,setAvailabilityDay]=useState(()=>saoPauloToday())
  const [mode,setMode]=useState<'login'|'signup'|'recover'>('login'),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
- const [fullName,setFullName]=useState(''),[phone,setPhone]=useState('')
+ const [fullName,setFullName]=useState(''),[phone,setPhone]=useState(''),[code,setCode]=useState(''),[codeSent,setCodeSent]=useState(false)
  const [view,setView]=useState(()=>typeof window==='undefined'?'':decodeURIComponent(window.location.hash.slice(1)))
  const controller=useRef<ReturnType<typeof createAccountSession>|null>(null)
  useEffect(()=>{
@@ -46,8 +46,8 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   }
   return()=>{active=false}
  },[state.phase,state.profile,linkPage])
- async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch(err){const shown=['Aguarde 1 minuto antes de tentar novamente.','Muitas tentativas. Aguarde alguns minutos e tente novamente.','Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.'];setMessage(err instanceof Error&&shown.includes(err.message)?err.message:'Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
- function chooseMode(next:typeof mode){setMode(next);setPassword('');setConfirmation('');setMessage('');setNotice('')}
+ async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch(err){const shown=['Código inválido ou expirado. Peça um novo código.','Digite o código de 6 dígitos que chegou no e-mail.','Aguarde 1 minuto antes de tentar novamente.','Muitas tentativas. Aguarde alguns minutos e tente novamente.','Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.'];setMessage(err instanceof Error&&shown.includes(err.message)?err.message:'Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
+ function chooseMode(next:typeof mode){setMode(next);setCode('');setCodeSent(false);setPassword('');setConfirmation('');setMessage('');setNotice('')}
  async function submitAccess(){
   if(mode==='signup'&&password!==confirmation){setMessage('As senhas precisam ser iguais.');setPassword('');setConfirmation('');return}
   if(mode==='signup'&&!normalizeFullName(fullName)){setMessage('Preencha seu nome completo (nome e sobrenome).');return}
@@ -55,7 +55,8 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   await act(async()=>{
    if(mode==='login')await controller.current!.login(email,password)
    else if(mode==='signup'){const started=await controller.current!.signup(email,password,{fullName,phone});setNotice(started?'Conta criada! Bem-vindo(a) ao 369 WELLNESS.':'Se a confirmação for necessária, siga as instruções no seu e-mail. Se já possui conta, use Entrar.')}
-   else{await controller.current!.recover(email);setNotice('Se o endereço estiver apto à recuperação, você receberá as instruções por e-mail. Verifique também a caixa de spam.')}
+   else if(codeSent){await controller.current!.verifyRecoveryCode(email,code);setCode('')}
+   else{await controller.current!.recover(email);setCodeSent(true);setNotice('Se o e-mail estiver cadastrado, enviamos um código de 6 dígitos. Confira também o spam/lixo eletrônico.')}
   })
  }
  const profile=state.profile
@@ -117,7 +118,9 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
     <label className="block">E-mail<Input type="email" autoComplete="username" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} disabled={state.busy}/></label>
     {mode!=='recover'&&<label className="block">{mode==='signup'?'Nova senha':'Senha'}<Input type="password" autoComplete={mode==='signup'?'new-password':'current-password'} required minLength={mode==='signup'?10:undefined} maxLength={mode==='signup'?72:1024} value={password} onChange={e=>setPassword(e.target.value)} disabled={state.busy}/></label>}
     {mode==='signup'&&<><p>Use pelo menos 10 caracteres. O cadastro inicial é de aluno; o acesso profissional depende de aprovação.</p><label className="block">Confirme a senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={confirmation} onChange={e=>setConfirmation(e.target.value)} disabled={state.busy}/></label></>}
-    <Button type="submit" disabled={state.busy||!controller.current}>{mode==='login'?'Entrar':mode==='signup'?'Cadastrar':'Enviar instruções'}</Button>
+    {mode==='recover'&&codeSent&&<label className="block">Código recebido no e-mail<Input inputMode="numeric" autoComplete="one-time-code" required maxLength={12} placeholder="123456" value={code} onChange={e=>setCode(e.target.value)} disabled={state.busy}/></label>}
+    {mode==='recover'&&codeSent&&<p className="text-sm">Também é possível clicar no link do e-mail. <button type="button" className="underline" onClick={()=>{setCodeSent(false);setCode('');setNotice('')}}>Enviar outro código</button></p>}
+    <Button type="submit" disabled={state.busy||!controller.current}>{mode==='login'?'Entrar':mode==='signup'?'Cadastrar':codeSent?'Confirmar código':'Enviar código'}</Button>
    </form><Button type="button" variant="outline" disabled={state.busy||!controller.current} onClick={()=>void act(async()=>{await controller.current!.resendConfirmation(email);setNotice('Se o cadastro estiver aguardando confirmação, um novo e-mail será enviado. Use somente o link mais recente; confira também o spam.')})}>Reenviar confirmação de e-mail</Button><p className="text-sm">Se a confirmação abrir uma página “localhost”, o endereço de retorno no Supabase precisa ser configurado. Não crie outra conta.</p></>}
   {state.phase==='password_recovery'&&<form className="space-y-4" onSubmit={e=>{e.preventDefault();if(password!==confirmation){setMessage('As senhas precisam ser iguais.');setPassword('');setConfirmation('');return}void act(async()=>{await controller.current!.updateRecoveredPassword(password);chooseMode('login');setNotice('Senha atualizada. Entre novamente.')})}}><p>Defina uma nova senha com pelo menos 10 caracteres.</p><label className="block">Nova senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={password} onChange={e=>setPassword(e.target.value)} disabled={state.busy}/></label><label className="block">Confirme a nova senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={confirmation} onChange={e=>setConfirmation(e.target.value)} disabled={state.busy}/></label><Button type="submit" disabled={state.busy||!controller.current}>Salvar nova senha</Button></form>}
   {state.phase==='profile_missing'&&<><p>Escolha o nome que deseja exibir na sua conta.</p><form className="space-y-3" onSubmit={e=>{e.preventDefault();void act(()=>controller.current!.createProfile(name))}}><label className="block">Nome<Input required maxLength={160} value={name} onChange={e=>setName(e.target.value)} disabled={state.busy}/></label><Button type="submit" disabled={state.busy}>Criar meu perfil</Button></form></>}

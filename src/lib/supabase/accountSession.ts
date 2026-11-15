@@ -14,7 +14,7 @@ import { readOwnProfile, createOwnProfile, renameOwnProfile, type OwnProfile, ve
 export type AccountState = { phase:'checking'|'signed_out'|'profile_missing'|'ready'|'error'|'password_recovery'; profile:OwnProfile|null; busy:boolean; error:string }
 type Client=SupabaseClient<Database>
 export function createAccountSession(client:Client, changed:(state:AccountState)=>void, schedule:(task:()=>void)=>()=>void=task=>{const id=setTimeout(task,0);return()=>clearTimeout(id)},redirectTo?:string) {
- let recovery=false,recoveryAccountId:string|null=null,lastMailAttempt=-Infinity
+ let recovery=false,recoveryAccountId:string|null=null,lastMailAttempt=-Infinity,pendingCodeRecovery=false
  let esgRetry:{owner:string;body:EsgInput;requestId:string}|null=null
  let termsRetry:{owner:string;body:BookingTermsInput;requestId:string}|null=null
  let draftRetry:{owner:string;body:DraftInput;requestId:string}|null=null
@@ -41,7 +41,7 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
  function start(){
   const result=client.auth.onAuthStateChange((event,session)=>{
    if(disposed)return
-   if(event==='PASSWORD_RECOVERY'&&session?.user?.id){recovery=true;recoveryAccountId=session.user.id}
+   if((event==='PASSWORD_RECOVERY'||pendingCodeRecovery)&&session?.user?.id){recovery=true;recoveryAccountId=session.user.id}
    if(esgRetry&&(!session||session.user?.id!==esgRetry.owner))esgRetry=null
    if(termsRetry&&(!session||session.user?.id!==termsRetry.owner))termsRetry=null
    if(draftRetry&&(!session||session.user?.id!==draftRetry.owner))draftRetry=null
@@ -103,6 +103,20 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
  async function recover(email:string){
   const address=mailEmail(email)
   return mailOperation(async url=>{const result=await client.auth.resetPasswordForEmail(address,{redirectTo:url});if(result.error)throw Error('Recuperação indisponível.')})
+ }
+ // Recuperação por código: o e-mail traz um código de 6 dígitos; não depende do link nem do endereço de retorno.
+ async function verifyRecoveryCode(email:string,code:string){
+  const address=mailEmail(email),token=typeof code==='string'?code.replace(/\s/g,''):''
+  if(!/^[0-9]{6,10}$/.test(token))throw Error('Digite o código de 6 dígitos que chegou no e-mail.')
+  if(disposed||busy||recovery||!['signed_out','error'].includes(state.phase))throw Error('Aguarde a operação atual.')
+  busy=true;pendingCodeRecovery=true;cleared('checking')
+  try{
+   const result=await client.auth.verifyOtp({email:address,token,type:'recovery'})
+   const id=result.data?.session?.user?.id
+   if(result.error||!id){recovery=false;recoveryAccountId=null;if(result.data?.session)await client.auth.signOut({scope:'local'});throw Error('Código inválido ou expirado. Peça um novo código.')}
+   recovery=true;recoveryAccountId=id
+  }catch(err){pendingCodeRecovery=false;busy=false;if(!disposed)cleared('signed_out');throw err instanceof Error&&err.message.startsWith('Código')?err:Error('Código inválido ou expirado. Peça um novo código.')}
+  pendingCodeRecovery=false;busy=false;++epoch;cancelScheduled();if(!disposed)cleared('password_recovery')
  }
  async function updateRecoveredPassword(password:string){
   newPassword(password)
@@ -205,5 +219,5 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const owner=state.profile.id,project={...row}
   return operation(async()=>{await reviewEsgProject(project,decision,reason,owner,client)})
  }
- return {start,refresh,login,logout,submitEsg,reviewEsg,saveTerms,saveAvailability,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,resendConfirmation,recover,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{esgRetry=null;termsRetry=null;draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ return {start,refresh,login,logout,submitEsg,reviewEsg,saveTerms,saveAvailability,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,resendConfirmation,recover,verifyRecoveryCode,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{esgRetry=null;termsRetry=null;draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }
