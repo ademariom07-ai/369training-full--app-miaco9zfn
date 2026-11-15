@@ -6,6 +6,8 @@
   "compatibility_date": "2026-11-01",
   "assets": {
     "directory": "./dist-site",
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "auto-trailing-slash",
+    // Endereço inexistente mostra site/404.html; links de e-mail com código seguem para /acesso.
+    "not_found_handling": "404-page"
   }
 }
