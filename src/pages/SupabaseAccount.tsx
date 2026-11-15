@@ -44,7 +44,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   }
   return()=>{active=false}
  },[state.phase,state.profile,linkPage])
- async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch{setMessage('Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
+ async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch(err){const shown=['Aguarde 1 minuto antes de tentar novamente.','Muitas tentativas. Aguarde alguns minutos e tente novamente.','Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.'];setMessage(err instanceof Error&&shown.includes(err.message)?err.message:'Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
  function chooseMode(next:typeof mode){setMode(next);setPassword('');setConfirmation('');setMessage('');setNotice('')}
  async function submitAccess(){
   if(mode==='signup'&&password!==confirmation){setMessage('As senhas precisam ser iguais.');setPassword('');setConfirmation('');return}

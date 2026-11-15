@@ -74,7 +74,7 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
  }
  async function mailOperation(task:(url:string)=>Promise<void>){
   const url=callbackUrl()
-  if(!['signed_out','error'].includes(state.phase)||recovery||Date.now()-lastMailAttempt<60000)throw Error('Aguarde antes de tentar novamente.')
+  if(!['signed_out','error'].includes(state.phase)||recovery||Date.now()-lastMailAttempt<60000)throw Error('Aguarde 1 minuto antes de tentar novamente.')
   return operation(async()=>{
    const current=await client.auth.getSession()
    if(current.error||current.data.session)throw Error('Saia da conta antes de continuar.')
@@ -93,7 +93,7 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   }
   // Retorna true quando o Supabase já abre a sessão (cadastro sem confirmação de e-mail).
   let started=false
-  await mailOperation(async url=>{const result=await client.auth.signUp({email:address,password,options:data?{emailRedirectTo:url,data}:{emailRedirectTo:url}});if(result.error)throw Error('Cadastro indisponível.');started=!!result.data.session})
+  await mailOperation(async url=>{const result=await client.auth.signUp({email:address,password,options:data?{emailRedirectTo:url,data}:{emailRedirectTo:url}});if(result.error){if(result.error.status===429||result.error.code==='over_email_send_rate_limit')throw Error('Muitas tentativas. Aguarde alguns minutos e tente novamente.');throw Error('Cadastro indisponível.')}started=!!result.data.session})
   return started
  }
  async function resendConfirmation(email:string){
