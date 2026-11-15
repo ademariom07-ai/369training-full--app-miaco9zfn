@@ -1,0 +1,112 @@
+/* 369 WELLNESS — GRAZ brand presentation, all 43 slides; palette on slide 10. */
+.btn,a.button,body.brand-account button{min-height:44px;font-weight:700;border-radius:12px;transition:background-color .16s,box-shadow .16s,transform .16s}
+.btn:hover:not(:disabled),a.button:hover{filter:none;box-shadow:0 5px 16px #33325a20;background:#454472;color:#f7f6f2}
+.btn.lime:hover:not(:disabled){background:#b5db5d;color:#33325a}
+.btn.secondary:hover:not(:disabled){background:#eeedf4;color:#33325a;border-color:#7f8091}
+.btn:active:not(:disabled),a.button:active,body.brand-account button:active:not(:disabled){transform:translateY(1px);box-shadow:none}
+.btn:disabled,body.brand-account button:disabled{cursor:not-allowed;box-shadow:none;transform:none}
+.brand-story{display:grid;grid-template-columns:1.1fr 1fr;margin:0 0 28px;border:1px solid #dddee4;border-radius:24px;overflow:hidden;background:#33325a;color:#f7f6f2}
+.brand-story figure{margin:0;align-self:center;background:#f7f6f2}
+.brand-story img{display:block;width:100%;height:auto}
+.brand-story figcaption{padding:7px 14px;color:#626274;font-size:11px}
+.brand-story-copy{padding:28px;align-self:center}.brand-story-copy .eyebrow{color:#a5ce41}
+.brand-story-copy h2{color:#f7f6f2;font-size:clamp(23px,2.6vw,36px);line-height:1.13;margin:12px 0}
+.brand-story-copy p{color:#e5e4ed;font-size:15px;line-height:1.6;margin:0 0 20px}
+.brand-story-copy a:focus-visible,.hero a:focus-visible{outline-color:#a5ce41;outline-offset:5px}
+.brand-story-copy{min-width:0;overflow-wrap:break-word}
+.brand-story-copy .btn{white-space:normal;text-align:center}
+@media(max-width:480px){.brand-story{border-radius:18px;margin-bottom:20px}.brand-story-copy{padding:20px}.brand-story-copy .btn{width:100%;justify-content:center}.brand-story figcaption{font-size:12px}}
+@media(max-width:900px){.brand-story{grid-template-columns:1fr}.brand-story-copy{padding:24px}.brand-story-copy h2{font-size:28px}}
+@media(prefers-reduced-motion:reduce){.btn,a.button,body.brand-account button{transition:none;transform:none}}
+@font-face{font-family:Catamaran;src:url('/assets/brand/catamaran-400.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:Catamaran;src:url('/assets/brand/catamaran-500.ttf') format('truetype');font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:Catamaran;src:url('/assets/brand/catamaran-600.ttf') format('truetype');font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:Catamaran;src:url('/assets/brand/catamaran-700.ttf') format('truetype');font-style:normal;font-weight:700;font-display:swap}
+@font-face{font-family:Catamaran;src:url('/assets/brand/catamaran-800.ttf') format('truetype');font-style:normal;font-weight:800;font-display:swap}
+:root{--ink:#33325a;--muted:#626274;--lime:#a5ce41;--blue:#eeedf4;--line:#dddee4;--purple:#66658a;--bg:#f7f6f2;--brand-night:#33325a;--brand-lavender:#7f8091;--brand-offwhite:#f7f6f2;--brand-green:#a5ce41;--background:48 24% 96%;--foreground:241 28% 27%;--primary:241 28% 27%;--primary-foreground:48 24% 96%;--ring:241 28% 27%;--accent:78 59% 86%;--accent-foreground:241 28% 27%}
+body{font-family:Catamaran,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+:root{--brand-constancy:#6a8a27}
+.water{background:#eeedf4;color:var(--ink)}.water h3{color:var(--ink)}
+.water .progress{background:#d4d3e2}.procover{background:#edf3dd}.procover.blue,.procover.purple{background:#eeedf4}
+header select{border-color:var(--brand-constancy)}
+button,input,select,textarea{font-family:inherit}
+h1,h2,h3{color:var(--ink);font-weight:800;letter-spacing:-.025em}
+a{color:var(--ink)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
+.brand{margin:0 10px 32px;display:block;line-height:0}
+.brand-logo{display:block;width:152px;height:auto;max-width:100%;object-fit:contain}
+#sidebar{background:var(--bg);border-color:var(--line)}
+.navitem{color:#626274}.navitem:hover{background:#eeefdF}.navitem.active{background:var(--lime);color:var(--ink)}
+.navlabel,.pagehead .eyebrow{color:#626274}
+header{background:var(--lime)}header select{background:var(--bg);border-color:#698a22}
+.btn,.primary,a.button{background:var(--ink);color:var(--bg)}.btn.lime{background:var(--lime);color:var(--ink)}
+.btn.secondary{background:white;color:var(--ink);border-color:var(--line)}
+.hero{background:var(--ink)}.hero h2,.hero h3{color:var(--bg)}.hero p{color:#e5e4ed}
+.hero .eyebrow{color:var(--lime)}.orbit{border-color:var(--lime)}
+.card,.module-card,.summary-grid article{border-color:var(--line)}
+.pill{background:#edf3dd;color:var(--ink)}.pill.purple{background:#e9e8f0;color:var(--ink)}
+.avatar{background:#edf3dd;color:var(--ink)}.avatar.blue,.avatar.purple{background:#e9e8f0;color:var(--ink)}
+.tag,.intro h1 span,.module-card .arrow{color:#526b1f}
+.notice{background:#eeedf4;color:var(--ink)}
+.card.real{border-top-color:var(--lime)}.card.demo{border-top-color:var(--brand-lavender)}
+body.brand-central>header{background:var(--bg);border-bottom:1px solid var(--line);justify-content:space-between;min-height:105px}
+body.brand-central>header .brand{margin:0;padding:8px 0}
+body.brand-central>header .brand-logo{width:160px;height:auto}
+.brand-header-note{font-size:15px;font-weight:600;color:var(--muted)}
+.brand-central main>h1{margin-bottom:20px}.brand-central main>p{max-width:670px;font-size:18px}
+.brand-central .tag{font-size:12px;font-weight:700}
+.brand-central .brand-intro{padding:36px;border-radius:0 0 56px 0;background:linear-gradient(115deg,#edf3dd,#f7f6f2 65%,#e2e1eb);margin-bottom:30px}
+.brand-intro h1{max-width:700px;margin:12px 0 18px;font-size:clamp(34px,5vw,56px);line-height:1.08}
+.brand-intro p{max-width:670px;font-size:18px}
+.brand-central footer{background:var(--ink);color:var(--bg)}
+/* Operational account: appearance only; no changes to auth, roles or data. */
+body.brand-account #root>main{background:var(--bg);color:var(--ink);font-family:Catamaran,system-ui,sans-serif}
+body.brand-account #root>header{background:var(--lime);color:var(--ink)}
+body.brand-account #root>main>div>a:first-child{display:inline-flex;flex-direction:column;gap:16px;color:var(--ink);font-size:14px;margin-bottom:14px}
+body.brand-account #root>main>div>a:first-child::before{content:'';display:block;width:180px;height:79px;background:url('/assets/brand/logo-primary.png') left center/contain no-repeat}
+body.brand-account .bg-sky-50{background:#eeedf4}body.brand-account .border-sky-200{border-color:#d5d4e1}
+body.brand-account .text-blue-700,body.brand-account .text-blue-800{color:var(--ink)}
+body.brand-account input,body.brand-account textarea,body.brand-account select{background:white}
+@media(max-width:720px){.brand-header-note{max-width:140px;text-align:right;font-size:13px}.brand-central main{margin-top:28px}.brand-central .brand-intro{padding:24px}.brand-logo{width:140px}body.brand-central>header .brand-logo{width:130px}.workspace>header{height:auto;min-height:76px;padding-top:10px;padding-bottom:10px}.header-right{flex-wrap:wrap;justify-content:flex-end}.header-right>a.btn{max-width:165px;text-align:center}.brand-account #root>main{padding-top:28px}}
+
+/* Slide 33: alternating generous curves, with every corner softened. */
+:root{--brand-radius-control:10px 22px 10px 22px;--brand-radius-panel:12px 30px 12px 30px;--brand-radius-small:8px 16px 8px 16px}
+body button,body .btn,body a.button,body .primary,body .chip,body .slot,body .navitem,body.brand-account button{border-radius:var(--brand-radius-control)}
+body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),body select,body textarea{border-radius:var(--brand-radius-small)}
+body .card,body .hero,body .module-card,body .summary-grid article,body .brand-story,body .notice,body .intro,body.brand-central .brand-intro,body dialog,body [role="dialog"],body [role="alertdialog"],body [role="menu"],body [role="listbox"],body.brand-account section{border-radius:var(--brand-radius-panel)}
+body .procard,body .brand-story{overflow:hidden}
+body dialog{overflow:auto;max-height:85dvh}
+body .monthday,body .daybox,body .message,body [role="menuitem"],body [role="tab"]{border-radius:var(--brand-radius-small)}
+body .close{border-radius:50%}
+body nav[aria-label="Navegação principal 369 WELLNESS"]{border-radius:24px 24px 0 0;gap:8px!important}
+body nav[aria-label="Navegação principal 369 WELLNESS"] a{border-radius:var(--brand-radius-control);background:#eeedf4;padding:8px 14px;min-height:40px;display:inline-flex;align-items:center}
+body nav[aria-label="Navegação principal 369 WELLNESS"] a:hover{background:#a5ce41}
+@media(max-width:480px){:root{--brand-radius-panel:10px 24px 10px 24px;--brand-radius-control:9px 19px 9px 19px}body nav[aria-label="Navegação principal 369 WELLNESS"]{padding:10px 12px!important;font-size:12px!important}body nav[aria-label="Navegação principal 369 WELLNESS"] strong{flex-basis:100%}}
+
+/* Scope brand tokens to the operational body so later bundled root defaults cannot restore gold. */
+body.brand-account{--primary:241 28% 27%;--primary-foreground:48 24% 96%;--ring:241 28% 27%;--background:48 24% 96%;--foreground:241 28% 27%}
+
+/* Branded authentication backdrop. Operational screens retain their existing layout. */
+body.brand-account #root>main:has([aria-label="Opções de acesso"]){
+ position:relative;isolation:isolate;background:#eeedf4;min-height:calc(100dvh - 84px);padding:40px clamp(16px,4vw,64px);
+}
+body.brand-account #root>main:has([aria-label="Opções de acesso"])::before{
+ content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+ right:32%;background:linear-gradient(90deg,#33325a08 0%,#33325a00 65%,#eeedf4 100%),url('/assets/brand/aluno-movimento.jpeg') center center/cover no-repeat;
+}
+body.brand-account #root>main:has([aria-label="Opções de acesso"])>div{
+ width:min(100%,580px);max-width:580px;margin-left:auto;margin-right:0;padding:28px;
+ background:#f7f6f2f5;border:1px solid #ffffff;border-radius:16px 40px 16px 40px;box-shadow:0 18px 60px #33325a24;
+}
+body.brand-account #root>main:has([aria-label="Opções de acesso"]) h1{font-size:30px;line-height:1.2}
+body.brand-account #root>main:has([aria-label="Opções de acesso"])>div>a:first-child{gap:10px;margin-bottom:0}
+body.brand-account #root>main:has([aria-label="Opções de acesso"]) [aria-label="Escolha de ambiente"]{font-size:14px}
+body.brand-account #root>main:has([aria-label="Opções de acesso"]) [aria-label="Opções de acesso"]{gap:8px}
+body.brand-account #root>main:has([aria-label="Opções de acesso"]) input{min-height:46px;font-size:16px}
+@media(max-width:760px){
+ body.brand-account #root>main:has([aria-label="Opções de acesso"]){padding:160px 16px 28px}
+ body.brand-account #root>main:has([aria-label="Opções de acesso"])::before{right:0;background:linear-gradient(180deg,#33325a05 0,#f7f6f200 120px,#f7f6f2 360px),url('/assets/brand/aluno-movimento.jpeg') center top/auto 360px no-repeat}
+ body.brand-account #root>main:has([aria-label="Opções de acesso"])>div{margin:0 auto;padding:20px;border-radius:12px 30px 12px 30px;background:#f7f6f2fa}
+ body.brand-account #root>main:has([aria-label="Opções de acesso"]) [aria-label="Opções de acesso"]>button{flex:1 1 110px;white-space:normal}
+}
+@media(prefers-reduced-transparency:reduce){body.brand-account #root>main:has([aria-label="Opções de acesso"])>div{background:#f7f6f2}}

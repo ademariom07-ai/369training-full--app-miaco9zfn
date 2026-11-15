@@ -8,6 +8,7 @@
     "start": "vite dev",
     "dev": "vite",
     "build": "vite build",
+    "build:site": "node scripts/build-site.mjs",
     "build:dev": "vite build --mode development",
     "lint": "oxlint src",
     "lint:fix": "oxlint src --fix",

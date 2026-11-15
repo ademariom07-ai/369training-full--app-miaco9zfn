@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 access-dist
+dist-site
 dev-dist
 dev-dist-ssr
 *.local

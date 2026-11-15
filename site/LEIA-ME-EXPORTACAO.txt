@@ -1,0 +1,14 @@
+369 WELLNESS — exportação completa dos arquivos do site publicado
+Versão: 54
+Commit: 8a9bc1e257b8b34863c6ad90d43ba4f124781fa7
+Data: 15/11/2026
+
+Inclui todas as páginas HTML, brand.css, demais estilos, JavaScript compilado, imagens e fontes do diretório publicado.
+Não é exportação do banco Supabase, das chaves privadas ou do código-fonte React separado. A área real continua dependendo do Supabase e das permissões configuradas. As áreas demonstrativas continuam usando dados fictícios.
+
+Para visualizar, extraia todo o ZIP e sirva esta pasta por HTTP. Exemplo com Python instalado:
+python -m http.server 8000
+Abra http://localhost:8000/index.html
+Para acesso direto às páginas, use os nomes .html. Hospedagem com URLs sem extensão exige resolução para o HTML correspondente. Login e recuperação em outro domínio podem exigir configuração autorizada de redirecionamento no Supabase. Abrir pelo duplo clique não substitui servidor HTTP.
+
+Nenhuma publicação ou alteração de acesso foi feita para esta exportação.
