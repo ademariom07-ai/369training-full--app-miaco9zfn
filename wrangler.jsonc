@@ -1,0 +1,11 @@
+// Publicação no Cloudflare (Workers com arquivos estáticos).
+// O build (pnpm build:site) gera dist-site/; o deploy envia essa pasta.
+// O "name" precisa ser igual ao nome do Worker no painel do Cloudflare.
+{
+  "name": "369wellness",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist-site",
+    "html_handling": "auto-trailing-slash"
+  }
+}
