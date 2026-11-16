@@ -18,6 +18,7 @@ import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {Card} from '@/components/ui/card'
 import {getSupabaseClient} from '@/lib/supabase/client'
+import {enabledProviders} from '@/lib/supabase/authProviders'
 import {normalizeBrazilPhone,normalizeFullName} from '@/lib/supabase/phone'
 import {createAccountSession,type AccountState} from '@/lib/supabase/accountSession'
 import TrainingPlans from '@/components/TrainingPlans'
@@ -31,6 +32,8 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
  const [mode,setMode]=useState<'login'|'signup'|'recover'>('login'),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
  const [fullName,setFullName]=useState(''),[phone,setPhone]=useState(''),[code,setCode]=useState(''),[codeSent,setCodeSent]=useState(false)
  const [view,setView]=useState(()=>typeof window==='undefined'?'':decodeURIComponent(window.location.hash.slice(1)))
+ const [google,setGoogle]=useState(false)
+ useEffect(()=>{let alive=true;void enabledProviders().then(set=>{if(alive)setGoogle(set.has('google'))});return()=>{alive=false}},[])
  const controller=useRef<ReturnType<typeof createAccountSession>|null>(null)
  useEffect(()=>{
   try{const session=createAccountSession(getSupabaseClient(),setState,undefined,new URL(redirectPath,window.location.origin).href);controller.current=session;session.start();return()=>{session.dispose();controller.current=null}}
@@ -46,7 +49,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   }
   return()=>{active=false}
  },[state.phase,state.profile,linkPage])
- async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch(err){const shown=['Código inválido ou expirado. Peça um novo código.','Digite o código de 6 dígitos que chegou no e-mail.','Aguarde 1 minuto antes de tentar novamente.','Muitas tentativas. Aguarde alguns minutos e tente novamente.','Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.'];setMessage(err instanceof Error&&shown.includes(err.message)?err.message:'Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
+ async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch(err){const shown=['Entrar com Google está indisponível no momento.','Código inválido ou expirado. Peça um novo código.','Digite o código de 6 dígitos que chegou no e-mail.','Aguarde 1 minuto antes de tentar novamente.','Muitas tentativas. Aguarde alguns minutos e tente novamente.','Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.'];setMessage(err instanceof Error&&shown.includes(err.message)?err.message:'Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
  function chooseMode(next:typeof mode){setMode(next);setCode('');setCodeSent(false);setPassword('');setConfirmation('');setMessage('');setNotice('')}
  async function submitAccess(){
   if(mode==='signup'&&password!==confirmation){setMessage('As senhas precisam ser iguais.');setPassword('');setConfirmation('');return}
@@ -112,6 +115,10 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   {alerts}
   {(state.phase==='signed_out'||state.phase==='error')&&<>
    <div className="flex flex-wrap gap-2" aria-label="Opções de acesso">{([['login','Entrar'],['signup','Criar conta'],['recover','Recuperar senha']] as const).map(([value,label])=><Button key={value} type="button" variant={mode===value?'default':'outline'} disabled={state.busy||!controller.current} onClick={()=>chooseMode(value)}>{label}</Button>)}</div>
+   {mode!=='recover'&&google&&<><button type="button" disabled={state.busy||!controller.current} onClick={()=>void act(()=>controller.current!.loginWithGoogle())} className="flex min-h-11 w-full items-center justify-center gap-3 rounded-[10px_22px_10px_22px] border border-[#747775] bg-white px-4 py-2 font-semibold text-[#1f1f1f] hover:bg-[#f2f2f2]">
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+    {mode==='signup'?'Cadastrar com Google':'Entrar com Google'}</button>
+   <p className="text-center text-sm text-[#626274]">ou use seu e-mail</p></>}
    <form className="space-y-4" onSubmit={e=>{e.preventDefault();void submitAccess()}}>
     {mode==='signup'&&<><label className="block">Nome completo<Input autoComplete="name" required maxLength={160} value={fullName} onChange={e=>setFullName(e.target.value)} disabled={state.busy}/></label>
     <label className="block">Celular (WhatsApp)<Input type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" required maxLength={40} value={phone} onChange={e=>setPhone(e.target.value)} disabled={state.busy}/></label></>}

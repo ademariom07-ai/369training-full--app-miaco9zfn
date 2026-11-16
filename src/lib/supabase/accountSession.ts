@@ -104,6 +104,16 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const address=mailEmail(email)
   return mailOperation(async url=>{const result=await client.auth.resetPasswordForEmail(address,{redirectTo:url});if(result.error)throw Error('Recuperação indisponível.')})
  }
+ // Login/cadastro com Google: o Supabase leva à tela do Google e devolve para o endereço fixo da área real.
+ // A conta nasce como aluno; o nome vem do Google (full_name) pelo mesmo gatilho do cadastro rápido.
+ async function loginWithGoogle(){
+  const url=callbackUrl()
+  if(disposed||busy||recovery||!['signed_out','error'].includes(state.phase))throw Error('Aguarde a operação atual.')
+  const current=await client.auth.getSession()
+  if(current.error||current.data.session)throw Error('Saia da conta antes de continuar.')
+  const result=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo:url,queryParams:{prompt:'select_account'}}})
+  if(result.error)throw Error('Entrar com Google está indisponível no momento.')
+ }
  // Recuperação por código: o e-mail traz um código de 6 dígitos; não depende do link nem do endereço de retorno.
  async function verifyRecoveryCode(email:string,code:string){
   const address=mailEmail(email),token=typeof code==='string'?code.replace(/\s/g,''):''
@@ -219,5 +229,5 @@ export function createAccountSession(client:Client, changed:(state:AccountState)
   const owner=state.profile.id,project={...row}
   return operation(async()=>{await reviewEsgProject(project,decision,reason,owner,client)})
  }
- return {start,refresh,login,logout,submitEsg,reviewEsg,saveTerms,saveAvailability,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,resendConfirmation,recover,verifyRecoveryCode,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{esgRetry=null;termsRetry=null;draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
+ return {start,refresh,login,logout,submitEsg,reviewEsg,saveTerms,saveAvailability,saveRankingDraft,initializeWallet,reserveWithdrawal,cancelWithdrawal,publishTraining,readTraining,completeTraining,applyProfessional,reviewProfessional,signup,resendConfirmation,recover,verifyRecoveryCode,loginWithGoogle,updateRecoveredPassword,requestLink,acceptLink:(row:StudentLink)=>linkAction(row,'accept'),revokeLink:(row:StudentLink)=>linkAction(row,'revoke'),createProfile:(name:string)=>operation(async()=>{await createOwnProfile(name,client)}),renameProfile:(name:string)=>operation(async()=>{await renameOwnProfile(name,client)}),dispose:()=>{esgRetry=null;termsRetry=null;draftRetry=null;walletRetry=null;trainingRetry=null;disposed=true;++epoch;cancelScheduled();unsubscribe()}}
 }
