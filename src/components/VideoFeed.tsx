@@ -21,7 +21,7 @@ function currentPosition():Promise<Coordinates>{
 export function YoutubePlayer({id,title}:{id:string,title:string}){
  const [playing,setPlaying]=useState(false)
  return <div className="relative w-full overflow-hidden rounded-[8px_16px_8px_16px] bg-black" style={{aspectRatio:'16/9'}}>
-  {playing?<iframe className="absolute inset-0 h-full w-full" src={youtubeEmbed(id)} title={title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>
+  {playing?<iframe className="absolute inset-0 h-full w-full" src={youtubeEmbed(id)} title={title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"/>
   :<button type="button" onClick={()=>setPlaying(true)} className="group absolute inset-0 h-full w-full" aria-label={'Reproduzir vídeo: '+title}>
     <img src={youtubeThumbnail(id)} alt="" loading="lazy" onError={e=>{e.currentTarget.style.visibility='hidden'}} className="h-full w-full object-cover opacity-90 group-hover:opacity-100"/>
     <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#a5ce41] text-[#33325a] shadow-lg"><Play aria-hidden="true" className="ml-1 h-7 w-7"/></span>

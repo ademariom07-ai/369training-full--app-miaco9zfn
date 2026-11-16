@@ -1,0 +1,13 @@
+# Cabeçalhos de segurança do site (Cloudflare Workers, arquivos estáticos).
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
+
+# Área real (contas Supabase): política de conteúdo restrita e sem incorporação em outros sites.
+/acesso
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' https://elahjmtboqhqqxmoaths.supabase.co wss://elahjmtboqhqqxmoaths.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+/acesso.html
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' https://elahjmtboqhqqxmoaths.supabase.co wss://elahjmtboqhqqxmoaths.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests

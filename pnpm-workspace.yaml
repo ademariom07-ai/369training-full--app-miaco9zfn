@@ -8,3 +8,11 @@ minimumReleaseAgeExclude:
   - date-fns@4.4.0
   - baseline-browser-mapping@2.10.35
   - electron-to-chromium@1.5.370
+
+# Correções de segurança em dependências indiretas (pnpm audit, 16/11/2026).
+overrides:
+  dompurify: '>=3.4.17'
+  nanoid@<4: '^3.3.18'
+  postcss: '^8.5.23'
+  postcss-selector-parser@<7: '^6.1.5'
+  source-map-js: '^1.2.2'
