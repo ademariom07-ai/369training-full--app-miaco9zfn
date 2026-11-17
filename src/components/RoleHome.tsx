@@ -1,6 +1,7 @@
 import React from 'react'
 import {Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
+import InstallApp from '@/components/InstallApp'
 
 // Menus por perfil verificado. Só organiza a tela: a autorização continua no servidor.
 export type RoleKind='aluno'|'parceiro'|'parceiro_pendente'|'admin'
@@ -75,6 +76,7 @@ export function RoleShell({profile,view,onView,busy,onRefresh,onLogout,children}
       className={'flex min-h-11 shrink-0 items-center gap-3 rounded-[10px_22px_10px_22px] px-3 py-2 text-left text-sm font-semibold '+(active?'bg-[#a5ce41] text-[#33325a]':'text-[#626274] hover:bg-[#eeedf4]')}>
       <Icon aria-hidden="true" className="h-4 w-4 shrink-0"/>{item.label}</button>})}
    </nav>
+   <div className="mt-3"><InstallApp compact/></div>
    <div className="mt-3 hidden flex-col gap-2 border-t border-[#dddee4] pt-3 md:flex">
     <button type="button" disabled={busy} onClick={onRefresh} className="flex min-h-11 items-center gap-3 px-3 text-sm text-[#626274]"><RefreshCw aria-hidden="true" className="h-4 w-4"/>Atualizar conta</button>
     <button type="button" disabled={busy} onClick={onLogout} className="flex min-h-11 items-center gap-3 px-3 text-sm text-[#626274]"><LogOut aria-hidden="true" className="h-4 w-4"/>Sair deste dispositivo</button>

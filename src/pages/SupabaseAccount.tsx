@@ -18,6 +18,7 @@ import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {Card} from '@/components/ui/card'
 import {getSupabaseClient} from '@/lib/supabase/client'
+import InstallApp from '@/components/InstallApp'
 import {enabledProviders} from '@/lib/supabase/authProviders'
 import {normalizeBrazilPhone,normalizeFullName} from '@/lib/supabase/phone'
 import {createAccountSession,type AccountState} from '@/lib/supabase/accountSession'
@@ -110,7 +111,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   </RoleShell></main>
  }
  return <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900"><div className="mx-auto max-w-3xl space-y-5"><a href="/" className="text-blue-700">369 WELLNESS · Voltar ao início</a><h1 className="text-2xl font-bold">Sua conta</h1>
- <aside aria-label="Escolha de ambiente" className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-base"><p className="font-semibold">Você está na área de contas reais</p><p>Entre para ver os módulos disponíveis para seu perfil. Ranking e cashback ainda estão em preparação; as configurações administrativas são rascunhos.</p><div className="mt-3 flex flex-wrap gap-3"><a className="rounded-lg border bg-white px-4 py-3 text-blue-800 underline" href="/demonstracao.html">Ver demonstração dos perfis — dados fictícios</a><a className="rounded-lg border bg-white px-4 py-3 text-blue-800 underline" href="/evolucao.html">Ver evolução e simuladores — sem pagamentos reais</a></div></aside><Card className="space-y-4 p-6">
+ <InstallApp/><aside aria-label="Escolha de ambiente" className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-base"><p className="font-semibold">Você está na área de contas reais</p><p>Entre para ver os módulos disponíveis para seu perfil. Ranking e cashback ainda estão em preparação; as configurações administrativas são rascunhos.</p><div className="mt-3 flex flex-wrap gap-3"><a className="rounded-lg border bg-white px-4 py-3 text-blue-800 underline" href="/demonstracao.html">Ver demonstração dos perfis — dados fictícios</a><a className="rounded-lg border bg-white px-4 py-3 text-blue-800 underline" href="/evolucao.html">Ver evolução e simuladores — sem pagamentos reais</a></div></aside><Card className="space-y-4 p-6">
   {state.phase==='checking'&&<p role="status">Validando acesso… Aguarde a confirmação para entrar.</p>}
   {alerts}
   {(state.phase==='signed_out'||state.phase==='error')&&<>
