@@ -265,7 +265,7 @@ export default function EncontrarProfissional() {
 
       setMatchingProfile(saved)
       setMatchingModalOpen(false)
-      toast.success('Questionário de matching salvo! Especialistas ordenados por compatibilidade.')
+      toast.success('Questionário de Buscador salvo! Especialistas ordenados por compatibilidade.')
     } catch (err: any) {
       console.error('Erro ao salvar questionário:', err)
       toast.error(err?.message || 'Falha ao salvar questionário.')
@@ -727,7 +727,7 @@ export default function EncontrarProfissional() {
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>{hasMatching ? 'Matching Ativo (Editar)' : 'Questionário de Matching'}</span>
+            <span>{hasMatching ? 'Buscador Ativo (Editar)' : 'Questionário de Buscador'}</span>
             {hasMatching && <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />}
           </Button>
 
@@ -756,7 +756,7 @@ export default function EncontrarProfissional() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold uppercase font-montserrat text-[#0057FF] tracking-wide">
-                  Matching Personalizado Ativo
+                  Buscador Personalizado Ativo
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-[#22C55E]/20 text-[#22C55E] font-bold text-[10px]">
                   Ranquamento Inteligente 369
@@ -875,7 +875,7 @@ export default function EncontrarProfissional() {
           </span>
           <span className="text-[#D4AF37]">
             {hasMatching
-              ? '★ Ordenado por Afinidade & Matching'
+              ? '★ Ordenado por Afinidade & Buscador'
               : geoEnabled
                 ? 'Mais próximos primeiro (km)'
                 : 'Mais bem avaliados (★)'}
@@ -1591,7 +1591,7 @@ export default function EncontrarProfissional() {
               </div>
               <div>
                 <DialogTitle className="text-xl sm:text-2xl font-black font-montserrat uppercase tracking-tight text-[#1A1A1A]">
-                  Questionário de Matching 369
+                  Questionário de Buscador 369
                 </DialogTitle>
                 <p className="text-xs sm:text-sm text-gray-600 font-inter mt-1 leading-relaxed">
                   Conte suas necessidades, idade e objetivos. O sistema 369WELLNESS cruza seu perfil
@@ -1835,7 +1835,7 @@ export default function EncontrarProfissional() {
                   disabled={savingMatching}
                   className="w-full sm:w-auto border-red-300 text-red-600 hover:bg-red-50 text-xs sm:text-sm font-bold"
                 >
-                  Limpar / Desativar Matching
+                  Limpar / Desativar Buscador
                 </Button>
               ) : (
                 <Button
