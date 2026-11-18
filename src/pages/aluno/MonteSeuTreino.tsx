@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import pb from '@/lib/pocketbase/client'
 import { api, type WorkoutRecord } from '@/services/api'
@@ -43,6 +43,7 @@ import { fetchExerciseReference, ExerciseReferenceInfo } from '@/lib/exerciseDb'
 
 export default function MonteSeuTreino() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const userPlan = (user?.plan || 'gratis').toLowerCase()
   const isGratis = userPlan === 'gratis'
   const isPremium = userPlan === 'premium'
@@ -253,12 +254,14 @@ export default function MonteSeuTreino() {
   }
 
   // Iniciar Modo Execução Guiada do Treino
+  // Navegação interna (sem reload): window.location.href aqui recarregava a página,
+  // disparava a revalidação de sessão e o usuário era deslogado.
   const handleStartWorkoutExecution = (id?: string) => {
     const targetId = id || currentWorkout?.id
     if (targetId) {
-      window.location.href = `/aluno/treino/execucao/${targetId}`
+      navigate(`/aluno/treino/execucao/${targetId}`)
     } else {
-      window.location.href = '/aluno/executar-treino'
+      navigate('/aluno/executar-treino')
     }
   }
 

@@ -674,7 +674,7 @@ export default function ExecucaoTreino() {
                   <Dumbbell className="w-6 h-6 text-[#D4AF37]" />
                 </div>
                 <span className="text-[10px] uppercase font-bold text-gray-300 line-clamp-1">
-                  {currentExercise.name.split(' ')[0]}
+                  {currentExercise?.name?.split(' ')[0] || 'Exercício'}
                 </span>
                 <span className="text-[8px] text-gray-500 uppercase tracking-widest font-mono mt-0.5">
                   369 BIOMECÂNICA

@@ -78,16 +78,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           Authorization: pb.authStore.token,
         },
       })
-      if (!res.ok) {
+      // Desloga SOMENTE quando o backend responde definitivamente que a sessão
+      // é inválida (401: token expirado/revogado).
+      if (res.status === 401) {
         pb.authStore.clear()
         return null
       }
+      // Qualquer outra falha (5xx, rate limit, resposta malformada) é tratada
+      // como transitória: mantém a sessão local e devolve o usuário atual.
+      if (!res.ok) {
+        return (pb.authStore.record as unknown as UserProfile) || null
+      }
       const data = await res.json()
+      if (!data?.token || !data?.record) {
+        return (pb.authStore.record as unknown as UserProfile) || null
+      }
       pb.authStore.save(data.token, data.record)
       return data.record as UserProfile
     } catch (_) {
-      pb.authStore.clear()
-      return null
+      // Erro de rede momentâneo (backend fora do ar, DNS, timeout):
+      // NÃO apaga a sessão — o usuário continua logado.
+      return (pb.authStore.record as unknown as UserProfile) || null
     }
   }
 
