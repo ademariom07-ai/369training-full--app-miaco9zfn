@@ -1,19 +1,9 @@
-import {HoldPolicy} from '@/components/BookingHoldControls'
-import BookingReservations from '@/components/BookingReservations'
-import {StudentVideoFeed,ProfessionalVideos,AdminVideoReview,PendingVideosNotice} from '@/components/VideoFeed'
+import {PendingVideosNotice} from '@/components/VideoFeed'
+import {StudentJourney,PartnerJourney,HowItWorks} from '@/components/Journey'
+import {formatBrazilPhone,readMyPhone,saveMyPhone,suggestEmail} from '@/lib/supabase/onboarding'
 import {RoleShell,RoleOverview,pickView,roleKind} from '@/components/RoleHome'
-import CashbackPolicyDrafts from '@/components/CashbackPolicyDrafts'
-import AdminServiceIntake from '@/components/AdminServiceIntake'
-import SupabaseVideoPilot from '@/components/SupabaseVideoPilot'
-import AdminParticipantOverview from '@/components/AdminParticipantOverview'
-import EsgProjects from '@/components/EsgProjects'
-import BookingTerms from '@/components/BookingTerms'
-import ProfessionalAvailability from '@/components/ProfessionalAvailability'
-import ReleasedAvailability from '@/components/ReleasedAvailability'
 import {saoPauloToday} from '@/lib/supabase/availability'
-import RankingPolicyDrafts from '@/components/RankingPolicyDrafts'
-import SupabaseWallet from '@/components/SupabaseWallet'
-import React,{useEffect,useRef,useState} from 'react'
+import React,{Suspense,lazy,useEffect,useRef,useState} from 'react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {Card} from '@/components/ui/card'
@@ -22,10 +12,26 @@ import InstallApp from '@/components/InstallApp'
 import {enabledProviders} from '@/lib/supabase/authProviders'
 import {normalizeBrazilPhone,normalizeFullName} from '@/lib/supabase/phone'
 import {createAccountSession,type AccountState} from '@/lib/supabase/accountSession'
-import TrainingPlans from '@/components/TrainingPlans'
-import ProfessionalApplications from '@/components/ProfessionalApplications'
-import ProfessionalDirectory from '@/components/ProfessionalDirectory'
 import {readParticipantLinks,type ParticipantLink} from '@/lib/supabase/participantLinks'
+// Telas carregadas sob demanda: o app abre mais rápido e só baixa o que a pessoa usa.
+const BookingReservations=lazy(()=>import('@/components/BookingReservations'))
+const CashbackPolicyDrafts=lazy(()=>import('@/components/CashbackPolicyDrafts'))
+const AdminServiceIntake=lazy(()=>import('@/components/AdminServiceIntake'))
+const SupabaseVideoPilot=lazy(()=>import('@/components/SupabaseVideoPilot'))
+const AdminParticipantOverview=lazy(()=>import('@/components/AdminParticipantOverview'))
+const EsgProjects=lazy(()=>import('@/components/EsgProjects'))
+const BookingTerms=lazy(()=>import('@/components/BookingTerms'))
+const ProfessionalAvailability=lazy(()=>import('@/components/ProfessionalAvailability'))
+const ReleasedAvailability=lazy(()=>import('@/components/ReleasedAvailability'))
+const RankingPolicyDrafts=lazy(()=>import('@/components/RankingPolicyDrafts'))
+const SupabaseWallet=lazy(()=>import('@/components/SupabaseWallet'))
+const TrainingPlans=lazy(()=>import('@/components/TrainingPlans'))
+const ProfessionalApplications=lazy(()=>import('@/components/ProfessionalApplications'))
+const ProfessionalDirectory=lazy(()=>import('@/components/ProfessionalDirectory'))
+const HoldPolicy=lazy(()=>import('@/components/BookingHoldControls').then(m=>({default:m.HoldPolicy})))
+const StudentVideoFeed=lazy(()=>import('@/components/VideoFeed').then(m=>({default:m.StudentVideoFeed})))
+const ProfessionalVideos=lazy(()=>import('@/components/VideoFeed').then(m=>({default:m.ProfessionalVideos})))
+const AdminVideoReview=lazy(()=>import('@/components/VideoFeed').then(m=>({default:m.AdminVideoReview})))
 const initial:AccountState={phase:'checking',profile:null,busy:false,error:''}
 export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redirectPath?:string}={}){
  const [state,setState]=useState(initial),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[name,setName]=useState(''),[message,setMessage]=useState(''),[links,setLinks]=useState<ParticipantLink[]>([]),[linkError,setLinkError]=useState(''),[linksLoading,setLinksLoading]=useState(false),[linkPage,setLinkPage]=useState(1),[ending,setEnding]=useState<ParticipantLink|null>(null),[linkOwner,setLinkOwner]=useState<string|null>(null)
@@ -33,7 +39,9 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
  const [mode,setMode]=useState<'login'|'signup'|'recover'>('login'),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
  const [fullName,setFullName]=useState(''),[phone,setPhone]=useState(''),[code,setCode]=useState(''),[codeSent,setCodeSent]=useState(false)
  const [view,setView]=useState(()=>typeof window==='undefined'?'':decodeURIComponent(window.location.hash.slice(1)))
- const [google,setGoogle]=useState(false)
+ const [google,setGoogle]=useState(false),[myPhone,setMyPhone]=useState(''),[phoneDraft,setPhoneDraft]=useState(''),[phoneNote,setPhoneNote]=useState('')
+ // Voltar do celular/navegador volta para a tela anterior do app, sem perder o lugar.
+ useEffect(()=>{const back=()=>{setView(decodeURIComponent(window.location.hash.slice(1)));setMessage('');setNotice('')};window.addEventListener('popstate',back);return()=>window.removeEventListener('popstate',back)},[])
  useEffect(()=>{let alive=true;void enabledProviders().then(set=>{if(alive)setGoogle(set.has('google'))});return()=>{alive=false}},[])
  const controller=useRef<ReturnType<typeof createAccountSession>|null>(null)
  useEffect(()=>{
@@ -41,6 +49,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   catch{setState({phase:'error',profile:null,busy:false,error:'O acesso está indisponível neste ambiente.'})}
  },[])
  useEffect(()=>{setLinkPage(1)},[state.profile?.id])
+ useEffect(()=>{setMyPhone('');setPhoneDraft('');setPhoneNote('');if(state.phase!=='ready'||!state.profile)return;let alive=true;readMyPhone().then(p=>{if(alive&&p){setMyPhone(p);setPhoneDraft(formatBrazilPhone(p))}}).catch(()=>{});return()=>{alive=false}},[state.phase,state.profile?.id])
  useEffect(()=>{setLinkOwner(null);setEnding(null);setName(state.profile?.display_name||'');setLinks([]);setLinkError('');setLinksLoading(false);let active=true
   if(state.phase==='ready'&&state.profile){
    setLinksLoading(true)
@@ -50,7 +59,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   }
   return()=>{active=false}
  },[state.phase,state.profile,linkPage])
- async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch(err){const shown=['Entrar com Google está indisponível no momento.','Código inválido ou expirado. Peça um novo código.','Digite o código de 6 dígitos que chegou no e-mail.','Aguarde 1 minuto antes de tentar novamente.','Muitas tentativas. Aguarde alguns minutos e tente novamente.','Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.'];setMessage(err instanceof Error&&shown.includes(err.message)?err.message:'Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
+ async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch(err){const shown=['Digite um celular válido com DDD, por exemplo (11) 98765-4321.','Entrar com Google está indisponível no momento.','Código inválido ou expirado. Peça um novo código.','Digite o código de 6 dígitos que chegou no e-mail.','Aguarde 1 minuto antes de tentar novamente.','Muitas tentativas. Aguarde alguns minutos e tente novamente.','Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.'];setMessage(err instanceof Error&&shown.includes(err.message)?err.message:'Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
  function chooseMode(next:typeof mode){setMode(next);setCode('');setCodeSent(false);setPassword('');setConfirmation('');setMessage('');setNotice('')}
  async function submitAccess(){
   if(mode==='signup'&&password!==confirmation){setMessage('As senhas precisam ser iguais.');setPassword('');setConfirmation('');return}
@@ -64,7 +73,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   })
  }
  const profile=state.profile
- function openView(id:string){setView(id);setMessage('');setNotice('');try{window.history.replaceState(null,'','#'+id)}catch{/* sem histórico */}window.scrollTo?.({top:0})}
+ function openView(id:string){setView(id);setMessage('');setNotice('');try{if(window.location.hash!=='#'+id)window.history.pushState(null,'','#'+id)}catch{/* sem histórico */}window.scrollTo?.({top:0})}
  const logout=()=>void act(async()=>{await controller.current!.logout();setEmail('');setName('')})
  const alerts=<>{state.error&&<p role="alert">{state.error}</p>}{message&&<p role="alert">{message}</p>}{notice&&<p role="status">{notice}</p>}</>
  if(state.phase==='ready'&&profile){
@@ -77,13 +86,13 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   const wallet=<><p className="rounded-lg bg-sky-50 p-3">Pagamentos e saques reais ainda não estão disponíveis neste piloto.</p><SupabaseWallet account={profile} disabled={busy} onInitialize={()=>controller.current!.initializeWallet()} onReserve={amount=>controller.current!.reserveWithdrawal(amount)} onCancel={row=>controller.current!.cancelWithdrawal(row)}/></>
   const reservations=<BookingReservations key={'reservations'+profile.id} account={profile} disabled={busy}/>
   const activeLinks=links.filter(row=>row.state==='active').length,pendingLinks=links.filter(row=>row.state==='pending').length
-  const highlights=kind==='aluno'&&linksReady?<p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{activeLinks?`Você tem ${activeLinks} profissional(is) acompanhando sua evolução.`:pendingLinks?'Seu pedido de vínculo aguarda o aceite do profissional.':'Comece escolhendo um profissional em “Profissionais”.'}</p>
-   :kind==='parceiro'&&linksReady?<p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{pendingLinks?`${pendingLinks} pedido(s) de vínculo aguardando seu aceite em “Meus alunos”.`:`Alunos ativos nesta página: ${activeLinks}.`}</p>
+  const highlights=kind==='parceiro'&&linksReady?<p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{pendingLinks?`${pendingLinks} pedido(s) de vínculo aguardando seu aceite em “Meus alunos”.`:`Alunos ativos nesta página: ${activeLinks}.`}</p>
    :kind==='admin'?<PendingVideosNotice key={'pending'+profile.id} owner={profile.id} onOpen={()=>openView('feed')}/>
    :kind==='parceiro_pendente'?<p className="rounded-[12px_30px_12px_30px] border border-amber-300 bg-amber-50 p-4">Aprovação profissional pendente. Confira o andamento em “Meu cadastro profissional”.</p>:null
   const views:Record<string,()=>React.ReactNode>={
-   inicio:()=><RoleOverview profile={profile} onView={openView} highlights={highlights} feed={kind==='aluno'?<StudentVideoFeed key={'feed'+profile.id} owner={profile.id} disabled={busy}/>:undefined}/>,
-   perfil:()=>panel(<><h2 className="text-xl font-bold">Meu perfil</h2><p>Perfil: {profile.role==='aluno'?'Aluno':profile.role==='profissional'?'Profissional':'Administrador'}</p>{kind==='parceiro_pendente'&&<p>Aprovação profissional pendente.</p>}<form className="space-y-3" onSubmit={e=>{e.preventDefault();void act(()=>controller.current!.renameProfile(name))}}><label className="block">Nome<Input required maxLength={160} value={name} onChange={e=>setName(e.target.value)} disabled={busy}/></label><Button type="submit" disabled={busy}>Salvar nome</Button></form></>),
+   'como-funciona':()=><HowItWorks owner={profile.id} kind={kind} onView={openView}/>,
+   inicio:()=><RoleOverview profile={profile} onView={openView} highlights={highlights} journey={kind==='aluno'?<StudentJourney key={'j'+profile.id} owner={profile.id} links={links} onView={openView}/>:kind==='parceiro'?<PartnerJourney key={'j'+profile.id} owner={profile.id} links={links} onView={openView}/>:undefined} feed={kind==='aluno'?<StudentVideoFeed key={'feed'+profile.id} owner={profile.id} disabled={busy}/>:undefined}/>,
+   perfil:()=>panel(<><h2 className="text-xl font-bold">Meu perfil</h2><p>Perfil: {profile.role==='aluno'?'Aluno':profile.role==='profissional'?'Profissional':'Administrador'}</p>{kind==='parceiro_pendente'&&<p>Aprovação profissional pendente.</p>}<form className="space-y-3" onSubmit={e=>{e.preventDefault();void act(()=>controller.current!.renameProfile(name))}}><label className="block">Nome<Input required maxLength={160} value={name} onChange={e=>setName(e.target.value)} disabled={busy}/></label><Button type="submit" disabled={busy}>Salvar nome</Button></form><form className="space-y-3 border-t pt-4" onSubmit={e=>{e.preventDefault();setPhoneNote('');void act(async()=>{const saved=await saveMyPhone(phoneDraft);setMyPhone(saved);setPhoneDraft(formatBrazilPhone(saved));setPhoneNote('Celular salvo.')})}}><label className="block">Celular (WhatsApp)<Input type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" required maxLength={40} value={phoneDraft} onChange={e=>setPhoneDraft(e.target.value)} disabled={busy}/></label>{!myPhone&&<p className="text-sm">Informe seu celular para os profissionais conseguirem falar com você.</p>}{phoneNote&&<p role="status">{phoneNote}</p>}<Button type="submit" disabled={busy}>{myPhone?'Corrigir celular':'Salvar celular'}</Button></form></>),
    esg:()=>panel(<EsgProjects key={'esg'+profile.id} account={profile} disabled={busy} onSubmit={input=>controller.current!.submitEsg(input)} onReview={(row,decision,reason)=>controller.current!.reviewEsg(row,decision,reason)}/>),
    carteira:()=>panel(wallet),
    // Aluno
@@ -107,11 +116,11 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   }
   return <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900"><RoleShell profile={profile} view={current} onView={openView} busy={busy} onRefresh={()=>void controller.current?.refresh()} onLogout={logout}>
    {(state.error||message||notice)&&<div className="space-y-2">{alerts}</div>}
-   <section aria-label={current} className="space-y-5">{views[current]()}</section>
+   <section aria-label={current} className="space-y-5"><Suspense fallback={<p role="status">Carregando…</p>}>{views[current]()}</Suspense></section>
   </RoleShell></main>
  }
  return <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900"><div className="mx-auto max-w-3xl space-y-5"><a href="/" className="text-blue-700">369 WELLNESS · Voltar ao início</a><h1 className="text-2xl font-bold">Sua conta</h1>
- <InstallApp/><aside aria-label="Escolha de ambiente" className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-base"><p className="font-semibold">Você está na área de contas reais</p><p>Entre para ver os módulos disponíveis para seu perfil. Ranking e cashback ainda estão em preparação; as configurações administrativas são rascunhos.</p><div className="mt-3 flex flex-wrap gap-3"><a className="rounded-lg border bg-white px-4 py-3 text-blue-800 underline" href="/demonstracao.html">Ver demonstração dos perfis — dados fictícios</a><a className="rounded-lg border bg-white px-4 py-3 text-blue-800 underline" href="/evolucao.html">Ver evolução e simuladores — sem pagamentos reais</a></div></aside><Card className="space-y-4 p-6">
+ <InstallApp/><aside aria-label="Sobre a 369" className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-base"><p className="font-semibold">Foco, disciplina e estratégia para o seu bem-estar.</p><p>Encontre profissionais perto de você ou online e organize treinos, agenda e evolução em um só lugar. Criar conta é grátis e leva 1 minuto.</p><p className="mt-2"><a className="underline" href="/#como-funciona">Como funciona a 369</a></p></aside><Card className="space-y-4 p-6">
   {state.phase==='checking'&&<p role="status">Validando acesso… Aguarde a confirmação para entrar.</p>}
   {alerts}
   {(state.phase==='signed_out'||state.phase==='error')&&<>
@@ -124,12 +133,14 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
     {mode==='signup'&&<><label className="block">Nome completo<Input autoComplete="name" required maxLength={160} value={fullName} onChange={e=>setFullName(e.target.value)} disabled={state.busy}/></label>
     <label className="block">Celular (WhatsApp)<Input type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" required maxLength={40} value={phone} onChange={e=>setPhone(e.target.value)} disabled={state.busy}/></label></>}
     <label className="block">E-mail<Input type="email" autoComplete="username" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} disabled={state.busy}/></label>
+    {mode!=='login'&&suggestEmail(email)&&<p className="text-sm" role="status">Você quis dizer <b>{suggestEmail(email)}</b>? <button type="button" className="underline" onClick={()=>setEmail(suggestEmail(email)!)}>Usar este e-mail</button></p>}
+    {mode==='signup'&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())&&!suggestEmail(email)&&<p className="text-sm text-[#626274]">Confira: vamos usar <b>{email.trim().toLowerCase()}</b> para a sua conta.</p>}
     {mode!=='recover'&&<label className="block">{mode==='signup'?'Nova senha':'Senha'}<Input type="password" autoComplete={mode==='signup'?'new-password':'current-password'} required minLength={mode==='signup'?10:undefined} maxLength={mode==='signup'?72:1024} value={password} onChange={e=>setPassword(e.target.value)} disabled={state.busy}/></label>}
     {mode==='signup'&&<><p>Use pelo menos 10 caracteres. O cadastro inicial é de aluno; o acesso profissional depende de aprovação.</p><label className="block">Confirme a senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={confirmation} onChange={e=>setConfirmation(e.target.value)} disabled={state.busy}/></label></>}
     {mode==='recover'&&codeSent&&<label className="block">Código recebido no e-mail<Input inputMode="numeric" autoComplete="one-time-code" required maxLength={12} placeholder="123456" value={code} onChange={e=>setCode(e.target.value)} disabled={state.busy}/></label>}
     {mode==='recover'&&codeSent&&<p className="text-sm">Também é possível clicar no link do e-mail. <button type="button" className="underline" onClick={()=>{setCodeSent(false);setCode('');setNotice('')}}>Enviar outro código</button></p>}
     <Button type="submit" disabled={state.busy||!controller.current}>{mode==='login'?'Entrar':mode==='signup'?'Cadastrar':codeSent?'Confirmar código':'Enviar código'}</Button>
-   </form><Button type="button" variant="outline" disabled={state.busy||!controller.current} onClick={()=>void act(async()=>{await controller.current!.resendConfirmation(email);setNotice('Se o cadastro estiver aguardando confirmação, um novo e-mail será enviado. Use somente o link mais recente; confira também o spam.')})}>Reenviar confirmação de e-mail</Button><p className="text-sm">Se a confirmação abrir uma página “localhost”, o endereço de retorno no Supabase precisa ser configurado. Não crie outra conta.</p></>}
+   </form>{message==='Confirme seu e-mail antes de entrar.'&&<Button type="button" variant="outline" disabled={state.busy||!controller.current} onClick={()=>void act(async()=>{await controller.current!.resendConfirmation(email);setNotice('Se o cadastro estiver aguardando confirmação, um novo e-mail será enviado. Use somente o link mais recente; confira também o spam.')})}>Reenviar confirmação de e-mail</Button>}</>}
   {state.phase==='password_recovery'&&<form className="space-y-4" onSubmit={e=>{e.preventDefault();if(password!==confirmation){setMessage('As senhas precisam ser iguais.');setPassword('');setConfirmation('');return}void act(async()=>{await controller.current!.updateRecoveredPassword(password);chooseMode('login');setNotice('Senha atualizada. Entre novamente.')})}}><p>Defina uma nova senha com pelo menos 10 caracteres.</p><label className="block">Nova senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={password} onChange={e=>setPassword(e.target.value)} disabled={state.busy}/></label><label className="block">Confirme a nova senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={confirmation} onChange={e=>setConfirmation(e.target.value)} disabled={state.busy}/></label><Button type="submit" disabled={state.busy||!controller.current}>Salvar nova senha</Button></form>}
   {state.phase==='profile_missing'&&<><p>Escolha o nome que deseja exibir na sua conta.</p><form className="space-y-3" onSubmit={e=>{e.preventDefault();void act(()=>controller.current!.createProfile(name))}}><label className="block">Nome<Input required maxLength={160} value={name} onChange={e=>setName(e.target.value)} disabled={state.busy}/></label><Button type="submit" disabled={state.busy}>Criar meu perfil</Button></form></>}
   {state.phase!=='signed_out'&&<div className="flex gap-3"><Button type="button" variant="outline" disabled={state.busy||!controller.current} onClick={()=>void controller.current?.refresh()}>Atualizar conta</Button><Button type="button" variant="outline" disabled={state.busy||!controller.current} onClick={logout}>Sair deste dispositivo</Button></div>}

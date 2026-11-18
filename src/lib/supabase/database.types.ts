@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_goals: {
+        Row: { user_id: string; goal: string; updated_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      account_contacts: {
+        Row: { user_id: string; phone: string; phone_verified_at: string | null; updated_at: string }
+        Insert: never
+        Update: { phone?: string }
+        Relationships: []
+      }
       account_locations: {
         Row: { user_id: string; uf: string; city: string; neighborhood: string | null; lat: number | null; lng: number | null; updated_at: string }
         Insert: never
@@ -689,6 +701,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_my_goal: {
+        Args: { p_goal: string }
+        Returns: { user_id: string; goal: string; updated_at: string }[]
+      }
+      set_my_phone: {
+        Args: { p_phone: string }
+        Returns: { phone: string; phone_verified_at: string | null }[]
+      }
       set_my_location: {
         Args: { p_uf: string; p_city: string; p_neighborhood: string | null; p_lat: number | null; p_lng: number | null }
         Returns: { user_id: string; uf: string; city: string; neighborhood: string | null; lat: number | null; lng: number | null; updated_at: string }[]

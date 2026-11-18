@@ -1,5 +1,5 @@
 import React from 'react'
-import {Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -15,11 +15,12 @@ export function roleKind(profile:Pick<OwnProfile,'role'|'approved'>):RoleKind{
 
 const inicio:RoleView={id:'inicio',label:'Visão geral',icon:Home,summary:'Resumo do seu espaço.'}
 const perfil:RoleView={id:'perfil',label:'Meu perfil',icon:UserRound,summary:'Nome exibido e dados da conta.'}
-const esg:RoleView={id:'esg',label:'Projetos ESG',icon:Leaf,summary:'Projetos sociais e ambientais da comunidade.'}
+const esg:RoleView={id:'esg',label:'Projetos sociais',icon:Leaf,summary:'Projetos sociais e ambientais da comunidade (ESG).'}
+const comoFunciona:RoleView={id:'como-funciona',label:'Como funciona',icon:Compass,summary:'Os 3 pilares e o passo a passo da 369.'}
 const carteira:RoleView={id:'carteira',label:'Carteira',icon:Wallet,summary:'Saldo e reservas do piloto. Sem pagamentos reais.'}
 
 const menus:Record<RoleKind,RoleView[]>={
- aluno:[inicio,
+ aluno:[inicio,comoFunciona,
   {id:'profissionais',label:'Profissionais',icon:Users,summary:'Encontre um profissional e acompanhe seus vínculos.'},
   {id:'treino',label:'Meu treino',icon:Dumbbell,summary:'Treinos publicados pelo seu profissional.'},
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Suas reservas de horário.'},
@@ -33,11 +34,11 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'meus-videos',label:'Meus vídeos',icon:Clapperboard,summary:'Envie vídeos para o feed dos alunos da sua região.'},
   carteira,esg,
   {id:'cadastro',label:'Meu cadastro profissional',icon:ClipboardCheck,summary:'Especialidade e situação da aprovação.'},
-  perfil],
+  comoFunciona,perfil],
  parceiro_pendente:[inicio,
   {id:'cadastro',label:'Meu cadastro profissional',icon:ClipboardCheck,summary:'Acompanhe a análise do seu cadastro.'},
   {id:'agenda',label:'Minhas reservas',icon:CalendarDays,summary:'Reservas feitas com a sua conta.'},
-  carteira,esg,perfil],
+  carteira,esg,comoFunciona,perfil],
  admin:[inicio,
   {id:'aprovacoes',label:'Aprovações',icon:ShieldCheck,summary:'Cadastros profissionais aguardando análise.'},
   {id:'feed',label:'Vídeos do feed',icon:Clapperboard,summary:'Aprove os vídeos dos profissionais antes de irem para o feed.'},
@@ -47,7 +48,7 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'esg',label:'Projetos ESG',icon:Leaf,summary:'Analise os projetos enviados.'},
   {id:'financeiro',label:'Financeiro',icon:Wallet,summary:'Reservas, cashback (rascunho) e carteira.'},
   {id:'ranking',label:'Ranking — rascunhos',icon:Trophy,summary:'Regras de pontuação em preparação.'},
-  perfil],
+  comoFunciona,perfil],
 }
 
 export function roleMenu(profile:Pick<OwnProfile,'role'|'approved'>){return menus[roleKind(profile)]}
@@ -55,9 +56,36 @@ export function pickView(profile:Pick<OwnProfile,'role'|'approved'>,wanted:strin
  return roleMenu(profile).some(item=>item.id===wanted)?wanted:'inicio'
 }
 
+// Explicação curta de cada tela, em linguagem simples (botão "?" no topo).
+const helps:Record<string,string>={
+ inicio:'Aqui você vê o seu próximo passo, os vídeos dos profissionais e os atalhos para tudo.',
+ 'como-funciona':'Explica os 3 pilares da 369 — foco, disciplina e estratégia — e o caminho para começar.',
+ profissionais:'Escolha um profissional e envie um pedido de acompanhamento. Quando ele aceitar, vocês ficam ligados: ele monta seus treinos e você vê os horários livres dele.',
+ treino:'Aqui aparecem os treinos que o seu profissional montou. Quando terminar um treino, toque em concluir: isso registra a sua evolução.',
+ 'aluno:agenda':'Seus horários reservados com profissionais.',
+ carteira:'Área de teste: mostra saldo e pedidos de saque simulados. Ainda não há pagamentos de verdade.',
+ esg:'Projetos sociais e ambientais. Você pode sugerir um projeto e a equipe analisa.',
+ parceiro:'Quer atender alunos pela 369? Informe sua área e seu registro profissional (por exemplo CREF ou CRN). A equipe analisa e libera as funções de parceiro.',
+ perfil:'Seu nome e seu celular. Mantenha o celular certo para os profissionais conseguirem falar com você.',
+ alunos:'Pedidos de alunos que querem ser acompanhados por você. Aceite para montar treinos e liberar sua agenda para eles.',
+ 'parceiro:agenda':'Defina os dias e horários em que você atende e as regras de agendamento. Logo abaixo ficam as reservas feitas.',
+ treinos:'Monte e publique treinos para os seus alunos. Eles recebem o treino e marcam quando concluírem.',
+ 'meus-videos':'Publique vídeos do YouTube. A equipe aprova e eles aparecem primeiro para os alunos da sua região.',
+ cadastro:'Seus dados profissionais e a situação da sua aprovação.',
+ 'parceiro_pendente:agenda':'Reservas feitas com a sua conta.',
+ aprovacoes:'Cadastros de profissionais esperando análise. Aprove ou recuse com um motivo.',
+ feed:'Vídeos enviados pelos profissionais. Só vão para o feed dos alunos depois que você aprova.',
+ participantes:'Lista de alunos e profissionais da plataforma.',
+ servicos:'Registros de serviços recebidos de outros sistemas.',
+ videos:'Teste de busca de vídeos de exercícios. Pode consumir créditos de serviços externos.',
+ financeiro:'Regras de reserva, cashback e carteira. Tudo aqui ainda é rascunho: nenhum pagamento real é feito.',
+ ranking:'Rascunhos das regras de pontuação. Nada é aplicado aos usuários ainda.',
+}
+export function viewHelp(kind:RoleKind,view:string){return helps[kind+':'+view]||helps[view]||''}
+
 const titles:Record<RoleKind,{badge:string,title:string,text:string}>={
- aluno:{badge:'Aluno',title:'Seu espaço de evolução',text:'Encontre profissionais, acompanhe seus treinos e sua agenda em um só lugar.'},
- parceiro:{badge:'Parceiro',title:'Seu espaço profissional',text:'Organize seus alunos, sua agenda e os treinos que você publica.'},
+ aluno:{badge:'Aluno',title:'Foco, disciplina e estratégia para a sua evolução',text:'Defina seu objetivo, encontre profissionais perto de você ou online e acompanhe sua rotina em um só lugar.'},
+ parceiro:{badge:'Parceiro',title:'Sua vitrine e seu consultório digital',text:'Apareça para alunos da sua região, organize sua agenda e acompanhe seus alunos em um só lugar.'},
  parceiro_pendente:{badge:'Parceiro em análise',title:'Cadastro profissional em análise',text:'Assim que a equipe aprovar seu cadastro, agenda, alunos e treinos serão liberados aqui.'},
  admin:{badge:'Administração',title:'Painel administrativo',text:'Aprovações, participantes e configurações da plataforma. Rascunhos financeiros não ativam pagamentos.'},
 }
@@ -66,6 +94,8 @@ function firstName(name:string){return name.trim().split(/\s+/)[0]||'você'}
 
 export function RoleShell({profile,view,onView,busy,onRefresh,onLogout,children}:{profile:Pick<OwnProfile,'role'|'approved'|'display_name'>,view:string,onView:(id:string)=>void,busy:boolean,onRefresh:()=>void,onLogout:()=>void,children:React.ReactNode}){
  const kind=roleKind(profile),menu=menus[kind],current=menu.find(item=>item.id===view)||inicio
+ const [help,setHelp]=React.useState(false)
+ React.useEffect(()=>{setHelp(false)},[current.id])
  return <div className="role-home mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-[230px_minmax(0,1fr)]" data-role={kind}>
   <aside className="min-w-0 md:sticky md:top-4 md:self-start rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-3">
    <img src="/assets/brand/logo-primary.png" alt="369 WELLNESS" className="mx-2 mb-3 hidden h-12 w-auto md:block"/>
@@ -85,8 +115,10 @@ export function RoleShell({profile,view,onView,busy,onRefresh,onLogout,children}
   <div className="min-w-0 space-y-5">
    <header className="flex flex-wrap items-center justify-between gap-3 rounded-[12px_30px_12px_30px] bg-[#a5ce41] px-5 py-4 text-[#33325a]">
     <div><p className="text-sm font-semibold">{titles[kind].badge}</p><h1 className="text-2xl font-extrabold">Olá, {firstName(profile.display_name)}</h1></div>
-    <p className="text-sm font-semibold">{current.label}</p>
+    <div className="flex items-center gap-2"><p className="text-sm font-semibold">{current.label}</p>
+     {viewHelp(kind,current.id)&&<button type="button" aria-expanded={help} aria-label={'Ajuda: '+current.label} onClick={()=>setHelp(v=>!v)} className="flex h-11 w-11 items-center justify-center rounded-full bg-white/70 text-[#33325a]"><CircleHelp aria-hidden="true" className="h-5 w-5"/></button>}</div>
    </header>
+   {help&&viewHelp(kind,current.id)&&<p role="note" className="rounded-[12px_30px_12px_30px] border border-[#a5ce41] bg-[#f3f9e6] p-4">{viewHelp(kind,current.id)}</p>}
    {children}
    <div className="flex flex-wrap gap-3 md:hidden">
     <button type="button" disabled={busy} onClick={onRefresh} className="min-h-11 rounded-[10px_22px_10px_22px] border bg-white px-4 text-sm">Atualizar conta</button>
@@ -96,7 +128,7 @@ export function RoleShell({profile,view,onView,busy,onRefresh,onLogout,children}
  </div>
 }
 
-export function RoleOverview({profile,onView,highlights,feed}:{profile:Pick<OwnProfile,'role'|'approved'>,onView:(id:string)=>void,highlights?:React.ReactNode,feed?:React.ReactNode}){
+export function RoleOverview({profile,onView,highlights,feed,journey}:{profile:Pick<OwnProfile,'role'|'approved'>,onView:(id:string)=>void,highlights?:React.ReactNode,feed?:React.ReactNode,journey?:React.ReactNode}){
  const kind=roleKind(profile),info=titles[kind]
  return <div className="space-y-5">
   <section className="rounded-[12px_30px_12px_30px] bg-[#33325a] p-6 text-[#f7f6f2]">
@@ -104,15 +136,17 @@ export function RoleOverview({profile,onView,highlights,feed}:{profile:Pick<OwnP
    <h2 className="mt-2 text-2xl font-extrabold text-[#f7f6f2]">{info.title}</h2>
    <p className="mt-2 max-w-xl text-[#d5d4e1]">{info.text}</p>
   </section>
+  {journey}
   {highlights}
   {feed}
-  {feed&&<h2 className="pt-2 text-xl font-extrabold">Atalhos</h2>}
-  <div className="grid gap-3 sm:grid-cols-2">
+  {(()=>{const cards=<div className="grid gap-3 sm:grid-cols-2">
    {menus[kind].filter(item=>item.id!=='inicio').map(item=>{const Icon=item.icon
     return <button key={item.id} type="button" onClick={()=>onView(item.id)} className="flex min-h-11 items-start gap-3 rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4 text-left hover:border-[#a5ce41]">
      <span className="rounded-full bg-[#eeedf4] p-2"><Icon aria-hidden="true" className="h-5 w-5"/></span>
      <span><span className="block font-bold">{item.label}</span><span className="block text-sm text-[#626274]">{item.summary}</span></span>
     </button>})}
   </div>
+   // Admin usa os atalhos como painel; aluno e parceiro veem primeiro o caminho e o feed.
+   return kind==='admin'?cards:<details className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4"><summary className="min-h-11 cursor-pointer py-2 text-lg font-extrabold">Ver todas as funções</summary><div className="mt-3">{cards}</div></details>})()}
  </div>
 }
