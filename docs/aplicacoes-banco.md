@@ -11,7 +11,7 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 16/11/2026 | 20261116120000_professional_video_feed.sql | professional_video_feed.sql: 28 verificações (aplicada; teste não confirmado) | Feed de vídeos (YouTube) dos profissionais, com aprovação do admin e ordem por proximidade. |
 | 17/11/2026 | 20261117120000_video_feed_flow.sql | video_feed_flow.sql: 9 verificações (aguardando aplicação) | Links do YouTube em mais formatos; admin publica como Equipe 369 WELLNESS; prévia do feed no admin. |
 | 18/11/2026 | 20261118120000_onboarding_goal_phone.sql | onboarding_goal_phone.sql: 8 verificações (aguardando aplicação) | Fase 1: objetivo do aluno e celular editável. |
-| 19/11/2026 | 20261119120000_showcase_search_chat.sql | showcase_search_chat.sql: 27 verificações (aguardando aplicação) | Fase 2: vitrine, busca por modalidade/região e chat (vínculo e suporte). |
+| 19/11/2026 | 20261119120000_showcase_search_chat.sql | showcase_search_chat.sql: 27 verificações OK | Fase 2: vitrine, busca por modalidade/região e chat (vínculo e suporte). |
 
 ## Configurações do painel (Auth)
 
