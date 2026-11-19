@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      professional_profiles: {
+        Row: { user_id: string; headline: string; bio: string | null; education: string | null; experience: string | null; modalities: string[]; modes: string[]; updated_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       account_goals: {
         Row: { user_id: string; goal: string; updated_at: string }
         Insert: never
@@ -701,6 +707,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_my_showcase: {
+        Args: { p_headline: string; p_bio: string | null; p_education: string | null; p_experience: string | null; p_modalities: string[]; p_modes: string[] }
+        Returns: { user_id: string; headline: string; bio: string | null; education: string | null; experience: string | null; modalities: string[]; modes: string[]; updated_at: string }[]
+      }
+      search_professionals: {
+        Args: { p_modality: string | null; p_mode: string | null; p_lat: number | null; p_lng: number | null; p_page: number }
+        Returns: { professional_id: string; display_name: string; headline: string | null; modalities: string[]; modes: string[]; uf: string | null; city: string | null; neighborhood: string | null; proximity: string; distance_km: number | null; video_count: number; link_state: string | null }[]
+      }
+      professional_showcase: {
+        Args: { p_professional_id: string }
+        Returns: { professional_id: string; display_name: string; headline: string | null; bio: string | null; education: string | null; experience: string | null; modalities: string[]; modes: string[]; uf: string | null; city: string | null; neighborhood: string | null; credential_area: string | null; videos: Json; link_state: string | null }[]
+      }
+      open_chat: {
+        Args: { p_with: string | null }
+        Returns: string
+      }
+      list_chats: {
+        Args: Record<PropertyKey, never>
+        Returns: { thread_id: string; kind: string; title: string; last_body: string | null; last_message_at: string | null; unread: number; can_send: boolean; counterpart_id: string | null }[]
+      }
+      read_chat: {
+        Args: { p_thread: string; p_after: number }
+        Returns: { message_id: number; mine: boolean; sender_label: string; body: string; created_at: string }[]
+      }
+      send_chat_message: {
+        Args: { p_thread: string; p_body: string }
+        Returns: number
+      }
+      chat_unread_total: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       set_my_goal: {
         Args: { p_goal: string }
         Returns: { user_id: string; goal: string; updated_at: string }[]

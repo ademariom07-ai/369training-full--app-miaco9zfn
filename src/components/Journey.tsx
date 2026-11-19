@@ -3,6 +3,7 @@ import {Check,Compass,Crosshair,Repeat,Route} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {goals,readMyGoal,saveMyGoal,type Goal} from '@/lib/supabase/onboarding'
 import {readMyLocation,readMyVideos} from '@/lib/supabase/videoFeed'
+import {readMyShowcase} from '@/lib/supabase/showcase'
 import {readBookingReservations} from '@/lib/supabase/bookingReservations'
 import {readTrainingPlans} from '@/lib/supabase/trainingPlans'
 import {readTrainingCompletions} from '@/lib/supabase/trainingCompletions'
@@ -71,13 +72,15 @@ export function StudentJourney({owner,links,onView}:{owner:string,links:Particip
 
 // Caminho inicial do parceiro: conhecer, região, primeiro vídeo, primeiro aluno.
 export function PartnerJourney({owner,links,onView}:{owner:string,links:ParticipantLink[],onView:(id:string)=>void}){
- const [region,setRegion]=useState(false),[video,setVideo]=useState(false)
+ const [region,setRegion]=useState(false),[video,setVideo]=useState(false),[showcase,setShowcase]=useState(false)
  useEffect(()=>{let alive=true
   readMyLocation().then(l=>{if(alive)setRegion(!!l)}).catch(()=>{})
   readMyVideos().then(v=>{if(alive)setVideo(v.length>0)}).catch(()=>{})
+  readMyShowcase().then(v=>{if(alive)setShowcase(!!v)}).catch(()=>{})
   return()=>{alive=false}},[owner])
  const steps:Step[]=[
   {id:'conheca',title:'Conheça a 369',text:'Veja como a plataforma ajuda você a ser encontrado e a organizar seus alunos.',done:tourSeen(owner),action:'Ver como funciona',view:'como-funciona'},
+  {id:'vitrine',title:'Monte sua vitrine',text:'Apresentação, formação, modalidades e se atende presencial ou online. É o que os alunos veem na busca.',done:showcase,action:'Montar vitrine',view:'vitrine'},
   {id:'regiao',title:'Informe sua região de atendimento',text:'Alunos perto de você passam a ver você primeiro.',done:region,action:'Informar região',view:'meus-videos'},
   {id:'video',title:'Publique seu primeiro vídeo',text:'Um vídeo curto mostrando seu trabalho é a melhor apresentação para novos alunos.',done:video,action:'Enviar vídeo',view:'meus-videos'},
   {id:'aluno',title:'Aceite seu primeiro aluno',text:'Quando um aluno pedir acompanhamento, aceite em "Meus alunos" para montar treinos e agenda.',done:links.some(row=>row.state==='active'),action:'Ver meus alunos',view:'alunos'},

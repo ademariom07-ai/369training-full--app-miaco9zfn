@@ -1,4 +1,5 @@
 import {PendingVideosNotice} from '@/components/VideoFeed'
+import {unreadTotal} from '@/lib/supabase/chat'
 import {StudentJourney,PartnerJourney,HowItWorks} from '@/components/Journey'
 import {formatBrazilPhone,readMyPhone,saveMyPhone,suggestEmail} from '@/lib/supabase/onboarding'
 import {RoleShell,RoleOverview,pickView,roleKind} from '@/components/RoleHome'
@@ -27,7 +28,9 @@ const RankingPolicyDrafts=lazy(()=>import('@/components/RankingPolicyDrafts'))
 const SupabaseWallet=lazy(()=>import('@/components/SupabaseWallet'))
 const TrainingPlans=lazy(()=>import('@/components/TrainingPlans'))
 const ProfessionalApplications=lazy(()=>import('@/components/ProfessionalApplications'))
-const ProfessionalDirectory=lazy(()=>import('@/components/ProfessionalDirectory'))
+const Chat=lazy(()=>import('@/components/Chat'))
+const ProfessionalSearch=lazy(()=>import('@/components/Showcase').then(m=>({default:m.ProfessionalSearch})))
+const MyShowcase=lazy(()=>import('@/components/Showcase').then(m=>({default:m.MyShowcase})))
 const HoldPolicy=lazy(()=>import('@/components/BookingHoldControls').then(m=>({default:m.HoldPolicy})))
 const StudentVideoFeed=lazy(()=>import('@/components/VideoFeed').then(m=>({default:m.StudentVideoFeed})))
 const ProfessionalVideos=lazy(()=>import('@/components/VideoFeed').then(m=>({default:m.ProfessionalVideos})))
@@ -39,6 +42,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
  const [mode,setMode]=useState<'login'|'signup'|'recover'>('login'),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
  const [fullName,setFullName]=useState(''),[phone,setPhone]=useState(''),[code,setCode]=useState(''),[codeSent,setCodeSent]=useState(false)
  const [view,setView]=useState(()=>typeof window==='undefined'?'':decodeURIComponent(window.location.hash.slice(1)))
+ const [chatWith,setChatWith]=useState<string|null>(null),[unread,setUnread]=useState(0)
  const [google,setGoogle]=useState(false),[myPhone,setMyPhone]=useState(''),[phoneDraft,setPhoneDraft]=useState(''),[phoneNote,setPhoneNote]=useState('')
  // Voltar do celular/navegador volta para a tela anterior do app, sem perder o lugar.
  useEffect(()=>{const back=()=>{setView(decodeURIComponent(window.location.hash.slice(1)));setMessage('');setNotice('')};window.addEventListener('popstate',back);return()=>window.removeEventListener('popstate',back)},[])
@@ -49,6 +53,8 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   catch{setState({phase:'error',profile:null,busy:false,error:'O acesso está indisponível neste ambiente.'})}
  },[])
  useEffect(()=>{setLinkPage(1)},[state.profile?.id])
+ const checkUnread=React.useCallback(()=>{unreadTotal().then(setUnread).catch(()=>{})},[])
+ useEffect(()=>{setUnread(0);if(state.phase!=='ready'||!state.profile)return;checkUnread();const id=setInterval(()=>{if(document.visibilityState==='visible')checkUnread()},60000);return()=>clearInterval(id)},[state.phase,state.profile?.id,checkUnread])
  useEffect(()=>{setMyPhone('');setPhoneDraft('');setPhoneNote('');if(state.phase!=='ready'||!state.profile)return;let alive=true;readMyPhone().then(p=>{if(alive&&p){setMyPhone(p);setPhoneDraft(formatBrazilPhone(p))}}).catch(()=>{});return()=>{alive=false}},[state.phase,state.profile?.id])
  useEffect(()=>{setLinkOwner(null);setEnding(null);setName(state.profile?.display_name||'');setLinks([]);setLinkError('');setLinksLoading(false);let active=true
   if(state.phase==='ready'&&state.profile){
@@ -74,13 +80,14 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
  }
  const profile=state.profile
  function openView(id:string){setView(id);setMessage('');setNotice('');try{if(window.location.hash!=='#'+id)window.history.pushState(null,'','#'+id)}catch{/* sem histórico */}window.scrollTo?.({top:0})}
+ function startChat(id:string){setChatWith(id);openView('mensagens')}
  const logout=()=>void act(async()=>{await controller.current!.logout();setEmail('');setName('')})
  const alerts=<>{state.error&&<p role="alert">{state.error}</p>}{message&&<p role="alert">{message}</p>}{notice&&<p role="status">{notice}</p>}</>
  if(state.phase==='ready'&&profile){
   const kind=roleKind(profile),current=pickView(profile,view),busy=state.busy
   const linksReady=linkOwner===profile.id&&!linksLoading&&!linkError
   const panel=(children:React.ReactNode)=><Card className="space-y-4 p-6">{children}</Card>
-  const linksBlock=<><h2 className="text-lg font-semibold">{kind==='aluno'?'Seus profissionais':'Seus alunos'}</h2>{linkError?<p role="alert">{linkError}</p>:linksLoading||linkOwner!==profile.id?<p role="status">Carregando vínculos…</p>:links.length?<ul className="space-y-2">{links.map(row=><li key={row.student_id} className="rounded-lg border p-3"><p>{row.state==='pending'?'Aguardando aceite':row.state==='active'?'Ativo':'Encerrado'}</p><p>{kind==='aluno'?'Profissional':'Aluno'}: {row.participant_name||(row.state==='revoked'?'Vínculo encerrado':'Nome indisponível')}</p>{kind==='aluno'&&row.state!=='revoked'&&<ReleasedAvailability key={profile.id+row.professional_id} owner={profile.id} professionalId={row.professional_id} disabled={busy}/>}<p className="text-sm text-slate-600">Solicitado em {new Date(row.requested_at).toLocaleString('pt-BR')}</p>{row.state!=='revoked'&&<div className="mt-2 flex gap-2">{kind==='parceiro'&&row.state==='pending'&&<Button type="button" disabled={busy||linksLoading} onClick={()=>void act(()=>controller.current!.acceptLink(row))}>Aceitar vínculo</Button>}<Button type="button" variant="outline" disabled={busy||linksLoading} onClick={()=>setEnding(row)}>Encerrar vínculo</Button></div>}</li>)}</ul>:<p>{kind==='aluno'?'Você ainda não tem vínculo com um profissional.':'Nenhum vínculo nesta página.'}</p>}{ending&&linkOwner===profile.id&&<div className="space-y-3 rounded-lg border p-4" role="group" aria-label="Confirmar encerramento"><p>{kind==='aluno'?'Profissional':'Aluno'}: {ending.participant_name||'Nome indisponível'}</p><p>Encerrar o vínculo solicitado em {new Date(ending.requested_at).toLocaleString('pt-BR')}? Será necessário um novo pedido e aceite para retomá-lo.</p><div className="flex gap-2"><Button type="button" disabled={busy} onClick={()=>void act(async()=>{await controller.current!.revokeLink(ending);setEnding(null)})}>Confirmar encerramento</Button><Button type="button" variant="outline" disabled={busy} onClick={()=>setEnding(null)}>Cancelar</Button></div></div>}{kind==='parceiro'&&<div className="flex items-center gap-3"><Button type="button" variant="outline" disabled={linksLoading||busy||linkPage<=1} onClick={()=>setLinkPage(p=>p-1)}>Anterior</Button><span>Página {linkPage}</span><Button type="button" variant="outline" disabled={linksLoading||busy||links.length<20||linkPage>=10000} onClick={()=>setLinkPage(p=>p+1)}>Próxima</Button></div>}</>
+  const linksBlock=<><h2 className="text-lg font-semibold">{kind==='aluno'?'Seus profissionais':'Seus alunos'}</h2>{linkError?<p role="alert">{linkError}</p>:linksLoading||linkOwner!==profile.id?<p role="status">Carregando vínculos…</p>:links.length?<ul className="space-y-2">{links.map(row=><li key={row.student_id} className="rounded-lg border p-3"><p>{row.state==='pending'?'Aguardando aceite':row.state==='active'?'Ativo':'Encerrado'}</p><p>{kind==='aluno'?'Profissional':'Aluno'}: {row.participant_name||(row.state==='revoked'?'Vínculo encerrado':'Nome indisponível')}</p>{kind==='aluno'&&row.state!=='revoked'&&<ReleasedAvailability key={profile.id+row.professional_id} owner={profile.id} professionalId={row.professional_id} disabled={busy}/>}<p className="text-sm text-slate-600">Solicitado em {new Date(row.requested_at).toLocaleString('pt-BR')}</p>{row.state!=='revoked'&&<div className="mt-2 flex gap-2">{kind==='parceiro'&&row.state==='pending'&&<Button type="button" disabled={busy||linksLoading} onClick={()=>void act(()=>controller.current!.acceptLink(row))}>Aceitar vínculo</Button>}<Button type="button" variant="outline" disabled={busy} onClick={()=>startChat(kind==='aluno'?row.professional_id:row.student_id)}>Mensagem</Button><Button type="button" variant="outline" disabled={busy||linksLoading} onClick={()=>setEnding(row)}>Encerrar vínculo</Button></div>}</li>)}</ul>:<p>{kind==='aluno'?'Você ainda não tem vínculo com um profissional.':'Nenhum vínculo nesta página.'}</p>}{ending&&linkOwner===profile.id&&<div className="space-y-3 rounded-lg border p-4" role="group" aria-label="Confirmar encerramento"><p>{kind==='aluno'?'Profissional':'Aluno'}: {ending.participant_name||'Nome indisponível'}</p><p>Encerrar o vínculo solicitado em {new Date(ending.requested_at).toLocaleString('pt-BR')}? Será necessário um novo pedido e aceite para retomá-lo.</p><div className="flex gap-2"><Button type="button" disabled={busy} onClick={()=>void act(async()=>{await controller.current!.revokeLink(ending);setEnding(null)})}>Confirmar encerramento</Button><Button type="button" variant="outline" disabled={busy} onClick={()=>setEnding(null)}>Cancelar</Button></div></div>}{kind==='parceiro'&&<div className="flex items-center gap-3"><Button type="button" variant="outline" disabled={linksLoading||busy||linkPage<=1} onClick={()=>setLinkPage(p=>p-1)}>Anterior</Button><span>Página {linkPage}</span><Button type="button" variant="outline" disabled={linksLoading||busy||links.length<20||linkPage>=10000} onClick={()=>setLinkPage(p=>p+1)}>Próxima</Button></div>}</>
   const training=linksReady&&(kind==='aluno'||kind==='parceiro')?<TrainingPlans account={profile} links={links} disabled={busy} onPublish={(link,title,content)=>controller.current!.publishTraining(link,title,content)} onRead={id=>controller.current!.readTraining(id)} onComplete={id=>controller.current!.completeTraining(id)}/>:<p role="status">Carregando treinos…</p>
   const applications=<ProfessionalApplications account={profile} disabled={busy} onSubmit={(specialty,credential)=>controller.current!.applyProfessional(specialty,credential)} onReview={(row,decision,reason)=>controller.current!.reviewProfessional(row,decision,reason)}/>
   const wallet=<><p className="rounded-lg bg-sky-50 p-3">Pagamentos e saques reais ainda não estão disponíveis neste piloto.</p><SupabaseWallet account={profile} disabled={busy} onInitialize={()=>controller.current!.initializeWallet()} onReserve={amount=>controller.current!.reserveWithdrawal(amount)} onCancel={row=>controller.current!.cancelWithdrawal(row)}/></>
@@ -96,7 +103,9 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    esg:()=>panel(<EsgProjects key={'esg'+profile.id} account={profile} disabled={busy} onSubmit={input=>controller.current!.submitEsg(input)} onReview={(row,decision,reason)=>controller.current!.reviewEsg(row,decision,reason)}/>),
    carteira:()=>panel(wallet),
    // Aluno
-   profissionais:()=>panel(<>{linksReady&&!links.some(row=>row.state!=='revoked')&&<ProfessionalDirectory owner={profile.id} disabled={busy} onRequest={id=>controller.current!.requestLink(id)}/>}{linksBlock}</>),
+   profissionais:()=><>{panel(<ProfessionalSearch owner={profile.id} disabled={busy} canRequest={linksReady&&!links.some(row=>row.state!=='revoked')} onRequest={async id=>{await controller.current!.requestLink(id)}} onChat={startChat}/>)}{panel(linksBlock)}</>,
+   mensagens:()=>panel(<Chat key={'chat'+profile.id} owner={profile.id} role={profile.role==='admin'?'admin':profile.role==='profissional'?'profissional':'aluno'} startWith={chatWith} onUnreadChange={checkUnread}/>),
+   vitrine:()=>panel(<MyShowcase key={'vitrine'+profile.id} owner={profile.id} disabled={busy}/>),
    treino:()=>panel(training),
    parceiro:()=>panel(applications),
    // Parceiro
@@ -114,7 +123,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    financeiro:()=><>{panel(<><h2 className="text-xl font-bold">Financeiro</h2><p>Os parâmetros financeiros salvos como rascunho não ativam pagamentos ou distribuição de cashback.</p><HoldPolicy key={profile.id} owner={profile.id} disabled={busy}/></>)}{panel(<CashbackPolicyDrafts key={'cashdraft'+profile.id} owner={profile.id} disabled={busy}/>)}{panel(reservations)}{panel(wallet)}</>,
    ranking:()=>panel(<RankingPolicyDrafts key={profile.id} owner={profile.id} disabled={busy} onSave={input=>controller.current!.saveRankingDraft(input)}/>),
   }
-  return <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900"><RoleShell profile={profile} view={current} onView={openView} busy={busy} onRefresh={()=>void controller.current?.refresh()} onLogout={logout}>
+  return <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900"><RoleShell profile={profile} view={current} onView={id=>{if(id!=='mensagens')setChatWith(null);openView(id)}} badges={{mensagens:unread}} busy={busy} onRefresh={()=>void controller.current?.refresh()} onLogout={logout}>
    {(state.error||message||notice)&&<div className="space-y-2">{alerts}</div>}
    <section aria-label={current} className="space-y-5"><Suspense fallback={<p role="status">Carregando…</p>}>{views[current]()}</Suspense></section>
   </RoleShell></main>

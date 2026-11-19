@@ -1,5 +1,5 @@
 import React from 'react'
-import {CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -16,21 +16,24 @@ export function roleKind(profile:Pick<OwnProfile,'role'|'approved'>):RoleKind{
 const inicio:RoleView={id:'inicio',label:'Visão geral',icon:Home,summary:'Resumo do seu espaço.'}
 const perfil:RoleView={id:'perfil',label:'Meu perfil',icon:UserRound,summary:'Nome exibido e dados da conta.'}
 const esg:RoleView={id:'esg',label:'Projetos sociais',icon:Leaf,summary:'Projetos sociais e ambientais da comunidade (ESG).'}
+const mensagens:RoleView={id:'mensagens',label:'Mensagens',icon:MessageCircle,summary:'Converse com seu profissional, seus alunos ou a equipe 369.'}
 const comoFunciona:RoleView={id:'como-funciona',label:'Como funciona',icon:Compass,summary:'Os 3 pilares e o passo a passo da 369.'}
 const carteira:RoleView={id:'carteira',label:'Carteira',icon:Wallet,summary:'Saldo e reservas do piloto. Sem pagamentos reais.'}
 
 const menus:Record<RoleKind,RoleView[]>={
  aluno:[inicio,comoFunciona,
-  {id:'profissionais',label:'Profissionais',icon:Users,summary:'Encontre um profissional e acompanhe seus vínculos.'},
+  {id:'profissionais',label:'Encontrar profissionais',icon:Users,summary:'Busque por modalidade, perto de você ou online, e veja a vitrine de cada um.'},
   {id:'treino',label:'Meu treino',icon:Dumbbell,summary:'Treinos publicados pelo seu profissional.'},
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Suas reservas de horário.'},
-  carteira,esg,
+  mensagens,carteira,esg,
   {id:'parceiro',label:'Seja parceiro',icon:Briefcase,summary:'Cadastre-se como profissional da plataforma.'},
   perfil],
  parceiro:[inicio,
   {id:'alunos',label:'Meus alunos',icon:Users,summary:'Pedidos de vínculo e alunos ativos.'},
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Horários disponíveis, regras e reservas.'},
   {id:'treinos',label:'Treinos',icon:Dumbbell,summary:'Publique e acompanhe treinos dos seus alunos.'},
+  mensagens,
+  {id:'vitrine',label:'Minha vitrine',icon:Store,summary:'Apresentação, formação, modalidades e atendimento que os alunos veem.'},
   {id:'meus-videos',label:'Meus vídeos',icon:Clapperboard,summary:'Envie vídeos para o feed dos alunos da sua região.'},
   carteira,esg,
   {id:'cadastro',label:'Meu cadastro profissional',icon:ClipboardCheck,summary:'Especialidade e situação da aprovação.'},
@@ -38,9 +41,10 @@ const menus:Record<RoleKind,RoleView[]>={
  parceiro_pendente:[inicio,
   {id:'cadastro',label:'Meu cadastro profissional',icon:ClipboardCheck,summary:'Acompanhe a análise do seu cadastro.'},
   {id:'agenda',label:'Minhas reservas',icon:CalendarDays,summary:'Reservas feitas com a sua conta.'},
-  carteira,esg,comoFunciona,perfil],
+  mensagens,carteira,esg,comoFunciona,perfil],
  admin:[inicio,
   {id:'aprovacoes',label:'Aprovações',icon:ShieldCheck,summary:'Cadastros profissionais aguardando análise.'},
+  mensagens,
   {id:'feed',label:'Vídeos do feed',icon:Clapperboard,summary:'Aprove os vídeos dos profissionais antes de irem para o feed.'},
   {id:'participantes',label:'Participantes',icon:Users,summary:'Visão geral de alunos e profissionais.'},
   {id:'servicos',label:'Serviços recebidos',icon:Inbox,summary:'Eventos de serviços que chegaram à plataforma.'},
@@ -60,7 +64,10 @@ export function pickView(profile:Pick<OwnProfile,'role'|'approved'>,wanted:strin
 const helps:Record<string,string>={
  inicio:'Aqui você vê o seu próximo passo, os vídeos dos profissionais e os atalhos para tudo.',
  'como-funciona':'Explica os 3 pilares da 369 — foco, disciplina e estratégia — e o caminho para começar.',
- profissionais:'Escolha um profissional e envie um pedido de acompanhamento. Quando ele aceitar, vocês ficam ligados: ele monta seus treinos e você vê os horários livres dele.',
+ profissionais:'Escolha a modalidade e veja quem atende perto de você ou online. Abra a vitrine, conheça o profissional e toque em "Quero ser acompanhado". Quando ele aceitar, ele monta seus treinos e você vê os horários dele.',
+ mensagens:'Converse com o seu profissional ou com seus alunos, e com a equipe 369 quando precisar de ajuda. A equipe não lê as conversas entre aluno e profissional.',
+ 'admin:mensagens':'Conversas de suporte com alunos e profissionais. Use a busca para iniciar uma conversa. Conversas entre aluno e profissional são privadas e não aparecem aqui.',
+ vitrine:'É o seu perfil público: aparece para os alunos na busca. Diga o que você faz, para quem, sua formação e se atende presencial ou online.',
  treino:'Aqui aparecem os treinos que o seu profissional montou. Quando terminar um treino, toque em concluir: isso registra a sua evolução.',
  'aluno:agenda':'Seus horários reservados com profissionais.',
  carteira:'Área de teste: mostra saldo e pedidos de saque simulados. Ainda não há pagamentos de verdade.',
@@ -92,7 +99,7 @@ const titles:Record<RoleKind,{badge:string,title:string,text:string}>={
 
 function firstName(name:string){return name.trim().split(/\s+/)[0]||'você'}
 
-export function RoleShell({profile,view,onView,busy,onRefresh,onLogout,children}:{profile:Pick<OwnProfile,'role'|'approved'|'display_name'>,view:string,onView:(id:string)=>void,busy:boolean,onRefresh:()=>void,onLogout:()=>void,children:React.ReactNode}){
+export function RoleShell({profile,view,onView,busy,onRefresh,onLogout,children,badges={}}:{profile:Pick<OwnProfile,'role'|'approved'|'display_name'>,view:string,onView:(id:string)=>void,busy:boolean,onRefresh:()=>void,onLogout:()=>void,children:React.ReactNode,badges?:Record<string,number>}){
  const kind=roleKind(profile),menu=menus[kind],current=menu.find(item=>item.id===view)||inicio
  const [help,setHelp]=React.useState(false)
  React.useEffect(()=>{setHelp(false)},[current.id])
@@ -104,7 +111,7 @@ export function RoleShell({profile,view,onView,busy,onRefresh,onLogout,children}
     {menu.map(item=>{const Icon=item.icon,active=item.id===current.id
      return <button key={item.id} type="button" aria-current={active?'page':undefined} onClick={()=>onView(item.id)}
       className={'flex min-h-11 shrink-0 items-center gap-3 rounded-[10px_22px_10px_22px] px-3 py-2 text-left text-sm font-semibold '+(active?'bg-[#a5ce41] text-[#33325a]':'text-[#626274] hover:bg-[#eeedf4]')}>
-      <Icon aria-hidden="true" className="h-4 w-4 shrink-0"/>{item.label}</button>})}
+      <Icon aria-hidden="true" className="h-4 w-4 shrink-0"/>{item.label}{(badges[item.id]||0)>0&&<span className="ml-auto rounded-full bg-[#33325a] px-2 text-xs font-bold text-[#f7f6f2]" aria-label={badges[item.id]+' não lidas'}>{badges[item.id]}</span>}</button>})}
    </nav>
    <div className="mt-3"><InstallApp compact/></div>
    <div className="mt-3 hidden flex-col gap-2 border-t border-[#dddee4] pt-3 md:flex">

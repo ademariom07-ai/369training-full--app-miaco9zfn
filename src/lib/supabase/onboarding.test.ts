@@ -19,7 +19,7 @@ describe('primeiro acesso',()=>{
   await expect(saveMyPhone('123',{} as never)).rejects.toThrow('celular válido')
  })
  it('cada perfil tem ajuda em linguagem simples para as telas principais',()=>{
-  expect(viewHelp('aluno','profissionais')).toContain('pedido de acompanhamento')
+  expect(viewHelp('aluno','profissionais')).toContain('Quero ser acompanhado')
   expect(viewHelp('parceiro','agenda')).toContain('horários')
   expect(viewHelp('aluno','agenda')).toContain('reservados')
   expect(viewHelp('admin','feed')).toContain('aprova')
