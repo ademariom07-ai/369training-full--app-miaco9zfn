@@ -1,11 +1,15 @@
 // 369 WELLNESS · Edge Function "routine-ai": gera treino (aluno ou profissional) ou dieta (profissional) com o Claude.
 // O plano volta como RASCUNHO pela função do banco save_routine, que confere de novo quem pode criar o quê.
 // Arquivo único para colar no painel do Supabase (Edge Functions › Deploy a new function › Via editor).
-// Segredo necessário: ANTHROPIC_API_KEY. Opcional: ROUTINE_ALLOWED_ORIGINS (lista separada por vírgula).
+// Segredo necessário: ANTHROPIC_API_KEY. Opcionais: ROUTINE_ALLOWED_ORIGINS (lista separada por vírgula) e
+// ROUTINE_MODEL: claude-sonnet-5-5 (padrão, ~US$ 0,02-0,04 por plano), claude-haiku-5-5 (~US$ 0,002-0,005,
+// o mais barato) ou claude-opus-5-5 (~US$ 0,05-0,15, o mais caprichado).
 import Anthropic from 'npm:@anthropic-ai/sdk@1.10.0'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 
-const MODEL = 'claude-opus-5-5'
+const MODELS = ['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'] as const
+const envModel = Deno.env.get('ROUTINE_MODEL') || ''
+const MODEL: (typeof MODELS)[number] = (MODELS as readonly string[]).includes(envModel) ? (envModel as (typeof MODELS)[number]) : 'claude-sonnet-5-5'
 const DAYS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as const
 const LIMITS = { aluno: 3, profissional: 15 } // gerações por 24 h
 const ORIGINS = (Deno.env.get('ROUTINE_ALLOWED_ORIGINS') || 'https://369wellness.ademariom07.workers.dev')
@@ -175,13 +179,15 @@ Deno.serve(async (req) => {
   const client = new Anthropic({ apiKey, timeout: 120_000, maxRetries: 1 })
   let raw: Record<string, unknown>
   try {
+    // Esforço baixo: o plano é um formato simples e o banco valida tudo depois; mantém o custo menor.
+    // Sonnet e Opus têm troca automática de modelo em caso de recusa; o Haiku não tem esse recurso.
+    const fallback = MODEL === 'claude-haiku-5-5' ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const }
     const message = await client.beta.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      ...fallback,
       system: body.kind === 'treino' ? SYSTEM_TRAINING : SYSTEM_DIET,
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: body.kind === 'treino' ? trainingSchema : dietSchema } },
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: body.kind === 'treino' ? trainingSchema : dietSchema } },
       messages: [{ role: 'user', content: `Monte ${body.kind === 'treino' ? 'o treino semanal' : 'o plano alimentar'} para esta pessoa:\n${describe(body.kind, { ...a, days, minutes })}` }],
     })
     if (message.stop_reason === 'refusal') return reply(422, { message: 'A IA não conseguiu montar este plano. Ajuste as informações ou fale com um profissional.' })

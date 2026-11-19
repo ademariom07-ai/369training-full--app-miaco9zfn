@@ -18,7 +18,7 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 
 | Data | Função | Segredos | Observação |
 | --- | --- | --- | --- |
-| 20/11/2026 | routine-ai (supabase/functions/routine-ai/index.ts) | ANTHROPIC_API_KEY (obrigatório), ROUTINE_ALLOWED_ORIGINS (opcional) | Treino/dieta com IA (Claude Opus 5.5). Aguardando publicação no painel. |
+| 20/11/2026 | routine-ai (supabase/functions/routine-ai/index.ts) | ANTHROPIC_API_KEY (obrigatório), ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS (opcionais) | Treino/dieta com IA. Modelo padrão Claude Sonnet 5.5 com esforço baixo (custo menor); Haiku 5.5 opcional. Aguardando publicação no painel. |
 
 ## Configurações do painel (Auth)
 
