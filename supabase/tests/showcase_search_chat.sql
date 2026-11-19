@@ -1,4 +1,5 @@
 -- Fase 2: vitrine, busca e chat. Tudo é desfeito no final.
+-- As verificações de busca olham só os profissionais criados aqui (o banco real pode ter outros).
 do $test$
 declare
   adm uuid := gen_random_uuid(); pa uuid := gen_random_uuid(); pb uuid := gen_random_uuid(); pp uuid := gen_random_uuid();
@@ -30,10 +31,10 @@ begin
     -- Busca: aluno em Pinheiros vê Ana primeiro; filtros por modalidade e online; pendente não aparece.
     perform set_config('request.jwt.claims', json_build_object('sub', s2, 'role','authenticated','is_anonymous',false)::text, true);
     perform public.set_my_location('SP','Sao Paulo','pinheiros', null, null);
-    select array_agg(display_name || ':' || proximity order by ord) into names from (select display_name, proximity, row_number() over () ord from public.search_professionals(null,null,null,null,1)) x;
+    select array_agg(display_name || ':' || proximity order by ord) into names from (select display_name, proximity, row_number() over () ord from public.search_professionals(null,null,null,null,1)) x where display_name in ('Ana Personal','Beto Nutri');
     if names <> array['Ana Personal:bairro','Beto Nutri:outras'] then raise exception 'search order %', names; end if; checks := checks + 1;
-    select count(*) into n from public.search_professionals('nutricao', null, null, null, 1); if n <> 1 then raise exception 'modality filter'; end if; checks := checks + 1;
-    select count(*) into n from public.search_professionals(null, 'presencial', null, null, 1); if n <> 1 then raise exception 'mode filter'; end if; checks := checks + 1;
+    select count(*) into n from public.search_professionals('nutricao', null, null, null, 1) where professional_id in (pa, pb); if n <> 1 then raise exception 'modality filter'; end if; checks := checks + 1;
+    select count(*) into n from public.search_professionals(null, 'presencial', null, null, 1) where professional_id in (pa, pb); if n <> 1 then raise exception 'mode filter'; end if; checks := checks + 1;
     begin perform public.search_professionals('astrologia', null, null, null, 1); raise exception 'bad filter';
     exception when invalid_parameter_value then checks := checks + 1; end;
     select count(*) into n from public.professional_showcase(pa); if n <> 1 then raise exception 'showcase missing'; end if; checks := checks + 1;
