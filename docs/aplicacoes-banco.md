@@ -12,6 +12,13 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 17/11/2026 | 20261117120000_video_feed_flow.sql | video_feed_flow.sql: 9 verificações (aguardando aplicação) | Links do YouTube em mais formatos; admin publica como Equipe 369 WELLNESS; prévia do feed no admin. |
 | 18/11/2026 | 20261118120000_onboarding_goal_phone.sql | onboarding_goal_phone.sql: 8 verificações (aguardando aplicação) | Fase 1: objetivo do aluno e celular editável. |
 | 19/11/2026 | 20261119120000_showcase_search_chat.sql | showcase_search_chat.sql: 27 verificações OK | Fase 2: vitrine, busca por modalidade/região e chat (vínculo e suporte). |
+| 20/11/2026 | 20261120120000_routine_plans.sql | routine_plans.sql: 26 verificações (aguardando aplicação) | Fase 3: treino por dia da semana e dieta por refeição, registro do que o aluno fez, base para IA. |
+
+## Edge Functions
+
+| Data | Função | Segredos | Observação |
+| --- | --- | --- | --- |
+| 20/11/2026 | routine-ai (supabase/functions/routine-ai/index.ts) | ANTHROPIC_API_KEY (obrigatório), ROUTINE_ALLOWED_ORIGINS (opcional) | Treino/dieta com IA (Claude Opus 5.5). Aguardando publicação no painel. |
 
 ## Configurações do painel (Auth)
 

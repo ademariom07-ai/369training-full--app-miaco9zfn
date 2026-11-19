@@ -707,6 +707,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_routine: {
+        Args: { p_id: string | null; p_student: string; p_kind: string; p_source: string; p_title: string; p_notes: string | null; p_structure: Json }
+        Returns: string
+      }
+      publish_routine: { Args: { p_id: string }; Returns: string }
+      review_routine: { Args: { p_id: string; p_approve: boolean }; Returns: string }
+      archive_routine: { Args: { p_id: string }; Returns: undefined }
+      list_routines: {
+        Args: { p_student: string | null }
+        Returns: { plan_id: string; student_id: string; student_name: string; author_id: string; author_name: string; kind: string; source: string; status: string; title: string; notes: string | null; structure: Json; updated_at: string; published_at: string | null; mine: boolean; can_review: boolean }[]
+      }
+      log_routine_day: { Args: { p_plan: string; p_day: string; p_date: string; p_done: boolean }; Returns: undefined }
+      routine_progress: { Args: { p_plan: string }; Returns: { day_key: string; done_on: string }[] }
       save_my_showcase: {
         Args: { p_headline: string; p_bio: string | null; p_education: string | null; p_experience: string | null; p_modalities: string[]; p_modes: string[] }
         Returns: { user_id: string; headline: string; bio: string | null; education: string | null; experience: string | null; modalities: string[]; modes: string[]; updated_at: string }[]

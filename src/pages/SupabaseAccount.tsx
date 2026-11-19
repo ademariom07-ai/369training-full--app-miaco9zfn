@@ -28,6 +28,9 @@ const RankingPolicyDrafts=lazy(()=>import('@/components/RankingPolicyDrafts'))
 const SupabaseWallet=lazy(()=>import('@/components/SupabaseWallet'))
 const TrainingPlans=lazy(()=>import('@/components/TrainingPlans'))
 const ProfessionalApplications=lazy(()=>import('@/components/ProfessionalApplications'))
+const StudentRoutines=lazy(()=>import('@/components/Routines').then(m=>({default:m.StudentRoutines})))
+const ProRoutines=lazy(()=>import('@/components/Routines').then(m=>({default:m.ProRoutines})))
+const AiRoutine=lazy(()=>import('@/components/AiRoutine'))
 const Chat=lazy(()=>import('@/components/Chat'))
 const ProfessionalSearch=lazy(()=>import('@/components/Showcase').then(m=>({default:m.ProfessionalSearch})))
 const MyShowcase=lazy(()=>import('@/components/Showcase').then(m=>({default:m.MyShowcase})))
@@ -42,6 +45,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
  const [mode,setMode]=useState<'login'|'signup'|'recover'>('login'),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
  const [fullName,setFullName]=useState(''),[phone,setPhone]=useState(''),[code,setCode]=useState(''),[codeSent,setCodeSent]=useState(false)
  const [view,setView]=useState(()=>typeof window==='undefined'?'':decodeURIComponent(window.location.hash.slice(1)))
+ const [aiStudent,setAiStudent]=useState<string|null>(null)
  const [chatWith,setChatWith]=useState<string|null>(null),[unread,setUnread]=useState(0)
  const [google,setGoogle]=useState(false),[myPhone,setMyPhone]=useState(''),[phoneDraft,setPhoneDraft]=useState(''),[phoneNote,setPhoneNote]=useState('')
  // Voltar do celular/navegador volta para a tela anterior do app, sem perder o lugar.
@@ -106,11 +110,12 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    profissionais:()=><>{panel(<ProfessionalSearch owner={profile.id} disabled={busy} canRequest={linksReady&&!links.some(row=>row.state!=='revoked')} onRequest={async id=>{await controller.current!.requestLink(id)}} onChat={startChat}/>)}{panel(linksBlock)}</>,
    mensagens:()=>panel(<Chat key={'chat'+profile.id} owner={profile.id} role={profile.role==='admin'?'admin':profile.role==='profissional'?'profissional':'aluno'} startWith={chatWith} onUnreadChange={checkUnread}/>),
    vitrine:()=>panel(<MyShowcase key={'vitrine'+profile.id} owner={profile.id} disabled={busy}/>),
-   treino:()=>panel(training),
+   treino:()=>panel(<StudentRoutines key={'rt'+profile.id} owner={profile.id} onAi={()=>openView('ia')} legacy={training}/>),
+   ia:()=>panel(<AiRoutine key={'ai'+profile.id+(aiStudent||'')} owner={profile.id} role={kind==='aluno'?'aluno':'profissional'} links={links} initialStudent={aiStudent} onOpenPlans={()=>openView('treinos')}/>),
    parceiro:()=>panel(applications),
    // Parceiro
    alunos:()=>panel(linksBlock),
-   treinos:()=>panel(training),
+   treinos:()=><>{panel(linksReady?<ProRoutines key={'pr'+profile.id} owner={profile.id} links={links} onAi={id=>{setAiStudent(id);openView('ia')}}/>:<p role="status">Carregando…</p>)}{panel(<details><summary className="min-h-11 cursor-pointer py-2 font-bold">Planos em texto (modelo anterior)</summary><div className="mt-3">{training}</div></details>)}</>,
    cadastro:()=>panel(applications),
    'meus-videos':()=>panel(<ProfessionalVideos key={'myvideos'+profile.id} owner={profile.id} disabled={busy}/>),
    agenda:()=>kind==='parceiro'?<>{panel(<><h2 className="text-xl font-bold">Minha agenda</h2><BookingTerms key={'terms'+profile.id} owner={profile.id} disabled={busy} onSave={input=>controller.current!.saveTerms(input)}/><ProfessionalAvailability key={profile.id} owner={profile.id} selectedDay={availabilityDay} onSelectDay={setAvailabilityDay} disabled={busy} onSave={input=>controller.current!.saveAvailability(input)}/></>)}{panel(reservations)}</>:panel(reservations),

@@ -1,5 +1,5 @@
 import React from 'react'
-import {MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -16,6 +16,7 @@ export function roleKind(profile:Pick<OwnProfile,'role'|'approved'>):RoleKind{
 const inicio:RoleView={id:'inicio',label:'Visão geral',icon:Home,summary:'Resumo do seu espaço.'}
 const perfil:RoleView={id:'perfil',label:'Meu perfil',icon:UserRound,summary:'Nome exibido e dados da conta.'}
 const esg:RoleView={id:'esg',label:'Projetos sociais',icon:Leaf,summary:'Projetos sociais e ambientais da comunidade (ESG).'}
+const ia:RoleView={id:'ia',label:'Treinos com IA',icon:Sparkles,summary:'A IA monta uma sugestão de treino (ou dieta, para nutricionistas) em segundos.'}
 const mensagens:RoleView={id:'mensagens',label:'Mensagens',icon:MessageCircle,summary:'Converse com seu profissional, seus alunos ou a equipe 369.'}
 const comoFunciona:RoleView={id:'como-funciona',label:'Como funciona',icon:Compass,summary:'Os 3 pilares e o passo a passo da 369.'}
 const carteira:RoleView={id:'carteira',label:'Carteira',icon:Wallet,summary:'Saldo e reservas do piloto. Sem pagamentos reais.'}
@@ -23,7 +24,8 @@ const carteira:RoleView={id:'carteira',label:'Carteira',icon:Wallet,summary:'Sal
 const menus:Record<RoleKind,RoleView[]>={
  aluno:[inicio,comoFunciona,
   {id:'profissionais',label:'Encontrar profissionais',icon:Users,summary:'Busque por modalidade, perto de você ou online, e veja a vitrine de cada um.'},
-  {id:'treino',label:'Meu treino',icon:Dumbbell,summary:'Treinos publicados pelo seu profissional.'},
+  {id:'treino',label:'Meu treino / dieta',icon:Dumbbell,summary:'Treino da semana e dieta, com vídeos e o que você já fez.'},
+  ia,
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Suas reservas de horário.'},
   mensagens,carteira,esg,
   {id:'parceiro',label:'Seja parceiro',icon:Briefcase,summary:'Cadastre-se como profissional da plataforma.'},
@@ -31,7 +33,8 @@ const menus:Record<RoleKind,RoleView[]>={
  parceiro:[inicio,
   {id:'alunos',label:'Meus alunos',icon:Users,summary:'Pedidos de vínculo e alunos ativos.'},
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Horários disponíveis, regras e reservas.'},
-  {id:'treinos',label:'Treinos',icon:Dumbbell,summary:'Publique e acompanhe treinos dos seus alunos.'},
+  {id:'treinos',label:'Treinos e dietas',icon:Dumbbell,summary:'Monte treinos por dia da semana ou dietas por refeição e acompanhe o que o aluno fez.'},
+  ia,
   mensagens,
   {id:'vitrine',label:'Minha vitrine',icon:Store,summary:'Apresentação, formação, modalidades e atendimento que os alunos veem.'},
   {id:'meus-videos',label:'Meus vídeos',icon:Clapperboard,summary:'Envie vídeos para o feed dos alunos da sua região.'},
@@ -68,7 +71,8 @@ const helps:Record<string,string>={
  mensagens:'Converse com o seu profissional ou com seus alunos, e com a equipe 369 quando precisar de ajuda. A equipe não lê as conversas entre aluno e profissional.',
  'admin:mensagens':'Conversas de suporte com alunos e profissionais. Use a busca para iniciar uma conversa. Conversas entre aluno e profissional são privadas e não aparecem aqui.',
  vitrine:'É o seu perfil público: aparece para os alunos na busca. Diga o que você faz, para quem, sua formação e se atende presencial ou online.',
- treino:'Aqui aparecem os treinos que o seu profissional montou. Quando terminar um treino, toque em concluir: isso registra a sua evolução.',
+ treino:'Seu treino da semana (com vídeo de cada exercício) e sua dieta. No dia do treino, toque em "Concluí o treino de hoje" para registrar sua evolução.',
+ ia:'A IA monta uma sugestão a partir das suas respostas. Para o aluno, só treino e depois do questionário de saúde; se tiver profissional, ele revisa antes. O profissional pode gerar treino ou dieta (nutricionistas) e editar antes de publicar.',
  'aluno:agenda':'Seus horários reservados com profissionais.',
  carteira:'Área de teste: mostra saldo e pedidos de saque simulados. Ainda não há pagamentos de verdade.',
  esg:'Projetos sociais e ambientais. Você pode sugerir um projeto e a equipe analisa.',
@@ -76,7 +80,7 @@ const helps:Record<string,string>={
  perfil:'Seu nome e seu celular. Mantenha o celular certo para os profissionais conseguirem falar com você.',
  alunos:'Pedidos de alunos que querem ser acompanhados por você. Aceite para montar treinos e liberar sua agenda para eles.',
  'parceiro:agenda':'Defina os dias e horários em que você atende e as regras de agendamento. Logo abaixo ficam as reservas feitas.',
- treinos:'Monte e publique treinos para os seus alunos. Eles recebem o treino e marcam quando concluírem.',
+ treinos:'Escolha o aluno e monte o treino por dia da semana (com séries, repetições e vídeo) ou a dieta por refeição. Você também vê os treinos que o aluno gerou com IA, para revisar.',
  'meus-videos':'Publique vídeos do YouTube. A equipe aprova e eles aparecem primeiro para os alunos da sua região.',
  cadastro:'Seus dados profissionais e a situação da sua aprovação.',
  'parceiro_pendente:agenda':'Reservas feitas com a sua conta.',
