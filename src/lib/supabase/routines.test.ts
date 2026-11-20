@@ -32,3 +32,16 @@ describe('fase 3: treino e dieta',()=>{
   expect(roleMenu({role:'profissional',approved:false}).map(i=>i.id)).not.toContain('ia')
  })
 })
+import {findAnimation,frameAt,exerciseAnimations} from '@/lib/exerciseAnimations'
+describe('biblioteca de animações 369',()=>{
+ it('encontra a animação por nome com ou sem acento e por apelido',()=>{
+  expect(findAnimation('Remada curvada com barra')?.id).toBe('remada-curvada-barra')
+  expect(findAnimation('FLEXÃO DE BRAÇOS')?.id).toBe('flexao-de-braco')
+  expect(findAnimation('Ponte de glúteo')?.id).toBe('elevacao-de-quadril')
+  expect(findAnimation('Supino inclinado')).toBeNull()
+ })
+ it('ciclo percorre todas as fases e volta ao início',()=>{
+  for(const ex of exerciseAnimations){const total=ex.phases.reduce((s,p)=>s+p.seconds,0)
+   expect(frameAt(ex,0).phase).toBe(0);expect(frameAt(ex,total-0.01).phase).toBe(ex.phases.length-1);expect(frameAt(ex,total+0.01).phase).toBe(0)}
+ })
+})

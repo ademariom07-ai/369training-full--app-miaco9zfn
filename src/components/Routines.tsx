@@ -3,6 +3,8 @@ import {Apple,CheckCircle2,Circle,Dumbbell,Plus,Sparkles,Trash2} from 'lucide-re
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {YoutubePlayer} from '@/components/VideoFeed'
+import ExerciseAnimationView from '@/components/ExerciseAnimationView'
+import {findAnimation} from '@/lib/exerciseAnimations'
 import {archiveRoutine,dayKeys,dayLabels,dayShort,listRoutines,logRoutineDay,publishRoutine,reviewRoutine,routineProgress,saveRoutine,todayInfo,
  type DayKey,type Exercise,type Kind,type Meal,type Routine,type Source,type Structure,type TrainingDay} from '@/lib/supabase/routines'
 import type {ParticipantLink} from '@/lib/supabase/participantLinks'
@@ -38,7 +40,7 @@ export function RoutineDisplay({routine,logs,canLog,onToggle}:{routine:Routine,l
     <p className="font-bold">{i+1}. {it.name}</p>
     <p className="text-sm">{[it.sets?`${it.sets} séries`:'',it.reps?`${it.reps} repetições`:'',it.rest?`descanso ${it.rest}`:'',it.load?`carga ${it.load}`:''].filter(Boolean).join(' · ')}</p>
     {it.notes&&<p className="text-sm text-[#626274]">{it.notes}</p>}
-    {it.video&&<div className="mt-2 max-w-md"><YoutubePlayer id={it.video} title={it.name}/></div>}
+    {(()=>{const anim=findAnimation(it.name);return anim||it.video?<div className="mt-2 grid max-w-3xl gap-3 md:grid-cols-2">{anim&&<ExerciseAnimationView exercise={anim}/>}{it.video&&<YoutubePlayer id={it.video} title={it.name}/>}</div>:null})()}
    </li>)}</ol>
    {canLog&&onToggle&&day.key===today.day&&<Button type="button" onClick={()=>onToggle(day.key,!doneToday(day.key))} className={doneToday(day.key)?'bg-[#a5ce41] text-[#33325a]':''}>{doneToday(day.key)?'✓ Treino de hoje concluído':'Concluí o treino de hoje'}</Button>}
    {canLog&&day.key!==today.day&&<p className="text-sm text-[#626274]">Você marca o treino como feito no dia dele.</p>}
