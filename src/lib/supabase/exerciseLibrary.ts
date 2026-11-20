@@ -72,7 +72,9 @@ export function applyOverrides(anim:ExerciseAnimation,entry:LibraryExercise|null
  return{...anim,name:entry.name,muscles:entry.muscles||anim.muscles,phases:anim.phases.map((p,i)=>({...p,cues:entry.phase_cues?.[i]?.cues?.length?entry.phase_cues[i].cues:p.cues}))}
 }
 export function resolveExercise(name:string,library:LibraryExercise[]){
- const entry=findLibraryEntry(name,library)
- const base=(entry?.slug?exerciseAnimations.find(a=>a.id===entry.slug):null)??findAnimation(name)
- return{entry,animation:base?applyOverrides(base,entry??library.find(e=>e.slug===base.id)??null):null}
+ const exact=findLibraryEntry(name,library)
+ const base=(exact?.slug?exerciseAnimations.find(a=>a.id===exact.slug):null)??findAnimation(name)
+ // Nome parecido (não idêntico): usa a ficha da biblioteca ligada à animação encontrada.
+ const entry=exact??(base?library.find(e=>e.slug===base.id)??null:null)
+ return{entry,animation:base?applyOverrides(base,entry):null}
 }

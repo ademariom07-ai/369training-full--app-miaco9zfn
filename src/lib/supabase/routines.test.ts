@@ -54,3 +54,14 @@ describe('IA e biblioteca de animações',()=>{
   for(const name of list)expect(findAnimation(name)).not.toBeNull()
  })
 })
+describe('reconhecimento tolerante de nomes',()=>{
+ it('aceita variações próximas e recusa exercícios diferentes',()=>{
+  expect(findAnimation('Agachamento goblet')?.id).toBe('agachamento-goblet')
+  expect(findAnimation('Supino reto halteres')?.id).toBe('supino-reto-halteres')
+  expect(findAnimation('Rosca direta')?.id).toBe('rosca-direta-halteres')
+  expect(findAnimation('Leg press')?.id).toBe('leg-press-45')
+  expect(findAnimation('Elevação lateral com halteres')).toBeNull()
+  expect(findAnimation('Corrida na esteira')).toBeNull()
+  expect(findAnimation('Agachamento sumô')).toBeNull()
+ })
+})

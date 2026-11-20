@@ -362,8 +362,28 @@ const aliases:Record<string,string[]>={
  'elevacao-de-quadril':['elevacao de quadril','ponte','ponte de gluteo','ponte de gluteos','elevacao pelvica','glute bridge'],
 }
 export const normalizeName=(name:string)=>name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 -]/g,' ').replace(/\s+/g,' ').trim()
+// Palavras que não ajudam a distinguir exercícios.
+const stop=new Set(['com','de','do','da','no','na','nos','nas','em','o','a','os','as','e','para','um','uma','livre','maquina','aparelho','sentado','em pe','pe'])
+const tokens=(text:string)=>normalizeName(text.replace(/\([^)]*\)/g,' ')).split(' ').filter(t=>t.length>1&&!stop.has(t))
+// Procura pelo nome exato, por um apelido e, por fim, por semelhança de palavras
+// (ex.: "Agachamento goblet" → "Agachamento goblet com halter"; "Supino com halteres" → "Supino reto com halteres").
 export function findAnimation(name:string):ExerciseAnimation|null{
  const key=normalizeName(name)
+ if(!key)return null
  for(const ex of exerciseAnimations){if(normalizeName(ex.name)===key||(aliases[ex.id]||[]).includes(key))return ex}
- return null
+ const want=tokens(name)
+ if(!want.length)return null
+ let best:ExerciseAnimation|null=null,bestScore=0
+ for(const ex of exerciseAnimations){
+  for(const candidate of [ex.name,...(aliases[ex.id]||[])]){
+   const have=tokens(candidate);if(!have.length)continue
+   const shared=want.filter(t=>have.includes(t)).length
+   // Todas as palavras do nome escrito precisam estar no da biblioteca, e a primeira (o movimento) precisa bater.
+   // Palavras a mais no nome escrito (ex.: "sumô") indicam outro exercício, então não aceitamos.
+   if(want[0]!==have[0]||shared<want.length)continue
+   const score=shared/Math.max(want.length,have.length)
+   if(score>bestScore){best=ex;bestScore=score}
+  }
+ }
+ return bestScore>=0.5?best:null
 }
