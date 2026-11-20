@@ -198,8 +198,13 @@ Deno.serve(async (req) => {
     const text = message.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('')
     raw = JSON.parse(text)
   } catch (err) {
-    console.error('routine-ai', err instanceof Anthropic.APIError ? `${err.status} ${err.message}` : String(err))
-    return reply(502, { message: 'A IA está indisponível agora. Tente de novo em alguns minutos.' })
+    // O código ajuda a achar a causa (ex.: 401 chave inválida, 400 pedido recusado, 429 limite, PARSE resposta fora do formato).
+    const code = err instanceof Anthropic.APIError ? String(err.status ?? 'API') : err instanceof SyntaxError ? 'PARSE' : 'REDE'
+    console.error('routine-ai', MODEL, code, err instanceof Error ? err.message : String(err))
+    const hint = code === '401' || code === '403' ? ' Verifique a chave ANTHROPIC_API_KEY no Supabase.'
+      : code === '400' ? ' Verifique o segredo ROUTINE_MODEL e o escopo da chave (espaço de trabalho).'
+      : code === '429' || code === '529' ? ' Limite ou sobrecarga da IA; tente em alguns minutos.' : ''
+    return reply(502, { message: `A IA está indisponível agora (código ${code}).${hint}` })
   }
 
   const plan = normalize(body.kind, raw, days)
