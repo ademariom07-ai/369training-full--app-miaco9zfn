@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -17,10 +17,13 @@ if (!existsSync(vite)) {
 }
 
 rmSync(out, { recursive: true, force: true });
+// Identificador da versão: o app compara com /version.json para avisar quando há versão nova publicada.
+const buildId = process.env.BUILD_ID || new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
 const build = spawnSync(vite, ['build', '--config', 'vite.access.config.ts', '--outDir', out], {
   cwd: root,
   stdio: 'inherit',
   shell: false,
+  env: { ...process.env, BUILD_ID: buildId },
 });
 if (build.error || build.status !== 0) {
   console.error('Build da área real falhou.');
@@ -32,6 +35,8 @@ cpSync(path.join(root, 'site'), out, {
   recursive: true,
   filter: (src) => path.basename(src) !== 'acesso.html',
 });
+
+writeFileSync(path.join(out, 'version.json'), JSON.stringify({ build: buildId }) + '\n');
 
 for (const required of ['acesso.html', 'brand.css', 'index.html']) {
   if (!existsSync(path.join(out, required))) {

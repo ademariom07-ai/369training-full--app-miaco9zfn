@@ -12,6 +12,8 @@ export default defineConfig({
  }],base:'/',
  resolve:{alias:{'@':path.resolve(__dirname,'src')}},
  define:{
+  // Identifica esta versão publicada; scripts/build-site.mjs grava o mesmo valor em /version.json.
+  'import.meta.env.VITE_BUILD_ID':JSON.stringify(process.env.BUILD_ID||'dev'),
   'import.meta.env.VITE_SUPABASE_URL':JSON.stringify('https://elahjmtboqhqqxmoaths.supabase.co'),
   'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY':JSON.stringify('sb_publishable_U3WJRl0zpZDEFzAgguf3bQ_ihiwn_-O'),
  },

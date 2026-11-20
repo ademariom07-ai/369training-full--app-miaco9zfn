@@ -4,7 +4,7 @@ import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {YoutubePlayer} from '@/components/VideoFeed'
 import ExerciseAnimationView from '@/components/ExerciseAnimationView'
-import {findAnimation} from '@/lib/exerciseAnimations'
+import {exerciseAnimations,findAnimation} from '@/lib/exerciseAnimations'
 import {archiveRoutine,dayKeys,dayLabels,dayShort,listRoutines,logRoutineDay,publishRoutine,reviewRoutine,routineProgress,saveRoutine,todayInfo,
  type DayKey,type Exercise,type Kind,type Meal,type Routine,type Source,type Structure,type TrainingDay} from '@/lib/supabase/routines'
 import type {ParticipantLink} from '@/lib/supabase/participantLinks'
@@ -89,6 +89,7 @@ export function RoutineEditor({student,kind,source='profissional',initial,onDone
  const updMeal=(i:number,patch:Partial<Meal>)=>setMeals(m=>m.map((x,j)=>j===i?{...x,...patch}:x))
  const free=dayKeys.filter(k=>!days.some(d=>d.key===k))
  return <form className="space-y-4" onSubmit={e=>{e.preventDefault();void save(false)}}>
+  <datalist id="biblioteca-369">{exerciseAnimations.map(e=><option key={e.id} value={e.name}/>)}</datalist>
   <label className="block font-semibold">Título<Input required minLength={3} maxLength={120} value={title} onChange={e=>setTitle(e.target.value)} placeholder={kind==='treino'?'Ex.: Hipertrofia — mês 1':'Ex.: Plano alimentar — emagrecimento'}/></label>
   <label className="block font-semibold">Orientações gerais (opcional)<textarea className={field} rows={2} maxLength={2000} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={kind==='treino'?'Aquecimento, cuidados, progressão de carga…':'Hidratação, horários, observações…'}/></label>
   {kind==='treino'?<>{days.map((d,i)=><fieldset key={i} className={card+' space-y-3'}>
@@ -96,7 +97,7 @@ export function RoutineEditor({student,kind,source='profissional',initial,onDone
     <label className="flex-1 text-sm">Nome do treino<Input maxLength={60} value={d.name} onChange={e=>updDay(i,{name:e.target.value})} placeholder="Treino A — pernas"/></label>
     <Button type="button" variant="outline" aria-label={'Remover '+dayLabels[d.key]} onClick={()=>setDays(x=>x.filter((_,j)=>j!==i))} disabled={days.length<2}><Trash2 aria-hidden="true" className="h-4 w-4"/></Button></div>
    {d.items.map((it,k)=><div key={k} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-6">
-    <label className="text-sm sm:col-span-3">Exercício<Input maxLength={80} value={it.name} onChange={e=>updEx(i,k,{name:e.target.value})} placeholder="Agachamento livre"/></label>
+    <label className="text-sm sm:col-span-3">Exercício{findAnimation(it.name)&&<span className="ml-2 text-xs font-bold text-[#6a8a27]">✓ com animação</span>}<Input list="biblioteca-369" maxLength={80} value={it.name} onChange={e=>updEx(i,k,{name:e.target.value})} placeholder="Digite e escolha da biblioteca"/></label>
     <label className="text-sm">Séries<Input type="number" min={1} max={10} value={it.sets??''} onChange={e=>updEx(i,k,{sets:e.target.value===''?null:Number(e.target.value)})}/></label>
     <label className="text-sm">Repetições<Input maxLength={20} value={it.reps} onChange={e=>updEx(i,k,{reps:e.target.value})} placeholder="8-12"/></label>
     <label className="text-sm">Descanso<Input maxLength={20} value={it.rest} onChange={e=>updEx(i,k,{rest:e.target.value})} placeholder="60s"/></label>
