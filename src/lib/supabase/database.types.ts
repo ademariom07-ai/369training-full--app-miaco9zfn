@@ -707,6 +707,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      list_exercises: {
+        Args: Record<PropertyKey, never>
+        Returns: { exercise_id: string; slug: string | null; owner_id: string | null; owner_name: string | null; name: string; aliases: string[]; muscles: string | null; instructions: string | null; phase_cues: Json | null; video: string | null; level: string | null; equipment: string | null; official: boolean; mine: boolean; updated_at: string }[]
+      }
+      save_exercise: {
+        Args: { p_id: string | null; p_name: string; p_aliases: string[]; p_muscles: string | null; p_instructions: string | null; p_phase_cues: Json | null; p_video: string | null; p_level: string | null; p_equipment: string | null }
+        Returns: string
+      }
+      archive_exercise: { Args: { p_id: string }; Returns: undefined }
       save_routine: {
         Args: { p_id: string | null; p_student: string; p_kind: string; p_source: string; p_title: string; p_notes: string | null; p_structure: Json }
         Returns: string

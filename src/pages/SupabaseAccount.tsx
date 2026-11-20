@@ -31,6 +31,7 @@ const ProfessionalApplications=lazy(()=>import('@/components/ProfessionalApplica
 const StudentRoutines=lazy(()=>import('@/components/Routines').then(m=>({default:m.StudentRoutines})))
 const ProRoutines=lazy(()=>import('@/components/Routines').then(m=>({default:m.ProRoutines})))
 const AiRoutine=lazy(()=>import('@/components/AiRoutine'))
+const ExerciseLibraryManager=lazy(()=>import('@/components/ExerciseLibraryManager'))
 const Chat=lazy(()=>import('@/components/Chat'))
 const ProfessionalSearch=lazy(()=>import('@/components/Showcase').then(m=>({default:m.ProfessionalSearch})))
 const MyShowcase=lazy(()=>import('@/components/Showcase').then(m=>({default:m.MyShowcase})))
@@ -109,6 +110,8 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    // Aluno
    profissionais:()=><>{panel(<ProfessionalSearch owner={profile.id} disabled={busy} canRequest={linksReady&&!links.some(row=>row.state!=='revoked')} onRequest={async id=>{await controller.current!.requestLink(id)}} onChat={startChat}/>)}{panel(linksBlock)}</>,
    mensagens:()=>panel(<Chat key={'chat'+profile.id} owner={profile.id} role={profile.role==='admin'?'admin':profile.role==='profissional'?'profissional':'aluno'} startWith={chatWith} onUnreadChange={checkUnread}/>),
+   'meus-exercicios':()=>panel(<ExerciseLibraryManager key={'lib'+profile.id} role="profissional"/>),
+   biblioteca:()=>panel(<ExerciseLibraryManager key={'libadm'+profile.id} role="admin"/>),
    vitrine:()=>panel(<MyShowcase key={'vitrine'+profile.id} owner={profile.id} disabled={busy}/>),
    treino:()=>panel(<StudentRoutines key={'rt'+profile.id} owner={profile.id} onAi={()=>openView('ia')} legacy={training}/>),
    ia:()=>panel(<AiRoutine key={'ai'+profile.id+(aiStudent||'')} owner={profile.id} role={kind==='aluno'?'aluno':'profissional'} links={links} initialStudent={aiStudent} onOpenPlans={()=>openView('treinos')}/>),

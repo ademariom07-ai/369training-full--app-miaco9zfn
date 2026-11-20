@@ -1,5 +1,5 @@
 import React from 'react'
-import {Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -37,6 +37,7 @@ const menus:Record<RoleKind,RoleView[]>={
   ia,
   mensagens,
   {id:'vitrine',label:'Minha vitrine',icon:Store,summary:'Apresentação, formação, modalidades e atendimento que os alunos veem.'},
+  {id:'meus-exercicios',label:'Meus exercícios',icon:Library,summary:'Cadastre seus exercícios com explicação e vídeo para usar nos treinos.'},
   {id:'meus-videos',label:'Meus vídeos',icon:Clapperboard,summary:'Envie vídeos para o feed dos alunos da sua região.'},
   carteira,esg,
   {id:'cadastro',label:'Meu cadastro profissional',icon:ClipboardCheck,summary:'Especialidade e situação da aprovação.'},
@@ -49,6 +50,7 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'aprovacoes',label:'Aprovações',icon:ShieldCheck,summary:'Cadastros profissionais aguardando análise.'},
   mensagens,
   {id:'feed',label:'Vídeos do feed',icon:Clapperboard,summary:'Aprove os vídeos dos profissionais antes de irem para o feed.'},
+  {id:'biblioteca',label:'Biblioteca de exercícios',icon:Library,summary:'Edite os textos dos exercícios oficiais e crie novos.'},
   {id:'participantes',label:'Participantes',icon:Users,summary:'Visão geral de alunos e profissionais.'},
   {id:'servicos',label:'Serviços recebidos',icon:Inbox,summary:'Eventos de serviços que chegaram à plataforma.'},
   {id:'videos',label:'Vídeos — piloto',icon:Film,summary:'Biblioteca de vídeos em teste.'},
@@ -70,6 +72,8 @@ const helps:Record<string,string>={
  profissionais:'Escolha a modalidade e veja quem atende perto de você ou online. Abra a vitrine, conheça o profissional e toque em "Quero ser acompanhado". Quando ele aceitar, ele monta seus treinos e você vê os horários dele.',
  mensagens:'Converse com o seu profissional ou com seus alunos, e com a equipe 369 quando precisar de ajuda. A equipe não lê as conversas entre aluno e profissional.',
  'admin:mensagens':'Conversas de suporte com alunos e profissionais. Use a busca para iniciar uma conversa. Conversas entre aluno e profissional são privadas e não aparecem aqui.',
+ 'meus-exercicios':'Seus exercícios aparecem para você e seus alunos e podem ser usados nos treinos. Use nomes claros e, se puder, um vídeo do YouTube mostrando a execução.',
+ biblioteca:'Exercícios oficiais da 369. Nos 30 animados você edita nome, outros nomes, músculos e as dicas de cada fase (a animação continua a mesma). Também dá para criar exercícios novos com texto e vídeo.',
  vitrine:'É o seu perfil público: aparece para os alunos na busca. Diga o que você faz, para quem, sua formação e se atende presencial ou online.',
  treino:'Seu treino da semana (com vídeo de cada exercício) e sua dieta. No dia do treino, toque em "Concluí o treino de hoje" para registrar sua evolução.',
  ia:'A IA monta uma sugestão a partir das suas respostas. Para o aluno, só treino e depois do questionário de saúde; se tiver profissional, ele revisa antes. O profissional pode gerar treino ou dieta (nutricionistas) e editar antes de publicar.',
