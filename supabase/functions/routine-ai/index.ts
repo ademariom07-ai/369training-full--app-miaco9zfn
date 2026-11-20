@@ -11,6 +11,8 @@ const MODELS = ['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'] as c
 const envModel = Deno.env.get('ROUTINE_MODEL') || ''
 const MODEL: (typeof MODELS)[number] = (MODELS as readonly string[]).includes(envModel) ? (envModel as (typeof MODELS)[number]) : 'claude-sonnet-5-5'
 const DAYS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as const
+// Exercícios com animação no app (mesmos nomes de src/lib/exerciseAnimations.ts). A IA escolhe desta lista em "library".
+const LIBRARY = ["Remada curvada com barra", "Agachamento livre", "Flexão de braço", "Elevação de quadril (ponte)", "Agachamento com barra", "Agachamento goblet com halter", "Afundo (avanço)", "Levantamento terra", "Stiff com barra", "Panturrilha em pé", "Cadeira extensora", "Mesa flexora", "Leg press 45°", "Elevação pélvica com barra", "Supino reto com barra", "Supino reto com halteres", "Supino inclinado com halteres", "Flexão inclinada (mãos no banco)", "Remada curvada com halteres", "Puxada frontal no pulley", "Remada baixa no cabo", "Superman (extensão lombar no solo)", "Desenvolvimento com halteres (sentado)", "Elevação frontal com halteres", "Rosca direta com halteres", "Tríceps francês com halter", "Tríceps testa com barra", "Prancha", "Abdominal (crunch)", "Elevação de pernas"]
 const LIMITS = { aluno: 3, profissional: 15 } // gerações por 24 h
 const ORIGINS = (Deno.env.get('ROUTINE_ALLOWED_ORIGINS') || 'https://369wellness.ademariom07.workers.dev')
   .split(',').map((v) => v.trim()).filter(Boolean)
@@ -44,8 +46,8 @@ const trainingSchema = {
       properties: {
         key: { type: 'string', enum: [...DAYS] }, name: { type: 'string' },
         items: { type: 'array', items: {
-          type: 'object', additionalProperties: false, required: ['name', 'sets', 'reps', 'rest', 'load', 'notes'],
-          properties: { name: { type: 'string' }, sets: { type: 'integer' }, reps: { type: 'string' }, rest: { type: 'string' }, load: { type: 'string' }, notes: { type: 'string' } },
+          type: 'object', additionalProperties: false, required: ['library', 'name', 'sets', 'reps', 'rest', 'load', 'notes'],
+          properties: { library: { type: 'string', enum: [...LIBRARY, ''] }, name: { type: 'string' }, sets: { type: 'integer' }, reps: { type: 'string' }, rest: { type: 'string' }, load: { type: 'string' }, notes: { type: 'string' } },
         } },
       },
     } },
@@ -78,7 +80,7 @@ Regras:
 - Em "notes" de cada exercício, dê uma dica curta de execução. Em "load", descreva a intensidade (ex.: "leve", "moderada", "peso que permita 12 repetições").
 - Em "notes" do plano, inclua aquecimento, progressão nas próximas semanas e o aviso de parar e procurar um profissional se sentir dor, tontura ou falta de ar.
 - Nunca faça diagnóstico, não prescreva remédios nem suplementos e não prometa resultados.
-- Sempre que servir ao objetivo, use exatamente estes nomes (eles têm animação no app): Remada curvada com barra, Agachamento livre, Flexão de braço, Elevação de quadril (ponte), Agachamento com barra, Agachamento goblet com halter, Afundo (avanço), Levantamento terra, Stiff com barra, Panturrilha em pé, Cadeira extensora, Mesa flexora, Leg press 45°, Elevação pélvica com barra, Supino reto com barra, Supino reto com halteres, Supino inclinado com halteres, Flexão inclinada (mãos no banco), Remada curvada com halteres, Puxada frontal no pulley, Remada baixa no cabo, Superman (extensão lombar no solo), Desenvolvimento com halteres (sentado), Elevação frontal com halteres, Rosca direta com halteres, Tríceps francês com halter, Tríceps testa com barra, Prancha, Abdominal (crunch), Elevação de pernas.`
+- Para cada exercício, preencha "library" com o exercício da lista quando for o mesmo movimento (ele tem animação no app); prefira montar o treino com exercícios da lista. Só deixe "library" vazio quando nenhum da lista servir (ex.: falta de equipamento ou limitação).`
 const SYSTEM_DIET = `Você ajuda nutricionistas da plataforma brasileira 369 WELLNESS a montar um RASCUNHO de plano alimentar, que será revisado e ajustado pelo nutricionista antes de chegar ao paciente. Escreva em português do Brasil.
 Regras:
 - Use alimentos comuns no Brasil, acessíveis, com quantidades em medidas caseiras (colheres, unidades, xícaras) e gramas quando útil.
@@ -111,7 +113,7 @@ function normalize(kind: string, raw: Record<string, unknown>, days: string[]) {
       if (!days.includes(key) || seen.has(key)) return []
       seen.add(key)
       const items = (Array.isArray(d.items) ? d.items : []).slice(0, 12).map((i: Record<string, unknown>) => ({
-        name: clip(i.name, 80), sets: Number.isInteger(i.sets) && (i.sets as number) >= 1 && (i.sets as number) <= 10 ? i.sets : 3,
+        name: LIBRARY.includes(String(i.library)) ? String(i.library) : clip(i.name, 80), sets: Number.isInteger(i.sets) && (i.sets as number) >= 1 && (i.sets as number) <= 10 ? i.sets : 3,
         reps: clip(i.reps, 20), rest: clip(i.rest, 20), load: clip(i.load, 40), video: null, notes: clip(i.notes, 300),
       })).filter((i) => i.name)
       return items.length ? [{ key, name: clip(d.name, 60) || 'Treino', items }] : []

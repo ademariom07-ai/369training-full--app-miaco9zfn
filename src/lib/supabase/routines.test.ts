@@ -45,3 +45,12 @@ describe('biblioteca de animações 369',()=>{
    expect(frameAt(ex,0).phase).toBe(0);expect(frameAt(ex,total-0.01).phase).toBe(ex.phases.length-1);expect(frameAt(ex,total+0.01).phase).toBe(0)}
  })
 })
+import {readFileSync} from 'node:fs'
+describe('IA e biblioteca de animações',()=>{
+ it('a lista de exercícios da função de IA é a mesma da biblioteca do app',()=>{
+  const fn=readFileSync(new URL('../../../supabase/functions/routine-ai/index.ts',import.meta.url),'utf8')
+  const list=JSON.parse(/const LIBRARY = (\[.*\])/.exec(fn)![1]) as string[]
+  expect([...list].sort()).toEqual(exerciseAnimations.map(e=>e.name).sort())
+  for(const name of list)expect(findAnimation(name)).not.toBeNull()
+ })
+})
