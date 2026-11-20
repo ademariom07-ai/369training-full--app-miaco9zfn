@@ -38,7 +38,7 @@ describe('biblioteca de animações 369',()=>{
   expect(findAnimation('Remada curvada com barra')?.id).toBe('remada-curvada-barra')
   expect(findAnimation('FLEXÃO DE BRAÇOS')?.id).toBe('flexao-de-braco')
   expect(findAnimation('Ponte de glúteo')?.id).toBe('elevacao-de-quadril')
-  expect(findAnimation('Supino inclinado')).toBeNull()
+  expect(findAnimation('Supino inclinado')?.id).toBe('supino-inclinado-halteres');expect(findAnimation('Agachamento hack na máquina')).toBeNull();expect(exerciseAnimations).toHaveLength(30);expect(new Set(exerciseAnimations.map(e=>e.id)).size).toBe(30)
  })
  it('ciclo percorre todas as fases e volta ao início',()=>{
   for(const ex of exerciseAnimations){const total=ex.phases.reduce((s,p)=>s+p.seconds,0)

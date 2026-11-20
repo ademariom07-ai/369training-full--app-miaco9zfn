@@ -77,7 +77,8 @@ Regras:
 - Respeite as limitações e lesões informadas: evite exercícios que forcem a região e prefira alternativas seguras.
 - Em "notes" de cada exercício, dê uma dica curta de execução. Em "load", descreva a intensidade (ex.: "leve", "moderada", "peso que permita 12 repetições").
 - Em "notes" do plano, inclua aquecimento, progressão nas próximas semanas e o aviso de parar e procurar um profissional se sentir dor, tontura ou falta de ar.
-- Nunca faça diagnóstico, não prescreva remédios nem suplementos e não prometa resultados.`
+- Nunca faça diagnóstico, não prescreva remédios nem suplementos e não prometa resultados.
+- Sempre que servir ao objetivo, use exatamente estes nomes (eles têm animação no app): Remada curvada com barra, Agachamento livre, Flexão de braço, Elevação de quadril (ponte), Agachamento com barra, Agachamento goblet com halter, Afundo (avanço), Levantamento terra, Stiff com barra, Panturrilha em pé, Cadeira extensora, Mesa flexora, Leg press 45°, Elevação pélvica com barra, Supino reto com barra, Supino reto com halteres, Supino inclinado com halteres, Flexão inclinada (mãos no banco), Remada curvada com halteres, Puxada frontal no pulley, Remada baixa no cabo, Superman (extensão lombar no solo), Desenvolvimento com halteres (sentado), Elevação frontal com halteres, Rosca direta com halteres, Tríceps francês com halter, Tríceps testa com barra, Prancha, Abdominal (crunch), Elevação de pernas.`
 const SYSTEM_DIET = `Você ajuda nutricionistas da plataforma brasileira 369 WELLNESS a montar um RASCUNHO de plano alimentar, que será revisado e ajustado pelo nutricionista antes de chegar ao paciente. Escreva em português do Brasil.
 Regras:
 - Use alimentos comuns no Brasil, acessíveis, com quantidades em medidas caseiras (colheres, unidades, xícaras) e gramas quando útil.

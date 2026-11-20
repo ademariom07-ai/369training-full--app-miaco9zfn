@@ -7,11 +7,19 @@ const C={bg:'#13213a',grid:'#1c2c4a',floor:'#22334f',skin:'#e0a77d',shirt:'#2bb3
 const limb=(a:{x:number,y:number},b:{x:number,y:number},w:number,color:string)=><line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={color} strokeWidth={w} strokeLinecap="round"/>
 
 function Figure({j,ex}:{j:Joints,ex:ExerciseAnimation}){
+ const legAngle=Math.atan2(j.ankle.y-j.knee.y,j.ankle.x-j.knee.x)*180/Math.PI
  return <g>
-  {ex.bench&&<rect x={ex.bench.x} y={ex.bench.y} width={ex.bench.w} height={ex.bench.h} rx={10} fill={C.bench}/>}
-  {/* perna de trás (mais escura) e da frente */}
+  {(ex.scenery||[]).map((sh,i)=>'rect' in sh
+   ?<rect key={i} x={sh.rect[0]} y={sh.rect[1]} width={sh.rect[2]} height={sh.rect[3]} rx={10} fill={C.bench} transform={sh.rotate?`rotate(${sh.rotate} ${sh.rect[0]+sh.rect[2]/2} ${sh.rect[1]+sh.rect[3]/2})`:undefined}/>
+   :<line key={i} x1={sh.line[0]} y1={sh.line[1]} x2={sh.line[2]} y2={sh.line[3]} stroke={C.bench} strokeWidth={sh.width??14} strokeLinecap="round"/>)}
+  {ex.cable&&<line x1={ex.cable.x} y1={ex.cable.y} x2={j.wrist.x} y2={j.wrist.y} stroke="#8a93a8" strokeWidth={5} strokeDasharray="2 0"/>}
+  {/* perna de trás (mais escura), quando existe */}
+  {j.back&&<g opacity={.75}>{limb(j.hip,j.back.knee,54,'#2a3350')}{limb(j.back.knee,j.back.ankle,40,'#b88563')}
+   <line x1={j.back.ankle.x-10} y1={j.back.ankle.y+4} x2={j.back.toe.x} y2={j.back.toe.y} stroke="#c9ccd3" strokeWidth={26} strokeLinecap="round"/></g>}
   {limb(j.hip,j.knee,58,C.pants)}{limb(j.knee,j.ankle,44,C.skin)}
   <line x1={j.ankle.x-12} y1={j.ankle.y+4} x2={j.toe.x} y2={j.toe.y+4} stroke={C.shoe} strokeWidth={30} strokeLinecap="round"/>
+  {ex.prop==='plataforma'&&<line x1={j.ankle.x+Math.cos((legAngle+90)*Math.PI/180)*-110+Math.cos(legAngle*Math.PI/180)*28} y1={j.ankle.y+Math.sin((legAngle+90)*Math.PI/180)*-110+Math.sin(legAngle*Math.PI/180)*28}
+   x2={j.ankle.x+Math.cos((legAngle+90)*Math.PI/180)*110+Math.cos(legAngle*Math.PI/180)*28} y2={j.ankle.y+Math.sin((legAngle+90)*Math.PI/180)*110+Math.sin(legAngle*Math.PI/180)*28} stroke="#8a93a8" strokeWidth={22} strokeLinecap="round"/>}
   {limb(j.hip,j.shoulder,92,C.shirt)}
   <circle cx={j.hip.x} cy={j.hip.y} r={40} fill={C.pants}/>
   {limb(j.neck,j.shoulder,26,C.skin)}
@@ -20,8 +28,8 @@ function Figure({j,ex}:{j:Joints,ex:ExerciseAnimation}){
   {limb(j.shoulder,j.elbow,34,C.shirt)}{limb(j.elbow,j.wrist,28,C.skin)}
   <circle cx={j.wrist.x} cy={j.wrist.y} r={17} fill={C.skin}/>
   {ex.prop==='barra'&&<g><circle cx={j.wrist.x} cy={j.wrist.y+6} r={92} fill={C.bar} stroke={C.plate} strokeWidth={12} opacity={.92}/><circle cx={j.wrist.x} cy={j.wrist.y+6} r={14} fill="#c9c9cf"/></g>}
-  {ex.prop==='halteres'&&<rect x={j.wrist.x-42} y={j.wrist.y-14} width={84} height={28} rx={10} fill={C.bar}/>}
-  
+  {ex.prop==='halteres'&&<g><rect x={j.wrist.x-46} y={j.wrist.y-12} width={92} height={24} rx={8} fill={C.bar}/><rect x={j.wrist.x-50} y={j.wrist.y-26} width={22} height={52} rx={6} fill={C.plate}/><rect x={j.wrist.x+28} y={j.wrist.y-26} width={22} height={52} rx={6} fill={C.plate}/></g>}
+  {ex.prop==='puxador'&&<rect x={j.wrist.x-12} y={j.wrist.y-22} width={24} height={44} rx={8} fill="#c9c9cf"/>}
  </g>
 }
 
@@ -30,7 +38,7 @@ function wrap(text:string,max:number){const lines:string[]=[];let line=''
  for(const word of text.split(' ')){if((line+' '+word).trim().length>max&&line){lines.push(line);line=word}else line=(line+' '+word).trim()}
  if(line)lines.push(line);return lines}
 const font='Catamaran, system-ui, sans-serif'
-const phaseColor:Record<string,string>={inspire:'#5fb0ff',expire:'#7ad48a',mantenha:'#f5c451'}
+const phaseColor:Record<string,string>={inspire:'#5fb0ff',expire:'#7ad48a',mantenha:'#f5c451',livre:'#c9b6ff'}
 
 // Formato vertical (como Shorts/Reels): cena no alto e legendas explicativas embaixo, tudo dentro da animação.
 export default function ExerciseAnimationView({exercise,time,showText=true}:{exercise:ExerciseAnimation,time?:number,showText?:boolean}){
@@ -54,7 +62,7 @@ export default function ExerciseAnimationView({exercise,time,showText=true}:{exe
  // Vai para o fim de uma fase (a posição que as dicas descrevem) e pausa.
  function goTo(index:number){const i=(index+exercise.phases.length)%exercise.phases.length;clock.current=bounds[i]-0.001;setNow(clock.current);setPlaying(false)}
  const f=frameAt(exercise,time??now),j=solve(exercise,f.pose),phase=exercise.phases[f.phase]
- const breath=phase.breath==='inspire'?'↓  Respiração: INSPIRE':phase.breath==='expire'?'↑  Respiração: EXPIRE':'•  Respiração: SEGURE'
+ const breath=phase.breath==='inspire'?'↓  Respiração: INSPIRE':phase.breath==='expire'?'↑  Respiração: EXPIRE':phase.breath==='livre'?'~  Respire normalmente':'•  Respiração: SEGURE'
  const elapsed=exercise.phases.slice(0,f.phase).reduce((s,p)=>s+p.seconds,0)+f.progress*phase.seconds
  const H=showText?1740:1000
  // Legendas: dicas (até 3, quebradas em linhas) e músculos.
@@ -67,8 +75,8 @@ export default function ExerciseAnimationView({exercise,time,showText=true}:{exe
    {Array.from({length:20},(_,i)=><g key={i}><line x1={i*50} y1={0} x2={i*50} y2={1000} stroke={C.grid} strokeWidth={2}/><line x1={0} y1={i*50} x2={1000} y2={i*50} stroke={C.grid} strokeWidth={2}/></g>)}
    <rect x={0} y={880} width={1000} height={120} fill={C.floor}/>
    <ellipse cx={500} cy={884} rx={260} ry={12} fill="#0e1830" opacity={.7}/>
-   <g transform="translate(500 884) scale(.86) translate(-500 -884)"><Figure j={j} ex={exercise}/></g>
-   <text x={40} y={70} fill="#fff" fontSize={46} fontWeight={800} fontFamily={font}>{exercise.name.toUpperCase()}</text>
+   <g transform={`translate(500 884) scale(${exercise.zoom??.86}) translate(-500 -884)`}><Figure j={j} ex={exercise}/></g>
+   <text x={40} y={70} fill="#fff" fontSize={Math.min(46,Math.floor(1300/exercise.name.length))} fontWeight={800} fontFamily={font}>{exercise.name.toUpperCase()}</text>
    <text x={40} y={112} fill="#9fb0cc" fontSize={28} fontFamily={font}>{exercise.subtitle}</text>
    {!showText&&<><text x={40} y={950} fill={C.accent} fontSize={34} fontWeight={800} fontFamily={font}>{f.phase+1} · {phase.label}</text>
     <text x={960} y={950} textAnchor="end" fill="#9fdcff" fontSize={30} fontWeight={700} fontFamily={font}>{breath}</text></>}
