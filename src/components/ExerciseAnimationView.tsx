@@ -25,6 +25,14 @@ function Figure({j,ex}:{j:Joints,ex:ExerciseAnimation}){
  </g>
 }
 
+// Quebra um texto em linhas de até "max" caracteres (para as legendas dentro do SVG).
+function wrap(text:string,max:number){const lines:string[]=[];let line=''
+ for(const word of text.split(' ')){if((line+' '+word).trim().length>max&&line){lines.push(line);line=word}else line=(line+' '+word).trim()}
+ if(line)lines.push(line);return lines}
+const font='Catamaran, system-ui, sans-serif'
+const phaseColor:Record<string,string>={inspire:'#5fb0ff',expire:'#7ad48a',mantenha:'#f5c451'}
+
+// Formato vertical (como Shorts/Reels): cena no alto e legendas explicativas embaixo, tudo dentro da animação.
 export default function ExerciseAnimationView({exercise,time,showText=true}:{exercise:ExerciseAnimation,time?:number,showText?:boolean}){
  const [now,setNow]=useState(0),start=useRef(0)
  useEffect(()=>{if(time!==undefined)return
@@ -34,24 +42,44 @@ export default function ExerciseAnimationView({exercise,time,showText=true}:{exe
   const tick=(t:number)=>{setNow((t-start.current)/1000);id=requestAnimationFrame(tick)};id=requestAnimationFrame(tick)
   return()=>cancelAnimationFrame(id)},[time,exercise.id])
  const f=frameAt(exercise,time??now),j=solve(exercise,f.pose),phase=exercise.phases[f.phase]
- const breath=phase.breath==='inspire'?'↓ Inspire':phase.breath==='expire'?'↑ Expire':'• Mantenha a respiração'
+ const breath=phase.breath==='inspire'?'↓  Respiração: INSPIRE':phase.breath==='expire'?'↑  Respiração: EXPIRE':'•  Respiração: SEGURE'
+ const elapsed=exercise.phases.slice(0,f.phase).reduce((s,p)=>s+p.seconds,0)+f.progress*phase.seconds
+ const H=showText?1740:1000
+ // Legendas: dicas (até 3, quebradas em linhas) e músculos.
+ const cueLines=phase.cues.slice(0,3).map(c=>wrap(c,36))
+ const muscleLines=wrap(exercise.muscles,52).slice(0,2)
+ let y=1150
  return <figure className="overflow-hidden rounded-[12px_30px_12px_30px] bg-[#13213a] text-white" aria-label={'Animação: '+exercise.name}>
-  <svg viewBox="0 0 1000 1000" className="block w-full" role="img" aria-label={`${exercise.name}, fase: ${phase.label}`}>
-   <rect width="1000" height="1000" fill={C.bg}/>
+  <svg viewBox={`0 0 1000 ${H}`} className="block w-full" role="img" aria-label={`${exercise.name}. Fase ${f.phase+1}: ${phase.label}. ${phase.cues.join('. ')}. ${breath.replace(/^\W+/,'')}.`}>
+   <rect width="1000" height={H} fill={C.bg}/>
    {Array.from({length:20},(_,i)=><g key={i}><line x1={i*50} y1={0} x2={i*50} y2={1000} stroke={C.grid} strokeWidth={2}/><line x1={0} y1={i*50} x2={1000} y2={i*50} stroke={C.grid} strokeWidth={2}/></g>)}
    <rect x={0} y={880} width={1000} height={120} fill={C.floor}/>
    <ellipse cx={500} cy={884} rx={260} ry={12} fill="#0e1830" opacity={.7}/>
    <Figure j={j} ex={exercise}/>
-   <text x={40} y={70} fill="#fff" fontSize={46} fontWeight={800} fontFamily="Catamaran, system-ui, sans-serif">{exercise.name.toUpperCase()}</text>
-   <text x={40} y={112} fill="#9fb0cc" fontSize={28} fontFamily="Catamaran, system-ui, sans-serif">{exercise.subtitle}</text>
-   <text x={40} y={950} fill={C.accent} fontSize={34} fontWeight={800} fontFamily="Catamaran, system-ui, sans-serif">{f.phase+1} · {phase.label}</text>
-   <text x={960} y={950} textAnchor="end" fill="#9fdcff" fontSize={30} fontWeight={700} fontFamily="Catamaran, system-ui, sans-serif">{breath}</text>
-   <rect x={0} y={994} width={1000*((exercise.phases.slice(0,f.phase).reduce((s,p)=>s+p.seconds,0)+f.progress*phase.seconds)/f.total)} height={6} fill={C.accent}/>
+   <text x={40} y={70} fill="#fff" fontSize={46} fontWeight={800} fontFamily={font}>{exercise.name.toUpperCase()}</text>
+   <text x={40} y={112} fill="#9fb0cc" fontSize={28} fontFamily={font}>{exercise.subtitle}</text>
+   {!showText&&<><text x={40} y={950} fill={C.accent} fontSize={34} fontWeight={800} fontFamily={font}>{f.phase+1} · {phase.label}</text>
+    <text x={960} y={950} textAnchor="end" fill="#9fdcff" fontSize={30} fontWeight={700} fontFamily={font}>{breath}</text></>}
+   {showText&&<g>
+    <rect x={0} y={1000} width={1000} height={740} fill="#0e1830"/>
+    <rect x={40} y={1030} width={920} height={680} rx={28} fill="#111c33" stroke="#22314f" strokeWidth={2}/>
+    <text x={920} y={1085} textAnchor="end" fill="#9fb0cc" fontSize={26} fontWeight={700} fontFamily={font}>FASE {f.phase+1}/{exercise.phases.length}</text>
+    <text x={80} y={1110} fill={phaseColor[phase.breath]} fontSize={52} fontWeight={800} fontFamily={font}>{f.phase+1} · {phase.label}</text>
+    {cueLines.map((lines,i)=>{const top=y+=i===0?0:0;const block=<g key={i}>
+      <circle cx={92} cy={top-10} r={8} fill={C.accent}/>
+      {lines.map((l,k)=><text key={k} x={115} y={top+k*40} fill="#e8edf5" fontSize={34} fontFamily={font}>{l}</text>)}</g>
+     y=top+lines.length*40+14;return block})}
+    <rect x={80} y={1420} width={640} height={62} rx={14} fill="#1c2c4a"/>
+    <text x={104} y={1462} fill="#9fdcff" fontSize={32} fontWeight={800} fontFamily={font}>{breath}</text>
+    <text x={80} y={1530} fill="#9fb0cc" fontSize={24} fontWeight={800} fontFamily={font}>CADÊNCIA ({f.total.toFixed(1).replace('.',',').replace(',0','')} s por repetição)</text>
+    {(()=>{let x=80;const w=840;return exercise.phases.map((p,i)=>{const pw=w*p.seconds/f.total,el=<g key={i}>
+      <rect x={x+2} y={1545} width={Math.max(pw-4,4)} height={44} rx={6} fill={i===f.phase?phaseColor[p.breath]:'#22314f'} opacity={i===f.phase?1:.9}/>
+      {(()=>{const secs=String(p.seconds).replace('.',',')+'s',full=`${p.label} ${secs}`,label=pw>full.length*12.5+20?full:pw>secs.length*12.5+16?secs:'';return label&&<text x={x+12} y={1576} fill={i===f.phase?'#0e1830':'#cfd8e6'} fontSize={22} fontWeight={800} fontFamily={font}>{label}</text>})()}</g>;x+=pw;return el})})()}
+    <rect x={80+840*elapsed/f.total-3} y={1538} width={6} height={58} rx={3} fill="#fff"/>
+    <text x={80} y={1632} fill="#ff9c8a" fontSize={26} fontWeight={800} fontFamily={font}>MÚSCULOS PRINCIPAIS</text>
+    {muscleLines.map((l,k)=><text key={k} x={80} y={1666+k*0} dy={k*30} fill="#cfd8e6" fontSize={24} fontFamily={font}>{l}</text>)}
+   </g>}
+   <rect x={0} y={H-6} width={1000*elapsed/f.total} height={6} fill={C.accent}/>
   </svg>
-  {showText&&<figcaption className="space-y-2 bg-[#0f1a2e] p-4 text-sm text-[#e8edf5]">
-   <ul className="list-disc space-y-1 pl-5">{phase.cues.map(c=><li key={c}>{c}</li>)}</ul>
-   <p className="text-[#9fb0cc]">Cadência: {exercise.phases.map(p=>`${p.label} ${p.seconds}s`).join(' · ')}</p>
-   <p><b className="text-[#ff9c8a]">Músculos:</b> <span className="text-[#cfd8e6]">{exercise.muscles}</span></p>
-  </figcaption>}
  </figure>
 }
