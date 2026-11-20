@@ -13,7 +13,9 @@ const MODEL: (typeof MODELS)[number] = (MODELS as readonly string[]).includes(en
 const DAYS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as const
 // Exercícios com animação no app (mesmos nomes de src/lib/exerciseAnimations.ts). A IA escolhe desta lista em "library".
 const LIBRARY = ["Remada curvada com barra", "Agachamento livre", "Flexão de braço", "Elevação de quadril (ponte)", "Agachamento com barra", "Agachamento goblet com halter", "Afundo (avanço)", "Levantamento terra", "Stiff com barra", "Panturrilha em pé", "Cadeira extensora", "Mesa flexora", "Leg press 45°", "Elevação pélvica com barra", "Supino reto com barra", "Supino reto com halteres", "Supino inclinado com halteres", "Flexão inclinada (mãos no banco)", "Remada curvada com halteres", "Puxada frontal no pulley", "Remada baixa no cabo", "Superman (extensão lombar no solo)", "Desenvolvimento com halteres (sentado)", "Elevação frontal com halteres", "Rosca direta com halteres", "Tríceps francês com halter", "Tríceps testa com barra", "Prancha", "Abdominal (crunch)", "Elevação de pernas"]
-const LIMITS = { aluno: 3, profissional: 15 } // gerações por 24 h
+// Gerações por 24 h. Ajustáveis nos segredos ROUTINE_LIMIT_ALUNO e ROUTINE_LIMIT_PRO (1 a 100).
+const limit = (name: string, fallback: number) => { const n = Number(Deno.env.get(name)); return Number.isInteger(n) && n >= 1 && n <= 100 ? n : fallback }
+const LIMITS = { aluno: limit('ROUTINE_LIMIT_ALUNO', 3), profissional: limit('ROUTINE_LIMIT_PRO', 15) }
 const ORIGINS = (Deno.env.get('ROUTINE_ALLOWED_ORIGINS') || 'https://369wellness.ademariom07.workers.dev')
   .split(',').map((v) => v.trim()).filter(Boolean)
 

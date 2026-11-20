@@ -1,4 +1,4 @@
-import React,{useState} from 'react'
+import React,{useEffect,useState} from 'react'
 import {Sparkles} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -16,6 +16,9 @@ const field='mt-1 block w-full rounded-md border p-2'
 export default function AiRoutine({owner,role,links,initialStudent,onOpenPlans}:{owner:string,role:'aluno'|'profissional',links:ParticipantLink[],initialStudent?:string|null,onOpenPlans:()=>void}){
  const students=links.filter(l=>l.state==='active')
  const [student,setStudent]=useState(role==='aluno'?owner:(initialStudent||students[0]?.student_id||''))
+ // A lista de alunos chega depois da tela: garante que um aluno válido fique escolhido.
+ useEffect(()=>{if(role==='aluno'){if(student!==owner)setStudent(owner);return}
+  if(!students.some(st=>st.student_id===student)){const next=students.find(st=>st.student_id===initialStudent)??students[0];if(next)setStudent(next.student_id)}},[role,owner,student,students,initialStudent])
  const [kind,setKind]=useState<Kind>('treino')
  const [a,setA]=useState<AiAnswers>({goal:'Saúde e bem-estar',level:'Iniciante',days:['seg','qua','sex'],minutes:45,place:'Academia',equipment:'',limitations:'',meals_per_day:5,avoid_foods:'',restrictions:'',parq:Array(7).fill(false)})
  const [parqDone,setParqDone]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[draft,setDraft]=useState<Routine|null>(null),[editing,setEditing]=useState(false),[notice,setNotice]=useState('')

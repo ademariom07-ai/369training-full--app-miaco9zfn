@@ -135,6 +135,7 @@ export function ProRoutines({owner,links,onAi}:{owner:string,links:ParticipantLi
  const students=links.filter(l=>l.state==='active')
  const [student,setStudent]=useState(students[0]?.student_id||''),[rows,setRows]=useState<Routine[]>([]),[loading,setLoading]=useState(false),[error,setError]=useState('')
  const [editing,setEditing]=useState<{kind:Kind,initial?:Routine}|null>(null),[viewing,setViewing]=useState<Routine|null>(null),[logs,setLogs]=useState<{day_key:string,done_on:string}[]>([])
+ useEffect(()=>{if(!students.some(st=>st.student_id===student)&&students[0])setStudent(students[0].student_id)},[students,student])
  const load=useCallback(async()=>{if(!student)return;setLoading(true);setError('');try{setRows(await listRoutines(student))}catch(err){setError(errorText(err,'Não foi possível carregar.'))}finally{setLoading(false)}},[student])
  useEffect(()=>{setEditing(null);setViewing(null);void load()},[load,owner])
  useEffect(()=>{setLogs([]);if(viewing?.status==='publicado')routineProgress(viewing.plan_id).then(setLogs).catch(()=>{})},[viewing?.plan_id])
