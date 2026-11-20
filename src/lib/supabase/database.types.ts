@@ -729,6 +729,15 @@ export type Database = {
       }
       log_routine_day: { Args: { p_plan: string; p_day: string; p_date: string; p_done: boolean }; Returns: undefined }
       routine_progress: { Args: { p_plan: string }; Returns: { day_key: string; done_on: string }[] }
+      save_routine_session: {
+        Args: { p_plan: string; p_day: string; p_date: string; p_effort: number | null; p_pain: number; p_note: string | null; p_entries: Json }
+        Returns: string
+      }
+      delete_routine_session: { Args: { p_id: string }; Returns: undefined }
+      list_routine_sessions: {
+        Args: { p_student: string | null }
+        Returns: { session_id: string; plan_id: string; plan_title: string; student_id: string; student_name: string; day_key: string; day_name: string | null; done_on: string; effort: number | null; pain: number; note: string | null; entries: Json; updated_at: string }[]
+      }
       save_my_showcase: {
         Args: { p_headline: string; p_bio: string | null; p_education: string | null; p_experience: string | null; p_modalities: string[]; p_modes: string[] }
         Returns: { user_id: string; headline: string; bio: string | null; education: string | null; experience: string | null; modalities: string[]; modes: string[]; updated_at: string }[]

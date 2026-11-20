@@ -19,7 +19,7 @@ export type Source='profissional'|'ia_profissional'|'ia_aluno'
 export type Structure={days:TrainingDay[]}|{meals:Meal[]}
 export type Routine={plan_id:string,student_id:string,student_name:string,author_id:string,author_name:string,kind:Kind,source:Source,status:'rascunho'|'revisao'|'publicado',title:string,notes:string|null,structure:Structure,updated_at:string,published_at:string|null,mine:boolean,can_review:boolean}
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const known=['Plano inválido: confira os campos.','Dieta só pode ser prescrita por nutricionista.','Treino só pode ser prescrito por profissional de educação física, fisioterapia ou artes marciais.','Plano disponível só para alunos com acompanhamento ativo com você.','Limite diário de planos atingido.','O aluno pode criar só treino sugerido pela IA.']
+const known=['Registro inválido: confira os campos.','Limite diário de registros atingido.','Data inválida.','Dia inválido.','Plano inválido: confira os campos.','Dieta só pode ser prescrita por nutricionista.','Treino só pode ser prescrito por profissional de educação física, fisioterapia ou artes marciais.','Plano disponível só para alunos com acompanhamento ativo com você.','Limite diário de planos atingido.','O aluno pode criar só treino sugerido pela IA.']
 const fail=(error:{message?:string}|null,fallback:string)=>Error(error?.message&&known.includes(error.message)?error.message:fallback)
 const s=(v:unknown,max:number)=>typeof v==='string'?v.trim().slice(0,max):''
 
@@ -81,4 +81,43 @@ export async function routineProgress(plan:string,client:Client=getSupabaseClien
  if(!uuid.test(plan))throw Error('Plano inválido.')
  const rows=await call(client,()=>client.rpc('routine_progress',{p_plan:plan}),'Não foi possível carregar o progresso.')
  return (Array.isArray(rows)?rows:[]).map(r=>({day_key:r.day_key,done_on:r.done_on}))
+}
+
+// ----- Registro do treino feito pelo aluno (migração 20261122120000) -----
+export type SessionEntry={name:string,done:boolean,sets:number|null,reps:string,load:string}
+export type Session={session_id:string,plan_id:string,plan_title:string,student_id:string,student_name:string,day_key:DayKey,day_name:string,done_on:string,effort:number|null,pain:0|1|2,note:string|null,entries:SessionEntry[],updated_at:string}
+export const painLabels=['Sem dor','Dor leve','Dor forte'] as const
+export const effortLabel=(n:number)=>n<=3?'Leve':n<=6?'Moderado':n<=8?'Pesado':'Máximo'
+// Os últimos 8 dias (hoje e 7 para trás), no fuso de São Paulo.
+export function recentDates(now=new Date()){return Array.from({length:8},(_,i)=>todayInfo(new Date(now.getTime()-i*86400000)).iso)}
+export function sessionEntriesFrom(day:TrainingDay):SessionEntry[]{return day.items.map(i=>({name:i.name,done:true,sets:i.sets,reps:i.reps,load:i.load}))}
+export async function saveRoutineSession(input:{plan:string,day:DayKey,date:string,effort:number|null,pain:number,note:string,entries:SessionEntry[]},client:Client=getSupabaseClient()){
+ if(!uuid.test(input.plan)||!dayKeys.includes(input.day)||!/^\d{4}-\d{2}-\d{2}$/.test(input.date))throw Error('Registro inválido.')
+ if(input.effort!==null&&(!Number.isInteger(input.effort)||input.effort<1||input.effort>10))throw Error('O esforço vai de 1 a 10.')
+ if(![0,1,2].includes(input.pain))throw Error('Registro inválido.')
+ const note=input.note.trim();if(note.length>500)throw Error('Recado longo demais (até 500 caracteres).')
+ const entries=input.entries.map(e=>{const sets=e.sets===null||Number.isNaN(e.sets)?null:Math.trunc(Number(e.sets))
+  if(sets!==null&&(sets<0||sets>10))throw Error(`Séries de "${e.name}" devem ficar entre 0 e 10.`)
+  return{name:s(e.name,80),done:!!e.done,sets,reps:s(e.reps,20),load:s(e.load,40)}}).filter(e=>e.name)
+ if(!entries.length||entries.length>15)throw Error('Registro inválido.')
+ const id=await call(client,()=>client.rpc('save_routine_session',{p_plan:input.plan,p_day:input.day,p_date:input.date,p_effort:input.effort,p_pain:input.pain,p_note:note||null,p_entries:entries as unknown as Json}),'Não foi possível salvar o registro.')
+ if(typeof id!=='string'||!uuid.test(id))throw Error('Não foi possível salvar o registro.')
+ return id
+}
+export async function deleteRoutineSession(id:string,client:Client=getSupabaseClient()){if(!uuid.test(id))throw Error('Registro inválido.');await call(client,()=>client.rpc('delete_routine_session',{p_id:id}),'Não foi possível apagar.',true)}
+export async function listRoutineSessions(student:string|null,client:Client=getSupabaseClient()):Promise<Session[]>{
+ if(student!==null&&!uuid.test(student))throw Error('Aluno inválido.')
+ const rows=await call(client,()=>client.rpc('list_routine_sessions',{p_student:student}),'Não foi possível carregar os registros.')
+ if(!Array.isArray(rows)||rows.length>120)throw Error('Registros indisponíveis.')
+ return rows.filter(r=>r&&uuid.test(r.session_id)&&dayKeys.includes(r.day_key as DayKey)&&Array.isArray(r.entries)).map(r=>({...r,day_key:r.day_key as DayKey,day_name:r.day_name??'',pain:([0,1,2].includes(r.pain)?r.pain:0) as 0|1|2,
+  entries:(r.entries as unknown as SessionEntry[]).filter(e=>e&&typeof e.name==='string').map(e=>({name:e.name,done:e.done===true,sets:typeof e.sets==='number'?e.sets:null,reps:typeof e.reps==='string'?e.reps:'',load:typeof e.load==='string'?e.load:''}))}))
+}
+// Resumo por aluno para o profissional: último treino, quantos nos últimos 7 dias, alerta de dor.
+export function summarizeSessions(rows:Session[],now=new Date()){
+ const week=new Set(recentDates(now).slice(0,7)),by=new Map<string,{student_id:string,student_name:string,last:Session,week:number,pain:boolean}>()
+ for(const r of rows){const cur=by.get(r.student_id)??{student_id:r.student_id,student_name:r.student_name,last:r,week:0,pain:false}
+  if(r.done_on>cur.last.done_on)cur.last=r
+  if(week.has(r.done_on)){cur.week++;if(r.pain>0)cur.pain=true}
+  by.set(r.student_id,cur)}
+ return [...by.values()].sort((a,b)=>Number(b.pain)-Number(a.pain)||b.last.done_on.localeCompare(a.last.done_on))
 }

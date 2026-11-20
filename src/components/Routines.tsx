@@ -6,8 +6,9 @@ import {YoutubePlayer} from '@/components/VideoFeed'
 import ExerciseAnimationView from '@/components/ExerciseAnimationView'
 import {exerciseAnimations} from '@/lib/exerciseAnimations'
 import {resolveExercise,useExerciseLibrary} from '@/lib/supabase/exerciseLibrary'
-import {archiveRoutine,dayKeys,dayLabels,dayShort,listRoutines,logRoutineDay,publishRoutine,reviewRoutine,routineProgress,saveRoutine,todayInfo,
- type DayKey,type Exercise,type Kind,type Meal,type Routine,type Source,type Structure,type TrainingDay} from '@/lib/supabase/routines'
+import {ProActivity,SessionCard,SessionForm} from '@/components/WorkoutLog'
+import {archiveRoutine,dayKeys,dayLabels,dayShort,listRoutineSessions,listRoutines,logRoutineDay,publishRoutine,reviewRoutine,routineProgress,saveRoutine,todayInfo,
+ type DayKey,type Exercise,type Kind,type Meal,type Routine,type Session,type Source,type Structure,type TrainingDay} from '@/lib/supabase/routines'
 import type {ParticipantLink} from '@/lib/supabase/participantLinks'
 
 const errorText=(err:unknown,fallback:string)=>err instanceof Error&&err.message?err.message:fallback
@@ -15,7 +16,7 @@ const card='rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4'
 const sourceLabel=(r:Routine)=>r.source==='ia_aluno'?'Sugestão da IA':r.source==='ia_profissional'?`Por ${r.author_name}, com apoio de IA`:`Por ${r.author_name}`
 
 // Mostra um plano. Treino: semana com o dia de hoje em destaque, exercícios com vídeo. Dieta: refeições.
-export function RoutineDisplay({routine,logs,canLog,onToggle}:{routine:Routine,logs:{day_key:string,done_on:string}[],canLog:boolean,onToggle?:(day:DayKey|'todos',done:boolean)=>void}){
+export function RoutineDisplay({routine,logs,canLog,onToggle,logSlot}:{routine:Routine,logs:{day_key:string,done_on:string}[],canLog:boolean,onToggle?:(day:DayKey|'todos',done:boolean)=>void,logSlot?:(day:TrainingDay)=>React.ReactNode}){
  const today=todayInfo(),library=useExerciseLibrary()
  const trainingDays='days' in routine.structure?routine.structure.days:[]
  const [open,setOpen]=useState<DayKey>(trainingDays.some(d=>d.key===today.day)?today.day:(trainingDays[0]?.key??'seg'))
@@ -45,8 +46,8 @@ export function RoutineDisplay({routine,logs,canLog,onToggle}:{routine:Routine,l
      return <>{!anim&&entry?.instructions&&<p className="mt-1 whitespace-pre-line text-sm">{entry.instructions}</p>}
       {anim||video?<div className="mt-2 grid max-w-3xl gap-3 md:grid-cols-2">{anim&&<ExerciseAnimationView exercise={anim}/>}{video&&<YoutubePlayer id={video} title={it.name}/>}</div>:null}</>})()}
    </li>)}</ol>
-   {canLog&&onToggle&&day.key===today.day&&<Button type="button" onClick={()=>onToggle(day.key,!doneToday(day.key))} className={doneToday(day.key)?'bg-[#a5ce41] text-[#33325a]':''}>{doneToday(day.key)?'✓ Treino de hoje concluído':'Concluí o treino de hoje'}</Button>}
-   {canLog&&day.key!==today.day&&<p className="text-sm text-[#626274]">Você marca o treino como feito no dia dele.</p>}
+   {logSlot?logSlot(day):<>{canLog&&onToggle&&day.key===today.day&&<Button type="button" onClick={()=>onToggle(day.key,!doneToday(day.key))} className={doneToday(day.key)?'bg-[#a5ce41] text-[#33325a]':''}>{doneToday(day.key)?'✓ Treino de hoje concluído':'Concluí o treino de hoje'}</Button>}
+   {canLog&&day.key!==today.day&&<p className="text-sm text-[#626274]">Você marca o treino como feito no dia dele.</p>}</>}
   </section>}
   <p className="text-sm text-[#626274]">Treinos feitos nos últimos 7 dias: {weekCount}</p>
  </div>
@@ -58,13 +59,24 @@ export function StudentRoutines({owner,onAi,legacy}:{owner:string,onAi:()=>void,
  const load=useCallback(async()=>{setLoading(true);setError('');try{setRows(await listRoutines(null))}catch(err){setError(errorText(err,'Não foi possível carregar.'))}finally{setLoading(false)}},[])
  useEffect(()=>{void load()},[load,owner])
  const active=rows.find(r=>r.kind===kind&&r.status==='publicado'),review=rows.find(r=>r.kind===kind&&r.status==='revisao')
- useEffect(()=>{setLogs([]);if(active)routineProgress(active.plan_id).then(setLogs).catch(()=>{})},[active?.plan_id])
+ const [sessions,setSessions]=useState<Session[]>([]),[logging,setLogging]=useState<{day:TrainingDay,existing?:Session}|null>(null)
+ const refresh=useCallback(()=>{if(!active)return;routineProgress(active.plan_id).then(setLogs).catch(()=>{});listRoutineSessions(null).then(setSessions).catch(()=>{})},[active?.plan_id])
+ useEffect(()=>{setLogs([]);setSessions([]);setLogging(null);refresh()},[refresh])
+ const today=todayInfo().iso
+ const logSlot=(day:TrainingDay)=>{if(!active)return null
+  const recent=sessions.filter(s=>s.plan_id===active.plan_id&&s.day_key===day.key)[0]
+  if(logging&&logging.day.key===day.key)return <SessionForm plan={active.plan_id} day={day} existing={logging.existing} onCancel={()=>setLogging(null)} onDone={()=>{setLogging(null);refresh()}}/>
+  return <div className="space-y-2">{recent&&<SessionCard session={recent}/>}
+   <div className="flex flex-wrap gap-2"><Button type="button" onClick={()=>setLogging({day})}>{recent?.done_on===today?'Registrar outro dia':'Registrar treino feito'}</Button>
+    {recent&&<Button type="button" variant="outline" onClick={()=>setLogging({day,existing:recent})}>Editar último registro</Button>}</div>
+   <p className="text-sm text-[#626274]">Treinou sozinho? Registre o que fez, a carga e como se sentiu. Seu profissional acompanha por aqui.</p></div>}
  async function toggle(day:DayKey|'todos',done:boolean){if(!active)return;try{await logRoutineDay(active.plan_id,day,todayInfo().iso,done);setLogs(await routineProgress(active.plan_id))}catch(err){setError(errorText(err,'Não foi possível registrar.'))}}
  return <section className="space-y-4" aria-label="Meu treino e dieta">
   <div className="flex flex-wrap gap-2" role="tablist">{([['treino','Treino',Dumbbell],['dieta','Dieta',Apple]] as const).map(([k,label,Icon])=><Button key={k} type="button" role="tab" aria-selected={kind===k} variant={kind===k?'default':'outline'} onClick={()=>setKind(k)}><Icon aria-hidden="true" className="mr-2 h-4 w-4"/>{label}</Button>)}</div>
   {error&&<p role="alert">{error}</p>}
   {loading?<p role="status">Carregando…</p>:active?<><div><h3 className="text-xl font-extrabold">{active.title}</h3><p className="text-sm text-[#626274]">{sourceLabel(active)}{active.source==='ia_aluno'&&' · não substitui a orientação de um profissional'}</p></div>
-   <RoutineDisplay routine={active} logs={logs} canLog onToggle={(d,v)=>void toggle(d,v)}/></>
+   <RoutineDisplay routine={active} logs={logs} canLog onToggle={(d,v)=>void toggle(d,v)} logSlot={active.kind==='treino'?logSlot:undefined}/>
+   {active.kind==='treino'&&sessions.length>1&&<details className={card}><summary className="min-h-11 cursor-pointer py-2 font-bold">Meu histórico ({sessions.length})</summary><div className="mt-2 space-y-2">{sessions.slice(0,30).map(s=><SessionCard key={s.session_id} session={s}/>)}</div></details>}</>
   :<div className={card}><p className="font-semibold">{kind==='treino'?'Você ainda não tem um treino.':'Você ainda não tem uma dieta.'}</p>
    <p className="text-sm">{kind==='treino'?'Seu profissional monta o treino por aqui. Se ainda não tem um, encontre em "Encontrar profissionais" ou gere uma sugestão com a IA.':'A dieta é feita por um nutricionista. Encontre um em "Encontrar profissionais" › Nutrição.'}</p>
    {kind==='treino'&&<Button type="button" className="mt-3" onClick={onAi}><Sparkles aria-hidden="true" className="mr-2 h-4 w-4"/>Gerar treino com IA</Button>}</div>}
@@ -161,5 +173,6 @@ export function ProRoutines({owner,links,onAi}:{owner:string,links:ParticipantLi
    {r.status==='publicado'?<CheckCircle2 aria-hidden="true" className="h-5 w-5 text-[#6a8a27]"/>:<Circle aria-hidden="true" className="h-5 w-5 text-[#626274]"/>}
    <span className="flex-1"><span className="block font-bold">{r.kind==='treino'?'Treino':'Dieta'} · {r.title}</span><span className="block text-sm text-[#626274]">{sourceLabel(r)} · {r.status==='publicado'?'Publicado':r.status==='revisao'?'Aguardando sua revisão':'Rascunho'}</span></span>
   </button></li>)}</ul>}
+  <ProActivity student={student} owner={owner}/>
  </section>
 }

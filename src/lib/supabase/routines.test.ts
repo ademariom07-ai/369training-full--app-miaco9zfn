@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest'
-import {normalizeStructure,todayInfo} from './routines'
+import {normalizeStructure,recentDates,sessionEntriesFrom,summarizeSessions,todayInfo} from './routines'
 import {generateRoutine} from './aiRoutine'
 import {roleMenu} from '@/components/RoleHome'
 
@@ -63,5 +63,23 @@ describe('reconhecimento tolerante de nomes',()=>{
   expect(findAnimation('Elevação lateral com halteres')).toBeNull()
   expect(findAnimation('Corrida na esteira')).toBeNull()
   expect(findAnimation('Agachamento sumô')).toBeNull()
+ })
+})
+describe('registro do treino feito',()=>{
+ const base={plan_id:'p',plan_title:'Semana',day_key:'seg' as const,day_name:'A',effort:7,note:null,entries:[],updated_at:''}
+ it('lista hoje e os 7 dias anteriores no fuso de São Paulo',()=>{
+  const d=recentDates(new Date('2026-11-20T02:00:00Z'))
+  expect(d).toHaveLength(8);expect(d[0]).toBe('2026-11-19');expect(d[7]).toBe('2026-11-12')
+ })
+ it('resume por aluno, com quem relatou dor primeiro',()=>{
+  const now=new Date('2026-11-20T15:00:00Z')
+  const rows=[{...base,session_id:'1',student_id:'a',student_name:'Ana',done_on:'2026-11-20',pain:0 as const},{...base,session_id:'2',student_id:'a',student_name:'Ana',done_on:'2026-11-18',pain:0 as const},
+   {...base,session_id:'3',student_id:'b',student_name:'Célia',done_on:'2026-11-17',pain:1 as const},{...base,session_id:'4',student_id:'b',student_name:'Célia',done_on:'2026-10-01',pain:2 as const}]
+  const s=summarizeSessions(rows,now)
+  expect(s.map(x=>x.student_name)).toEqual(['Célia','Ana'])
+  expect(s[0]).toMatchObject({week:1,pain:true});expect(s[1]).toMatchObject({week:2,pain:false});expect(s[1].last.done_on).toBe('2026-11-20')
+ })
+ it('parte do treino do dia, tudo marcado como feito',()=>{
+  expect(sessionEntriesFrom({key:'seg',name:'A',items:[{name:'Remada',sets:3,reps:'12',rest:'60s',load:'10 kg',video:null,notes:''}]})).toEqual([{name:'Remada',done:true,sets:3,reps:'12',load:'10 kg'}])
  })
 })
