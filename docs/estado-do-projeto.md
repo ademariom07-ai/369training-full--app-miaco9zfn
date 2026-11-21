@@ -18,7 +18,6 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   dor, recado) até 7 dias atrás; o profissional vê "O que seus alunos fizeram" em Treinos e dietas. Banco: 18/19.
 
 ## Pendências do proprietário
-- Supabase: colar 18 (registro de treino) e depois 19 (teste).
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
 - Rodar 7 e 8 (encerrar sessões) e conferir a Redirect URL `.../acesso` sem ponto final.
