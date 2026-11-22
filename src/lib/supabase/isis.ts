@@ -5,6 +5,8 @@ import {verifiedIdentity} from './profiles'
 
 // Ísis: assistente virtual do profissional (Edge Function "isis").
 export const ASSISTANT_NAME='Ísis'
+// Nome da Edge Function como foi publicada no painel (o Supabase diferencia maiúsculas).
+export const FUNCTION_NAME='Isis'
 type Client=SupabaseClient<Database>
 export type IsisMessage={role:'user'|'assistant',content:string}
 export type IsisResult={type:'criar'|'alterar'|'enviar',student_id:string,student_name:string,plan_id:string|null,status:string,error?:string}
@@ -25,11 +27,11 @@ export async function askIsis(messages:IsisMessage[],client:Client=getSupabaseCl
  const clean=messages.filter(m=>m.content.trim()).slice(-12).map(m=>({role:m.role,content:m.content.trim().slice(0,2000)}))
  if(!clean.length||clean[clean.length-1].role!=='user')throw Error('Escreva uma mensagem.')
  await verifiedIdentity(client)
- const result=await client.functions.invoke('isis',{body:{messages:clean}})
+ const result=await client.functions.invoke(FUNCTION_NAME,{body:{messages:clean}})
  if(result.error){
   let message=`A ${ASSISTANT_NAME} está indisponível agora. Tente de novo em alguns minutos.`
   const ctx=(result.error as {context?:Response}).context
-  if(ctx&&ctx.status===404)message=`A ${ASSISTANT_NAME} ainda não foi publicada no Supabase (função "isis").`
+  if(ctx&&ctx.status===404)message=`A ${ASSISTANT_NAME} ainda não foi publicada no Supabase (função "Isis").`
   try{const body=ctx&&typeof ctx.json==='function'?await ctx.json():null;if(body&&typeof body.message==='string'&&body.message.length<300)message=body.message}catch{/* sem corpo */}
   throw Error(message)
  }
