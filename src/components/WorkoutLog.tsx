@@ -8,13 +8,15 @@ import {dayShort,deleteRoutineSession,effortLabel,listRoutineSessions,painLabels
 const errorText=(err:unknown,fallback:string)=>err instanceof Error&&err.message?err.message:fallback
 const card='rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4'
 const field='mt-1 block w-full rounded-md border p-2 text-sm'
-const weekdayOf=(iso:string)=>todayInfo(new Date(iso+'T12:00:00-03:00')).day
+export const weekdayOf=(iso:string)=>todayInfo(new Date(iso+'T12:00:00-03:00')).day
+// Data mais recente (hoje ou até 7 dias atrás) que cai no dia da semana do treino.
+export const latestDateFor=(day:DayKey)=>{const d=recentDates();return d.find(x=>weekdayOf(x)===day)??d[0]}
 export const dateLabel=(iso:string)=>{const t=todayInfo().iso,y=recentDates()[1];const [,m,d]=iso.split('-');return iso===t?'Hoje':iso===y?'Ontem':`${dayShort[weekdayOf(iso)]}, ${d}/${m}`}
 
 // Aluno: registra o que fez num dia do treino (hoje ou até 7 dias atrás).
 export function SessionForm({plan,day,existing,onDone,onCancel}:{plan:string,day:TrainingDay,existing?:Session,onDone:()=>void,onCancel:()=>void}){
  const dates=recentDates()
- const [date,setDate]=useState(existing?.done_on??(dates.find(d=>weekdayOf(d)===day.key)??dates[0]))
+ const [date,setDate]=useState(existing?.done_on??latestDateFor(day.key))
  const [entries,setEntries]=useState<SessionEntry[]>(existing?.entries.length?existing.entries:sessionEntriesFrom(day))
  const [effort,setEffort]=useState<number>(existing?.effort??6),[pain,setPain]=useState<number>(existing?.pain??0),[note,setNote]=useState(existing?.note??'')
  const [busy,setBusy]=useState(false),[error,setError]=useState('')
@@ -25,6 +27,7 @@ export function SessionForm({plan,day,existing,onDone,onCancel}:{plan:string,day
   <h4 className="text-lg font-extrabold">Registrar treino · {day.name}</h4>
   <label className="block font-semibold">Quando você treinou?<select className={field} value={date} disabled={!!existing} onChange={e=>setDate(e.target.value)}>{dates.map(d=><option key={d} value={d}>{dateLabel(d)}</option>)}</select></label>
   <fieldset className="space-y-2"><legend className="font-semibold">Exercícios (desmarque o que não fez e ajuste o que mudou)</legend>
+   <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={()=>setEntries(list=>list.map(e=>({...e,done:true})))}>✓ Marcar todos</Button><Button type="button" variant="outline" onClick={()=>setEntries(list=>list.map(e=>({...e,done:false})))}>Desmarcar todos</Button></div>
    {entries.map((e,i)=><div key={i} className={'rounded-md border p-2 '+(e.done?'border-[#dddee4]':'border-dashed border-[#b0b0bb] bg-[#f7f6f2]')}>
     <label className="flex min-h-11 items-center gap-2 font-bold"><input type="checkbox" className="h-5 w-5" checked={e.done} onChange={ev=>upd(i,{done:ev.target.checked})}/>{e.name}</label>
     {e.done&&<div className="grid grid-cols-3 gap-2">

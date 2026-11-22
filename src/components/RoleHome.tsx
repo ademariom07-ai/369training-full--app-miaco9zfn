@@ -75,7 +75,7 @@ const helps:Record<string,string>={
  'meus-exercicios':'Seus exercícios aparecem para você e seus alunos e podem ser usados nos treinos. Use nomes claros e, se puder, um vídeo do YouTube mostrando a execução.',
  biblioteca:'Exercícios oficiais da 369. Nos 30 animados você edita nome, outros nomes, músculos e as dicas de cada fase (a animação continua a mesma). Também dá para criar exercícios novos com texto e vídeo.',
  vitrine:'É o seu perfil público: aparece para os alunos na busca. Diga o que você faz, para quem, sua formação e se atende presencial ou online.',
- treino:'Seu treino da semana (com vídeo de cada exercício) e sua dieta. No dia do treino, toque em "Concluí o treino de hoje" para registrar sua evolução.',
+ treino:'Seu treino da semana (com vídeo de cada exercício) e sua dieta. Depois de treinar, toque em "Concluí todos os exercícios" ou registre com detalhes (carga, esforço, dor). Seu profissional acompanha.',
  ia:'A IA monta uma sugestão a partir das suas respostas. Para o aluno, só treino e depois do questionário de saúde; se tiver profissional, ele revisa antes. O profissional pode gerar treino ou dieta (nutricionistas) e editar antes de publicar.',
  'aluno:agenda':'Seus horários reservados com profissionais.',
  carteira:'Área de teste: mostra saldo e pedidos de saque simulados. Ainda não há pagamentos de verdade.',

@@ -6,8 +6,8 @@ import {YoutubePlayer} from '@/components/VideoFeed'
 import ExerciseAnimationView from '@/components/ExerciseAnimationView'
 import {exerciseAnimations} from '@/lib/exerciseAnimations'
 import {resolveExercise,useExerciseLibrary} from '@/lib/supabase/exerciseLibrary'
-import {ProActivity,SessionCard,SessionForm} from '@/components/WorkoutLog'
-import {archiveRoutine,dayKeys,dayLabels,dayShort,listRoutineSessions,listRoutines,logRoutineDay,publishRoutine,reviewRoutine,routineProgress,saveRoutine,todayInfo,
+import {ProActivity,SessionCard,SessionForm,dateLabel,latestDateFor} from '@/components/WorkoutLog'
+import {archiveRoutine,dayKeys,dayLabels,dayShort,listRoutineSessions,listRoutines,logRoutineDay,saveRoutineSession,sessionEntriesFrom,publishRoutine,reviewRoutine,routineProgress,saveRoutine,todayInfo,
  type DayKey,type Exercise,type Kind,type Meal,type Routine,type Session,type Source,type Structure,type TrainingDay} from '@/lib/supabase/routines'
 import type {ParticipantLink} from '@/lib/supabase/participantLinks'
 
@@ -59,6 +59,7 @@ export function StudentRoutines({owner,onAi,legacy}:{owner:string,onAi:()=>void,
  const load=useCallback(async()=>{setLoading(true);setError('');try{setRows(await listRoutines(null))}catch(err){setError(errorText(err,'Não foi possível carregar.'))}finally{setLoading(false)}},[])
  useEffect(()=>{void load()},[load,owner])
  const active=rows.find(r=>r.kind===kind&&r.status==='publicado'),review=rows.find(r=>r.kind===kind&&r.status==='revisao')
+ const [quickBusy,setQuickBusy]=useState(false)
  const [sessions,setSessions]=useState<Session[]>([]),[logging,setLogging]=useState<{day:TrainingDay,existing?:Session}|null>(null)
  const refresh=useCallback(()=>{if(!active)return;routineProgress(active.plan_id).then(setLogs).catch(()=>{});listRoutineSessions(null).then(setSessions).catch(()=>{})},[active?.plan_id])
  useEffect(()=>{setLogs([]);setSessions([]);setLogging(null);refresh()},[refresh])
@@ -66,10 +67,14 @@ export function StudentRoutines({owner,onAi,legacy}:{owner:string,onAi:()=>void,
  const logSlot=(day:TrainingDay)=>{if(!active)return null
   const recent=sessions.filter(s=>s.plan_id===active.plan_id&&s.day_key===day.key)[0]
   if(logging&&logging.day.key===day.key)return <SessionForm plan={active.plan_id} day={day} existing={logging.existing} onCancel={()=>setLogging(null)} onDone={()=>{setLogging(null);refresh()}}/>
+  const quickDate=latestDateFor(day.key),quickDone=sessions.some(s=>s.plan_id===active.plan_id&&s.day_key===day.key&&s.done_on===quickDate)
   return <div className="space-y-2">{recent&&<SessionCard session={recent}/>}
-   <div className="flex flex-wrap gap-2"><Button type="button" onClick={()=>setLogging({day})}>{recent?.done_on===today?'Registrar outro dia':'Registrar treino feito'}</Button>
+   <div className="flex flex-wrap gap-2">{!quickDone&&<Button type="button" disabled={quickBusy} className="!bg-[#a5ce41] !text-[#33325a]" onClick={()=>void completeAll(day,quickDate)}>✓ Concluí todos os exercícios ({dateLabel(quickDate).toLowerCase()})</Button>}
+    <Button type="button" variant={quickDone?'default':'outline'} onClick={()=>setLogging({day})}>{quickDone?'Registrar outro dia':'Registrar com detalhes'}</Button>
     {recent&&<Button type="button" variant="outline" onClick={()=>setLogging({day,existing:recent})}>Editar último registro</Button>}</div>
-   <p className="text-sm text-[#626274]">Treinou sozinho? Registre o que fez, a carga e como se sentiu. Seu profissional acompanha por aqui.</p></div>}
+   <p className="text-sm text-[#626274]">Fez tudo como está no treino? Um toque em "Concluí todos". Mudou carga, pulou algum exercício ou sentiu dor? Use "Registrar com detalhes". Seu profissional acompanha por aqui.</p></div>}
+ async function completeAll(day:TrainingDay,date:string){if(!active)return;setQuickBusy(true);setError('')
+  try{await saveRoutineSession({plan:active.plan_id,day:day.key,date,effort:null,pain:0,note:'',entries:sessionEntriesFrom(day)});refresh()}catch(err){setError(errorText(err,'Não foi possível registrar.'))}finally{setQuickBusy(false)}}
  async function toggle(day:DayKey|'todos',done:boolean){if(!active)return;try{await logRoutineDay(active.plan_id,day,todayInfo().iso,done);setLogs(await routineProgress(active.plan_id))}catch(err){setError(errorText(err,'Não foi possível registrar.'))}}
  return <section className="space-y-4" aria-label="Meu treino e dieta">
   <div className="flex flex-wrap gap-2" role="tablist">{([['treino','Treino',Dumbbell],['dieta','Dieta',Apple]] as const).map(([k,label,Icon])=><Button key={k} type="button" role="tab" aria-selected={kind===k} variant={kind===k?'default':'outline'} onClick={()=>setKind(k)}><Icon aria-hidden="true" className="mr-2 h-4 w-4"/>{label}</Button>)}</div>
