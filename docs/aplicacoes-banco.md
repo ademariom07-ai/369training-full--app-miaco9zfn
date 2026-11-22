@@ -21,7 +21,7 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 
 | Data | Função | Segredos | Observação |
 | --- | --- | --- | --- |
-| 23/11/2026 | isis (supabase/functions/isis/index.ts) | Usa ANTHROPIC_API_KEY, ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS; opcional ISIS_LIMIT_PRO (padrão 60/dia) | Assistente virtual do profissional: cria, ajusta e envia treinos conversando, usando os registros do aluno. Aguardando publicação. |
+| 23/11/2026 | isis (supabase/functions/isis/index.ts) | Usa ANTHROPIC_API_KEY, ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS; opcional ISIS_LIMIT_PRO (padrão 60/dia) | Assistente virtual do profissional: cria, ajusta e envia treinos conversando, usando os registros do aluno. Publicada em 23/11/2026 (aguardando primeiro teste). |
 | 20/11/2026 | routine-ai (supabase/functions/routine-ai/index.ts) | ANTHROPIC_API_KEY (obrigatório), ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS (opcionais) | Treino/dieta com IA. Publicada; em uso com ROUTINE_MODEL=claude-haiku-5-5. Limites: ROUTINE_LIMIT_ALUNO/ROUTINE_LIMIT_PRO (padrão 3 e 15 por dia). Aguardando publicação no painel. |
 
 ## Configurações do painel (Auth)

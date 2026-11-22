@@ -21,7 +21,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
-- Supabase: colar 20/21 (uso da Ísis) e publicar a Edge Function `isis`.
+- Supabase: colar 20/21 (uso da Ísis), se ainda não colou. Função `isis` publicada.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
 - Rodar 7 e 8 (encerrar sessões) e conferir a Redirect URL `.../acesso` sem ponto final.
