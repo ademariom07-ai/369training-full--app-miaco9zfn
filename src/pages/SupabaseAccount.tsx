@@ -31,7 +31,7 @@ const ProfessionalApplications=lazy(()=>import('@/components/ProfessionalApplica
 const StudentRoutines=lazy(()=>import('@/components/Routines').then(m=>({default:m.StudentRoutines})))
 const ProRoutines=lazy(()=>import('@/components/Routines').then(m=>({default:m.ProRoutines})))
 const AiRoutine=lazy(()=>import('@/components/AiRoutine'))
-const Nina=lazy(()=>import('@/components/Nina'))
+const Isis=lazy(()=>import('@/components/Isis'))
 const ExerciseLibraryManager=lazy(()=>import('@/components/ExerciseLibraryManager'))
 const Chat=lazy(()=>import('@/components/Chat'))
 const ProfessionalSearch=lazy(()=>import('@/components/Showcase').then(m=>({default:m.ProfessionalSearch})))
@@ -120,7 +120,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    // Parceiro
    alunos:()=>panel(linksBlock),
    treinos:()=><>{panel(linksReady?<ProRoutines key={'pr'+profile.id} owner={profile.id} links={links} onAi={id=>{setAiStudent(id);openView('ia')}}/>:<p role="status">Carregando…</p>)}{panel(<details><summary className="min-h-11 cursor-pointer py-2 font-bold">Planos em texto (modelo anterior)</summary><div className="mt-3">{training}</div></details>)}</>,
-   nina:()=>panel(linksReady?<Nina key={'nina'+profile.id} owner={profile.id} links={links} onOpenPlans={()=>openView('treinos')}/>:<p role="status">Carregando…</p>),
+   isis:()=>panel(linksReady?<Isis key={'isis'+profile.id} owner={profile.id} links={links} onOpenPlans={()=>openView('treinos')}/>:<p role="status">Carregando…</p>),
    cadastro:()=>panel(applications),
    'meus-videos':()=>panel(<ProfessionalVideos key={'myvideos'+profile.id} owner={profile.id} disabled={busy}/>),
    agenda:()=>kind==='parceiro'?<>{panel(<><h2 className="text-xl font-bold">Minha agenda</h2><BookingTerms key={'terms'+profile.id} owner={profile.id} disabled={busy} onSave={input=>controller.current!.saveTerms(input)}/><ProfessionalAvailability key={profile.id} owner={profile.id} selectedDay={availabilityDay} onSelectDay={setAvailabilityDay} disabled={busy} onSave={input=>controller.current!.saveAvailability(input)}/></>)}{panel(reservations)}</>:panel(reservations),

@@ -16,19 +16,19 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 - 30 exercícios animados, biblioteca no banco (admin edita, profissional cadastra os seus); nomes parecidos também acham a animação.
 - Registro de treino (item 1 do roteiro "Jair/Tiago"): o aluno registra o que fez (exercícios, séries, carga, esforço 1–10,
   dor, recado) até 7 dias atrás, ou "Concluí todos os exercícios" num toque; o profissional vê "O que seus alunos fizeram". Banco: 18/19.
-- Nina, assistente virtual do profissional (menu "Nina — assistente"): conversa (texto ou microfone), lê treino atual e registros
-  dos alunos, cria/ajusta rascunhos e envia quando o profissional confirma. Edge Function `nina`; banco 20/21. Nome em
-  `ASSISTANT_NAME` (src/lib/supabase/nina.ts) e `NAME` (função).
+- Ísis, assistente virtual do profissional (menu "Ísis — assistente"): conversa (texto ou microfone), lê treino atual e registros
+  dos alunos, cria/ajusta rascunhos e envia quando o profissional confirma. Edge Function `isis`; banco 20/21. Nome em
+  `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
-- Supabase: colar 20/21 (uso da Nina) e publicar a Edge Function `nina`.
+- Supabase: colar 20/21 (uso da Ísis) e publicar a Edge Function `isis`.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
 - Rodar 7 e 8 (encerrar sessões) e conferir a Redirect URL `.../acesso` sem ponto final.
 - Auth › Email: OTP 900 s e senha mínima 10.
 
 ## Decisões e próximos passos
-- Roteiro do comercial (Jair/Tiago): itens 1 (registro), 2 (assistente) e 3 (IA lendo os registros) feitos com a Nina;
+- Roteiro do comercial (Jair/Tiago): itens 1 (registro), 2 (assistente) e 3 (IA lendo os registros) feitos com a Ísis;
   falta 4) gráfico de evolução para o aluno.
 - Imagens/vídeos dos exercícios: plano grátis = animações próprias 369 (ou ExerciseDB, compra única, se preferir);
   plano pago = + vídeo do YouTube por busca automática (profissional pode trocar).

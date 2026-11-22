@@ -1,15 +1,15 @@
-// 369 WELLNESS · Edge Function "nina": a assistente virtual do profissional.
-// O profissional conversa ("Nina, cria o treino da semana da dona Célia, ela sentiu a lombar"); a Nina lê os alunos
+// 369 WELLNESS · Edge Function "isis": a assistente virtual do profissional.
+// O profissional conversa ("Ísis, cria o treino da semana da dona Célia, ela sentiu a lombar"); a Ísis lê os alunos
 // com vínculo ativo, o treino atual e os registros recentes (esforço, dor, recados), monta ou ajusta o RASCUNHO e,
 // quando o profissional confirma ("pode enviar"), publica para o aluno.
 // Tudo é gravado com o login do próprio profissional (funções save_routine/publish_routine), que conferem as permissões.
-// Arquivo único para colar no painel do Supabase (Edge Functions › Deploy a new function › Via editor), com o nome "nina".
+// Arquivo único para colar no painel do Supabase (Edge Functions › Deploy a new function › Via editor), com o nome "isis".
 // Usa os mesmos segredos da "routine-ai": ANTHROPIC_API_KEY (obrigatório), ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS.
-// Opcional: NINA_LIMIT_PRO (mensagens por dia por profissional, padrão 60).
+// Opcional: ISIS_LIMIT_PRO (mensagens por dia por profissional, padrão 60).
 import Anthropic from 'npm:@anthropic-ai/sdk@1.10.0'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 
-const NAME = 'Nina'
+const NAME = 'Ísis'
 const MODELS = ['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'] as const
 const envModel = Deno.env.get('ROUTINE_MODEL') || ''
 const MODEL: (typeof MODELS)[number] = (MODELS as readonly string[]).includes(envModel) ? (envModel as (typeof MODELS)[number]) : 'claude-sonnet-5-5'
@@ -17,7 +17,7 @@ const DAYS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as const
 const DAY_NAMES: Record<string, string> = { seg: 'segunda', ter: 'terça', qua: 'quarta', qui: 'quinta', sex: 'sexta', sab: 'sábado', dom: 'domingo' }
 const LIBRARY = ["Remada curvada com barra", "Agachamento livre", "Flexão de braço", "Elevação de quadril (ponte)", "Agachamento com barra", "Agachamento goblet com halter", "Afundo (avanço)", "Levantamento terra", "Stiff com barra", "Panturrilha em pé", "Cadeira extensora", "Mesa flexora", "Leg press 45°", "Elevação pélvica com barra", "Supino reto com barra", "Supino reto com halteres", "Supino inclinado com halteres", "Flexão inclinada (mãos no banco)", "Remada curvada com halteres", "Puxada frontal no pulley", "Remada baixa no cabo", "Superman (extensão lombar no solo)", "Desenvolvimento com halteres (sentado)", "Elevação frontal com halteres", "Rosca direta com halteres", "Tríceps francês com halter", "Tríceps testa com barra", "Prancha", "Abdominal (crunch)", "Elevação de pernas"]
 const TRAINING_AREAS = ['educacao_fisica', 'fisioterapia', 'artes_marciais']
-const limitEnv = Number(Deno.env.get('NINA_LIMIT_PRO'))
+const limitEnv = Number(Deno.env.get('ISIS_LIMIT_PRO'))
 const LIMIT = Number.isInteger(limitEnv) && limitEnv >= 1 && limitEnv <= 500 ? limitEnv : 60
 const ORIGINS = (Deno.env.get('ROUTINE_ALLOWED_ORIGINS') || 'https://369wellness.ademariom07.workers.dev')
   .split(',').map((v) => v.trim()).filter(Boolean)
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
     out = JSON.parse(message.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join(''))
   } catch (err) {
     const code = err instanceof Anthropic.APIError ? String(err.status ?? 'API') : err instanceof SyntaxError ? 'PARSE' : 'REDE'
-    console.error('nina', MODEL, code, err instanceof Error ? err.message : String(err))
+    console.error('isis', MODEL, code, err instanceof Error ? err.message : String(err))
     return reply(502, { message: `A ${NAME} está indisponível agora (código ${code}). Tente de novo em alguns minutos.` })
   }
 

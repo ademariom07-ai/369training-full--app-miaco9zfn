@@ -15,13 +15,13 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 20/11/2026 | 20261120120000_routine_plans.sql | routine_plans.sql: 26 verificações OK | Fase 3: treino por dia da semana e dieta por refeição, registro do que o aluno fez, base para IA. |
 | 21/11/2026 | 20261121120000_exercise_library.sql | exercise_library.sql: 15 verificações OK | Biblioteca de exercícios: textos oficiais editáveis pelo admin e exercícios próprios dos profissionais. |
 | 22/11/2026 | 20261122120000_routine_sessions.sql | routine_sessions.sql: 19 verificações OK | Registro do treino feito pelo aluno (exercícios, carga, esforço, dor, recado) e acompanhamento pelo profissional. |
-| 23/11/2026 | 20261123120000_assistant_usage.sql | assistant_usage.sql: 3 verificações (aguardando aplicação) | Contador de mensagens da assistente Nina (limite diário). |
+| 23/11/2026 | 20261123120000_assistant_usage.sql | assistant_usage.sql: 3 verificações (aguardando aplicação) | Contador de mensagens da assistente Ísis (limite diário). |
 
 ## Edge Functions
 
 | Data | Função | Segredos | Observação |
 | --- | --- | --- | --- |
-| 23/11/2026 | nina (supabase/functions/nina/index.ts) | Usa ANTHROPIC_API_KEY, ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS; opcional NINA_LIMIT_PRO (padrão 60/dia) | Assistente virtual do profissional: cria, ajusta e envia treinos conversando, usando os registros do aluno. Aguardando publicação. |
+| 23/11/2026 | isis (supabase/functions/isis/index.ts) | Usa ANTHROPIC_API_KEY, ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS; opcional ISIS_LIMIT_PRO (padrão 60/dia) | Assistente virtual do profissional: cria, ajusta e envia treinos conversando, usando os registros do aluno. Aguardando publicação. |
 | 20/11/2026 | routine-ai (supabase/functions/routine-ai/index.ts) | ANTHROPIC_API_KEY (obrigatório), ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS (opcionais) | Treino/dieta com IA. Publicada; em uso com ROUTINE_MODEL=claude-haiku-5-5. Limites: ROUTINE_LIMIT_ALUNO/ROUTINE_LIMIT_PRO (padrão 3 e 15 por dia). Aguardando publicação no painel. |
 
 ## Configurações do painel (Auth)
