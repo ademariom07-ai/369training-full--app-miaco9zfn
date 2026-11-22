@@ -15,7 +15,7 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 20/11/2026 | 20261120120000_routine_plans.sql | routine_plans.sql: 26 verificações OK | Fase 3: treino por dia da semana e dieta por refeição, registro do que o aluno fez, base para IA. |
 | 21/11/2026 | 20261121120000_exercise_library.sql | exercise_library.sql: 15 verificações OK | Biblioteca de exercícios: textos oficiais editáveis pelo admin e exercícios próprios dos profissionais. |
 | 22/11/2026 | 20261122120000_routine_sessions.sql | routine_sessions.sql: 19 verificações OK | Registro do treino feito pelo aluno (exercícios, carga, esforço, dor, recado) e acompanhamento pelo profissional. |
-| 23/11/2026 | 20261123120000_assistant_usage.sql | assistant_usage.sql: 3 verificações (aguardando aplicação) | Contador de mensagens da assistente Ísis (limite diário). |
+| 23/11/2026 | 20261123120000_assistant_usage.sql | assistant_usage.sql: 3 verificações (aplicada; teste 21 não rodado) | Contador de mensagens da assistente Ísis (limite diário). |
 
 ## Edge Functions
 
