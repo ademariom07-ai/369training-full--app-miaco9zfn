@@ -15,17 +15,21 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   pausa, fase anterior/próxima e "parar em cada fase". Código: `src/lib/exerciseAnimations.ts` e `src/components/ExerciseAnimationView.tsx`.
 - 30 exercícios animados, biblioteca no banco (admin edita, profissional cadastra os seus); nomes parecidos também acham a animação.
 - Registro de treino (item 1 do roteiro "Jair/Tiago"): o aluno registra o que fez (exercícios, séries, carga, esforço 1–10,
-  dor, recado) até 7 dias atrás; o profissional vê "O que seus alunos fizeram" em Treinos e dietas. Banco: 18/19.
+  dor, recado) até 7 dias atrás, ou "Concluí todos os exercícios" num toque; o profissional vê "O que seus alunos fizeram". Banco: 18/19.
+- Nina, assistente virtual do profissional (menu "Nina — assistente"): conversa (texto ou microfone), lê treino atual e registros
+  dos alunos, cria/ajusta rascunhos e envia quando o profissional confirma. Edge Function `nina`; banco 20/21. Nome em
+  `ASSISTANT_NAME` (src/lib/supabase/nina.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 20/21 (uso da Nina) e publicar a Edge Function `nina`.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
 - Rodar 7 e 8 (encerrar sessões) e conferir a Redirect URL `.../acesso` sem ponto final.
 - Auth › Email: OTP 900 s e senha mínima 10.
 
 ## Decisões e próximos passos
-- Roteiro do comercial (Jair/Tiago): próximos itens são 2) assistente em conversa ("Du, cria o treino da dona Célia…"),
-  3) IA lendo o histórico/registros do aluno, 4) evolução e geração para vários alunos.
+- Roteiro do comercial (Jair/Tiago): itens 1 (registro), 2 (assistente) e 3 (IA lendo os registros) feitos com a Nina;
+  falta 4) gráfico de evolução para o aluno.
 - Imagens/vídeos dos exercícios: plano grátis = animações próprias 369 (ou ExerciseDB, compra única, se preferir);
   plano pago = + vídeo do YouTube por busca automática (profissional pode trocar).
 - Próximo: ampliar a biblioteca para os 30 exercícios mais usados (com revisão de um profissional), IA preferindo a biblioteca,

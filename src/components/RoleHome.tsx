@@ -1,5 +1,5 @@
 import React from 'react'
-import {Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {Bot,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -33,6 +33,7 @@ const menus:Record<RoleKind,RoleView[]>={
  parceiro:[inicio,
   {id:'alunos',label:'Meus alunos',icon:Users,summary:'Pedidos de vínculo e alunos ativos.'},
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Horários disponíveis, regras e reservas.'},
+  {id:'nina',label:'Nina — assistente',icon:Bot,summary:'Peça em uma frase: a Nina monta e ajusta os treinos dos seus alunos usando os registros deles, e envia quando você confirmar.'},
   {id:'treinos',label:'Treinos e dietas',icon:Dumbbell,summary:'Monte treinos por dia da semana ou dietas por refeição e acompanhe o que o aluno fez.'},
   ia,
   mensagens,
@@ -76,6 +77,7 @@ const helps:Record<string,string>={
  biblioteca:'Exercícios oficiais da 369. Nos 30 animados você edita nome, outros nomes, músculos e as dicas de cada fase (a animação continua a mesma). Também dá para criar exercícios novos com texto e vídeo.',
  vitrine:'É o seu perfil público: aparece para os alunos na busca. Diga o que você faz, para quem, sua formação e se atende presencial ou online.',
  treino:'Seu treino da semana (com vídeo de cada exercício) e sua dieta. Depois de treinar, toque em "Concluí todos os exercícios" ou registre com detalhes (carga, esforço, dor). Seu profissional acompanha.',
+ nina:'Converse com a Nina como com uma colega: "cria o treino da semana da Célia, ela sentiu a lombar", "tira o levantamento terra", "pode enviar". Ela usa o treino atual e os registros do aluno (carga, esforço, dor, recados). Você pode falar pelo microfone.',
  ia:'A IA monta uma sugestão a partir das suas respostas. Para o aluno, só treino e depois do questionário de saúde; se tiver profissional, ele revisa antes. O profissional pode gerar treino ou dieta (nutricionistas) e editar antes de publicar.',
  'aluno:agenda':'Seus horários reservados com profissionais.',
  carteira:'Área de teste: mostra saldo e pedidos de saque simulados. Ainda não há pagamentos de verdade.',

@@ -4,7 +4,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Frame-Options: SAMEORIGIN
-  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(self), payment=(), usb=()
 
 # Área real (contas Supabase): política de conteúdo restrita e sem incorporação em outros sites.
 /acesso
