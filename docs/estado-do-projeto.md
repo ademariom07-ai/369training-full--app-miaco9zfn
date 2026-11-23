@@ -21,13 +21,23 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 22 (conteúdos e e-books) e 23 (teste).
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
 - Rodar 7 e 8 (encerrar sessões) e conferir a Redirect URL `.../acesso` sem ponto final.
 - Auth › Email: OTP 900 s e senha mínima 10.
 
+- Gráficos de evolução (aba "Evolução" do aluno; no profissional, em "O que seus alunos fizeram").
+- Conteúdos e e-books: parceiro publica em "Meus conteúdos" (aula, vídeo, dica, e-book, estudo, material; grátis ou pago;
+  todos da 369 com aprovação do admin, meus alunos, ou alunos/grupos escolhidos; libera acesso dos pagos manualmente);
+  aluno vê em "Conteúdos e e-books", na home e abaixo do treino; admin aprova em "Conteúdos". Arquivos no bucket privado
+  `conteudos` (até 25 MB).
+
 ## Decisões e próximos passos
+- Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) modo executar treino com cronômetro e
+  sugestão de carga, 3) Ísis analisando a evolução, 4) desafios e hidratação. Planos/créditos, carteira, ranking e dados
+  clínicos só com pagamentos e jurídico (Fase 6).
 - Roteiro do comercial (Jair/Tiago): itens 1 (registro), 2 (assistente) e 3 (IA lendo os registros) feitos com a Ísis;
   falta 4) gráfico de evolução para o aluno.
 - Imagens/vídeos dos exercícios: plano grátis = animações próprias 369 (ou ExerciseDB, compra única, se preferir);

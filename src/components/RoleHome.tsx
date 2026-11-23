@@ -1,5 +1,5 @@
 import React from 'react'
-import {Bot,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {BookOpen,Bot,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -25,6 +25,7 @@ const menus:Record<RoleKind,RoleView[]>={
  aluno:[inicio,comoFunciona,
   {id:'profissionais',label:'Encontrar profissionais',icon:Users,summary:'Busque por modalidade, perto de você ou online, e veja a vitrine de cada um.'},
   {id:'treino',label:'Meu treino / dieta',icon:Dumbbell,summary:'Treino da semana e dieta, com vídeos e o que você já fez.'},
+  {id:'conteudos',label:'Conteúdos e e-books',icon:BookOpen,summary:'Aulas, vídeos, dicas, livros e materiais dos profissionais, grátis ou pagos.'},
   ia,
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Suas reservas de horário.'},
   mensagens,carteira,esg,
@@ -35,6 +36,7 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'agenda',label:'Minha agenda',icon:CalendarDays,summary:'Horários disponíveis, regras e reservas.'},
   {id:'isis',label:'Ísis — assistente',icon:Bot,summary:'Peça em uma frase: a Ísis monta e ajusta os treinos dos seus alunos usando os registros deles, e envia quando você confirmar.'},
   {id:'treinos',label:'Treinos e dietas',icon:Dumbbell,summary:'Monte treinos por dia da semana ou dietas por refeição e acompanhe o que o aluno fez.'},
+  {id:'meus-conteudos',label:'Meus conteúdos',icon:BookOpen,summary:'Publique aulas, vídeos, dicas, e-books e materiais, grátis ou pagos, para todos, seus alunos ou um grupo.'},
   ia,
   mensagens,
   {id:'vitrine',label:'Minha vitrine',icon:Store,summary:'Apresentação, formação, modalidades e atendimento que os alunos veem.'},
@@ -51,6 +53,7 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'aprovacoes',label:'Aprovações',icon:ShieldCheck,summary:'Cadastros profissionais aguardando análise.'},
   mensagens,
   {id:'feed',label:'Vídeos do feed',icon:Clapperboard,summary:'Aprove os vídeos dos profissionais antes de irem para o feed.'},
+  {id:'conteudos-admin',label:'Conteúdos',icon:BookOpen,summary:'Aprove os conteúdos públicos dos profissionais e publique os da equipe 369.'},
   {id:'biblioteca',label:'Biblioteca de exercícios',icon:Library,summary:'Edite os textos dos exercícios oficiais e crie novos.'},
   {id:'participantes',label:'Participantes',icon:Users,summary:'Visão geral de alunos e profissionais.'},
   {id:'servicos',label:'Serviços recebidos',icon:Inbox,summary:'Eventos de serviços que chegaram à plataforma.'},
@@ -78,6 +81,9 @@ const helps:Record<string,string>={
  vitrine:'É o seu perfil público: aparece para os alunos na busca. Diga o que você faz, para quem, sua formação e se atende presencial ou online.',
  treino:'Seu treino da semana (com vídeo de cada exercício) e sua dieta. Depois de treinar, toque em "Concluí todos os exercícios" ou registre com detalhes (carga, esforço, dor). Seu profissional acompanha.',
  isis:'Converse com a Ísis como com uma colega: "cria o treino da semana da Célia, ela sentiu a lombar", "tira o levantamento terra", "pode enviar". Ela usa o treino atual e os registros do aluno (carga, esforço, dor, recados). Você pode falar pelo microfone.',
+ conteudos:'Aulas, vídeos, dicas, e-books e materiais. Em "Do meu profissional" ficam os que o seu profissional enviou; em "Para todos", os da comunidade. Os pagos mostram o preço: combine com o profissional e ele libera o acesso.',
+ 'meus-conteudos':'Publique conteúdos grátis ou pagos. Escolha para quem: todos os alunos da 369 (passa pela aprovação da equipe), todos os seus alunos ou alunos escolhidos (você pode salvar grupos, como "Turma da manhã"). Nos pagos, libere o acesso de quem pagou.',
+ 'conteudos-admin':'Conteúdos públicos enviados pelos profissionais esperando aprovação, e os conteúdos da equipe 369 (publicados direto para todos).',
  ia:'A IA monta uma sugestão a partir das suas respostas. Para o aluno, só treino e depois do questionário de saúde; se tiver profissional, ele revisa antes. O profissional pode gerar treino ou dieta (nutricionistas) e editar antes de publicar.',
  'aluno:agenda':'Seus horários reservados com profissionais.',
  carteira:'Área de teste: mostra saldo e pedidos de saque simulados. Ainda não há pagamentos de verdade.',

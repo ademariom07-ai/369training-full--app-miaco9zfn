@@ -734,6 +734,28 @@ export type Database = {
         Returns: string
       }
       delete_routine_session: { Args: { p_id: string }; Returns: undefined }
+      save_content: {
+        Args: { p_id: string | null; p_kind: string; p_title: string; p_description: string | null; p_body: string | null; p_youtube: string | null; p_file_path: string | null; p_file_name: string | null; p_file_size: number | null; p_price_cents: number; p_audience: string; p_recipients: string[] | null }
+        Returns: string
+      }
+      archive_content: { Args: { p_id: string }; Returns: undefined }
+      review_content: { Args: { p_id: string; p_approve: boolean; p_reason: string | null }; Returns: string }
+      grant_content: { Args: { p_id: string; p_user: string; p_grant: boolean }; Returns: undefined }
+      list_contents: {
+        Args: { p_scope: string; p_page: number }
+        Returns: { content_id: string; owner_id: string; owner_name: string; kind: string; title: string; description: string | null; body: string | null; youtube_id: string | null; file_path: string | null; file_name: string | null; file_size: number | null; price_cents: number; audience: string; published_at: string; unlocked: boolean; for_me: boolean }[]
+      }
+      list_my_contents: {
+        Args: Record<string, never>
+        Returns: { content_id: string; kind: string; title: string; description: string | null; body: string | null; youtube_id: string | null; file_path: string | null; file_name: string | null; file_size: number | null; price_cents: number; audience: string; status: string; review_reason: string | null; updated_at: string; recipients: string[]; grants: string[] }[]
+      }
+      list_pending_contents: {
+        Args: Record<string, never>
+        Returns: { content_id: string; owner_name: string; kind: string; title: string; description: string | null; body: string | null; youtube_id: string | null; file_path: string | null; file_name: string | null; price_cents: number; created_at: string }[]
+      }
+      save_student_group: { Args: { p_id: string | null; p_name: string; p_members: string[] }; Returns: string }
+      delete_student_group: { Args: { p_id: string }; Returns: undefined }
+      list_student_groups: { Args: Record<string, never>; Returns: { group_id: string; name: string; members: string[] }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }
         Returns: { session_id: string; plan_id: string; plan_title: string; student_id: string; student_name: string; day_key: string; day_name: string | null; done_on: string; effort: number | null; pain: number; note: string | null; entries: Json; updated_at: string }[]

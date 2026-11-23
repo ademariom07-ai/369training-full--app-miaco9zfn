@@ -32,6 +32,10 @@ const StudentRoutines=lazy(()=>import('@/components/Routines').then(m=>({default
 const ProRoutines=lazy(()=>import('@/components/Routines').then(m=>({default:m.ProRoutines})))
 const AiRoutine=lazy(()=>import('@/components/AiRoutine'))
 const Isis=lazy(()=>import('@/components/Isis'))
+const ContentLibrary=lazy(()=>import('@/components/Contents'))
+const ContentManager=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentManager})))
+const ContentReview=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentReview})))
+const ContentHighlights=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentHighlights})))
 const ExerciseLibraryManager=lazy(()=>import('@/components/ExerciseLibraryManager'))
 const Chat=lazy(()=>import('@/components/Chat'))
 const ProfessionalSearch=lazy(()=>import('@/components/Showcase').then(m=>({default:m.ProfessionalSearch})))
@@ -99,7 +103,9 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   const wallet=<><p className="rounded-lg bg-sky-50 p-3">Pagamentos e saques reais ainda não estão disponíveis neste piloto.</p><SupabaseWallet account={profile} disabled={busy} onInitialize={()=>controller.current!.initializeWallet()} onReserve={amount=>controller.current!.reserveWithdrawal(amount)} onCancel={row=>controller.current!.cancelWithdrawal(row)}/></>
   const reservations=<BookingReservations key={'reservations'+profile.id} account={profile} disabled={busy}/>
   const activeLinks=links.filter(row=>row.state==='active').length,pendingLinks=links.filter(row=>row.state==='pending').length
-  const highlights=kind==='parceiro'&&linksReady?<p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{pendingLinks?`${pendingLinks} pedido(s) de vínculo aguardando seu aceite em “Meus alunos”.`:`Alunos ativos nesta página: ${activeLinks}.`}</p>
+  const partnerShortcuts=<section className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4" aria-label="Atalhos"><h3 className="font-extrabold">Atalhos do dia</h3><div className="mt-2 flex flex-wrap gap-2"><Button type="button" onClick={()=>openView('isis')}>Falar com a Ísis</Button><Button type="button" variant="outline" onClick={()=>openView('treinos')}>O que meus alunos fizeram</Button><Button type="button" variant="outline" onClick={()=>openView('meus-conteudos')}>Novo conteúdo</Button></div></section>
+  const highlights=kind==='parceiro'&&linksReady?<><p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{pendingLinks?`${pendingLinks} pedido(s) de vínculo aguardando seu aceite em “Meus alunos”.`:`Alunos ativos nesta página: ${activeLinks}.`}</p>{partnerShortcuts}</>
+   :kind==='aluno'?<ContentHighlights key={'chh'+profile.id} owner={profile.id} onView={openView} title="Conteúdos para você" scope="todos" max={4}/>
    :kind==='admin'?<PendingVideosNotice key={'pending'+profile.id} owner={profile.id} onOpen={()=>openView('feed')}/>
    :kind==='parceiro_pendente'?<p className="rounded-[12px_30px_12px_30px] border border-amber-300 bg-amber-50 p-4">Aprovação profissional pendente. Confira o andamento em “Meu cadastro profissional”.</p>:null
   const views:Record<string,()=>React.ReactNode>={
@@ -114,7 +120,10 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    'meus-exercicios':()=>panel(<ExerciseLibraryManager key={'lib'+profile.id} role="profissional"/>),
    biblioteca:()=>panel(<ExerciseLibraryManager key={'libadm'+profile.id} role="admin"/>),
    vitrine:()=>panel(<MyShowcase key={'vitrine'+profile.id} owner={profile.id} disabled={busy}/>),
-   treino:()=>panel(<StudentRoutines key={'rt'+profile.id} owner={profile.id} onAi={()=>openView('ia')} legacy={training}/>),
+   treino:()=><>{panel(<StudentRoutines key={'rt'+profile.id} owner={profile.id} onAi={()=>openView('ia')} legacy={training}/>)}<ContentHighlights key={'ch'+profile.id} owner={profile.id} onView={openView}/></>,
+   conteudos:()=>panel(<ContentLibrary key={'cl'+profile.id} owner={profile.id} onChat={startChat}/>),
+   'meus-conteudos':()=>panel(linksReady?<ContentManager key={'cm'+profile.id} owner={profile.id} role="profissional" links={links}/>:<p role="status">Carregando…</p>),
+   'conteudos-admin':()=><>{panel(<ContentReview key={'cr'+profile.id} owner={profile.id}/>)}{panel(<ContentManager key={'cma'+profile.id} owner={profile.id} role="admin" links={[]}/>)}</>,
    ia:()=>panel(<AiRoutine key={'ai'+profile.id+(aiStudent||'')} owner={profile.id} role={kind==='aluno'?'aluno':'profissional'} links={links} initialStudent={aiStudent} onOpenPlans={()=>openView('treinos')}/>),
    parceiro:()=>panel(applications),
    // Parceiro
