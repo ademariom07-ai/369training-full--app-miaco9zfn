@@ -83,3 +83,17 @@ describe('registro do treino feito',()=>{
   expect(sessionEntriesFrom({key:'seg',name:'A',items:[{name:'Remada',sets:3,reps:'12',rest:'60s',load:'10 kg',video:null,notes:''}]})).toEqual([{name:'Remada',done:true,sets:3,reps:'12',load:'10 kg'}])
  })
 })
+import {parseKg,loadSeries,weeklySeries,evolutionHighlights,exercisesWithLoad,weekStart} from '@/lib/evolution'
+describe('evolução do aluno',()=>{
+ const mk=(id:string,date:string,load:string,effort:number|null,pain:0|1|2=0)=>({session_id:id,plan_id:'p',plan_title:'T',student_id:'a',student_name:'Ana',day_key:'seg' as const,day_name:'A',done_on:date,effort,pain,note:null,updated_at:'',
+  entries:[{name:'Agachamento',done:true,sets:3,reps:'10',load},{name:'Prancha',done:true,sets:3,reps:'30s',load:''}]})
+ const rows=[mk('1','2026-11-02','20 kg',6),mk('2','2026-11-05','22,5kg',7,1),mk('3','2026-11-10','25',8)]
+ it('entende cargas escritas de vários jeitos',()=>{expect(parseKg('12,5 kg')).toBe(12.5);expect(parseKg('20')).toBe(20);expect(parseKg('leve')).toBeNull();expect(parseKg('')).toBeNull()})
+ it('monta as séries de carga, semanas e resumo',()=>{
+  expect(exercisesWithLoad(rows)).toEqual(['Agachamento'])
+  expect(loadSeries(rows,'Agachamento').map(p=>p.kg)).toEqual([20,22.5,25])
+  expect(weekStart('2026-11-05')).toBe('2026-11-02')
+  expect(weeklySeries(rows)).toEqual([{week:'2026-11-02',label:'02/11',treinos:2,volume:1275},{week:'2026-11-09',label:'09/11',treinos:1,volume:750}])
+  expect(evolutionHighlights(rows)).toEqual(['Agachamento: subiu de 20 kg para 25 kg.','Média de 1,5 treinos por semana.','Relatou dor em 1 treino.'])
+ })
+})

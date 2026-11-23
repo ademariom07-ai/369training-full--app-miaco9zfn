@@ -1,4 +1,5 @@
-import React,{useEffect,useState} from 'react'
+import React,{Suspense,lazy,useEffect,useState} from 'react'
+const EvolutionCharts=lazy(()=>import('@/components/Evolution').then(m=>({default:m.EvolutionCharts})))
 import {AlertTriangle,CheckCircle2,XCircle} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -73,6 +74,7 @@ export function ProActivity({student,owner}:{student:string,owner:string}){
    <ul className="flex gap-2 overflow-x-auto pb-1">{summary.map(s=><li key={s.student_id} className={card+' min-w-48 shrink-0 p-3 text-sm'+(s.pain?' border-amber-400':'')}>
     <p className="font-bold">{s.student_name}</p><p>{s.week} treino{s.week===1?'':'s'} em 7 dias</p><p className="text-[#626274]">Último: {dateLabel(s.last.done_on)}{s.last.done_on===today?' ✓':''}</p>
     {s.pain&&<p className="font-bold text-amber-700"><AlertTriangle aria-hidden="true" className="mr-1 inline h-4 w-4"/>Relatou dor</p>}</li>)}</ul>}
+  {!loading&&student&&mine.length>0&&<details className={card}><summary className="min-h-11 cursor-pointer py-2 font-bold">Evolução deste aluno (gráficos)</summary><div className="mt-2"><Suspense fallback={<p role="status">Carregando…</p>}><EvolutionCharts sessions={mine}/></Suspense></div></details>}
   {!loading&&student&&<><h4 className="font-bold">Registros deste aluno</h4>{mine.length?<div className="space-y-2">{mine.slice(0,20).map(s=><SessionCard key={s.session_id} session={s}/>)}</div>:<p className="text-sm text-[#626274]">Este aluno ainda não registrou treinos.</p>}</>}
  </section>
 }

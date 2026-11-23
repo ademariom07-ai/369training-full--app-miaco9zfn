@@ -1,5 +1,6 @@
-import React,{useCallback,useEffect,useState} from 'react'
-import {Apple,CheckCircle2,Circle,Dumbbell,Plus,Sparkles,Trash2} from 'lucide-react'
+import React,{Suspense,lazy,useCallback,useEffect,useState} from 'react'
+const Evolution=lazy(()=>import('@/components/Evolution'))
+import {Apple,CheckCircle2,Circle,Dumbbell,LineChart as ChartIcon,Plus,Sparkles,Trash2} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {YoutubePlayer} from '@/components/VideoFeed'
@@ -55,7 +56,7 @@ export function RoutineDisplay({routine,logs,canLog,onToggle,logSlot}:{routine:R
 
 // Aluno: "Meu treino / dieta".
 export function StudentRoutines({owner,onAi,legacy}:{owner:string,onAi:()=>void,legacy?:React.ReactNode}){
- const [kind,setKind]=useState<Kind>('treino'),[rows,setRows]=useState<Routine[]>([]),[logs,setLogs]=useState<{day_key:string,done_on:string}[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('')
+ const [kind,setKind]=useState<Kind|'evolucao'>('treino'),[rows,setRows]=useState<Routine[]>([]),[logs,setLogs]=useState<{day_key:string,done_on:string}[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('')
  const load=useCallback(async()=>{setLoading(true);setError('');try{setRows(await listRoutines(null))}catch(err){setError(errorText(err,'Não foi possível carregar.'))}finally{setLoading(false)}},[])
  useEffect(()=>{void load()},[load,owner])
  const active=rows.find(r=>r.kind===kind&&r.status==='publicado'),review=rows.find(r=>r.kind===kind&&r.status==='revisao')
@@ -77,9 +78,9 @@ export function StudentRoutines({owner,onAi,legacy}:{owner:string,onAi:()=>void,
   try{await saveRoutineSession({plan:active.plan_id,day:day.key,date,effort:null,pain:0,note:'',entries:sessionEntriesFrom(day)});refresh()}catch(err){setError(errorText(err,'Não foi possível registrar.'))}finally{setQuickBusy(false)}}
  async function toggle(day:DayKey|'todos',done:boolean){if(!active)return;try{await logRoutineDay(active.plan_id,day,todayInfo().iso,done);setLogs(await routineProgress(active.plan_id))}catch(err){setError(errorText(err,'Não foi possível registrar.'))}}
  return <section className="space-y-4" aria-label="Meu treino e dieta">
-  <div className="flex flex-wrap gap-2" role="tablist">{([['treino','Treino',Dumbbell],['dieta','Dieta',Apple]] as const).map(([k,label,Icon])=><Button key={k} type="button" role="tab" aria-selected={kind===k} variant={kind===k?'default':'outline'} onClick={()=>setKind(k)}><Icon aria-hidden="true" className="mr-2 h-4 w-4"/>{label}</Button>)}</div>
+  <div className="flex flex-wrap gap-2" role="tablist">{([['treino','Treino',Dumbbell],['dieta','Dieta',Apple],['evolucao','Evolução',ChartIcon]] as const).map(([k,label,Icon])=><Button key={k} type="button" role="tab" aria-selected={kind===k} variant={kind===k?'default':'outline'} onClick={()=>setKind(k)}><Icon aria-hidden="true" className="mr-2 h-4 w-4"/>{label}</Button>)}</div>
   {error&&<p role="alert">{error}</p>}
-  {loading?<p role="status">Carregando…</p>:active?<><div><h3 className="text-xl font-extrabold">{active.title}</h3><p className="text-sm text-[#626274]">{sourceLabel(active)}{active.source==='ia_aluno'&&' · não substitui a orientação de um profissional'}</p></div>
+  {kind==='evolucao'?<Suspense fallback={<p role="status">Carregando…</p>}><Evolution student={null} owner={owner}/></Suspense>:loading?<p role="status">Carregando…</p>:active?<><div><h3 className="text-xl font-extrabold">{active.title}</h3><p className="text-sm text-[#626274]">{sourceLabel(active)}{active.source==='ia_aluno'&&' · não substitui a orientação de um profissional'}</p></div>
    <RoutineDisplay routine={active} logs={logs} canLog onToggle={(d,v)=>void toggle(d,v)} logSlot={active.kind==='treino'?logSlot:undefined}/>
    {active.kind==='treino'&&sessions.length>1&&<details className={card}><summary className="min-h-11 cursor-pointer py-2 font-bold">Meu histórico ({sessions.length})</summary><div className="mt-2 space-y-2">{sessions.slice(0,30).map(s=><SessionCard key={s.session_id} session={s}/>)}</div></details>}</>
   :<div className={card}><p className="font-semibold">{kind==='treino'?'Você ainda não tem um treino.':'Você ainda não tem uma dieta.'}</p>
