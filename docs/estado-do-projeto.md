@@ -33,9 +33,12 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   aluno vê em "Conteúdos e e-books", na home e abaixo do treino; admin aprova em "Conteúdos". Arquivos no bucket privado
   `conteudos` (até 25 MB).
 
+- Treino guiado ("Começar treino guiado"): um exercício por vez, séries marcadas uma a uma, cronômetro de descanso com
+  bipe/vibração, tela acesa, sugestão de carga (sobrecarga progressiva, regras em `src/lib/evolution.ts`) e registro no final.
+
 ## Decisões e próximos passos
-- Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) modo executar treino com cronômetro e
-  sugestão de carga, 3) Ísis analisando a evolução, 4) desafios e hidratação. Planos/créditos, carteira, ranking e dados
+- Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e
+  sugestão de carga (feito), 3) Ísis analisando a evolução, 4) desafios e hidratação. Planos/créditos, carteira, ranking e dados
   clínicos só com pagamentos e jurídico (Fase 6).
 - Roteiro do comercial (Jair/Tiago): itens 1 (registro), 2 (assistente) e 3 (IA lendo os registros) feitos com a Ísis;
   falta 4) gráfico de evolução para o aluno.

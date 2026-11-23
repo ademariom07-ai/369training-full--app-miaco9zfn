@@ -1,5 +1,6 @@
 import React,{Suspense,lazy,useCallback,useEffect,useState} from 'react'
 const Evolution=lazy(()=>import('@/components/Evolution'))
+const WorkoutRunner=lazy(()=>import('@/components/WorkoutRunner'))
 import {Apple,CheckCircle2,Circle,Dumbbell,LineChart as ChartIcon,Plus,Sparkles,Trash2} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -60,16 +61,17 @@ export function StudentRoutines({owner,onAi,legacy}:{owner:string,onAi:()=>void,
  const load=useCallback(async()=>{setLoading(true);setError('');try{setRows(await listRoutines(null))}catch(err){setError(errorText(err,'Não foi possível carregar.'))}finally{setLoading(false)}},[])
  useEffect(()=>{void load()},[load,owner])
  const active=rows.find(r=>r.kind===kind&&r.status==='publicado'),review=rows.find(r=>r.kind===kind&&r.status==='revisao')
- const [quickBusy,setQuickBusy]=useState(false)
+ const [quickBusy,setQuickBusy]=useState(false),[running,setRunning]=useState<TrainingDay|null>(null)
  const [sessions,setSessions]=useState<Session[]>([]),[logging,setLogging]=useState<{day:TrainingDay,existing?:Session}|null>(null)
  const refresh=useCallback(()=>{if(!active)return;routineProgress(active.plan_id).then(setLogs).catch(()=>{});listRoutineSessions(null).then(setSessions).catch(()=>{})},[active?.plan_id])
- useEffect(()=>{setLogs([]);setSessions([]);setLogging(null);refresh()},[refresh])
+ useEffect(()=>{setLogs([]);setSessions([]);setLogging(null);setRunning(null);refresh()},[refresh])
  const today=todayInfo().iso
  const logSlot=(day:TrainingDay)=>{if(!active)return null
   const recent=sessions.filter(s=>s.plan_id===active.plan_id&&s.day_key===day.key)[0]
   if(logging&&logging.day.key===day.key)return <SessionForm plan={active.plan_id} day={day} existing={logging.existing} onCancel={()=>setLogging(null)} onDone={()=>{setLogging(null);refresh()}}/>
   const quickDate=latestDateFor(day.key),quickDone=sessions.some(s=>s.plan_id===active.plan_id&&s.day_key===day.key&&s.done_on===quickDate)
   return <div className="space-y-2">{recent&&<SessionCard session={recent}/>}
+   <Button type="button" className="w-full !py-6 text-lg sm:w-auto" onClick={()=>{setLogging(null);setRunning(day);try{window.scrollTo({top:0})}catch{/* sem rolagem */}}}>▶ Começar treino guiado</Button>
    <div className="flex flex-wrap gap-2">{!quickDone&&<Button type="button" disabled={quickBusy} className="!bg-[#a5ce41] !text-[#33325a]" onClick={()=>void completeAll(day,quickDate)}>✓ Concluí todos os exercícios ({dateLabel(quickDate).toLowerCase()})</Button>}
     <Button type="button" variant={quickDone?'default':'outline'} onClick={()=>setLogging({day})}>{quickDone?'Registrar outro dia':'Registrar com detalhes'}</Button>
     {recent&&<Button type="button" variant="outline" onClick={()=>setLogging({day,existing:recent})}>Editar último registro</Button>}</div>
@@ -80,7 +82,8 @@ export function StudentRoutines({owner,onAi,legacy}:{owner:string,onAi:()=>void,
  return <section className="space-y-4" aria-label="Meu treino e dieta">
   <div className="flex flex-wrap gap-2" role="tablist">{([['treino','Treino',Dumbbell],['dieta','Dieta',Apple],['evolucao','Evolução',ChartIcon]] as const).map(([k,label,Icon])=><Button key={k} type="button" role="tab" aria-selected={kind===k} variant={kind===k?'default':'outline'} onClick={()=>setKind(k)}><Icon aria-hidden="true" className="mr-2 h-4 w-4"/>{label}</Button>)}</div>
   {error&&<p role="alert">{error}</p>}
-  {kind==='evolucao'?<Suspense fallback={<p role="status">Carregando…</p>}><Evolution student={null} owner={owner}/></Suspense>:loading?<p role="status">Carregando…</p>:active?<><div><h3 className="text-xl font-extrabold">{active.title}</h3><p className="text-sm text-[#626274]">{sourceLabel(active)}{active.source==='ia_aluno'&&' · não substitui a orientação de um profissional'}</p></div>
+  {kind==='treino'&&active&&running?<Suspense fallback={<p role="status">Carregando…</p>}><WorkoutRunner plan={active.plan_id} day={running} sessions={sessions} onClose={()=>setRunning(null)} onSaved={()=>{setRunning(null);refresh()}}/></Suspense>
+  :kind==='evolucao'?<Suspense fallback={<p role="status">Carregando…</p>}><Evolution student={null} owner={owner}/></Suspense>:loading?<p role="status">Carregando…</p>:active?<><div><h3 className="text-xl font-extrabold">{active.title}</h3><p className="text-sm text-[#626274]">{sourceLabel(active)}{active.source==='ia_aluno'&&' · não substitui a orientação de um profissional'}</p></div>
    <RoutineDisplay routine={active} logs={logs} canLog onToggle={(d,v)=>void toggle(d,v)} logSlot={active.kind==='treino'?logSlot:undefined}/>
    {active.kind==='treino'&&sessions.length>1&&<details className={card}><summary className="min-h-11 cursor-pointer py-2 font-bold">Meu histórico ({sessions.length})</summary><div className="mt-2 space-y-2">{sessions.slice(0,30).map(s=><SessionCard key={s.session_id} session={s}/>)}</div></details>}</>
   :<div className={card}><p className="font-semibold">{kind==='treino'?'Você ainda não tem um treino.':'Você ainda não tem uma dieta.'}</p>

@@ -49,3 +49,30 @@ export function evolutionHighlights(sessions:Session[]){
  const pains=sessions.filter(s=>s.pain>0).length;if(pains)out.push(`Relatou dor em ${pains} treino${pains>1?'s':''}.`)
  return out
 }
+
+// Descanso escrito livremente ("60s", "1 min", "1:30", "90") em segundos (10 a 600; padrão 60).
+export function parseRestSeconds(rest:string):number{
+ const t=rest.trim().toLowerCase().replace(',','.');let s=NaN
+ const mmss=t.match(/^(\d{1,2}):(\d{2})$/),min=t.match(/(\d+(?:\.\d+)?)\s*(min|m\b|')/),sec=t.match(/(\d+)\s*(s|seg)/),num=t.match(/^(\d+)$/)
+ if(mmss)s=Number(mmss[1])*60+Number(mmss[2])
+ else if(min||sec)s=(min?Number(min[1])*60:0)+(sec&&(!min||sec.index!==min.index)?Number(sec[1]):0)
+ else if(num)s=Number(num[1])
+ return Number.isFinite(s)&&s>0?Math.min(600,Math.max(10,Math.round(s))):60
+}
+
+// Sugestão de carga para a próxima vez (sobrecarga progressiva), a partir do último registro do exercício.
+// Regras simples e conservadoras: dor → não aumentar; esforço baixo e tudo feito → subir um pouco; esforço alto → manter.
+export type LoadSuggestion={kind:'subir'|'manter'|'reduzir'|'sem-dados',text:string,lastKg:number|null,nextKg:number|null}
+export function suggestLoad(sessions:Session[],exercise:string):LoadSuggestion{
+ const last=[...sessions].sort((a,b)=>b.done_on.localeCompare(a.done_on)).find(s=>s.entries.some(e=>e.name===exercise))
+ if(!last)return{kind:'sem-dados',text:'Primeira vez: comece com uma carga que permita fazer todas as repetições com boa técnica.',lastKg:null,nextKg:null}
+ const e=last.entries.find(x=>x.name===exercise)!,kg=parseKg(e.load),step=kg===null?0:kg<10?1:kg<40?2:kg<100?2.5:5
+ if(last.pain===2)return{kind:'reduzir',text:'Na última vez você relatou dor forte. Use carga leve ou fale com seu profissional antes.',lastKg:kg,nextKg:kg===null?null:Math.max(0,kg-step)}
+ if(last.pain===1)return{kind:'manter',text:'Na última vez houve dor leve: mantenha a carga e capriche na técnica.',lastKg:kg,nextKg:kg}
+ if(!e.done)return{kind:'manter',text:'Na última vez este exercício ficou de fora. Comece com a mesma carga.',lastKg:kg,nextKg:kg}
+ const effort=last.effort
+ if(effort!==null&&effort<=4&&kg!==null)return{kind:'subir',text:`Na última vez ficou leve (esforço ${effort}/10). Tente ${kg+step} kg.`,lastKg:kg,nextKg:kg+step}
+ if(effort!==null&&effort>=8)return{kind:'manter',text:`Na última vez ficou pesado (esforço ${effort}/10). Mantenha ${kg!==null?kg+' kg':'a carga'}.`,lastKg:kg,nextKg:kg}
+ if(kg!==null&&effort!==null)return{kind:'subir',text:`Esforço bom na última vez (${effort}/10). Se fizer todas as repetições com folga, suba para ${kg+step} kg.`,lastKg:kg,nextKg:kg+step}
+ return{kind:'manter',text:kg!==null?`Última carga: ${kg} kg.`:'Registre a carga usada para receber sugestões.',lastKg:kg,nextKg:kg}
+}

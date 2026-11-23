@@ -97,3 +97,19 @@ describe('evolução do aluno',()=>{
   expect(evolutionHighlights(rows)).toEqual(['Agachamento: subiu de 20 kg para 25 kg.','Média de 1,5 treinos por semana.','Relatou dor em 1 treino.'])
  })
 })
+import {parseRestSeconds,suggestLoad} from '@/lib/evolution'
+describe('executar treino',()=>{
+ it('entende o descanso escrito de vários jeitos',()=>{
+  expect(parseRestSeconds('60s')).toBe(60);expect(parseRestSeconds('90 seg')).toBe(90);expect(parseRestSeconds('1 min')).toBe(60);expect(parseRestSeconds('1:30')).toBe(90)
+  expect(parseRestSeconds('2min')).toBe(120);expect(parseRestSeconds('1min30s')).toBe(90);expect(parseRestSeconds('45')).toBe(45);expect(parseRestSeconds('')).toBe(60);expect(parseRestSeconds('livre')).toBe(60)
+ })
+ const s=(date:string,load:string,effort:number|null,pain:0|1|2=0,done=true)=>({session_id:date,plan_id:'p',plan_title:'T',student_id:'a',student_name:'A',day_key:'seg' as const,day_name:'A',done_on:date,effort,pain,note:null,updated_at:'',entries:[{name:'Supino',done,sets:3,reps:'10',load}]})
+ it('sugere carga com segurança',()=>{
+  expect(suggestLoad([],'Supino').kind).toBe('sem-dados')
+  expect(suggestLoad([s('2026-11-01','20 kg',3)],'Supino')).toMatchObject({kind:'subir',nextKg:22})
+  expect(suggestLoad([s('2026-11-01','20 kg',3),s('2026-11-05','22 kg',9)],'Supino')).toMatchObject({kind:'manter',nextKg:22})
+  expect(suggestLoad([s('2026-11-05','22 kg',5,1)],'Supino').kind).toBe('manter')
+  expect(suggestLoad([s('2026-11-05','22 kg',5,2)],'Supino')).toMatchObject({kind:'reduzir',nextKg:20})
+  expect(suggestLoad([s('2026-11-05','8 kg',3)],'Supino').nextKg).toBe(9)
+ })
+})
