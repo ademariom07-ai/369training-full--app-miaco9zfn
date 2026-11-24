@@ -14,7 +14,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function parseIsisResponse(data:unknown):{reply:string,results:IsisResult[]}{
  const d=(data&&typeof data==='object'?data:{}) as {reply?:unknown,results?:unknown}
- const reply=typeof d.reply==='string'&&d.reply.trim()?d.reply.trim().slice(0,1500):'Pronto.'
+ const reply=typeof d.reply==='string'&&d.reply.trim()?d.reply.trim().slice(0,4000):'Pronto.'
  const results=(Array.isArray(d.results)?d.results:[]).slice(0,5).flatMap((r:Record<string,unknown>)=>{
   if(!r||!['criar','alterar','enviar'].includes(String(r.type))||!uuid.test(String(r.student_id)))return []
   return [{type:r.type as IsisResult['type'],student_id:String(r.student_id),student_name:typeof r.student_name==='string'?r.student_name.slice(0,80):'Aluno',

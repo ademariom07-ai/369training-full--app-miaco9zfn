@@ -54,6 +54,8 @@ const SYSTEM = `Você é a ${NAME}, assistente virtual da 369 WELLNESS (pilares:
 
 Você recebe a lista numerada dos alunos ativos do profissional, com objetivo, treino publicado, rascunho atual e registros recentes (o que o aluno fez, cargas, esforço de 1 a 10, dor e recados). Use esses relatórios: se o aluno relatou dor numa região, evite exercícios que forcem aquela região e explique a troca; se o esforço está baixo e ele fez tudo, pode progredir carga ou volume; se ele pula exercícios, simplifique.
 
+Análise de evolução: cada aluno vem com um bloco "Evolução (60 dias)" com a situação (EVOLUINDO, ESTÁVEL, POUCA FREQUÊNCIA, PARADO, ATENÇÃO por dor), frequência por semana, esforço, dor, cargas e exercícios pulados. Quando o profissional pedir análise, relatório ou "quem está evoluindo/parado", responda em "reply" de forma organizada e curta (um aluno por linha, começando pelos que precisam de atenção), com números concretos e uma sugestão prática para cada um (ex.: mandar mensagem, subir carga, trocar exercício pulado). Sem ações nesse caso (actions = []), a não ser que ele peça para ajustar treinos. Nunca invente dados que não estão nos relatórios.
+
 Ações (campo "actions"; use "student" com o número do aluno na lista):
 - "criar": monta um treino novo (rascunho) para o aluno. Preencha title, notes e days.
 - "alterar": muda o RASCUNHO atual do aluno. Devolva o treino COMPLETO já com as mudanças pedidas (não só a parte alterada). Se o aluno não tem rascunho, use "criar" partindo do treino publicado.
@@ -67,7 +69,7 @@ Regras dos treinos:
 - Nunca faça diagnóstico, não prescreva remédios nem suplementos, não prometa resultados. Dieta: diga que, por enquanto, você monta só treinos (dieta é com o nutricionista).
 - Se o nome do aluno não estiver na lista, ou houver dúvida entre dois alunos, pergunte antes de agir (actions = []).
 
-Em "reply": diga em 1 a 4 frases o que fez e por quê (cite o relatório quando usar, ex.: "tirei o levantamento terra porque ela relatou dor lombar") e termine pedindo para o profissional revisar ("Confere e me diz se posso enviar."). Depois de enviar, confirme que o aluno já recebe no celular. Não repita o treino inteiro no texto: ele aparece em um cartão na tela.`
+Em "reply" (quando criar ou alterar treinos): diga em 1 a 4 frases o que fez e por quê (cite o relatório quando usar, ex.: "tirei o levantamento terra porque ela relatou dor lombar") e termine pedindo para o profissional revisar ("Confere e me diz se posso enviar."). Depois de enviar, confirme que o aluno já recebe no celular. Não repita o treino inteiro no texto: ele aparece em um cartão na tela.`
 
 type Msg = { role: 'user' | 'assistant'; content: string }
 type Plan = { plan_id: string; student_id: string; kind: string; status: string; title: string; notes: string | null; structure: { days?: { key: string; name: string; items: Record<string, unknown>[] }[] }; mine: boolean; updated_at: string }
@@ -84,6 +86,41 @@ const sessionText = (s: Session) => {
   return `  ${s.done_on} ${s.day_name || s.day_key}: esforço ${s.effort ?? '?'}/10, ${painText[s.pain] || 'sem dor'}` +
     (s.note ? `, recado: "${clip(s.note, 200)}"` : '') + (skipped.length ? `; não fez: ${skipped.join(', ')}` : '; fez tudo') +
     (loads.length ? `; cargas: ${loads.join(', ')}` : '')
+}
+
+// Evolução dos últimos 60 dias (frequência, esforço, dor, cargas e exercícios pulados), em texto curto para a IA.
+const parseKg = (load: string) => { const m = String(load || '').replace(',', '.').match(/(\d+(?:\.\d+)?)/); const n = m ? Number(m[1]) : NaN; return Number.isFinite(n) && n > 0 && n <= 500 ? n : null }
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000)
+function evolutionText(rows: Session[], today: string) {
+  if (!rows.length) return { status: 'sem registros', text: ' Evolução: nenhum treino registrado nos últimos 60 dias.' }
+  const asc = [...rows].sort((a, b) => a.done_on.localeCompare(b.done_on))
+  const since = daysBetween(asc[asc.length - 1].done_on, today)
+  const in7 = rows.filter((r) => daysBetween(r.done_on, today) <= 6).length, in30 = rows.filter((r) => daysBetween(r.done_on, today) <= 29).length
+  const weeks = [7, 6, 5, 4, 3, 2, 1, 0].map((w) => rows.filter((r) => { const d = daysBetween(r.done_on, today); return d >= w * 7 && d < (w + 1) * 7 }).length)
+  const efforts = asc.filter((r) => r.effort !== null).map((r) => r.effort as number)
+  const avg = (xs: number[]) => xs.length ? (xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(1) : '?'
+  const pains = asc.filter((r) => r.pain > 0 && daysBetween(r.done_on, today) <= 29)
+  const loads = new Map<string, { first: number, last: number, n: number, same: number }>()
+  const skipped = new Map<string, number>()
+  for (const r of asc) for (const e of r.entries) {
+    if (!e.done) { skipped.set(e.name, (skipped.get(e.name) || 0) + 1); continue }
+    const kg = parseKg(e.load); if (kg === null) continue
+    const cur = loads.get(e.name); if (!cur) loads.set(e.name, { first: kg, last: kg, n: 1, same: 1 })
+    else { cur.same = kg === cur.last ? cur.same + 1 : 1; cur.last = kg; cur.n++ }
+  }
+  const loadList = [...loads.entries()].filter(([, v]) => v.n >= 2).sort((a, b) => b[1].n - a[1].n).slice(0, 6)
+    .map(([name, v]) => `${name} ${v.first}→${v.last} kg${v.last > v.first ? ` (+${Math.round((v.last / v.first - 1) * 100)}%)` : v.last < v.first ? ' (caiu)' : ''}${v.same >= 3 ? ', mesma carga há ' + v.same + ' treinos' : ''}`)
+  const skip = [...skipped.entries()].filter(([, n]) => n >= 2).map(([name, n]) => `${name} (${n}x)`)
+  const up = [...loads.values()].some((v) => v.n >= 2 && v.last > v.first)
+  const status = since >= 10 ? 'PARADO' : pains.some((p) => daysBetween(p.done_on, today) <= 13) ? 'ATENÇÃO (dor recente)' : up && in30 >= 4 ? 'EVOLUINDO' : in30 >= 4 ? 'ESTÁVEL' : 'POUCA FREQUÊNCIA'
+  return { status, text: [
+    ` Evolução (60 dias) — situação: ${status}. Último treino há ${since} dia(s); ${in7} treino(s) nos últimos 7 dias e ${in30} nos últimos 30.`,
+    ` Treinos por semana (8 semanas, da mais antiga para a atual): ${weeks.join(', ')}.`,
+    efforts.length ? ` Esforço médio: ${avg(efforts.slice(0, Math.max(1, efforts.length - 3)))} antes → ${avg(efforts.slice(-3))} nos 3 últimos.` : '',
+    pains.length ? ` Dor em ${pains.length} treino(s) nos últimos 30 dias${pains.filter((p) => p.note).length ? ': ' + pains.filter((p) => p.note).slice(-3).map((p) => `"${clip(p.note, 120)}"`).join('; ') : ''}.` : ' Sem dor relatada nos últimos 30 dias.',
+    loadList.length ? ` Cargas: ${loadList.join('; ')}.` : ' Sem cargas registradas suficientes para comparar.',
+    skip.length ? ` Exercícios pulados com frequência: ${skip.join(', ')}.` : '',
+  ].filter(Boolean).join('\n') }
 }
 
 // Ajusta o treino que voltou da IA aos limites do banco (o banco valida de novo).
@@ -143,11 +180,11 @@ Deno.serve(async (req) => {
   const { data: links } = await service.from('student_professional_links').select('student_id').eq('professional_id', me).eq('state', 'active').limit(40)
   const ids = (links || []).map((l) => l.student_id as string)
   if (!ids.length) return reply(200, { reply: `Oi! Sou a ${NAME}. Assim que você aceitar um aluno em "Meus alunos", eu monto e ajusto os treinos dele com você.`, results: [] })
-  const [{ data: people }, { data: goals }, { data: sessionRows }] = await Promise.all([
+  const [{ data: people }, { data: goals }] = await Promise.all([
     service.from('profiles').select('id,display_name').in('id', ids),
     service.from('account_goals').select('user_id,goal').in('user_id', ids),
-    user.rpc('list_routine_sessions', { p_student: null }),
   ])
+  const history = await Promise.all(ids.map(async (id) => { const { data } = await user.rpc('list_routine_sessions', { p_student: id }); return (data || []) as Session[] }))
   const plans = await Promise.all(ids.map(async (id) => { const { data } = await user.rpc('list_routines', { p_student: id }); return (data || []) as Plan[] }))
   const students = ids.map((id, i) => {
     const own = plans[i].filter((p) => p.kind === 'treino')
@@ -157,7 +194,7 @@ Deno.serve(async (req) => {
       published: own.find((p) => p.status === 'publicado') || null,
       draft: own.filter((p) => p.mine && p.status === 'rascunho').sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] || null,
       review: own.find((p) => p.status === 'revisao') || null,
-      sessions: ((sessionRows || []) as Session[]).filter((s) => s.student_id === id).slice(0, 6),
+      sessions: history[i].slice(0, 4), history: history[i],
     }
   })
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
@@ -166,7 +203,8 @@ Deno.serve(async (req) => {
     s.published ? ` Treino publicado: "${s.published.title}"\n${planText(s.published, false)}` : ' Sem treino publicado.',
     s.draft ? ` RASCUNHO atual: "${s.draft.title}"${s.draft.notes ? ` (orientações: ${clip(s.draft.notes, 300)})` : ''}\n${planText(s.draft, true)}` : ' Sem rascunho.',
     s.review ? ` Há um treino gerado pelo aluno com IA aguardando revisão: "${s.review.title}".` : '',
-    s.sessions.length ? ` Registros recentes:\n${s.sessions.map(sessionText).join('\n')}` : ' Sem registros de treino ainda.',
+    evolutionText(s.history, today).text,
+    s.sessions.length ? ` Últimos registros:\n${s.sessions.map(sessionText).join('\n')}` : '',
   ].filter(Boolean).join('\n')).join('\n\n')
 
   const client = new Anthropic({ apiKey, timeout: 120_000, maxRetries: 1 })
@@ -210,5 +248,5 @@ Deno.serve(async (req) => {
     })
     results.push({ type, student_id: s.id, student_name: s.name, plan_id: typeof data === 'string' && uuid.test(data) ? data : null, status: error ? 'erro' : 'rascunho', error: error?.message })
   }
-  return reply(200, { reply: clip(out.reply, 1500) || 'Pronto.', results })
+  return reply(200, { reply: String(out.reply ?? '').trim().slice(0, 4000) || 'Pronto.', results })
 })

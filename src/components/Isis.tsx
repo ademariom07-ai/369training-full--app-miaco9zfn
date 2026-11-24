@@ -45,7 +45,7 @@ export default function Isis({owner,links,onOpenPlans}:{owner:string,links:Parti
  useEffect(()=>{saveTurns(owner,turns);end.current?.scrollIntoView?.({block:'end'})},[owner,turns])
  useEffect(()=>()=>rec.current?.stop(),[])
  const first=students[0]?.participant_name?.split(' ')[0]
- const suggestions=[first?`Cria o treino da semana de ${first}. Usa os registros dele(a) e me traz para eu validar.`:'Cria o treino da semana do meu aluno.','Como foram os treinos dos meus alunos esta semana?','Algum aluno relatou dor? O que você sugere ajustar?']
+ const suggestions=[first?`Cria o treino da semana de ${first}. Usa os registros dele(a) e me traz para eu validar.`:'Cria o treino da semana do meu aluno.','Quem está evoluindo e quem está parado?','Faça o relatório da semana dos meus alunos.','Algum aluno relatou dor? O que você sugere ajustar?']
  async function send(message:string){const content=message.trim();if(!content||busy)return
   const next=[...turns,{role:'user' as const,content}];setTurns(next);setText('');setBusy(true);setError('')
   try{const {reply,results}=await askIsis(next.map(t=>({role:t.role,content:t.content})));setTurns(t=>[...t,{role:'assistant',content:reply,results}])}
