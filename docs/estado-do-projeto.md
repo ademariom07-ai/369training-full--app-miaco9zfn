@@ -22,6 +22,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 26 (avaliações) e 27 (teste).
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
@@ -39,6 +40,9 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 - Desafios e água: aluno em "Desafios e água" (aceitar, marcar dia; treino e água contam sozinhos; copos de água,
   meta, gráfico de 7 dias e lembretes com o app aberto); parceiro em "Desafios" (cria para os alunos, vê participantes);
   admin em "Desafios" (para todos). Home do aluno: água de hoje e desafio em andamento.
+- Avaliações: aluno avalia o profissional e vice-versa (depois de vínculo aceito; uma a cada 30 dias). Média = 100 últimas
+  sem as 3 piores (com 3 ou menos, todas). Estrelas na busca e na vitrine, comentários na vitrine, nota do aluno para os
+  profissionais em "Meus alunos"; admin modera em "Avaliações".
 
 ## Decisões e próximos passos
 - Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e

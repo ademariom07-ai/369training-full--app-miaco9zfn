@@ -1,3 +1,5 @@
+import {RatingBadge,RatingLine,ReviewList} from '@/components/Reviews'
+import {reviewSummaries,type ReviewSummary} from '@/lib/supabase/reviews'
 import React,{useCallback,useEffect,useRef,useState} from 'react'
 import {ArrowLeft,LocateFixed,MapPin,MessageCircle,Monitor} from 'lucide-react'
 import {Button} from '@/components/ui/button'
@@ -24,8 +26,11 @@ function Chip({active,onClick,children}:{active:boolean,onClick:()=>void,childre
 export function ProfessionalSearch({owner,disabled,canRequest,onRequest,onChat}:{owner:string,disabled:boolean,canRequest:boolean,onRequest:(id:string)=>Promise<void>,onChat:(id:string)=>void}){
  const [modality,setModality]=useState<Modality|null>(null),[mode,setMode]=useState<Mode|null>(null),[coords,setCoords]=useState<Coordinates|null>(null)
  const [rows,setRows]=useState<SearchResult[]>([]),[page,setPage]=useState(1),[more,setMore]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('')
- const [open,setOpen]=useState<string|null>(null)
+ const [open,setOpen]=useState<string|null>(null),[ratings,setRatings]=useState<Record<string,ReviewSummary>>({})
  const ticket=useRef(0)
+ useEffect(()=>{const ids=rows.map(r=>r.professional_id).filter(id=>!(id in ratings));if(ids.length)reviewSummaries(ids).then(r=>setRatings(x=>({...x,...Object.fromEntries(ids.map(id=>[id,r[id]??{user_id:id,average:null,counted:0,total:0,dropped:0}]))}))).catch(()=>{})
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[rows])
  const load=useCallback(async(next:number)=>{const mine=++ticket.current;setLoading(true);setError('')
   try{const found=await searchProfessionals({modality,mode,coords},next);if(mine!==ticket.current)return;setRows(prev=>next===1?found:[...prev,...found]);setPage(next);setMore(found.length===12)}
   catch(err){if(mine===ticket.current)setError(errorText(err,'Não foi possível buscar.'))}finally{if(mine===ticket.current)setLoading(false)}},[modality,mode,coords])
@@ -45,6 +50,7 @@ export function ProfessionalSearch({owner,disabled,canRequest,onRequest,onChat}:
    <button type="button" onClick={()=>setOpen(r.professional_id)} className="flex w-full items-start gap-3 rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4 text-left hover:border-[#a5ce41]">
     <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#33325a] font-bold text-[#a5ce41]">{initials(r.display_name)}</span>
     <span className="min-w-0"><span className="block font-bold">{r.display_name}</span>
+     {ratings[r.professional_id]?.total?<span className="block"><RatingLine summary={ratings[r.professional_id]}/></span>:null}
      {r.headline&&<span className="block text-sm">{r.headline}</span>}
      <span className="block text-sm text-[#626274]">{r.modalities.map(m=>modalities[m]).join(' · ')}</span>
      <span className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-[#626274]">{place(r)&&<span><MapPin aria-hidden="true" className="inline h-3 w-3"/> {place(r)}{distanceText(r)&&' · '+distanceText(r)}</span>}<span>{r.modes.map(m=>modeLabels[m]).join(' e ')}</span>{r.video_count>0&&<span>{r.video_count} vídeo(s)</span>}</span>
@@ -70,7 +76,8 @@ export function ShowcaseView({professionalId,disabled,canRequest,onBack,onReques
    <header className="flex flex-wrap items-center gap-4 rounded-[12px_30px_12px_30px] bg-[#33325a] p-5 text-[#f7f6f2]">
     <span aria-hidden="true" className="flex h-16 w-16 items-center justify-center rounded-full bg-[#a5ce41] text-xl font-extrabold text-[#33325a]">{initials(data.display_name)}</span>
     <div className="min-w-0"><h2 className="text-2xl font-extrabold text-[#f7f6f2]">{data.display_name}</h2>{data.headline&&<p className="text-[#d5d4e1]">{data.headline}</p>}
-     <p className="text-sm text-[#a5ce41]">{data.modalities.map(m=>modalities[m]).join(' · ')}</p></div>
+     <p className="text-sm text-[#a5ce41]">{data.modalities.map(m=>modalities[m]).join(' · ')}</p>
+     <div className="mt-1 rounded-md bg-white/95 px-2 py-1 text-[#33325a]"><RatingBadge user={data.professional_id} showRule/></div></div>
    </header>
    <dl className="grid gap-3 sm:grid-cols-2">
     <div className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4"><dt className="text-sm text-[#626274]">Atendimento</dt><dd className="font-semibold">{data.modes.map(m=>modeLabels[m]).join(' e ')}</dd></div>
@@ -84,6 +91,7 @@ export function ShowcaseView({professionalId,disabled,canRequest,onBack,onReques
    {[['Sobre',data.bio],['Formação',data.education],['Experiência',data.experience]].filter(([,v])=>v).map(([title,value])=><section key={title as string} className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4"><h3 className="font-extrabold">{title}</h3><p className="mt-1 whitespace-pre-line">{value}</p></section>)}
    {!data.bio&&!data.education&&<p className="text-sm text-[#626274]">Este profissional ainda está completando a vitrine.</p>}
    {data.videos.length>0&&<section className="space-y-2"><h3 className="text-lg font-extrabold">Vídeos</h3><div className="grid gap-3 md:grid-cols-2">{data.videos.map(v=><div key={v.youtube_id} className="space-y-1"><YoutubePlayer id={v.youtube_id} title={v.title}/><p className="text-sm font-semibold">{v.title}</p></div>)}</div></section>}
+   <section className="space-y-2 rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4"><h3 className="font-extrabold">Avaliações dos alunos</h3><ReviewList user={data.professional_id}/></section>
    {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
   </>}
  </article>

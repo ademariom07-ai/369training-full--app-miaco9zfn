@@ -768,6 +768,12 @@ export type Database = {
       add_water: { Args: { p_day: string; p_delta: number }; Returns: number }
       hydration_summary: { Args: Record<string, never>; Returns: { goal_ml: number; remind: boolean; every_min: number; from_hour: number; to_hour: number; days: Json }[] }
       save_hydration_settings: { Args: { p_goal_ml: number; p_remind: boolean; p_every_min: number; p_from_hour: number; p_to_hour: number }; Returns: undefined }
+      submit_review: { Args: { p_reviewee: string; p_rating: number; p_comment: string | null }; Returns: string }
+      review_summaries: { Args: { p_users: string[] }; Returns: { user_id: string; average: number | null; counted: number; total: number; dropped: number }[] }
+      list_reviews: { Args: { p_user: string; p_page: number }; Returns: { review_id: string; reviewer_name: string; rating: number; comment: string | null; created_at: string; hidden: boolean }[] }
+      my_review_status: { Args: { p_reviewee: string }; Returns: { can_review: boolean; next_at: string | null; last_rating: number | null }[] }
+      hide_review: { Args: { p_id: string; p_hide: boolean; p_reason: string | null }; Returns: undefined }
+      list_recent_reviews: { Args: Record<string, never>; Returns: { review_id: string; reviewer_name: string; reviewee_name: string; direction: string; rating: number; comment: string | null; created_at: string; hidden: boolean }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }
         Returns: { session_id: string; plan_id: string; plan_title: string; student_id: string; student_name: string; day_key: string; day_name: string | null; done_on: string; effort: number | null; pain: number; note: string | null; entries: Json; updated_at: string }[]

@@ -1,5 +1,5 @@
 import React from 'react'
-import {BookOpen,Bot,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {BookOpen,Bot,Star,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -55,6 +55,7 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'aprovacoes',label:'Aprovações',icon:ShieldCheck,summary:'Cadastros profissionais aguardando análise.'},
   mensagens,
   {id:'feed',label:'Vídeos do feed',icon:Clapperboard,summary:'Aprove os vídeos dos profissionais antes de irem para o feed.'},
+  {id:'avaliacoes',label:'Avaliações',icon:Star,summary:'Avaliações entre alunos e profissionais. Oculte as abusivas.'},
   {id:'desafios-admin',label:'Desafios',icon:Trophy,summary:'Desafios da equipe 369 para todos os alunos.'},
   {id:'conteudos-admin',label:'Conteúdos',icon:BookOpen,summary:'Aprove os conteúdos públicos dos profissionais e publique os da equipe 369.'},
   {id:'biblioteca',label:'Biblioteca de exercícios',icon:Library,summary:'Edite os textos dos exercícios oficiais e crie novos.'},
@@ -86,6 +87,7 @@ const helps:Record<string,string>={
  isis:'Converse com a Ísis como com uma colega: "cria o treino da semana da Célia, ela sentiu a lombar", "tira o levantamento terra", "pode enviar". Ela usa o treino atual e a evolução dos últimos 60 dias de cada aluno (frequência, cargas, esforço, dor, recados). Pergunte também "quem está evoluindo e quem está parado?" ou peça o relatório da semana. Você pode falar pelo microfone.',
  desafios:'Toque em "Aceitar desafio" para participar. Nos desafios de treino e de água, o progresso conta sozinho; nos outros, marque cada dia cumprido. Na água, use +250 ml / +500 ml e ligue os lembretes em "Meta e lembretes".',
  'desafios-pro':'Crie desafios para os seus alunos: marcar cada dia (ex.: alongamento), dias com treino registrado ou dias com a meta de água. Acompanhe o progresso de cada participante.',
+ avaliacoes:'As 100 avaliações mais recentes. Oculte comentários ofensivos ou falsos, sempre com motivo. A média de cada pessoa usa as 100 últimas avaliações sem as 3 piores.',
  'desafios-admin':'Desafios da equipe 369, visíveis para todos os alunos.',
  conteudos:'Aulas, vídeos, dicas, e-books e materiais. Em "Do meu profissional" ficam os que o seu profissional enviou; em "Para todos", os da comunidade. Os pagos mostram o preço: combine com o profissional e ele libera o acesso.',
  'meus-conteudos':'Publique conteúdos grátis ou pagos. Escolha para quem: todos os alunos da 369 (passa pela aprovação da equipe), todos os seus alunos ou alunos escolhidos (você pode salvar grupos, como "Turma da manhã"). Nos pagos, libere o acesso de quem pagou.',
@@ -96,7 +98,7 @@ const helps:Record<string,string>={
  esg:'Projetos sociais e ambientais. Você pode sugerir um projeto e a equipe analisa.',
  parceiro:'Quer atender alunos pela 369? Informe sua área e seu registro profissional (por exemplo CREF ou CRN). A equipe analisa e libera as funções de parceiro.',
  perfil:'Seu nome e seu celular. Mantenha o celular certo para os profissionais conseguirem falar com você.',
- alunos:'Pedidos de alunos que querem ser acompanhados por você. Aceite para montar treinos e liberar sua agenda para eles.',
+ alunos:'Pedidos de alunos que querem ser acompanhados por você. Aceite para montar treinos e liberar sua agenda para eles. Você vê a nota de cada aluno e pode avaliar quem você acompanha.',
  'parceiro:agenda':'Defina os dias e horários em que você atende e as regras de agendamento. Logo abaixo ficam as reservas feitas.',
  treinos:'Escolha o aluno e monte o treino por dia da semana (com séries, repetições e vídeo) ou a dieta por refeição. Você também vê os treinos que o aluno gerou com IA, para revisar.',
  'meus-videos':'Publique vídeos do YouTube. A equipe aprova e eles aparecem primeiro para os alunos da sua região.',
