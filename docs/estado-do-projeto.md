@@ -22,6 +22,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 24 (desafios e água) e 25 (teste).
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
@@ -36,10 +37,13 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 
 - Treino guiado ("Começar treino guiado"): um exercício por vez, séries marcadas uma a uma, cronômetro de descanso com
   bipe/vibração, tela acesa, sugestão de carga (sobrecarga progressiva, regras em `src/lib/evolution.ts`) e registro no final.
+- Desafios e água: aluno em "Desafios e água" (aceitar, marcar dia; treino e água contam sozinhos; copos de água,
+  meta, gráfico de 7 dias e lembretes com o app aberto); parceiro em "Desafios" (cria para os alunos, vê participantes);
+  admin em "Desafios" (para todos). Home do aluno: água de hoje e desafio em andamento.
 
 ## Decisões e próximos passos
 - Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e
-  sugestão de carga (feito), 3) Ísis analisando a evolução, 4) desafios e hidratação. Planos/créditos, carteira, ranking e dados
+  sugestão de carga (feito), 3) Ísis analisando a evolução, 4) desafios e hidratação (feito). Planos/créditos, carteira, ranking e dados
   clínicos só com pagamentos e jurídico (Fase 6).
 - Roteiro do comercial (Jair/Tiago): itens 1 (registro), 2 (assistente) e 3 (IA lendo os registros) feitos com a Ísis;
   falta 4) gráfico de evolução para o aluno.

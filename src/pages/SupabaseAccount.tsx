@@ -35,6 +35,11 @@ const Isis=lazy(()=>import('@/components/Isis'))
 const ContentLibrary=lazy(()=>import('@/components/Contents'))
 const ContentManager=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentManager})))
 const ContentReview=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentReview})))
+const StudentChallenges=lazy(()=>import('@/components/Challenges'))
+const ChallengeManager=lazy(()=>import('@/components/Challenges').then(m=>({default:m.ChallengeManager})))
+const ChallengeHighlight=lazy(()=>import('@/components/Challenges').then(m=>({default:m.ChallengeHighlight})))
+const HydrationCard=lazy(()=>import('@/components/Challenges').then(m=>({default:m.HydrationCard})))
+const HydrationReminder=lazy(()=>import('@/components/Challenges').then(m=>({default:m.HydrationReminder})))
 const ContentHighlights=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentHighlights})))
 const ExerciseLibraryManager=lazy(()=>import('@/components/ExerciseLibraryManager'))
 const Chat=lazy(()=>import('@/components/Chat'))
@@ -105,7 +110,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   const activeLinks=links.filter(row=>row.state==='active').length,pendingLinks=links.filter(row=>row.state==='pending').length
   const partnerShortcuts=<section className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4" aria-label="Atalhos"><h3 className="font-extrabold">Atalhos do dia</h3><div className="mt-2 flex flex-wrap gap-2"><Button type="button" onClick={()=>openView('isis')}>Falar com a Ísis</Button><Button type="button" variant="outline" onClick={()=>openView('treinos')}>O que meus alunos fizeram</Button><Button type="button" variant="outline" onClick={()=>openView('meus-conteudos')}>Novo conteúdo</Button></div></section>
   const highlights=kind==='parceiro'&&linksReady?<><p className="rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4">{pendingLinks?`${pendingLinks} pedido(s) de vínculo aguardando seu aceite em “Meus alunos”.`:`Alunos ativos nesta página: ${activeLinks}.`}</p>{partnerShortcuts}</>
-   :kind==='aluno'?<ContentHighlights key={'chh'+profile.id} owner={profile.id} onView={openView} title="Conteúdos para você" scope="todos" max={4}/>
+   :kind==='aluno'?<div className="space-y-4"><div className="grid gap-4 lg:grid-cols-2"><HydrationCard key={'hc'+profile.id} compact onOpen={()=>openView('desafios')}/><ChallengeHighlight key={'chl'+profile.id} owner={profile.id} onView={openView}/></div><ContentHighlights key={'chh'+profile.id} owner={profile.id} onView={openView} title="Conteúdos para você" scope="todos" max={4}/></div>
    :kind==='admin'?<PendingVideosNotice key={'pending'+profile.id} owner={profile.id} onOpen={()=>openView('feed')}/>
    :kind==='parceiro_pendente'?<p className="rounded-[12px_30px_12px_30px] border border-amber-300 bg-amber-50 p-4">Aprovação profissional pendente. Confira o andamento em “Meu cadastro profissional”.</p>:null
   const views:Record<string,()=>React.ReactNode>={
@@ -121,6 +126,9 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    biblioteca:()=>panel(<ExerciseLibraryManager key={'libadm'+profile.id} role="admin"/>),
    vitrine:()=>panel(<MyShowcase key={'vitrine'+profile.id} owner={profile.id} disabled={busy}/>),
    treino:()=><>{panel(<StudentRoutines key={'rt'+profile.id} owner={profile.id} onAi={()=>openView('ia')} legacy={training}/>)}<ContentHighlights key={'ch'+profile.id} owner={profile.id} onView={openView}/></>,
+   desafios:()=>panel(<StudentChallenges key={'dc'+profile.id} owner={profile.id}/>),
+   'desafios-pro':()=>panel(<ChallengeManager key={'dcp'+profile.id} owner={profile.id} role="profissional"/>),
+   'desafios-admin':()=>panel(<ChallengeManager key={'dca'+profile.id} owner={profile.id} role="admin"/>),
    conteudos:()=>panel(<ContentLibrary key={'cl'+profile.id} owner={profile.id} onChat={startChat}/>),
    'meus-conteudos':()=>panel(linksReady?<ContentManager key={'cm'+profile.id} owner={profile.id} role="profissional" links={links}/>:<p role="status">Carregando…</p>),
    'conteudos-admin':()=><>{panel(<ContentReview key={'cr'+profile.id} owner={profile.id}/>)}{panel(<ContentManager key={'cma'+profile.id} owner={profile.id} role="admin" links={[]}/>)}</>,
@@ -145,6 +153,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   return <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900"><RoleShell profile={profile} view={current} onView={id=>{if(id!=='mensagens')setChatWith(null);openView(id)}} badges={{mensagens:unread}} busy={busy} onRefresh={()=>void controller.current?.refresh()} onLogout={logout}>
    {(state.error||message||notice)&&<div className="space-y-2">{alerts}</div>}
    <section aria-label={current} className="space-y-5"><Suspense fallback={<p role="status">Carregando…</p>}>{views[current]()}</Suspense></section>
+   {kind==='aluno'&&<Suspense fallback={null}><HydrationReminder key={'hr'+profile.id}/></Suspense>}
   </RoleShell></main>
  }
  return <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900"><div className="mx-auto max-w-3xl space-y-5"><a href="/" className="text-blue-700">369 WELLNESS · Voltar ao início</a><h1 className="text-2xl font-bold">Sua conta</h1>

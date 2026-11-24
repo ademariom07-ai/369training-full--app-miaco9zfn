@@ -756,6 +756,18 @@ export type Database = {
       save_student_group: { Args: { p_id: string | null; p_name: string; p_members: string[] }; Returns: string }
       delete_student_group: { Args: { p_id: string }; Returns: undefined }
       list_student_groups: { Args: Record<string, never>; Returns: { group_id: string; name: string; members: string[] }[] }
+      save_challenge: { Args: { p_id: string | null; p_title: string; p_description: string | null; p_kind: string; p_goal_days: number; p_starts_on: string; p_ends_on: string }; Returns: string }
+      archive_challenge: { Args: { p_id: string }; Returns: undefined }
+      list_challenges: {
+        Args: Record<string, never>
+        Returns: { challenge_id: string; owner_name: string; mine: boolean; title: string; description: string | null; kind: string; goal_days: number; starts_on: string; ends_on: string; joined: boolean; progress: number; checked_today: boolean; participants: number; completed: number }[]
+      }
+      join_challenge: { Args: { p_id: string; p_join: boolean }; Returns: undefined }
+      checkin_challenge: { Args: { p_id: string; p_day: string; p_done: boolean }; Returns: number }
+      challenge_participants_progress: { Args: { p_id: string }; Returns: { user_id: string; name: string; progress: number; joined_at: string }[] }
+      add_water: { Args: { p_day: string; p_delta: number }; Returns: number }
+      hydration_summary: { Args: Record<string, never>; Returns: { goal_ml: number; remind: boolean; every_min: number; from_hour: number; to_hour: number; days: Json }[] }
+      save_hydration_settings: { Args: { p_goal_ml: number; p_remind: boolean; p_every_min: number; p_from_hour: number; p_to_hour: number }; Returns: undefined }
       list_routine_sessions: {
         Args: { p_student: string | null }
         Returns: { session_id: string; plan_id: string; plan_title: string; student_id: string; student_name: string; day_key: string; day_name: string | null; done_on: string; effort: number | null; pain: number; note: string | null; entries: Json; updated_at: string }[]
