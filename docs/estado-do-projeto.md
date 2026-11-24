@@ -1,6 +1,6 @@
 # 369 WELLNESS — estado do projeto (para retomar a conversa)
 
-Atualizado em 20/11/2026. Branch publicado: `prep/supabase-vite` → https://369wellness.ademariom07.workers.dev
+Atualizado em 24/11/2026. Branch publicado: `prep/supabase-vite` → https://369wellness.app (também em https://369wellness.ademariom07.workers.dev)
 Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 
 ## Pronto e publicado
