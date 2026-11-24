@@ -19,7 +19,7 @@ const LIBRARY = ["Remada curvada com barra", "Agachamento livre", "Flexão de br
 const TRAINING_AREAS = ['educacao_fisica', 'fisioterapia', 'artes_marciais']
 const limitEnv = Number(Deno.env.get('ISIS_LIMIT_PRO'))
 const LIMIT = Number.isInteger(limitEnv) && limitEnv >= 1 && limitEnv <= 500 ? limitEnv : 60
-const ORIGINS = (Deno.env.get('ROUTINE_ALLOWED_ORIGINS') || 'https://369wellness.ademariom07.workers.dev')
+const ORIGINS = (Deno.env.get('ROUTINE_ALLOWED_ORIGINS') || 'https://369wellness.app,https://www.369wellness.app,https://369wellness.ademariom07.workers.dev')
   .split(',').map((v) => v.trim()).filter(Boolean)
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const clip = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '')

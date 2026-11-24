@@ -16,7 +16,7 @@ const LIBRARY = ["Remada curvada com barra", "Agachamento livre", "Flexão de br
 // Gerações por 24 h. Ajustáveis nos segredos ROUTINE_LIMIT_ALUNO e ROUTINE_LIMIT_PRO (1 a 100).
 const limit = (name: string, fallback: number) => { const n = Number(Deno.env.get(name)); return Number.isInteger(n) && n >= 1 && n <= 100 ? n : fallback }
 const LIMITS = { aluno: limit('ROUTINE_LIMIT_ALUNO', 3), profissional: limit('ROUTINE_LIMIT_PRO', 15) }
-const ORIGINS = (Deno.env.get('ROUTINE_ALLOWED_ORIGINS') || 'https://369wellness.ademariom07.workers.dev')
+const ORIGINS = (Deno.env.get('ROUTINE_ALLOWED_ORIGINS') || 'https://369wellness.app,https://www.369wellness.app,https://369wellness.ademariom07.workers.dev')
   .split(',').map((v) => v.trim()).filter(Boolean)
 
 type Answers = {
