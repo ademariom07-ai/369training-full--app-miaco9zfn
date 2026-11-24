@@ -4,6 +4,7 @@ Atualizado em 20/11/2026. Branch publicado: `prep/supabase-vite` → https://369
 Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 
 ## Pronto e publicado
+- Endereço oficial: https://369wellness.app (o antigo 369wellness.ademariom07.workers.dev continua funcionando).
 - Home individual por perfil (aluno, parceiro, admin) com "Seu caminho", "Como funciona" e ajuda (?) em cada tela.
 - Pilares: Foco, Disciplina e Estratégia (site e app).
 - Cadastro rápido, login com Google, recuperação de senha por código de 6 dígitos (e-mail via Brevo).
@@ -21,7 +22,6 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
-- Domínio 369wellness.app ligado ao Worker (site abriu em 24/11). Falta: ajustar Site URL/Redirect URLs no Supabase e o segredo ROUTINE_ALLOWED_ORIGINS.
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
