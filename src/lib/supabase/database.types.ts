@@ -780,6 +780,7 @@ export type Database = {
       }
       admin_set_partner: { Args: { p_user: string; p_active: boolean; p_reason: string }; Returns: undefined }
       admin_delete_account: { Args: { p_user: string; p_confirm: string; p_reason: string }; Returns: string }
+      delete_my_account: { Args: { p_confirm: string; p_reason: string | null }; Returns: string }
       admin_list_actions: { Args: Record<string, never>; Returns: { created_at: string; actor_name: string; action: string; target_name: string | null; reason: string }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }

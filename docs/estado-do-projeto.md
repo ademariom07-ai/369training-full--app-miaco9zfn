@@ -22,6 +22,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 31 (excluir minha conta) e 32 (teste).
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
@@ -45,6 +46,8 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 - Admin › Usuários: busca por nome/e-mail; aprova/recusa pedidos de parceiro; suspende/reativa parceiro; exclui conta
   (motivo + confirmação com e-mail/nome; se houver reservas/carteira/histórico, anonimiza e bloqueia o login); registro de ações.
   Arquivos enviados por um usuário excluído ficam inacessíveis no Storage (limpeza manual, se quiser).
+- Meu perfil › Excluir minha conta (aluno e parceiro; admin não): confirma com o e-mail, motivo opcional; apaga ou anonimiza
+  como na exclusão pelo admin e encerra a sessão. Fica no registro de ações como autoexclusão.
 
 ## Decisões e próximos passos
 - Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e

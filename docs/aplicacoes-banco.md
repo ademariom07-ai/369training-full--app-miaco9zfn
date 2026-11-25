@@ -21,6 +21,7 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 26/11/2026 | 20261126120000_reviews.sql | reviews.sql: 15 verificações OK (testado no app) | Avaliações aluno ↔ profissional (1 a 5 + comentário, a cada 30 dias); média das 100 últimas sem as 3 piores; admin oculta. |
 | 27/11/2026 | 20261127120000_admin_users.sql | admin_users.sql: 16 verificações OK (após o 30) | Admin: busca de usuários, aprovar/recusar/suspender/reativar parceiro, excluir conta (ou anonimizar quando há registros a guardar), registro de ações. |
 | 28/11/2026 | 20261128120000_fix_goals_and_admin_delete.sql | admin_users.sql e onboarding_goal_phone.sql OK (conferido: tabela e funções presentes) | Aplica a Fase 1 (objetivo/celular), que não estava no banco real, e torna a exclusão de contas tolerante a tabelas ausentes. |
+| 29/11/2026 | 20261129120000_delete_my_account.sql | delete_my_account.sql: 8 verificações (aguardando aplicação) | O próprio aluno/parceiro exclui a conta (LGPD), com a mesma lógica do admin (função interna erase_account). |
 
 ## Edge Functions
 
