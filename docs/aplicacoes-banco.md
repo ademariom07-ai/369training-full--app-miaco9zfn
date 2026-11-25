@@ -19,7 +19,8 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 24/11/2026 | 20261124120000_professional_contents.sql | professional_contents.sql: 21 verificações OK (testado no app) | Conteúdos e e-books (grátis/pago; público com aprovação, meus alunos, alunos escolhidos), grupos de alunos e bucket privado "conteudos" no Storage. |
 | 25/11/2026 | 20261125120000_challenges_hydration.sql | challenges_hydration.sql: 18 verificações OK (testado no app) | Desafios (manual, treino, hidratação) do admin para todos e do profissional para os alunos; hidratação diária com meta e lembretes. |
 | 26/11/2026 | 20261126120000_reviews.sql | reviews.sql: 15 verificações OK (testado no app) | Avaliações aluno ↔ profissional (1 a 5 + comentário, a cada 30 dias); média das 100 últimas sem as 3 piores; admin oculta. |
-| 27/11/2026 | 20261127120000_admin_users.sql | admin_users.sql: 16 verificações (aguardando aplicação) | Admin: busca de usuários, aprovar/recusar/suspender/reativar parceiro, excluir conta (ou anonimizar quando há registros a guardar), registro de ações. |
+| 27/11/2026 | 20261127120000_admin_users.sql | admin_users.sql: 16 verificações (aplicada; teste falhou no banco real: faltava account_goals → corrigido no 30) | Admin: busca de usuários, aprovar/recusar/suspender/reativar parceiro, excluir conta (ou anonimizar quando há registros a guardar), registro de ações. |
+| 28/11/2026 | 20261128120000_fix_goals_and_admin_delete.sql | admin_users.sql e onboarding_goal_phone.sql (aguardando aplicação) | Aplica a Fase 1 (objetivo/celular), que não estava no banco real, e torna a exclusão de contas tolerante a tabelas ausentes. |
 
 ## Edge Functions
 
