@@ -7,7 +7,7 @@ import {adminDeleteAccount,adminListActions,adminListUsers,adminReviewPartner,ad
 const errorText=(err:unknown,fallback:string)=>err instanceof Error&&err.message?err.message:fallback
 const card='rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4'
 const dateBr=(iso:string|null)=>iso?new Date(iso).toLocaleDateString('pt-BR'):'—'
-const actionLabels:Record<string,string>={excluir_conta:'Excluiu a conta',anonimizar_conta:'Anonimizou a conta',suspender_parceiro:'Suspendeu o parceiro',reativar_parceiro:'Reativou o parceiro'}
+const actionLabels:Record<string,string>={excluir_conta:'Excluiu a conta',anonimizar_conta:'Anonimizou a conta',suspender_parceiro:'Suspendeu o parceiro',reativar_parceiro:'Reativou o parceiro',autoexclusao:'(autoexclusão) excluiu a própria conta',autoexclusao_anonimizada:'(autoexclusão, anonimizada) excluiu a própria conta'}
 
 function roleText(u:AdminUser){
  if(u.deleted)return 'Conta excluída'
