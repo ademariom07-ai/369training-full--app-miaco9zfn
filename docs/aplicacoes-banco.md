@@ -18,7 +18,8 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 23/11/2026 | 20261123120000_assistant_usage.sql | assistant_usage.sql: 3 verificações (aplicada; teste 21 não rodado) | Contador de mensagens da assistente Ísis (limite diário). |
 | 24/11/2026 | 20261124120000_professional_contents.sql | professional_contents.sql: 21 verificações OK (testado no app) | Conteúdos e e-books (grátis/pago; público com aprovação, meus alunos, alunos escolhidos), grupos de alunos e bucket privado "conteudos" no Storage. |
 | 25/11/2026 | 20261125120000_challenges_hydration.sql | challenges_hydration.sql: 18 verificações OK (testado no app) | Desafios (manual, treino, hidratação) do admin para todos e do profissional para os alunos; hidratação diária com meta e lembretes. |
-| 26/11/2026 | 20261126120000_reviews.sql | reviews.sql: 15 verificações (aguardando aplicação) | Avaliações aluno ↔ profissional (1 a 5 + comentário, a cada 30 dias); média das 100 últimas sem as 3 piores; admin oculta. |
+| 26/11/2026 | 20261126120000_reviews.sql | reviews.sql: 15 verificações OK (testado no app) | Avaliações aluno ↔ profissional (1 a 5 + comentário, a cada 30 dias); média das 100 últimas sem as 3 piores; admin oculta. |
+| 27/11/2026 | 20261127120000_admin_users.sql | admin_users.sql: 16 verificações (aguardando aplicação) | Admin: busca de usuários, aprovar/recusar/suspender/reativar parceiro, excluir conta (ou anonimizar quando há registros a guardar), registro de ações. |
 
 ## Edge Functions
 

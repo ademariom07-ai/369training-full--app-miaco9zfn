@@ -774,6 +774,13 @@ export type Database = {
       my_review_status: { Args: { p_reviewee: string }; Returns: { can_review: boolean; next_at: string | null; last_rating: number | null }[] }
       hide_review: { Args: { p_id: string; p_hide: boolean; p_reason: string | null }; Returns: undefined }
       list_recent_reviews: { Args: Record<string, never>; Returns: { review_id: string; reviewer_name: string; reviewee_name: string; direction: string; rating: number; comment: string | null; created_at: string; hidden: boolean }[] }
+      admin_list_users: {
+        Args: { p_query: string | null; p_role: string | null; p_page: number }
+        Returns: { user_id: string; display_name: string; email: string | null; role: string; approved: boolean; created_at: string; last_sign_in_at: string | null; application_status: string | null; application_version: number | null; specialty: string | null; credential: string | null; active_links: number; deleted: boolean }[]
+      }
+      admin_set_partner: { Args: { p_user: string; p_active: boolean; p_reason: string }; Returns: undefined }
+      admin_delete_account: { Args: { p_user: string; p_confirm: string; p_reason: string }; Returns: string }
+      admin_list_actions: { Args: Record<string, never>; Returns: { created_at: string; actor_name: string; action: string; target_name: string | null; reason: string }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }
         Returns: { session_id: string; plan_id: string; plan_title: string; student_id: string; student_name: string; day_key: string; day_name: string | null; done_on: string; effort: number | null; pain: number; note: string | null; entries: Json; updated_at: string }[]

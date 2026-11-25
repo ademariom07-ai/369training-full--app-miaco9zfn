@@ -1,5 +1,5 @@
 import React from 'react'
-import {BookOpen,Bot,Star,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {BookOpen,Bot,Star,UserCog,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -52,6 +52,7 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'agenda',label:'Minhas reservas',icon:CalendarDays,summary:'Reservas feitas com a sua conta.'},
   mensagens,carteira,esg,comoFunciona,perfil],
  admin:[inicio,
+  {id:'usuarios',label:'Usuários',icon:UserCog,summary:'Busque contas, aprove ou recuse parceiros, suspenda, reative e exclua contas.'},
   {id:'aprovacoes',label:'Aprovações',icon:ShieldCheck,summary:'Cadastros profissionais aguardando análise.'},
   mensagens,
   {id:'feed',label:'Vídeos do feed',icon:Clapperboard,summary:'Aprove os vídeos dos profissionais antes de irem para o feed.'},
@@ -87,6 +88,7 @@ const helps:Record<string,string>={
  isis:'Converse com a Ísis como com uma colega: "cria o treino da semana da Célia, ela sentiu a lombar", "tira o levantamento terra", "pode enviar". Ela usa o treino atual e a evolução dos últimos 60 dias de cada aluno (frequência, cargas, esforço, dor, recados). Pergunte também "quem está evoluindo e quem está parado?" ou peça o relatório da semana. Você pode falar pelo microfone.',
  desafios:'Toque em "Aceitar desafio" para participar. Nos desafios de treino e de água, o progresso conta sozinho; nos outros, marque cada dia cumprido. Na água, use +250 ml / +500 ml e ligue os lembretes em "Meta e lembretes".',
  'desafios-pro':'Crie desafios para os seus alunos: marcar cada dia (ex.: alongamento), dias com treino registrado ou dias com a meta de água. Acompanhe o progresso de cada participante.',
+ usuarios:'Busque por nome ou e-mail. Em "Pedidos de parceiro" você aprova ou recusa quem pediu para ser parceiro (com motivo). Também suspende ou reativa parceiros e exclui contas (pede o motivo e a confirmação com o e-mail). Se a conta tiver registros que precisam ficar guardados, ela é anonimizada e o login é bloqueado. Tudo fica no registro de ações.',
  avaliacoes:'As 100 avaliações mais recentes. Oculte comentários ofensivos ou falsos, sempre com motivo. A média de cada pessoa usa as 100 últimas avaliações sem as 3 piores.',
  'desafios-admin':'Desafios da equipe 369, visíveis para todos os alunos.',
  conteudos:'Aulas, vídeos, dicas, e-books e materiais. Em "Do meu profissional" ficam os que o seu profissional enviou; em "Para todos", os da comunidade. Os pagos mostram o preço: combine com o profissional e ele libera o acesso.',

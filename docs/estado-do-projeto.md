@@ -22,7 +22,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
-- Supabase: colar 26 (avaliações) e 27 (teste).
+- Supabase: colar 28 (gestão de usuários do admin) e 29 (teste).
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
@@ -43,6 +43,9 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 - Avaliações: aluno avalia o profissional e vice-versa (depois de vínculo aceito; uma a cada 30 dias). Média = 100 últimas
   sem as 3 piores (com 3 ou menos, todas). Estrelas na busca e na vitrine, comentários na vitrine, nota do aluno para os
   profissionais em "Meus alunos"; admin modera em "Avaliações".
+- Admin › Usuários: busca por nome/e-mail; aprova/recusa pedidos de parceiro; suspende/reativa parceiro; exclui conta
+  (motivo + confirmação com e-mail/nome; se houver reservas/carteira/histórico, anonimiza e bloqueia o login); registro de ações.
+  Arquivos enviados por um usuário excluído ficam inacessíveis no Storage (limpeza manual, se quiser).
 
 ## Decisões e próximos passos
 - Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e

@@ -35,6 +35,7 @@ const Isis=lazy(()=>import('@/components/Isis'))
 const ContentLibrary=lazy(()=>import('@/components/Contents'))
 const ContentManager=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentManager})))
 const ContentReview=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentReview})))
+const AdminUsers=lazy(()=>import('@/components/AdminUsers'))
 const RatingBadge=lazy(()=>import('@/components/Reviews').then(m=>({default:m.RatingBadge})))
 const ReviewButton=lazy(()=>import('@/components/Reviews').then(m=>({default:m.ReviewButton})))
 const AdminReviews=lazy(()=>import('@/components/Reviews').then(m=>({default:m.AdminReviews})))
@@ -131,6 +132,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    treino:()=><>{panel(<StudentRoutines key={'rt'+profile.id} owner={profile.id} onAi={()=>openView('ia')} legacy={training}/>)}<ContentHighlights key={'ch'+profile.id} owner={profile.id} onView={openView}/></>,
    desafios:()=>panel(<StudentChallenges key={'dc'+profile.id} owner={profile.id}/>),
    'desafios-pro':()=>panel(<ChallengeManager key={'dcp'+profile.id} owner={profile.id} role="profissional"/>),
+   usuarios:()=>panel(<AdminUsers key={'au'+profile.id} owner={profile.id}/>),
    avaliacoes:()=>panel(<AdminReviews key={'rv'+profile.id} owner={profile.id}/>),
    'desafios-admin':()=>panel(<ChallengeManager key={'dca'+profile.id} owner={profile.id} role="admin"/>),
    conteudos:()=>panel(<ContentLibrary key={'cl'+profile.id} owner={profile.id} onChat={startChat}/>),
