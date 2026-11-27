@@ -63,14 +63,14 @@ export function SessionCard({session,showStudent=false}:{session:Session,showStu
 }
 
 // Profissional: o que os alunos fizeram (resumo de todos + lista do aluno escolhido).
-export function ProActivity({student,owner}:{student:string,owner:string}){
+export function ProActivity({student,owner,only=false}:{student:string,owner:string,only?:boolean}){
  const [all,setAll]=useState<Session[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(true)
  useEffect(()=>{let live=true;setLoading(true);listRoutineSessions(null).then(r=>{if(live)setAll(r)}).catch(err=>{if(live)setError(errorText(err,'Não foi possível carregar os registros.'))}).finally(()=>{if(live)setLoading(false)});return()=>{live=false}},[owner])
  const summary=summarizeSessions(all),mine=all.filter(s=>s.student_id===student),today=todayInfo().iso
  return <section className="space-y-3" aria-label="Acompanhamento">
-  <h3 className="text-lg font-extrabold">O que seus alunos fizeram</h3>
+  <h3 className="text-lg font-extrabold">{only?'O que este aluno fez':'O que seus alunos fizeram'}</h3>
   {error&&<p role="alert">{error}</p>}
-  {loading?<p role="status">Carregando…</p>:!summary.length?<p className={card+' text-sm'}>Quando um aluno registrar um treino, ele aparece aqui: o que fez, a carga, o esforço e se sentiu dor.</p>:
+  {only?null:loading?<p role="status">Carregando…</p>:!summary.length?<p className={card+' text-sm'}>Quando um aluno registrar um treino, ele aparece aqui: o que fez, a carga, o esforço e se sentiu dor.</p>:
    <ul className="flex gap-2 overflow-x-auto pb-1">{summary.map(s=><li key={s.student_id} className={card+' min-w-48 shrink-0 p-3 text-sm'+(s.pain?' border-amber-400':'')}>
     <p className="font-bold">{s.student_name}</p><p>{s.week} treino{s.week===1?'':'s'} em 7 dias</p><p className="text-[#626274]">Último: {dateLabel(s.last.done_on)}{s.last.done_on===today?' ✓':''}</p>
     {s.pain&&<p className="font-bold text-amber-700"><AlertTriangle aria-hidden="true" className="mr-1 inline h-4 w-4"/>Relatou dor</p>}</li>)}</ul>}

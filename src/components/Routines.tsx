@@ -153,7 +153,7 @@ export function RoutineEditor({student,kind,source='profissional',initial,onDone
  </form>
 }
 
-export function ProRoutines({owner,links,onAi}:{owner:string,links:ParticipantLink[],onAi:(student:string)=>void}){
+export function ProRoutines({owner,links,onAi,focus=false}:{owner:string,links:ParticipantLink[],onAi:(student:string)=>void,focus?:boolean}){
  const students=links.filter(l=>l.state==='active')
  const [student,setStudent]=useState(students[0]?.student_id||''),[rows,setRows]=useState<Routine[]>([]),[loading,setLoading]=useState(false),[error,setError]=useState('')
  const [editing,setEditing]=useState<{kind:Kind,initial?:Routine}|null>(null),[viewing,setViewing]=useState<Routine|null>(null),[logs,setLogs]=useState<{day_key:string,done_on:string}[]>([])
@@ -174,7 +174,7 @@ export function ProRoutines({owner,links,onAi}:{owner:string,links:ParticipantLi
    {viewing.mine&&viewing.status==='rascunho'&&<Button type="button" onClick={()=>void act(()=>publishRoutine(viewing.plan_id))}>Publicar</Button>}
    {viewing.mine&&<Button type="button" variant="outline" onClick={()=>{if(window.confirm('Arquivar este plano? O aluno deixa de ver.'))void act(()=>archiveRoutine(viewing.plan_id))}}>Arquivar</Button>}</div></div>
  return <section className="space-y-4" aria-label="Treinos e dietas">
-  <label className="block font-semibold">Aluno<select className={field} value={student} onChange={e=>setStudent(e.target.value)}>{students.map(s=><option key={s.student_id} value={s.student_id}>{s.participant_name||'Aluno'}</option>)}</select></label>
+  {!focus&&<label className="block font-semibold">Aluno<select className={field} value={student} onChange={e=>setStudent(e.target.value)}>{students.map(s=><option key={s.student_id} value={s.student_id}>{s.participant_name||'Aluno'}</option>)}</select></label>}
   <div className="flex flex-wrap gap-2"><Button type="button" onClick={()=>setEditing({kind:'treino'})}><Dumbbell aria-hidden="true" className="mr-2 h-4 w-4"/>Novo treino</Button><Button type="button" variant="outline" onClick={()=>setEditing({kind:'dieta'})}><Apple aria-hidden="true" className="mr-2 h-4 w-4"/>Nova dieta</Button><Button type="button" variant="outline" onClick={()=>onAi(student)}><Sparkles aria-hidden="true" className="mr-2 h-4 w-4"/>Montar com IA</Button></div>
   <p className="text-sm text-[#626274]">Treino: educação física, fisioterapia ou artes marciais. Dieta: só nutricionistas.</p>
   {error&&<p role="alert">{error}</p>}
@@ -183,7 +183,7 @@ export function ProRoutines({owner,links,onAi}:{owner:string,links:ParticipantLi
    {r.status==='publicado'?<CheckCircle2 aria-hidden="true" className="h-5 w-5 text-[#6a8a27]"/>:<Circle aria-hidden="true" className="h-5 w-5 text-[#626274]"/>}
    <span className="flex-1"><span className="block font-bold">{r.kind==='treino'?'Treino':'Dieta'} · {r.title}</span><span className="block text-sm text-[#626274]">{sourceLabel(r)} · {r.status==='publicado'?'Publicado':r.status==='revisao'?'Aguardando sua revisão':'Rascunho'}</span></span>
   </button></li>)}</ul>}
-  <ProActivity student={student} owner={owner}/>
-  {student&&<details className={card}><summary className="min-h-11 cursor-pointer py-2 text-lg font-extrabold">Avaliação física e fotos deste aluno</summary><div className="mt-3"><Suspense fallback={<p role="status">Carregando…</p>}><ProBody key={student} student={student} owner={owner}/></Suspense></div></details>}
+  {!focus&&<ProActivity student={student} owner={owner}/>}
+  {!focus&&student&&<details className={card}><summary className="min-h-11 cursor-pointer py-2 text-lg font-extrabold">Avaliação física e fotos deste aluno</summary><div className="mt-3"><Suspense fallback={<p role="status">Carregando…</p>}><ProBody key={student} student={student} owner={owner}/></Suspense></div></details>}
  </section>
 }

@@ -104,7 +104,7 @@ const helps:Record<string,string>={
  esg:'Projetos sociais e ambientais. Você pode sugerir um projeto e a equipe analisa.',
  parceiro:'Quer atender alunos pela 369? Informe sua área e seu registro profissional (por exemplo CREF ou CRN). A equipe analisa e libera as funções de parceiro.',
  perfil:'Seu nome, seu celular e seu CPF (guardamos só os 2 últimos dígitos). Mantenha o celular certo para os profissionais conseguirem falar com você. No fim da página você pode excluir sua conta e seus dados (LGPD).',
- alunos:'Pedidos de alunos que querem ser acompanhados por você. Aceite para montar treinos e liberar sua agenda para eles. Você vê a nota de cada aluno e pode avaliar quem você acompanha.',
+ alunos:'Pedidos de alunos que querem ser acompanhados por você e seus alunos ativos. Toque em "Abrir ficha do aluno" para ver tudo dele num lugar só: treinos e dietas, o que fez e a evolução, medidas e fotos, mensagem e avaliação. Vínculos encerrados deixam de aparecer. Aceite pedidos para montar treinos e liberar sua agenda. Você vê a nota de cada aluno e pode avaliar quem você acompanha.',
  'parceiro:agenda':'Defina os dias e horários em que você atende e as regras de agendamento. Logo abaixo ficam as reservas feitas.',
  treinos:'Escolha o aluno e monte o treino por dia da semana (com séries, repetições e vídeo) ou a dieta por refeição. Você também vê os treinos que o aluno gerou com IA, para revisar. Mais abaixo: o que o aluno fez e a avaliação física (medidas e fotos, se ele compartilhar).',
  'meus-videos':'Publique vídeos do YouTube. A equipe aprova e eles aparecem primeiro para os alunos da sua região.',
