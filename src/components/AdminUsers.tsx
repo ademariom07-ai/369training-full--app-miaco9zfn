@@ -2,7 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from 'react'
 import {Search,ShieldAlert,Trash2,UserCheck,UserX} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
-import {adminDeleteAccount,adminListActions,adminListUsers,adminMakePartner,adminReviewPartner,adminSetPartner,deleteOutcomes,filterLabels,specialtyLabels,type AdminUser,type UserFilter} from '@/lib/supabase/adminUsers'
+import {adminDeleteAccount,adminDuplicateCredentials,adminListActions,adminListUsers,adminMakePartner,adminReviewPartner,adminSetPartner,deleteOutcomes,filterLabels,specialtyLabels,type AdminUser,type UserFilter} from '@/lib/supabase/adminUsers'
 
 const errorText=(err:unknown,fallback:string)=>err instanceof Error&&err.message?err.message:fallback
 const card='rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4'
@@ -86,6 +86,7 @@ export default function AdminUsers({owner}:{owner:string}){
   {!rows?<p role="status">Carregando…</p>:!rows.length?<p className={card}>{filter==='pedido_pendente'?'Nenhum pedido de parceiro aguardando análise.':'Nenhum usuário encontrado.'}</p>
    :<ul className="space-y-2">{rows.map(u=><UserRow key={u.user_id} u={u} mode={mode} setMode={m=>{setMode(m);setNotice('')}} onDone={msg=>{setMode(null);setNotice(msg);void load(1)}}/>)}</ul>}
   {more&&<Button type="button" variant="outline" onClick={()=>void load(page+1)}>Ver mais</Button>}
+  <DuplicateCredentials/>
   <AuditLog key={notice}/>
  </section>
 }
@@ -95,5 +96,15 @@ function AuditLog(){
  useEffect(()=>{if(open)adminListActions().then(setRows).catch(()=>setRows([]))},[open])
  return <details className={card} onToggle={e=>setOpen((e.target as HTMLDetailsElement).open)}><summary className="min-h-11 cursor-pointer py-2 font-bold"><ShieldAlert aria-hidden="true" className="mr-1 inline h-4 w-4"/>Registro de ações do admin</summary>
   {!rows?<p role="status" className="text-sm">Carregando…</p>:!rows.length?<p className="text-sm">Nenhuma ação registrada.</p>:<ul className="space-y-1 text-sm">{rows.map((a,i)=><li key={i}>{new Date(a.created_at).toLocaleString('pt-BR')} · <b>{a.actor_name}</b> {actionLabels[a.action]??a.action} <b>{a.target_name}</b> — {a.reason}</li>)}</ul>}
+ </details>
+}
+
+// Registros profissionais repetidos que já existiam antes da trava (a trava impede novos).
+function DuplicateCredentials(){
+ const [open,setOpen]=useState(false),[rows,setRows]=useState<Awaited<ReturnType<typeof adminDuplicateCredentials>>|null>(null)
+ useEffect(()=>{if(open)adminDuplicateCredentials().then(setRows).catch(()=>setRows([]))},[open])
+ return <details className={card} onToggle={e=>setOpen((e.target as HTMLDetailsElement).open)}><summary className="min-h-11 cursor-pointer py-2 font-bold">Conferir registros profissionais repetidos</summary>
+  <p className="text-sm text-[#626274]">Novos cadastros com o mesmo registro (CREF/CONFEF, CRN, CREFITO, CRP/CFP, CBJ, CBJJ, CBK) já são bloqueados. Aqui aparecem repetições antigas, se houver.</p>
+  {!rows?<p role="status" className="text-sm">Carregando…</p>:!rows.length?<p className="text-sm font-semibold text-[#4d6b14]">Nenhum registro repetido.</p>:<ul className="space-y-1 text-sm">{rows.map(r=><li key={r.applicant_id}><b>{r.credential_key}</b> · {r.applicant_name} · “{r.credential}” · {r.status==='approved'?'aprovado':'pendente'}</li>)}</ul>}
  </details>
 }

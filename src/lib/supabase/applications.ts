@@ -35,6 +35,8 @@ export async function submitApplication(specialty:Specialty,credential:string,ex
  if(!Object.hasOwn(specialties,specialty))throw Error('Área inválida.')
  const p_credential=text(credential,160),identity=await actor(client,expectedId),result=await client.rpc('submit_professional_application',{p_specialty:specialty,p_credential}).single()
  await assertSessionUnchanged(client,identity)
+ const shown=['Este registro profissional já está cadastrado em outra conta. Se ele é seu, fale com a equipe 369.','Informe o número do registro profissional (ex.: CREF 123456-G/SP).','Aguarde a análise da solicitação atual.']
+ if(result.error?.message&&shown.includes(result.error.message))throw Error(result.error.message)
  if(result.error||!result.data||result.data.applicant_id!==identity.id||result.data.status!=='pending'||result.data.specialty!==specialty||result.data.credential!==p_credential)throw Error('Não foi possível solicitar.')
  return copy(result.data)
 }

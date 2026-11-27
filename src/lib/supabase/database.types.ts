@@ -782,6 +782,7 @@ export type Database = {
       admin_delete_account: { Args: { p_user: string; p_confirm: string; p_reason: string }; Returns: string }
       delete_my_account: { Args: { p_confirm: string; p_reason: string | null }; Returns: string }
       admin_make_partner: { Args: { p_user: string; p_specialty: string | null; p_credential: string | null; p_reason: string; p_end_student_link: boolean }; Returns: undefined }
+      admin_duplicate_credentials: { Args: Record<string, never>; Returns: { credential_key: string; applicant_id: string; applicant_name: string; credential: string; status: string }[] }
       admin_list_actions: { Args: Record<string, never>; Returns: { created_at: string; actor_name: string; action: string; target_name: string | null; reason: string }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }

@@ -5,7 +5,7 @@ begin
  begin
   insert into auth.users(id) values(a),(b),(p),(q),(u),(legacy),(z);
   insert into public.profiles(id,display_name,role,approved) values(a,'Student A','aluno',false),(b,'Student B','aluno',false),(p,'Professional','profissional',true),(q,'Nutrition','profissional',true),(u,'Unapproved','profissional',false),(legacy,'Legacy','profissional',true),(z,'Admin','admin',false);
-  insert into public.professional_applications(applicant_id,applicant_name,specialty,credential,status,reviewed_at,review_reason) values(p,'Professional','educacao_fisica','Fixture','approved',now(),'Fixture verified'),(q,'Nutrition','nutricao','Fixture','approved',now(),'Fixture verified'),(u,'Unapproved','educacao_fisica','Fixture','approved',now(),'Fixture verified');
+  insert into public.professional_applications(applicant_id,applicant_name,specialty,credential,status,reviewed_at,review_reason) values(p,'Professional','educacao_fisica','Fixture 9001','approved',now(),'Fixture verified'),(q,'Nutrition','nutricao','Fixture 9011','approved',now(),'Fixture verified'),(u,'Unapproved','educacao_fisica','Fixture 9012','approved',now(),'Fixture verified');
   set local role authenticated;
   perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);perform public.request_student_link(p);
   perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);

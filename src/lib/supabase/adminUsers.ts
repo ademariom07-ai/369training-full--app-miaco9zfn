@@ -12,7 +12,7 @@ export const specialtyLabels:Record<string,string>={educacao_fisica:'Educação 
 export const deleteOutcomes:Record<string,string>={excluida:'Conta excluída definitivamente.',anonimizada:'A conta tinha registros que precisam ser guardados (reservas, carteira ou histórico): foi anonimizada, os dados pessoais foram apagados e o login foi bloqueado.',anonimizada_sem_bloqueio:'A conta foi anonimizada, mas não foi possível bloquear o login automaticamente. Bloqueie em Authentication → Users no Supabase.'}
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const known=['Informe o motivo (3 a 500 caracteres).','Só parceiros já aprovados podem ser suspensos ou reativados.','Esta conta não pode ser excluída por aqui.','Para confirmar, digite exatamente o e-mail ou o nome da conta.',
- 'Encerre o vínculo de aluno antes de aprovar o acesso profissional.','Esta conta não pode virar parceira por aqui.','Esta conta já é parceira.','Informe a área e o registro profissional (ex.: CREF, CRN).','Esta pessoa tem vínculo como aluno. Marque "encerrar o vínculo de aluno" para aprovar.','Atualize a solicitação antes de analisar.','Análise indisponível.','Dados inválidos.']
+ 'Encerre o vínculo de aluno antes de aprovar o acesso profissional.','Esta conta não pode virar parceira por aqui.','Este registro profissional já está cadastrado em outra conta. Se ele é seu, fale com a equipe 369.','Informe o número do registro profissional (ex.: CREF 123456-G/SP).','Esta conta já é parceira.','Informe a área e o registro profissional (ex.: CREF, CRN).','Esta pessoa tem vínculo como aluno. Marque "encerrar o vínculo de aluno" para aprovar.','Atualize a solicitação antes de analisar.','Análise indisponível.','Dados inválidos.']
 const fail=(error:{message?:string}|null,fallback:string)=>Error(error?.message&&known.includes(error.message)?error.message:fallback)
 async function call<T>(client:Client,task:()=>PromiseLike<{data:T|null,error:{message?:string}|null}>,fallback:string,allowNull=false):Promise<T>{
  const actor=await verifiedIdentity(client),result=await task();await assertSessionUnchanged(client,actor)
@@ -45,4 +45,7 @@ export async function adminMakePartner(user:string,specialty:string,credential:s
  const r=reasonOk(reason)
  if(!specialty||!credential.trim())throw Error('Informe a área e o registro profissional (ex.: CREF, CRN).')
  await call(client,()=>client.rpc('admin_make_partner',{p_user:user,p_specialty:specialty,p_credential:credential.trim().slice(0,160),p_reason:r,p_end_student_link:endStudentLink}),'Não foi possível aprovar.',true)
+}
+export async function adminDuplicateCredentials(client:Client=getSupabaseClient()){
+ const rows=await call(client,()=>client.rpc('admin_duplicate_credentials'),'Não foi possível conferir.');return Array.isArray(rows)?rows:[]
 }

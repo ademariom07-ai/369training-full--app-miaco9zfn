@@ -4,7 +4,7 @@ declare a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); p uuid:=gen_random
 begin
  insert into auth.users(id) values(a),(b),(p),(q),(z);
  insert into public.profiles(id,display_name,role,approved) values(a,'Test A','aluno',false),(b,'Test B','aluno',false),(p,'Test P','profissional',true),(q,'Test Q','profissional',true),(z,'Test Admin','admin',false);
- insert into public.professional_applications(applicant_id,applicant_name,specialty,credential,status,reviewed_at,review_reason) values(p,'Test P','educacao_fisica','Temporary test','approved',now(),'Test'),(q,'Test Q','educacao_fisica','Temporary test','approved',now(),'Test');
+ insert into public.professional_applications(applicant_id,applicant_name,specialty,credential,status,reviewed_at,review_reason) values(p,'Test P','educacao_fisica','Temporary test 9003','approved',now(),'Test'),(q,'Test Q','educacao_fisica','Temporary test 9013','approved',now(),'Test');
  set local role authenticated;
  perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);
  perform public.request_student_link(p);

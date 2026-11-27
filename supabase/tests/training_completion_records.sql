@@ -5,7 +5,7 @@ begin
  begin
   insert into auth.users(id) values(a),(b),(p),(z);
   insert into public.profiles(id,display_name,role,approved) values(a,'Student','aluno',false),(b,'Other student','aluno',false),(p,'Professional','profissional',true),(z,'Admin','admin',false);
-  insert into public.professional_applications(applicant_id,applicant_name,specialty,credential,status,reviewed_at,review_reason) values(p,'Professional','educacao_fisica','Fixture','approved',now(),'Fixture checked');
+  insert into public.professional_applications(applicant_id,applicant_name,specialty,credential,status,reviewed_at,review_reason) values(p,'Professional','educacao_fisica','Fixture 9002','approved',now(),'Fixture checked');
   set local role authenticated;perform set_config('request.jwt.claims',json_build_object('sub',a,'is_anonymous',false)::text,true);perform public.request_student_link(p);
   perform set_config('request.jwt.claims',json_build_object('sub',p,'is_anonymous',false)::text,true);perform public.accept_student_link(a,1);
   select * into plan from public.create_training_plan(a,1,gen_random_uuid(),'Fixture title','Fixture text');
