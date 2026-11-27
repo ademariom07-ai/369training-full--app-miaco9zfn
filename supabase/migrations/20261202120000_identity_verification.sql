@@ -11,6 +11,7 @@
 --    Enquanto não estiver verificado, o parceiro não aceita novos alunos (ajustável em wellness_private.app_settings).
 
 create table if not exists wellness_private.app_settings (key text primary key, value text not null);
+alter table wellness_private.app_settings enable row level security;
 revoke all on wellness_private.app_settings from public, anon, authenticated;
 insert into wellness_private.app_settings (key, value) values
  ('cpf_pepper', replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')),
