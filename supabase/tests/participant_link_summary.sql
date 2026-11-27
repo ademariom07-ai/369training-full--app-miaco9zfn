@@ -1,4 +1,6 @@
 begin;
+-- Estes testes cobrem o vínculo, não a verificação do parceiro (testada em identity_verification.sql).
+update wellness_private.app_settings set value = 'false' where key = 'exigir_verificacao_parceiro';
 -- SQL roles/claims, not real login/JWT tests. Outer rollback plus fixture subtransaction.
 do $test$
 declare a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); p uuid:=gen_random_uuid(); q uuid:=gen_random_uuid(); z uuid:=gen_random_uuid(); f uuid; checks integer:=0;

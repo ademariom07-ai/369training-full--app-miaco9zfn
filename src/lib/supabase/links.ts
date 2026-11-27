@@ -20,6 +20,7 @@ export async function acceptStudentLink(studentId: string, expectedVersion: numb
   const p_student_id = uuid(studentId), p_expected_version = version(expectedVersion), actor = await verifiedIdentity(client)
   const result = await client.rpc('accept_student_link', { p_student_id, p_expected_version }).single()
   await assertSessionUnchanged(client, actor)
+  if (result.error?.message === 'Para aceitar alunos, conclua a verificação de identidade (Meu cadastro profissional › Etapa 2).') throw new Error(result.error.message)
   if (result.error || !result.data || result.data.student_id !== p_student_id || result.data.professional_id !== actor.id || result.data.version !== expectedVersion || result.data.state !== 'active') throw new Error('Não foi possível aceitar o vínculo.')
   return participant(result.data, actor.id)
 }

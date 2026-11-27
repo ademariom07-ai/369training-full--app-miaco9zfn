@@ -22,6 +22,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 37 (verificação: CPF e etapa 2 do parceiro) e 38 (teste).
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
@@ -52,6 +53,12 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   com área, registro e opção de encerrar vínculo de aluno.
 - Registro profissional único: mesmo número no mesmo conselho (CONFEF=CREF, CFP=CRP) não pode estar em duas contas com pedido
   pendente/aprovado; recusado não bloqueia. Admin › Usuários › "Conferir registros profissionais repetidos".
+- Verificação em 2 etapas. Etapa 1 = cadastro simples. Etapa 2: CPF em Meu perfil (válido; único → confirmado na hora;
+  repetido → aviso e, se a pessoa quiser, análise do admin). Parceiro: CPF + 3 fotos (documento, selfie com documento, selfie
+  com carteira do conselho) em Meu cadastro profissional; admin analisa em "Verificações" (fotos apagadas depois). Sem
+  verificação o parceiro não aceita novos alunos; selo "Identidade verificada" na busca e na vitrine. Desligar a exigência:
+  update wellness_private.app_settings set value='false' where key='exigir_verificacao_parceiro'.
+  Futuro (pago): biometria automática com prova de vida (Serpro Datavalid / unico / similares) no lugar da análise manual.
 
 ## Decisões e próximos passos
 - Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e

@@ -1,5 +1,7 @@
 -- Explicit outer transaction guarantees no fixture can persist.
 begin;
+-- Estes testes cobrem o vínculo, não a verificação do parceiro (testada em identity_verification.sql).
+update wellness_private.app_settings set value = 'false' where key = 'exigir_verificacao_parceiro';
 -- SQL role/claim tests, not login/JWT signature tests. Every fixture rolls back.
 do $test$
 declare a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); p uuid:=gen_random_uuid(); q uuid:=gen_random_uuid(); u uuid:=gen_random_uuid(); z uuid:=gen_random_uuid(); r public.student_professional_links; n integer; checks integer:=0;

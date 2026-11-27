@@ -1,4 +1,6 @@
 begin;
+-- Estes testes cobrem o vínculo, não a verificação do parceiro (testada em identity_verification.sql).
+update wellness_private.app_settings set value = 'false' where key = 'exigir_verificacao_parceiro';
 do $test$
 declare a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); p uuid:=gen_random_uuid(); q uuid:=gen_random_uuid(); u uuid:=gen_random_uuid(); legacy uuid:=gen_random_uuid(); z uuid:=gen_random_uuid(); key uuid:=gen_random_uuid(); second_key uuid:=gen_random_uuid(); plan public.training_plans; second_plan public.training_plans; notice public.training_plan_notifications; seen timestamptz; checks integer:=0;
 begin

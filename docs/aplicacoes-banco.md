@@ -24,6 +24,7 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 29/11/2026 | 20261129120000_delete_my_account.sql | delete_my_account.sql: 8 verificações OK | O próprio aluno/parceiro exclui a conta (LGPD), com a mesma lógica do admin (função interna erase_account). |
 | 30/11/2026 | 20261130120000_admin_make_partner.sql | admin_make_partner.sql: 10 verificações OK | Admin aprova/torna parceiro mesmo sem pedido, com pedido recusado ou com vínculo de aluno (encerra o vínculo se marcado). |
 | 01/12/2026 | 20261201120000_unique_credentials.sql | unique_credentials.sql: 12 verificações OK (repetidos antigos de teste mantidos por decisão do proprietário) | Registro profissional único (CREF/CONFEF, CRN, CREFITO, CRP/CFP, CBJ, CBJJ, CBK) entre contas; trava no banco para todos os caminhos; conferência de repetidos no admin. |
+| 02/12/2026 | 20261202120000_identity_verification.sql | identity_verification.sql: 19 verificações (aguardando aplicação) | CPF (código com segredo + 2 últimos dígitos; repetido → análise do admin); etapa 2 do parceiro (3 fotos em bucket privado "verificacao", apagadas após a análise); parceiro sem verificação não aceita alunos (app_settings.exigir_verificacao_parceiro). |
 
 ## Edge Functions
 

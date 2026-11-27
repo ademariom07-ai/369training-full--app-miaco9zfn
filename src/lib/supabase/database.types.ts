@@ -783,6 +783,14 @@ export type Database = {
       delete_my_account: { Args: { p_confirm: string; p_reason: string | null }; Returns: string }
       admin_make_partner: { Args: { p_user: string; p_specialty: string | null; p_credential: string | null; p_reason: string; p_end_student_link: boolean }; Returns: undefined }
       admin_duplicate_credentials: { Args: Record<string, never>; Returns: { credential_key: string; applicant_id: string; applicant_name: string; credential: string; status: string }[] }
+      set_my_cpf: { Args: { p_cpf: string; p_request_review: boolean }; Returns: string }
+      my_verification: { Args: Record<string, never>; Returns: { cpf_status: string | null; cpf_masked: string | null; cpf_reason: string | null; partner_status: string | null; partner_reason: string | null; partner_required: boolean; doc_sent: boolean; selfie_sent: boolean; credential_sent: boolean }[] }
+      submit_partner_verification: { Args: { p_doc: string; p_selfie: string; p_credential: string }; Returns: undefined }
+      admin_list_cpf_reviews: { Args: Record<string, never>; Returns: { user_id: string; display_name: string; email: string | null; role: string; cpf_masked: string; created_at: string; other_id: string | null; other_name: string | null; other_email: string | null; other_status: string | null }[] }
+      admin_review_cpf: { Args: { p_user: string; p_approve: boolean; p_reason: string }; Returns: undefined }
+      admin_list_partner_verifications: { Args: Record<string, never>; Returns: { user_id: string; display_name: string; email: string | null; specialty: string | null; credential: string | null; cpf_masked: string | null; cpf_status: string | null; doc_path: string | null; selfie_path: string | null; credential_path: string | null; submitted_at: string }[] }
+      admin_review_partner: { Args: { p_user: string; p_approve: boolean; p_reason: string }; Returns: undefined }
+      verified_partners: { Args: { p_users: string[] }; Returns: { user_id: string }[] }
       admin_list_actions: { Args: Record<string, never>; Returns: { created_at: string; actor_name: string; action: string; target_name: string | null; reason: string }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }

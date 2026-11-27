@@ -1,3 +1,5 @@
+import {VerifiedBadge} from '@/components/Verification'
+import {verifiedPartners} from '@/lib/supabase/verification'
 import {RatingBadge,RatingLine,ReviewList} from '@/components/Reviews'
 import {reviewSummaries,type ReviewSummary} from '@/lib/supabase/reviews'
 import React,{useCallback,useEffect,useRef,useState} from 'react'
@@ -26,7 +28,8 @@ function Chip({active,onClick,children}:{active:boolean,onClick:()=>void,childre
 export function ProfessionalSearch({owner,disabled,canRequest,onRequest,onChat}:{owner:string,disabled:boolean,canRequest:boolean,onRequest:(id:string)=>Promise<void>,onChat:(id:string)=>void}){
  const [modality,setModality]=useState<Modality|null>(null),[mode,setMode]=useState<Mode|null>(null),[coords,setCoords]=useState<Coordinates|null>(null)
  const [rows,setRows]=useState<SearchResult[]>([]),[page,setPage]=useState(1),[more,setMore]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('')
- const [open,setOpen]=useState<string|null>(null),[ratings,setRatings]=useState<Record<string,ReviewSummary>>({})
+ const [open,setOpen]=useState<string|null>(null),[ratings,setRatings]=useState<Record<string,ReviewSummary>>({}),[verified,setVerified]=useState<Set<string>>(new Set())
+ useEffect(()=>{const ids=rows.map(r=>r.professional_id);if(ids.length)verifiedPartners(ids).then(v=>setVerified(x=>new Set([...x,...v]))).catch(()=>{})},[rows])
  const ticket=useRef(0)
  useEffect(()=>{const ids=rows.map(r=>r.professional_id).filter(id=>!(id in ratings));if(ids.length)reviewSummaries(ids).then(r=>setRatings(x=>({...x,...Object.fromEntries(ids.map(id=>[id,r[id]??{user_id:id,average:null,counted:0,total:0,dropped:0}]))}))).catch(()=>{})
  // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -49,7 +52,7 @@ export function ProfessionalSearch({owner,disabled,canRequest,onRequest,onChat}:
   <ul className="grid gap-3 md:grid-cols-2">{rows.map(r=><li key={r.professional_id}>
    <button type="button" onClick={()=>setOpen(r.professional_id)} className="flex w-full items-start gap-3 rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4 text-left hover:border-[#a5ce41]">
     <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#33325a] font-bold text-[#a5ce41]">{initials(r.display_name)}</span>
-    <span className="min-w-0"><span className="block font-bold">{r.display_name}</span>
+    <span className="min-w-0"><span className="block font-bold">{r.display_name}</span>{verified.has(r.professional_id)&&<span className="block"><VerifiedBadge/></span>}
      {ratings[r.professional_id]?.total?<span className="block"><RatingLine summary={ratings[r.professional_id]}/></span>:null}
      {r.headline&&<span className="block text-sm">{r.headline}</span>}
      <span className="block text-sm text-[#626274]">{r.modalities.map(m=>modalities[m]).join(' · ')}</span>
@@ -65,6 +68,8 @@ export function ProfessionalSearch({owner,disabled,canRequest,onRequest,onChat}:
 // Vitrine de um profissional: apresentação, formação, modalidades, atendimento, região e vídeos.
 export function ShowcaseView({professionalId,disabled,canRequest,onBack,onRequest,onChat}:{professionalId:string,disabled:boolean,canRequest:boolean,onBack:()=>void,onRequest:(id:string)=>Promise<void>,onChat:(id:string)=>void}){
  const [data,setData]=useState<ShowcaseDetail|null|undefined>(undefined),[error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('')
+ const [isVerified,setIsVerified]=useState(false)
+ useEffect(()=>{verifiedPartners([professionalId]).then(v=>setIsVerified(v.has(professionalId))).catch(()=>{})},[professionalId])
  const reload=useCallback(()=>{readShowcase(professionalId).then(setData).catch(err=>{setData(null);setError(errorText(err,'Vitrine indisponível.'))})},[professionalId])
  useEffect(reload,[reload])
  async function request(){setBusy(true);setError('');try{await onRequest(professionalId);setNotice('Pedido enviado! O profissional vai receber e aceitar. Você já pode mandar uma mensagem.');reload()}catch(err){setError(errorText(err,'Não foi possível enviar o pedido.'))}finally{setBusy(false)}}
@@ -77,6 +82,7 @@ export function ShowcaseView({professionalId,disabled,canRequest,onBack,onReques
     <span aria-hidden="true" className="flex h-16 w-16 items-center justify-center rounded-full bg-[#a5ce41] text-xl font-extrabold text-[#33325a]">{initials(data.display_name)}</span>
     <div className="min-w-0"><h2 className="text-2xl font-extrabold text-[#f7f6f2]">{data.display_name}</h2>{data.headline&&<p className="text-[#d5d4e1]">{data.headline}</p>}
      <p className="text-sm text-[#a5ce41]">{data.modalities.map(m=>modalities[m]).join(' · ')}</p>
+     {isVerified&&<div className="mt-1"><VerifiedBadge/></div>}
      <div className="mt-1 rounded-md bg-white/95 px-2 py-1 text-[#33325a]"><RatingBadge user={data.professional_id} showRule/></div></div>
    </header>
    <dl className="grid gap-3 sm:grid-cols-2">
