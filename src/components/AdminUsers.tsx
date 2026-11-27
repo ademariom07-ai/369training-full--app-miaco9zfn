@@ -2,12 +2,12 @@ import React,{useCallback,useEffect,useRef,useState} from 'react'
 import {Search,ShieldAlert,Trash2,UserCheck,UserX} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
-import {adminDeleteAccount,adminListActions,adminListUsers,adminReviewPartner,adminSetPartner,deleteOutcomes,filterLabels,specialtyLabels,type AdminUser,type UserFilter} from '@/lib/supabase/adminUsers'
+import {adminDeleteAccount,adminListActions,adminListUsers,adminMakePartner,adminReviewPartner,adminSetPartner,deleteOutcomes,filterLabels,specialtyLabels,type AdminUser,type UserFilter} from '@/lib/supabase/adminUsers'
 
 const errorText=(err:unknown,fallback:string)=>err instanceof Error&&err.message?err.message:fallback
 const card='rounded-[12px_30px_12px_30px] border border-[#dddee4] bg-white p-4'
 const dateBr=(iso:string|null)=>iso?new Date(iso).toLocaleDateString('pt-BR'):'—'
-const actionLabels:Record<string,string>={excluir_conta:'Excluiu a conta',anonimizar_conta:'Anonimizou a conta',suspender_parceiro:'Suspendeu o parceiro',reativar_parceiro:'Reativou o parceiro',autoexclusao:'(autoexclusão) excluiu a própria conta',autoexclusao_anonimizada:'(autoexclusão, anonimizada) excluiu a própria conta'}
+const actionLabels:Record<string,string>={excluir_conta:'Excluiu a conta',anonimizar_conta:'Anonimizou a conta',suspender_parceiro:'Suspendeu o parceiro',reativar_parceiro:'Reativou o parceiro',aprovar_parceiro:'Aprovou como parceiro',autoexclusao:'(autoexclusão) excluiu a própria conta',autoexclusao_anonimizada:'(autoexclusão, anonimizada) excluiu a própria conta'}
 
 function roleText(u:AdminUser){
  if(u.deleted)return 'Conta excluída'
@@ -16,15 +16,17 @@ function roleText(u:AdminUser){
  return 'Aluno'
 }
 
-type Mode={kind:'aprovar'|'recusar'|'suspender'|'reativar'|'excluir',user:AdminUser}
+type Mode={kind:'aprovar'|'tornar'|'recusar'|'suspender'|'reativar'|'excluir',user:AdminUser}
 function ActionPanel({mode,onDone,onCancel}:{mode:Mode,onDone:(msg:string)=>void,onCancel:()=>void}){
  const [reason,setReason]=useState(''),[confirm,setConfirm]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('')
  const u=mode.user
- const titles={aprovar:'Aprovar como parceiro',recusar:'Recusar pedido de parceiro',suspender:'Suspender parceiro',reativar:'Reativar parceiro',excluir:'Excluir conta'}
+ const [spec,setSpec]=useState(u.specialty??'educacao_fisica'),[cred,setCred]=useState(u.credential??''),[endLink,setEndLink]=useState(false)
+ const titles={aprovar:'Aprovar como parceiro',tornar:'Tornar parceiro',recusar:'Recusar pedido de parceiro',suspender:'Suspender parceiro',reativar:'Reativar parceiro',excluir:'Excluir conta'}
  async function run(){setBusy(true);setError('')
   try{
    if(mode.kind==='excluir'){const out=await adminDeleteAccount(u.user_id,confirm,reason);onDone(deleteOutcomes[out]??'Conta excluída.')}
-   else if(mode.kind==='aprovar'||mode.kind==='recusar'){await adminReviewPartner(u,mode.kind==='aprovar',reason);onDone(mode.kind==='aprovar'?`${u.display_name} agora é parceiro.`:'Pedido recusado.')}
+   else if(mode.kind==='aprovar'||mode.kind==='tornar'){await adminMakePartner(u.user_id,spec,cred,reason,endLink);onDone(`${u.display_name} agora é parceiro. Peça para a pessoa tocar em "Atualizar conta" (ou sair e entrar de novo).`)}
+   else if(mode.kind==='recusar'){await adminReviewPartner(u,false,reason);onDone('Pedido recusado.')}
    else{await adminSetPartner(u.user_id,mode.kind==='reativar',reason);onDone(mode.kind==='reativar'?'Parceiro reativado.':'Parceiro suspenso: ele perde o acesso às funções de parceiro até ser reativado.')}
   }catch(err){setError(errorText(err,'Não foi possível concluir.'))}finally{setBusy(false)}}
  return <div className={'mt-3 space-y-3 rounded-md border p-3 '+(mode.kind==='excluir'?'border-red-300 bg-red-50':'border-[#a5ce41] bg-[#f7f6f2]')} role="group" aria-label={titles[mode.kind]}>
@@ -33,11 +35,16 @@ function ActionPanel({mode,onDone,onCancel}:{mode:Mode,onDone:(msg:string)=>void
    <li>Apaga a conta e os dados pessoais (perfil, contato, região, vitrine, treinos, mensagens, conteúdos, avaliações).</li>
    <li>Se houver registros que precisam ficar guardados (reservas, carteira, histórico), a conta é <b>anonimizada</b> em vez de apagada, e o login é bloqueado.</li>
    <li><b>Não dá para desfazer.</b></li></ul>}
+  {(mode.kind==='aprovar'||mode.kind==='tornar')&&<div className="grid gap-2 sm:grid-cols-2">
+   <label className="text-sm font-semibold">Área<select className="mt-1 block w-full rounded-md border p-2 text-sm" value={spec} onChange={e=>setSpec(e.target.value)}>{Object.entries(specialtyLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
+   <label className="text-sm font-semibold">Registro profissional<Input maxLength={160} value={cred} onChange={e=>setCred(e.target.value)} placeholder="Ex.: CREF 123456-G/SP"/></label>
+   <label className="flex min-h-11 items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" className="h-5 w-5" checked={endLink} onChange={e=>setEndLink(e.target.checked)}/>Encerrar o vínculo de aluno desta pessoa, se houver (necessário para aprovar quem está sendo acompanhado como aluno)</label>
+  </div>}
   {mode.kind==='suspender'&&<p className="text-sm">O parceiro deixa de aparecer na busca e perde as funções de parceiro (treinos, conteúdos, Ísis) até ser reativado. Os alunos continuam com o vínculo.</p>}
   <label className="block text-sm font-semibold">Motivo (fica registrado)<Input maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} placeholder={mode.kind==='excluir'?'Ex.: pedido do usuário (LGPD)':mode.kind==='recusar'?'Ex.: registro profissional não confere':'Ex.: documentação conferida'}/></label>
   {mode.kind==='excluir'&&<label className="block text-sm font-semibold">Para confirmar, digite o e-mail <b>{u.email||'—'}</b> ou o nome <b>{u.display_name}</b><Input value={confirm} onChange={e=>setConfirm(e.target.value)} autoComplete="off"/></label>}
   {error&&<p role="alert" className="text-sm">{error}</p>}
-  <div className="flex flex-wrap gap-2"><Button type="button" disabled={busy||reason.trim().length<3||(mode.kind==='excluir'&&!confirm.trim())} onClick={()=>void run()} className={mode.kind==='excluir'?'!bg-[#b42318] !text-white':''}>{mode.kind==='excluir'?'Excluir definitivamente':'Confirmar'}</Button>
+  <div className="flex flex-wrap gap-2"><Button type="button" disabled={busy||reason.trim().length<3||(mode.kind==='excluir'&&!confirm.trim())||((mode.kind==='aprovar'||mode.kind==='tornar')&&!cred.trim())} onClick={()=>void run()} className={mode.kind==='excluir'?'!bg-[#b42318] !text-white':''}>{mode.kind==='excluir'?'Excluir definitivamente':'Confirmar'}</Button>
    <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>Cancelar</Button></div>
  </div>
 }
@@ -52,6 +59,7 @@ function UserRow({u,mode,setMode,onDone}:{u:AdminUser,mode:Mode|null,setMode:(m:
    </div>
    {u.role!=='admin'&&!u.deleted&&<div className="flex flex-wrap gap-2">
     {pending&&<><Button type="button" onClick={()=>setMode({kind:'aprovar',user:u})}><UserCheck aria-hidden="true" className="mr-1 h-4 w-4"/>Aprovar</Button><Button type="button" variant="outline" onClick={()=>setMode({kind:'recusar',user:u})}>Recusar</Button></>}
+    {(u.role==='aluno'||(u.role==='profissional'&&!u.approved&&u.application_status!=='approved'))&&!pending&&<Button type="button" variant="outline" onClick={()=>setMode({kind:'tornar',user:u})}><UserCheck aria-hidden="true" className="mr-1 h-4 w-4"/>Tornar parceiro</Button>}
     {active&&<Button type="button" variant="outline" onClick={()=>setMode({kind:'suspender',user:u})}><UserX aria-hidden="true" className="mr-1 h-4 w-4"/>Suspender</Button>}
     {suspended&&<Button type="button" variant="outline" onClick={()=>setMode({kind:'reativar',user:u})}><UserCheck aria-hidden="true" className="mr-1 h-4 w-4"/>Reativar</Button>}
     <Button type="button" variant="outline" className="!text-[#b42318]" onClick={()=>setMode({kind:'excluir',user:u})}><Trash2 aria-hidden="true" className="mr-1 h-4 w-4"/>Excluir conta</Button>

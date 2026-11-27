@@ -58,10 +58,14 @@ const initial:AccountState={phase:'checking',profile:null,busy:false,error:''}
 export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redirectPath?:string}={}){
  const [state,setState]=useState(initial),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[name,setName]=useState(''),[message,setMessage]=useState(''),[links,setLinks]=useState<ParticipantLink[]>([]),[linkError,setLinkError]=useState(''),[linksLoading,setLinksLoading]=useState(false),[linkPage,setLinkPage]=useState(1),[ending,setEnding]=useState<ParticipantLink|null>(null),[linkOwner,setLinkOwner]=useState<string|null>(null)
  const [availabilityDay,setAvailabilityDay]=useState(()=>saoPauloToday())
- const [mode,setMode]=useState<'login'|'signup'|'recover'>('login'),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
+ const [mode,setMode]=useState<'login'|'signup'|'recover'>(()=>{try{return new URLSearchParams(window.location.search).get('perfil')==='parceiro'?'signup':'login'}catch{return 'login'}}),[confirmation,setConfirmation]=useState(''),[notice,setNotice]=useState('')
  const [fullName,setFullName]=useState(''),[phone,setPhone]=useState(''),[code,setCode]=useState(''),[codeSent,setCodeSent]=useState(false)
  const [view,setView]=useState(()=>typeof window==='undefined'?'':decodeURIComponent(window.location.hash.slice(1)))
  const [aiStudent,setAiStudent]=useState<string|null>(null)
+ // Tipo de conta escolhido no cadastro. "Profissional" leva ao pedido de parceiro logo depois de entrar.
+ const PRO_KEY='369:quero-ser-parceiro'
+ const [accountType,setAccountType]=useState<'aluno'|'parceiro'>(()=>{try{return new URLSearchParams(window.location.search).get('perfil')==='parceiro'?'parceiro':'aluno'}catch{return 'aluno'}})
+ const rememberType=()=>{try{if(mode==='signup'&&accountType==='parceiro')localStorage.setItem(PRO_KEY,'1');else if(mode==='signup')localStorage.removeItem(PRO_KEY)}catch{/* sem armazenamento */}}
  const [chatWith,setChatWith]=useState<string|null>(null),[unread,setUnread]=useState(0)
  const [google,setGoogle]=useState(false),[myPhone,setMyPhone]=useState(''),[phoneDraft,setPhoneDraft]=useState(''),[phoneNote,setPhoneNote]=useState('')
  // Voltar do celular/navegador volta para a tela anterior do app, sem perder o lugar.
@@ -85,6 +89,10 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   }
   return()=>{active=false}
  },[state.phase,state.profile,linkPage])
+ useEffect(()=>{if(state.phase!=='ready'||!state.profile)return;let want=false;try{want=localStorage.getItem(PRO_KEY)==='1';if(want)localStorage.removeItem(PRO_KEY)}catch{/* sem armazenamento */}
+  if(want&&state.profile.role==='aluno'){setView('parceiro');try{window.history.replaceState(null,'','#parceiro')}catch{/* sem histórico */}setNotice('Conta criada! Para atender como profissional, informe sua área e seu registro (CREF, CRN, CREFITO…). A equipe 369 confere e libera as funções de parceiro.')}
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[state.phase,state.profile?.id])
  async function act(task:()=>Promise<void>){setMessage('');setNotice('');try{await task()}catch(err){const shown=['Digite um celular válido com DDD, por exemplo (11) 98765-4321.','Entrar com Google está indisponível no momento.','Código inválido ou expirado. Peça um novo código.','Digite o código de 6 dígitos que chegou no e-mail.','Aguarde 1 minuto antes de tentar novamente.','Muitas tentativas. Aguarde alguns minutos e tente novamente.','Confira o e-mail, a senha e a confirmação do endereço antes de entrar.','Confirme seu e-mail antes de entrar.'];setMessage(err instanceof Error&&shown.includes(err.message)?err.message:'Não foi possível concluir. Verifique os dados e tente novamente.')}finally{setPassword('');setConfirmation('')}}
  function chooseMode(next:typeof mode){setMode(next);setCode('');setCodeSent(false);setPassword('');setConfirmation('');setMessage('');setNotice('')}
  async function submitAccess(){
@@ -93,7 +101,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   if(mode==='signup'&&!normalizeBrazilPhone(phone)){setMessage('Preencha um celular válido com DDD, por exemplo (11) 98765-4321.');return}
   await act(async()=>{
    if(mode==='login')await controller.current!.login(email,password)
-   else if(mode==='signup'){const started=await controller.current!.signup(email,password,{fullName,phone});setNotice(started?'Conta criada! Bem-vindo(a) ao 369 WELLNESS.':'Se a confirmação for necessária, siga as instruções no seu e-mail. Se já possui conta, use Entrar.')}
+   else if(mode==='signup'){rememberType();const started=await controller.current!.signup(email,password,{fullName,phone});setNotice(started?'Conta criada! Bem-vindo(a) ao 369 WELLNESS.':'Se a confirmação for necessária, siga as instruções no seu e-mail. Se já possui conta, use Entrar.')}
    else if(codeSent){await controller.current!.verifyRecoveryCode(email,code);setCode('')}
    else{await controller.current!.recover(email);setCodeSent(true);setNotice('Se o e-mail estiver cadastrado, enviamos um código de 6 dígitos. Confira também o spam/lixo eletrônico.')}
   })
@@ -169,7 +177,9 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
   {alerts}
   {(state.phase==='signed_out'||state.phase==='error')&&<>
    <div className="flex flex-wrap gap-2" aria-label="Opções de acesso">{([['login','Entrar'],['signup','Criar conta'],['recover','Recuperar senha']] as const).map(([value,label])=><Button key={value} type="button" variant={mode===value?'default':'outline'} disabled={state.busy||!controller.current} onClick={()=>chooseMode(value)}>{label}</Button>)}</div>
-   {mode!=='recover'&&google&&<><button type="button" disabled={state.busy||!controller.current} onClick={()=>void act(()=>controller.current!.loginWithGoogle())} className="flex min-h-11 w-full items-center justify-center gap-3 rounded-[10px_22px_10px_22px] border border-[#747775] bg-white px-4 py-2 font-semibold text-[#1f1f1f] hover:bg-[#f2f2f2]">
+   {mode==='signup'&&<fieldset className="space-y-2"><legend className="font-semibold">Quero usar a 369 como</legend><div className="grid grid-cols-2 gap-2">{([['aluno','Aluno','Treinar, encontrar profissionais e acompanhar minha evolução'],['parceiro','Profissional (parceiro)','Atender alunos: educação física, nutrição, fisioterapia…']] as const).map(([v,label,hint])=><button key={v} type="button" aria-pressed={accountType===v} onClick={()=>setAccountType(v)} className={'rounded-[10px_22px_10px_22px] border p-3 text-left '+(accountType===v?'border-[#33325a] bg-[#33325a] text-[#f7f6f2]':'border-[#dddee4] bg-white')}><span className="block font-bold">{label}</span><span className="block text-xs">{hint}</span></button>)}</div>
+    {accountType==='parceiro'&&<p className="text-sm text-[#626274]">Você cria a conta e, em seguida, informa sua área e seu registro profissional. A equipe 369 confere e libera as funções de parceiro.</p>}</fieldset>}
+   {mode!=='recover'&&google&&<><button type="button" disabled={state.busy||!controller.current} onClick={()=>{rememberType();void act(()=>controller.current!.loginWithGoogle())}} className="flex min-h-11 w-full items-center justify-center gap-3 rounded-[10px_22px_10px_22px] border border-[#747775] bg-white px-4 py-2 font-semibold text-[#1f1f1f] hover:bg-[#f2f2f2]">
     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
     {mode==='signup'?'Cadastrar com Google':'Entrar com Google'}</button>
    <p className="text-center text-sm text-[#626274]">ou use seu e-mail</p></>}
@@ -180,7 +190,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
     {mode!=='login'&&suggestEmail(email)&&<p className="text-sm" role="status">Você quis dizer <b>{suggestEmail(email)}</b>? <button type="button" className="underline" onClick={()=>setEmail(suggestEmail(email)!)}>Usar este e-mail</button></p>}
     {mode==='signup'&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())&&!suggestEmail(email)&&<p className="text-sm text-[#626274]">Confira: vamos usar <b>{email.trim().toLowerCase()}</b> para a sua conta.</p>}
     {mode!=='recover'&&<label className="block">{mode==='signup'?'Nova senha':'Senha'}<Input type="password" autoComplete={mode==='signup'?'new-password':'current-password'} required minLength={mode==='signup'?10:undefined} maxLength={mode==='signup'?72:1024} value={password} onChange={e=>setPassword(e.target.value)} disabled={state.busy}/></label>}
-    {mode==='signup'&&<><p>Use pelo menos 10 caracteres. O cadastro inicial é de aluno; o acesso profissional depende de aprovação.</p><label className="block">Confirme a senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={confirmation} onChange={e=>setConfirmation(e.target.value)} disabled={state.busy}/></label></>}
+    {mode==='signup'&&<><p>Use pelo menos 10 caracteres.</p><label className="block">Confirme a senha<Input type="password" autoComplete="new-password" required minLength={10} maxLength={72} value={confirmation} onChange={e=>setConfirmation(e.target.value)} disabled={state.busy}/></label></>}
     {mode==='recover'&&codeSent&&<label className="block">Código recebido no e-mail<Input inputMode="numeric" autoComplete="one-time-code" required maxLength={12} placeholder="123456" value={code} onChange={e=>setCode(e.target.value)} disabled={state.busy}/></label>}
     {mode==='recover'&&codeSent&&<p className="text-sm">Também é possível clicar no link do e-mail. <button type="button" className="underline" onClick={()=>{setCodeSent(false);setCode('');setNotice('')}}>Enviar outro código</button></p>}
     <Button type="submit" disabled={state.busy||!controller.current}>{mode==='login'?'Entrar':mode==='signup'?'Cadastrar':codeSent?'Confirmar código':'Enviar código'}</Button>
