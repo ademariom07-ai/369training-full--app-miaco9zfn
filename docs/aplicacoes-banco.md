@@ -25,6 +25,7 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 30/11/2026 | 20261130120000_admin_make_partner.sql | admin_make_partner.sql: 10 verificações OK | Admin aprova/torna parceiro mesmo sem pedido, com pedido recusado ou com vínculo de aluno (encerra o vínculo se marcado). |
 | 01/12/2026 | 20261201120000_unique_credentials.sql | unique_credentials.sql: 12 verificações OK (repetidos antigos de teste mantidos por decisão do proprietário) | Registro profissional único (CREF/CONFEF, CRN, CREFITO, CRP/CFP, CBJ, CBJJ, CBK) entre contas; trava no banco para todos os caminhos; conferência de repetidos no admin. |
 | 02/12/2026 | 20261202120000_identity_verification.sql | identity_verification.sql: 19 verificações OK (RLS ativado em app_settings) | CPF (código com segredo + 2 últimos dígitos; repetido → análise do admin); etapa 2 do parceiro (3 fotos em bucket privado "verificacao", apagadas após a análise); parceiro sem verificação não aceita alunos (app_settings.exigir_verificacao_parceiro). |
+| 03/12/2026 | 20261203120000_body_progress.sql | body_progress.sql: 16 verificações (aguardando aplicação) | Fase 4: avaliação física (aluno ou profissional ativo) e fotos de evolução (bucket privado "evolucao"; profissional vê se o aluno compartilhar). |
 
 ## Edge Functions
 

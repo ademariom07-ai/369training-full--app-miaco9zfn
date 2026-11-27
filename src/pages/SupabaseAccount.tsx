@@ -35,6 +35,7 @@ const Isis=lazy(()=>import('@/components/Isis'))
 const ContentLibrary=lazy(()=>import('@/components/Contents'))
 const ContentManager=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentManager})))
 const ContentReview=lazy(()=>import('@/components/Contents').then(m=>({default:m.ContentReview})))
+const StudentBody=lazy(()=>import('@/components/BodyProgress'))
 const CpfSection=lazy(()=>import('@/components/Verification').then(m=>({default:m.CpfSection})))
 const PartnerVerification=lazy(()=>import('@/components/Verification').then(m=>({default:m.PartnerVerification})))
 const PartnerVerificationBanner=lazy(()=>import('@/components/Verification').then(m=>({default:m.PartnerVerificationBanner})))
@@ -148,6 +149,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    usuarios:()=>panel(<AdminUsers key={'au'+profile.id} owner={profile.id}/>),
    avaliacoes:()=>panel(<AdminReviews key={'rv'+profile.id} owner={profile.id}/>),
    'desafios-admin':()=>panel(<ChallengeManager key={'dca'+profile.id} owner={profile.id} role="admin"/>),
+   medidas:()=>panel(<StudentBody key={'sb'+profile.id} owner={profile.id}/>),
    conteudos:()=>panel(<ContentLibrary key={'cl'+profile.id} owner={profile.id} onChat={startChat}/>),
    'meus-conteudos':()=>panel(linksReady?<ContentManager key={'cm'+profile.id} owner={profile.id} role="profissional" links={links}/>:<p role="status">Carregando…</p>),
    'conteudos-admin':()=><>{panel(<ContentReview key={'cr'+profile.id} owner={profile.id}/>)}{panel(<ContentManager key={'cma'+profile.id} owner={profile.id} role="admin" links={[]}/>)}</>,

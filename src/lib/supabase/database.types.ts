@@ -791,6 +791,14 @@ export type Database = {
       admin_list_partner_verifications: { Args: Record<string, never>; Returns: { user_id: string; display_name: string; email: string | null; specialty: string | null; credential: string | null; cpf_masked: string | null; cpf_status: string | null; doc_path: string | null; selfie_path: string | null; credential_path: string | null; submitted_at: string }[] }
       admin_review_partner: { Args: { p_user: string; p_approve: boolean; p_reason: string }; Returns: undefined }
       verified_partners: { Args: { p_users: string[] }; Returns: { user_id: string }[] }
+      save_assessment: { Args: { p_id: string | null; p_student: string; p_measured_on: string; p_data: Json }; Returns: string }
+      delete_assessment: { Args: { p_id: string }; Returns: undefined }
+      list_assessments: { Args: { p_student: string }; Returns: { assessment_id: string; author_name: string; mine: boolean; measured_on: string; weight_kg: number | null; height_cm: number | null; body_fat_pct: number | null; muscle_kg: number | null; waist_cm: number | null; hip_cm: number | null; chest_cm: number | null; arm_cm: number | null; thigh_cm: number | null; calf_cm: number | null; neck_cm: number | null; notes: string | null }[] }
+      save_progress_photo: { Args: { p_taken_on: string; p_pose: string; p_path: string }; Returns: string }
+      delete_progress_photo: { Args: { p_id: string }; Returns: string }
+      list_progress_photos: { Args: { p_student: string }; Returns: { photo_id: string; taken_on: string; pose: string; path: string; shared: boolean }[] }
+      photo_sharing_status: { Args: { p_student: string }; Returns: boolean }
+      set_photo_sharing: { Args: { p_share: boolean }; Returns: undefined }
       admin_list_actions: { Args: Record<string, never>; Returns: { created_at: string; actor_name: string; action: string; target_name: string | null; reason: string }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }

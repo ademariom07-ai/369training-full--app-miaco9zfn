@@ -1,6 +1,7 @@
 import React,{Suspense,lazy,useCallback,useEffect,useState} from 'react'
 const Evolution=lazy(()=>import('@/components/Evolution'))
 const WorkoutRunner=lazy(()=>import('@/components/WorkoutRunner'))
+const ProBody=lazy(()=>import('@/components/BodyProgress').then(m=>({default:m.ProBody})))
 import {Apple,CheckCircle2,Circle,Dumbbell,LineChart as ChartIcon,Plus,Sparkles,Trash2} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -183,5 +184,6 @@ export function ProRoutines({owner,links,onAi}:{owner:string,links:ParticipantLi
    <span className="flex-1"><span className="block font-bold">{r.kind==='treino'?'Treino':'Dieta'} · {r.title}</span><span className="block text-sm text-[#626274]">{sourceLabel(r)} · {r.status==='publicado'?'Publicado':r.status==='revisao'?'Aguardando sua revisão':'Rascunho'}</span></span>
   </button></li>)}</ul>}
   <ProActivity student={student} owner={owner}/>
+  {student&&<details className={card}><summary className="min-h-11 cursor-pointer py-2 text-lg font-extrabold">Avaliação física e fotos deste aluno</summary><div className="mt-3"><Suspense fallback={<p role="status">Carregando…</p>}><ProBody key={student} student={student} owner={owner}/></Suspense></div></details>}
  </section>
 }

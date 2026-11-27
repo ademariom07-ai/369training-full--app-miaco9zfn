@@ -1,5 +1,5 @@
 import React from 'react'
-import {BookOpen,Bot,Star,UserCog,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {BookOpen,Bot,Ruler,Star,UserCog,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -25,6 +25,7 @@ const menus:Record<RoleKind,RoleView[]>={
  aluno:[inicio,comoFunciona,
   {id:'profissionais',label:'Encontrar profissionais',icon:Users,summary:'Busque por modalidade, perto de você ou online, e veja a vitrine de cada um.'},
   {id:'treino',label:'Meu treino / dieta',icon:Dumbbell,summary:'Treino da semana e dieta, com vídeos e o que você já fez.'},
+  {id:'medidas',label:'Medidas e fotos',icon:Ruler,summary:'Peso, medidas, gordura corporal e fotos de antes e depois, com gráficos.'},
   {id:'conteudos',label:'Conteúdos e e-books',icon:BookOpen,summary:'Aulas, vídeos, dicas, livros e materiais dos profissionais, grátis ou pagos.'},
   {id:'desafios',label:'Desafios e água',icon:Trophy,summary:'Aceite desafios, marque seus dias e acompanhe a água que você bebe, com lembretes.'},
   ia,
@@ -93,6 +94,7 @@ const helps:Record<string,string>={
  usuarios:'Busque por nome ou e-mail. Em "Pedidos de parceiro" você aprova ou recusa quem pediu para ser parceiro (com motivo). Também suspende ou reativa parceiros e exclui contas (pede o motivo e a confirmação com o e-mail). Se a conta tiver registros que precisam ficar guardados, ela é anonimizada e o login é bloqueado. Tudo fica no registro de ações.',
  avaliacoes:'As 100 avaliações mais recentes. Oculte comentários ofensivos ou falsos, sempre com motivo. A média de cada pessoa usa as 100 últimas avaliações sem as 3 piores.',
  'desafios-admin':'Desafios da equipe 369, visíveis para todos os alunos.',
+ medidas:'Registre peso e medidas (ou peça ao seu profissional) e veja os gráficos. As fotos de frente, lado e costas ficam privadas; compartilhe com seu profissional se quiser. Use "Comparar" para ver antes e depois.',
  conteudos:'Aulas, vídeos, dicas, e-books e materiais. Em "Do meu profissional" ficam os que o seu profissional enviou; em "Para todos", os da comunidade. Os pagos mostram o preço: combine com o profissional e ele libera o acesso.',
  'meus-conteudos':'Publique conteúdos grátis ou pagos. Escolha para quem: todos os alunos da 369 (passa pela aprovação da equipe), todos os seus alunos ou alunos escolhidos (você pode salvar grupos, como "Turma da manhã"). Nos pagos, libere o acesso de quem pagou.',
  'conteudos-admin':'Conteúdos públicos enviados pelos profissionais esperando aprovação, e os conteúdos da equipe 369 (publicados direto para todos).',
@@ -104,7 +106,7 @@ const helps:Record<string,string>={
  perfil:'Seu nome, seu celular e seu CPF (guardamos só os 2 últimos dígitos). Mantenha o celular certo para os profissionais conseguirem falar com você. No fim da página você pode excluir sua conta e seus dados (LGPD).',
  alunos:'Pedidos de alunos que querem ser acompanhados por você. Aceite para montar treinos e liberar sua agenda para eles. Você vê a nota de cada aluno e pode avaliar quem você acompanha.',
  'parceiro:agenda':'Defina os dias e horários em que você atende e as regras de agendamento. Logo abaixo ficam as reservas feitas.',
- treinos:'Escolha o aluno e monte o treino por dia da semana (com séries, repetições e vídeo) ou a dieta por refeição. Você também vê os treinos que o aluno gerou com IA, para revisar.',
+ treinos:'Escolha o aluno e monte o treino por dia da semana (com séries, repetições e vídeo) ou a dieta por refeição. Você também vê os treinos que o aluno gerou com IA, para revisar. Mais abaixo: o que o aluno fez e a avaliação física (medidas e fotos, se ele compartilhar).',
  'meus-videos':'Publique vídeos do YouTube. A equipe aprova e eles aparecem primeiro para os alunos da sua região.',
  cadastro:'Seus dados profissionais e a situação da sua aprovação. Para aceitar alunos, conclua a Etapa 2: CPF confirmado e 3 fotos rápidas, analisadas pela equipe 369.',
  'parceiro_pendente:agenda':'Reservas feitas com a sua conta.',

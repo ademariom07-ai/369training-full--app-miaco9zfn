@@ -22,6 +22,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 39 (medidas e fotos) e 40 (teste).
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
@@ -58,6 +59,9 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   verificação o parceiro não aceita novos alunos; selo "Identidade verificada" na busca e na vitrine. Desligar a exigência:
   update wellness_private.app_settings set value='false' where key='exigir_verificacao_parceiro'.
   Futuro (pago): biometria automática com prova de vida (Serpro Datavalid / unico / similares) no lugar da análise manual.
+- Fase 4: aluno em "Medidas e fotos" (avaliações com IMC e cintura/quadril, gráficos de peso/gordura/cintura, fotos frente/lado/
+  costas privadas com comparar antes/depois e compartilhamento opcional com o profissional); profissional registra e vê em
+  Treinos e dietas › "Avaliação física e fotos deste aluno".
 
 ## Decisões e próximos passos
 - Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e
