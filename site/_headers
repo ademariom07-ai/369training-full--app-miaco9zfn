@@ -11,3 +11,17 @@
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' https://elahjmtboqhqqxmoaths.supabase.co wss://elahjmtboqhqqxmoaths.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 /acesso.html
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' https://elahjmtboqhqqxmoaths.supabase.co wss://elahjmtboqhqqxmoaths.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+# Protótipo antigo (demonstração com dados fictícios no navegador). Fora dos buscadores; acesso pelo admin.
+/demonstracao.html
+  X-Robots-Tag: noindex, nofollow
+/evolucao.html
+  X-Robots-Tag: noindex, nofollow
+/historico.html
+  X-Robots-Tag: noindex, nofollow
+/videos.html
+  X-Robots-Tag: noindex, nofollow
+/evidencias.html
+  X-Robots-Tag: noindex, nofollow
+/pendencias.html
+  X-Robots-Tag: noindex, nofollow

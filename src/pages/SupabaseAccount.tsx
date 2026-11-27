@@ -42,6 +42,7 @@ const PartnerVerification=lazy(()=>import('@/components/Verification').then(m=>(
 const PartnerVerificationBanner=lazy(()=>import('@/components/Verification').then(m=>({default:m.PartnerVerificationBanner})))
 const AdminVerifications=lazy(()=>import('@/components/Verification'))
 const DeleteMyAccount=lazy(()=>import('@/components/DeleteMyAccount'))
+const AdminLegacy=lazy(()=>import('@/components/AdminLegacy'))
 const AdminUsers=lazy(()=>import('@/components/AdminUsers'))
 const RatingBadge=lazy(()=>import('@/components/Reviews').then(m=>({default:m.RatingBadge})))
 const ReviewButton=lazy(()=>import('@/components/Reviews').then(m=>({default:m.ReviewButton})))
@@ -151,6 +152,7 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    treino:()=><>{panel(<StudentRoutines key={'rt'+profile.id} owner={profile.id} onAi={()=>openView('ia')} legacy={training}/>)}<ContentHighlights key={'ch'+profile.id} owner={profile.id} onView={openView}/></>,
    desafios:()=>panel(<StudentChallenges key={'dc'+profile.id} owner={profile.id}/>),
    'desafios-pro':()=>panel(<ChallengeManager key={'dcp'+profile.id} owner={profile.id} role="profissional"/>),
+   prototipo:()=>panel(<AdminLegacy/>),
    usuarios:()=>panel(<AdminUsers key={'au'+profile.id} owner={profile.id}/>),
    avaliacoes:()=>panel(<AdminReviews key={'rv'+profile.id} owner={profile.id}/>),
    'desafios-admin':()=>panel(<ChallengeManager key={'dca'+profile.id} owner={profile.id} role="admin"/>),

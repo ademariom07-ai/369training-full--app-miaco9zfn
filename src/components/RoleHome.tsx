@@ -1,5 +1,5 @@
 import React from 'react'
-import {BookOpen,Bot,Ruler,Star,UserCog,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
+import {BookOpen,Bot,History,Ruler,Star,UserCog,Library,Sparkles,MessageCircle,Store,CircleHelp,Compass,Briefcase,Clapperboard,CalendarDays,ClipboardCheck,Dumbbell,Film,Home,Inbox,Leaf,LogOut,RefreshCw,ShieldCheck,Trophy,UserRound,Users,Wallet,type LucideIcon} from 'lucide-react'
 import type {OwnProfile} from '@/lib/supabase/profiles'
 import InstallApp from '@/components/InstallApp'
 
@@ -67,6 +67,7 @@ const menus:Record<RoleKind,RoleView[]>={
   {id:'videos',label:'Vídeos — piloto',icon:Film,summary:'Biblioteca de vídeos em teste.'},
   {id:'esg',label:'Projetos ESG',icon:Leaf,summary:'Analise os projetos enviados.'},
   {id:'financeiro',label:'Financeiro',icon:Wallet,summary:'Reservas, cashback (rascunho) e carteira.'},
+  {id:'prototipo',label:'Protótipo antigo',icon:History,summary:'Demonstração com dados fictícios usada antes do app real. Só referência.'},
   {id:'ranking',label:'Ranking — rascunhos',icon:Trophy,summary:'Regras de pontuação em preparação.'},
   comoFunciona,perfil],
 }
@@ -91,6 +92,7 @@ const helps:Record<string,string>={
  desafios:'Toque em "Aceitar desafio" para participar. Nos desafios de treino e de água, o progresso conta sozinho; nos outros, marque cada dia cumprido. Na água, use +250 ml / +500 ml e ligue os lembretes em "Meta e lembretes".',
  'desafios-pro':'Crie desafios para os seus alunos: marcar cada dia (ex.: alongamento), dias com treino registrado ou dias com a meta de água. Acompanhe o progresso de cada participante.',
  verificacoes:'Parceiros: confira as 3 fotos (documento, selfie com documento, selfie com a carteira do conselho) e o número no site do conselho; aprove ou recuse com motivo. As fotos são apagadas depois da decisão. CPFs: quem informou um CPF que já está em outra conta e pediu análise.',
+ prototipo:'Telas da demonstração antiga (antes do app real), com dados fictícios guardados só no navegador. Não mexe no banco. Fica aqui só como referência de ideias.',
  usuarios:'Busque por nome ou e-mail. Em "Pedidos de parceiro" você aprova ou recusa quem pediu para ser parceiro (com motivo). Também suspende ou reativa parceiros e exclui contas (pede o motivo e a confirmação com o e-mail). Se a conta tiver registros que precisam ficar guardados, ela é anonimizada e o login é bloqueado. Tudo fica no registro de ações.',
  avaliacoes:'As 100 avaliações mais recentes. Oculte comentários ofensivos ou falsos, sempre com motivo. A média de cada pessoa usa as 100 últimas avaliações sem as 3 piores.',
  'desafios-admin':'Desafios da equipe 369, visíveis para todos os alunos.',
