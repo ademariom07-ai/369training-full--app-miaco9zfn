@@ -799,6 +799,12 @@ export type Database = {
       list_progress_photos: { Args: { p_student: string }; Returns: { photo_id: string; taken_on: string; pose: string; path: string; shared: boolean }[] }
       photo_sharing_status: { Args: { p_student: string }; Returns: boolean }
       set_photo_sharing: { Args: { p_share: boolean }; Returns: undefined }
+      push_public_key: { Args: Record<string, never>; Returns: string | null }
+      save_push_subscription: { Args: { p_endpoint: string; p_p256dh: string; p_auth: string }; Returns: undefined }
+      delete_push_subscription: { Args: { p_endpoint: string }; Returns: undefined }
+      my_push_settings: { Args: Record<string, never>; Returns: { devices: number; mensagens: boolean; treinos: boolean; conteudos: boolean; vinculos: boolean; agua: boolean; treino_hora: number | null }[] }
+      save_push_prefs: { Args: { p_mensagens: boolean; p_treinos: boolean; p_conteudos: boolean; p_vinculos: boolean; p_agua: boolean; p_treino_hora: number | null }; Returns: undefined }
+      push_test: { Args: Record<string, never>; Returns: undefined }
       admin_list_actions: { Args: Record<string, never>; Returns: { created_at: string; actor_name: string; action: string; target_name: string | null; reason: string }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }

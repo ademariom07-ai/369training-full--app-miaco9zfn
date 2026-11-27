@@ -2,7 +2,7 @@
 // - Páginas: sempre busca a versão mais nova na rede; sem internet, mostra /offline.html.
 // - Arquivos com versão no nome (/access-assets) e imagens da marca: guardados no aparelho.
 // - Nunca guarda nada de outros endereços (Supabase, YouTube): dados e login sempre online.
-const VERSION = 'v1'
+const VERSION = 'v2'
 const STATIC = '369-static-' + VERSION
 const PRECACHE = ['/offline.html', '/brand.css', '/assets/pwa/icon-192.png', '/assets/brand/logo-primary.png']
 
@@ -32,4 +32,25 @@ self.addEventListener('fetch', event => {
       return response
     })))
   }
+})
+
+// Notificações push (enviadas pela função "push" do Supabase).
+self.addEventListener('push', event => {
+  let data = {}
+  try { data = event.data ? event.data.json() : {} } catch { data = { body: event.data ? event.data.text() : '' } }
+  const title = data.title || '369 WELLNESS'
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || '', icon: '/assets/pwa/icon-192.png', badge: '/assets/pwa/icon-192.png',
+    tag: data.tag || undefined, renotify: !!data.tag, data: { url: typeof data.url === 'string' && data.url.startsWith('/') ? data.url : '/acesso' },
+  }))
+})
+self.addEventListener('notificationclick', event => {
+  event.notification.close()
+  const url = (event.notification.data && event.notification.data.url) || '/acesso'
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const client of list) {
+      if (new URL(client.url).origin === self.location.origin && 'focus' in client) { client.navigate(url).catch(() => {}); return client.focus() }
+    }
+    return self.clients.openWindow(url)
+  }))
 })

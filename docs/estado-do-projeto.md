@@ -22,6 +22,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 41 (notificações) e 42 (teste); publicar a função `push` (nome minúsculo) com Verify JWT desligado.
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
@@ -64,6 +65,9 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 - Protótipo antigo (demonstracao.html, evolucao, historico, videos, evidencias, pendencias): demonstração com dados fictícios no
   navegador, trazida do site publicado (versão 54) em 15/11. Saiu da página inicial; fica em Admin › "Protótipo antigo";
   noindex no _headers. Pode ser apagada de vez se não for mais útil.
+- Notificações push: Meu perfil › Notificações (ativar por aparelho, preferências, lembrete de treino, teste). Avisos de
+  mensagem (sem o texto), treino/dieta novos, conteúdo novo, vínculo, verificação, água e treino do dia. iPhone: só com o app
+  instalado na Tela de Início (iOS 16.4+).
 
 ## Decisões e próximos passos
 - Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e
