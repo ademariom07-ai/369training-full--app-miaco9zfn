@@ -27,12 +27,15 @@ Antes de gerar o arquivo para colar, rodar `scripts/qa/run-sql-tests.sh` (Postgr
 | 02/12/2026 | 20261202120000_identity_verification.sql | identity_verification.sql: 19 verificações OK (RLS ativado em app_settings) | CPF (código com segredo + 2 últimos dígitos; repetido → análise do admin); etapa 2 do parceiro (3 fotos em bucket privado "verificacao", apagadas após a análise); parceiro sem verificação não aceita alunos (app_settings.exigir_verificacao_parceiro). |
 | 03/12/2026 | 20261203120000_body_progress.sql | body_progress.sql: 16 verificações OK | Fase 4: avaliação física (aluno ou profissional ativo) e fotos de evolução (bucket privado "evolucao"; profissional vê se o aluno compartilhar). |
 | 04/12/2026 | 20261204120000_push_notifications.sql | push_notifications.sql: 14 verificações OK (agendador ativo, chaves VAPID criadas, resposta 200) | Notificações push: aparelhos, preferências, fila com gatilhos (mensagem, treino, conteúdo, vínculo, verificação) e lembretes (água, treino); pg_cron + pg_net chamam a função "push" a cada minuto. |
+| 05/12/2026 | 20261205120000_push_function_name.sql | — | Agendador de push aponta para a função publicada "super-task" (já aplicado à mão). |
+| 06/12/2026 | 20261206120000_radar_369.sql | radar_369.sql: 11 verificações (aguardando aplicação) | Radar 369: estudos do PubMed resumidos por IA, por especialidade; notas do admin; agenda semanal chamando a função "radar". |
 
 ## Edge Functions
 
 | Data | Função | Segredos | Observação |
 | --- | --- | --- | --- |
 | 23/11/2026 | Isis (supabase/functions/isis/index.ts; publicada com I maiúsculo) | Usa ANTHROPIC_API_KEY, ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS; opcional ISIS_LIMIT_PRO (padrão 60/dia) | Assistente virtual do profissional: cria, ajusta e envia treinos conversando, usando os registros do aluno. Publicada em 23/11/2026 (aguardando primeiro teste). |
+| 06/12/2026 | radar (supabase/functions/radar/index.ts) | Usa ANTHROPIC_API_KEY e ROUTINE_MODEL; Verify JWT DESLIGADO (confere token do agendador ou admin logado) | Busca estudos no PubMed toda semana e resume em português. Aguardando publicação. |
 | 04/12/2026 | super-task (código em supabase/functions/push/index.ts; publicada com o nome sugerido pelo editor) | Nenhum segredo novo (chaves VAPID e token criados no banco). Verify JWT DESLIGADO | Envia a fila de notificações a cada minuto (cron aponta para /functions/v1/super-task, migração 20261205120000). |
 | 25/11/2026 | Isis (nova versão) | Mesmos segredos | Ísis lê a evolução de 60 dias de cada aluno (frequência por semana, esforço, dor, cargas, exercícios pulados) e faz análises/relatórios. Publicada e testada pelo proprietário. |
 | 20/11/2026 | routine-ai (supabase/functions/routine-ai/index.ts) | ANTHROPIC_API_KEY (obrigatório), ROUTINE_MODEL e ROUTINE_ALLOWED_ORIGINS (opcionais) | Treino/dieta com IA. Publicada; em uso com ROUTINE_MODEL=claude-haiku-5-5. Limites: ROUTINE_LIMIT_ALUNO/ROUTINE_LIMIT_PRO (padrão 3 e 15 por dia). Aguardando publicação no painel. |

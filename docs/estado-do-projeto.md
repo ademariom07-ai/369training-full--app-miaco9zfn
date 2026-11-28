@@ -22,6 +22,7 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
   `ASSISTANT_NAME` (src/lib/supabase/isis.ts) e `NAME` (função).
 
 ## Pendências do proprietário
+- Supabase: colar 43 (Radar 369) e 44 (teste); publicar a função `radar` (nome minúsculo, Verify JWT desligado).
 - Supabase: 20 aplicado; 21 (teste da Ísis) opcional.
 - Supabase: colar 13/14 (Fase 3) se ainda não colou; publicar a função `routine-ai` e o segredo `ANTHROPIC_API_KEY`
   (opcional `ROUTINE_MODEL=claude-haiku-5-5` para custo mínimo).
@@ -67,6 +68,9 @@ Registro das mudanças no banco e no painel: `docs/aplicacoes-banco.md`.
 - Notificações push: Meu perfil › Notificações (ativar por aparelho, preferências, lembrete de treino, teste). Avisos de
   mensagem (sem o texto), treino/dieta novos, conteúdo novo, vínculo, verificação, água e treino do dia. iPhone: só com o app
   instalado na Tela de Início (iOS 16.4+).
+- Radar 369 (parceiro e admin): estudos reais do PubMed (metanálises, revisões, ensaios; artes marciais aceita outros tipos),
+  resumidos por IA (resumo, na prática, ideia de conteúdo), nível de evidência pelo tipo de publicação, link do original.
+  Semanal (segunda 02:00 UTC) ou "Atualizar agora" no admin; admin oculta itens e publica notas de conselho.
 
 ## Decisões e próximos passos
 - Análise do app do Skip (branch main): trazer na ordem 1) evolução (feito), 2) treino guiado com cronômetro e

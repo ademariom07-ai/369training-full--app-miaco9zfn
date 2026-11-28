@@ -805,6 +805,10 @@ export type Database = {
       my_push_settings: { Args: Record<string, never>; Returns: { devices: number; mensagens: boolean; treinos: boolean; conteudos: boolean; vinculos: boolean; agua: boolean; treino_hora: number | null }[] }
       save_push_prefs: { Args: { p_mensagens: boolean; p_treinos: boolean; p_conteudos: boolean; p_vinculos: boolean; p_agua: boolean; p_treino_hora: number | null }; Returns: undefined }
       push_test: { Args: Record<string, never>; Returns: undefined }
+      radar_my_specialty: { Args: Record<string, never>; Returns: string | null }
+      list_radar: { Args: { p_specialty: string | null; p_page: number }; Returns: { item_id: string; kind: string; specialty: string; title: string; title_original: string | null; journal: string | null; pub_year: number | null; evidence: string | null; summary: string; practice: string | null; content_idea: string | null; url: string | null; week: string | null; hidden: boolean; created_at: string }[] }
+      admin_hide_radar: { Args: { p_id: string; p_hide: boolean }; Returns: undefined }
+      admin_save_radar_note: { Args: { p_specialty: string; p_title: string; p_body: string; p_url: string | null }; Returns: string }
       admin_list_actions: { Args: Record<string, never>; Returns: { created_at: string; actor_name: string; action: string; target_name: string | null; reason: string }[] }
       list_routine_sessions: {
         Args: { p_student: string | null }

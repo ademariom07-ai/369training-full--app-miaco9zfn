@@ -43,6 +43,7 @@ const PartnerVerificationBanner=lazy(()=>import('@/components/Verification').the
 const AdminVerifications=lazy(()=>import('@/components/Verification'))
 const PushSettings=lazy(()=>import('@/components/PushSettings'))
 const DeleteMyAccount=lazy(()=>import('@/components/DeleteMyAccount'))
+const Radar=lazy(()=>import('@/components/Radar'))
 const AdminLegacy=lazy(()=>import('@/components/AdminLegacy'))
 const AdminUsers=lazy(()=>import('@/components/AdminUsers'))
 const RatingBadge=lazy(()=>import('@/components/Reviews').then(m=>({default:m.RatingBadge})))
@@ -153,6 +154,8 @@ export default function SupabaseAccount({redirectPath='/conta-supabase'}:{redire
    treino:()=><>{panel(<StudentRoutines key={'rt'+profile.id} owner={profile.id} onAi={()=>openView('ia')} legacy={training}/>)}<ContentHighlights key={'ch'+profile.id} owner={profile.id} onView={openView}/></>,
    desafios:()=>panel(<StudentChallenges key={'dc'+profile.id} owner={profile.id}/>),
    'desafios-pro':()=>panel(<ChallengeManager key={'dcp'+profile.id} owner={profile.id} role="profissional"/>),
+   radar:()=>panel(<Radar key={'rd'+profile.id} owner={profile.id}/>),
+   'radar-admin':()=>panel(<Radar key={'rda'+profile.id} owner={profile.id} admin/>),
    prototipo:()=>panel(<AdminLegacy/>),
    usuarios:()=>panel(<AdminUsers key={'au'+profile.id} owner={profile.id}/>),
    avaliacoes:()=>panel(<AdminReviews key={'rv'+profile.id} owner={profile.id}/>),
